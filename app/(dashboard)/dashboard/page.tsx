@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { User } from '@/lib/db/schema';
+import { PendingInvitations } from '@/components/PendingInvitations';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -214,6 +215,7 @@ export default function DashboardPage() {
     <section className="flex-1 p-4 lg:p-8">
       <WelcomeCard />
       <AdminActions />
+      <PendingInvitations />
       <QuickActions />
       <SystemOverview />
       <RecentActivity />

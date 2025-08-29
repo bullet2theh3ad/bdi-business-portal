@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Home, LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { SemanticBDIIcon } from '@/components/BDIIcon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,21 +76,21 @@ export function UserMenu() {
         
         <DropdownMenuItem className="cursor-pointer">
           <Link href="/dashboard" className="flex w-full items-center">
-            <Home className="mr-2 h-4 w-4" />
+            <SemanticBDIIcon semantic="dashboard" size={16} className="mr-2" />
             <span>Dashboard</span>
           </Link>
         </DropdownMenuItem>
         
         <DropdownMenuItem className="cursor-pointer">
           <Link href="/account/profile" className="flex w-full items-center">
-            <UserIcon className="mr-2 h-4 w-4" />
+            <SemanticBDIIcon semantic="profile" size={16} className="mr-2" />
             <span>My Profile</span>
           </Link>
         </DropdownMenuItem>
         
         <DropdownMenuItem className="cursor-pointer">
           <Link href="/account/settings" className="flex w-full items-center">
-            <Settings className="mr-2 h-4 w-4" />
+            <SemanticBDIIcon semantic="settings" size={16} className="mr-2" />
             <span>Settings</span>
           </Link>
         </DropdownMenuItem>

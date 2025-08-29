@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Clock, X, AlertCircle } from 'lucide-react';
+import { Clock, X, AlertCircle } from 'lucide-react';
+import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { revokeInvitation } from '@/app/(login)/actions';
 import { useActionState } from 'react';
@@ -70,7 +71,7 @@ function RevokeInvitationButton({ invitationId, email }: { invitationId: number;
 }
 
 export function PendingInvitations() {
-  const { data: invitations, error, mutate } = useSWR<Invitation[]>('/api/team/invitations', fetcher);
+  const { data: invitations, error, mutate } = useSWR<Invitation[]>('/api/organization/invitations', fetcher);
 
   // Handle 403 error (non-owner users) - don't show anything
   if (error?.status === 403 || error?.message === 'Forbidden' || (error && error.message?.includes('403'))) {
@@ -98,7 +99,7 @@ export function PendingInvitations() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
+            <SemanticBDIIcon semantic="notifications" size={20} />
             Pending Invitations
           </CardTitle>
         </CardHeader>
@@ -119,13 +120,13 @@ export function PendingInvitations() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
+            <SemanticBDIIcon semantic="notifications" size={20} />
             Pending Invitations
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-gray-500 flex items-center gap-2">
-            <Mail className="h-4 w-4" />
+            <SemanticBDIIcon semantic="notifications" size={16} />
             No pending invitations
           </p>
         </CardContent>
@@ -169,7 +170,7 @@ export function PendingInvitations() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
+                    <SemanticBDIIcon semantic="profile" size={16} className="text-gray-500" />
                     <span className="font-medium">{invitation.email}</span>
                   </div>
                   <Badge variant={invitation.role === 'owner' ? 'default' : 'secondary'}>

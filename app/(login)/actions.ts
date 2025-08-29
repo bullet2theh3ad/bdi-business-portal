@@ -8,7 +8,10 @@ import { db } from '@/lib/db/drizzle';
 import {
   organizations,
   organizationMembers,
+  invitations,
+  users,
 } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 // Create Supabase server client
 async function createSupabaseServerClient() {
@@ -74,6 +77,7 @@ const signUpSchema = z.object({
   password: z.string().min(8),
   name: z.string().min(1).max(100).optional(),
   organizationName: z.string().min(1).max(100).optional(),
+  inviteId: z.string().optional(),
 });
 
 export async function signUp(prevState: any, formData: FormData) {
@@ -81,8 +85,9 @@ export async function signUp(prevState: any, formData: FormData) {
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
   const organizationName = formData.get('organizationName') as string;
+  const inviteId = formData.get('inviteId') as string;
 
-  const result = signUpSchema.safeParse({ email, password, name, organizationName });
+  const result = signUpSchema.safeParse({ email, password, name, organizationName, inviteId });
   if (!result.success) {
     return {
       error: 'Invalid form data. Please check your inputs.',
@@ -122,26 +127,90 @@ export async function signUp(prevState: any, formData: FormData) {
   }
 
   try {
-    // Create organization
-    const newOrg = {
-      name: organizationName || `${email}'s Organization`,
-      type: 'internal' as const,
-      code: 'BDI',
-      is_active: true,
-      created_by: null // Will be updated once we have profiles table
-    };
+    // Create user record in our database
+    const [dbUser] = await db
+      .insert(users)
+      .values({
+        authId: data.user.id,
+        email: data.user.email!,
+        name: name || data.user.email!.split('@')[0],
+        role: 'member', // Default role, will be updated based on invitation
+        passwordHash: 'supabase_managed',
+      })
+      .returning();
 
-    const [createdOrg] = await db.insert(organizations).values(newOrg).returning();
+    let targetOrganization = null;
+    let userRole = 'member';
 
-    if (createdOrg) {
-      // Create organization membership
-      const newOrgMember = {
-        user_id: data.user.id, // Use Supabase auth user ID (UUID)
-        organization_id: createdOrg.id,
-        role: 'super_admin' as const
-      };
+    // Check if this is an invitation-based signup
+    if (inviteId) {
+      const [invitation] = await db
+        .select()
+        .from(invitations)
+        .where(eq(invitations.id, parseInt(inviteId)))
+        .limit(1);
 
-      await db.insert(organizationMembers).values(newOrgMember);
+      if (invitation && invitation.email === email && invitation.status === 'pending') {
+        // Get the organization from the invitation
+        if (invitation.organizationId) {
+          const [org] = await db
+            .select()
+            .from(organizations)
+            .where(eq(organizations.id, invitation.organizationId))
+            .limit(1);
+          
+          if (org) {
+            targetOrganization = org;
+            userRole = invitation.role;
+
+            // Mark invitation as accepted
+            await db
+              .update(invitations)
+              .set({ 
+                status: 'accepted',
+                acceptedAt: new Date()
+              })
+              .where(eq(invitations.id, invitation.id));
+          }
+        }
+      } else {
+        return {
+          error: 'Invalid or expired invitation.',
+          email,
+          password
+        };
+      }
+    } else {
+      // No invitation - create new organization (Super Admin signup)
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: organizationName || `${email}'s Organization`,
+          type: 'internal',
+          code: organizationName?.substring(0, 3).toUpperCase() || 'ORG',
+          uuid: crypto.randomUUID(),
+        })
+        .returning();
+      
+      targetOrganization = newOrg;
+      userRole = 'super_admin';
+    }
+
+    // Update user role based on invitation or default
+    await db
+      .update(users)
+      .set({ role: userRole })
+      .where(eq(users.authId, data.user.id));
+
+    // Add user to organization
+    if (targetOrganization) {
+      await db
+        .insert(organizationMembers)
+        .values({
+          userId: dbUser.id,
+          organizationId: targetOrganization.id,
+          role: userRole,
+        });
     }
 
     redirect('/dashboard');
@@ -160,4 +229,28 @@ export async function signOut() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect('/');
+}
+
+export async function revokeInvitation(prevState: any, formData: FormData) {
+  try {
+    const invitationId = parseInt(formData.get('invitationId') as string);
+    
+    if (!invitationId) {
+      return { error: 'Invalid invitation ID' };
+    }
+
+    // Update invitation status to revoked
+    await db
+      .update(invitations)
+      .set({ 
+        status: 'revoked',
+        updatedAt: new Date()
+      })
+      .where(eq(invitations.id, invitationId));
+
+    return { success: 'Invitation revoked successfully' };
+  } catch (error) {
+    console.error('Error revoking invitation:', error);
+    return { error: 'Failed to revoke invitation' };
+  }
 }

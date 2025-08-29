@@ -16,17 +16,38 @@ import { relations } from 'drizzle-orm';
 // ===== CORE USER & ORGANIZATION STRUCTURE =====
 
 export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(), // UUID primary key
+  authId: uuid('auth_id').notNull().unique(), // Supabase Auth UUID
   name: varchar('name', { length: 100 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  role: varchar('role', { length: 20 }).notNull().default('member'), // member, admin, super_admin
+  role: varchar('role', { length: 20 }).notNull().default('member'), // member, admin, super_admin, developer
   
   // Profile fields
   phone: varchar('phone', { length: 20 }),
   avatarUrl: text('avatar_url'),
   title: varchar('title', { length: 100 }), // Job title
   department: varchar('department', { length: 100 }),
+  
+  // B2B Supply Chain fields
+  supplierCode: varchar('supplier_code', { length: 50 }),
+  preferredCommunication: varchar('preferred_communication', { length: 20 }).default('portal'),
+  standardLeadTime: integer('standard_lead_time'),
+  expeditedLeadTime: integer('expedited_lead_time'),
+  minimumOrderQty: integer('minimum_order_qty'),
+  paymentTerms: varchar('payment_terms', { length: 20 }).default('NET30'),
+  businessHours: varchar('business_hours', { length: 100 }),
+  timeZone: varchar('time_zone', { length: 50 }).default('America/New_York'),
+  dataExchangeFormats: jsonb('data_exchange_formats').default(['JSON']),
+  frequencyPreference: varchar('frequency_preference', { length: 20 }).default('daily'),
+  
+  // Contact information
+  primaryContactName: varchar('primary_contact_name', { length: 100 }),
+  primaryContactEmail: varchar('primary_contact_email', { length: 255 }),
+  primaryContactPhone: varchar('primary_contact_phone', { length: 20 }),
+  technicalContactName: varchar('technical_contact_name', { length: 100 }),
+  technicalContactEmail: varchar('technical_contact_email', { length: 255 }),
+  technicalContactPhone: varchar('technical_contact_phone', { length: 20 }),
   
   // Password reset fields
   resetToken: text('reset_token'),
@@ -43,16 +64,25 @@ export const users = pgTable('users', {
 
 // Organizations (BDI internal or external OEM partners)
 export const organizations = pgTable('organizations', {
-  id: serial('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(), // UUID primary key
   name: varchar('name', { length: 200 }).notNull(),
+  legalName: varchar('legal_name', { length: 200 }),
   type: varchar('type', { length: 50 }).notNull(), // 'internal', 'oem_partner', 'supplier', '3pl'
   code: varchar('code', { length: 20 }).unique(), // Short code like 'BDI', 'ACME'
   description: text('description'),
   
+  // B2B Company Information
+  dunsNumber: varchar('duns_number', { length: 20 }),
+  taxId: varchar('tax_id', { length: 30 }),
+  industryCode: varchar('industry_code', { length: 10 }),
+  companySize: varchar('company_size', { length: 20 }),
+  
   // Contact information
   contactEmail: varchar('contact_email', { length: 255 }),
   contactPhone: varchar('contact_phone', { length: 20 }),
-  address: text('address'),
+  address: text('address'), // Primary business address
+  businessAddress: text('business_address'),
+  billingAddress: text('billing_address'),
   
   // Settings
   isActive: boolean('is_active').default(true),
@@ -60,7 +90,7 @@ export const organizations = pgTable('organizations', {
   
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  createdBy: integer('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id),
 });
 
 // Teams within organizations (Sales, Ops, Planning, etc.)
@@ -77,7 +107,7 @@ export const teams = pgTable('teams', {
   
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  createdBy: integer('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id),
 });
 
 // Groups (cross-functional teams that can span organizations)
@@ -93,14 +123,14 @@ export const groups = pgTable('groups', {
   
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  createdBy: integer('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id),
 });
 
 // User memberships in organizations
 export const organizationMembers = pgTable('organization_members', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id),
-  organizationId: integer('organization_id').notNull().references(() => organizations.id),
+  id: uuid('id').primaryKey().defaultRandom(),
+  userAuthId: uuid('user_auth_id').notNull().references(() => users.authId),
+  organizationUuid: uuid('organization_uuid').notNull().references(() => organizations.id),
   role: varchar('role', { length: 50 }).notNull(), // 'owner', 'admin', 'member', 'viewer'
   permissions: jsonb('permissions'), // Specific permissions
   
@@ -252,7 +282,7 @@ export const cpfrCycles = pgTable('cpfr_cycles', {
   
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  createdBy: integer('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id),
 });
 
 // ===== AUDIT & ACTIVITY TRACKING =====
@@ -383,6 +413,71 @@ export const supplySignalsRelations = relations(supplySignals, ({ one }) => ({
   }),
 }));
 
+// ===== API KEYS & INTEGRATION TABLES =====
+
+// API Keys for developer users
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userAuthId: uuid('user_auth_id').notNull().references(() => users.authId),
+  organizationUuid: uuid('organization_uuid').notNull().references(() => organizations.id),
+  keyName: varchar('key_name', { length: 100 }).notNull(),
+  keyHash: text('key_hash').notNull(), // Hashed version of the API key
+  keyPrefix: varchar('key_prefix', { length: 10 }).notNull(), // First few chars for display
+  permissions: jsonb('permissions').default({}), // API permissions
+  rateLimitPerHour: integer('rate_limit_per_hour').default(1000),
+  lastUsedAt: timestamp('last_used_at'),
+  isActive: boolean('is_active').default(true),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Integration settings for B2B data exchange
+export const integrationSettings = pgTable('integration_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  integrationType: varchar('integration_type', { length: 20 }).notNull(), // 'edi', 'api', 'ftp', 'email'
+  configuration: jsonb('configuration').notNull().default({}), // Connection details, endpoints, etc.
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdBy: uuid('created_by').references(() => users.id),
+});
+
+// Relations for new tables
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userAuthId],
+    references: [users.authId],
+  }),
+  organization: one(organizations, {
+    fields: [apiKeys.organizationUuid],
+    references: [organizations.id],
+  }),
+}));
+
+export const integrationSettingsRelations = relations(integrationSettings, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [integrationSettings.organizationId],
+    references: [organizations.id],
+  }),
+  createdBy: one(users, {
+    fields: [integrationSettings.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+  user: one(users, {
+    fields: [organizationMembers.userAuthId],
+    references: [users.authId],
+  }),
+  organization: one(organizations, {
+    fields: [organizationMembers.organizationUuid],
+    references: [organizations.id],
+  }),
+}));
+
 // ===== TYPE EXPORTS =====
 
 export type User = typeof users.$inferSelect;
@@ -407,6 +502,10 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export type NewActivityLog = typeof activityLogs.$inferInsert;
 export type Invitation = typeof invitations.$inferSelect;
 export type NewInvitation = typeof invitations.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
+export type IntegrationSetting = typeof integrationSettings.$inferSelect;
+export type NewIntegrationSetting = typeof integrationSettings.$inferInsert;
 
 // Complex types for UI
 export type OrganizationWithMembers = Organization & {
