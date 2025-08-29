@@ -71,11 +71,6 @@ const navigationItems: NavItem[] = [
     ],
   },
   {
-    title: 'Teams',
-    href: '/teams',
-    icon: 'users',
-  },
-  {
     title: 'My Account',
     icon: 'profile',
     children: [
@@ -107,9 +102,9 @@ const navigationItems: NavItem[] = [
         icon: 'users',
       },
       {
-        title: 'System',
-        href: '/admin/system',
-        icon: 'settings',
+        title: 'Teams',
+        href: '/admin/teams',
+        icon: 'collaboration',
       },
     ],
   },
