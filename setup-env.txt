@@ -1,0 +1,25 @@
+# Copy this content to create your .env.local file
+# File: .env.local
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://parrkjrpmvtpkmteuewb.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=paste-your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=paste-your-service-role-key-here
+
+# Database Configuration  
+DATABASE_URL=postgresql://postgres:your-db-password@db.parrkjrpmvtpkmteuewb.supabase.co:5432/postgres
+
+# App Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional (for later):
+# STRIPE_SECRET_KEY=sk_test_...
+# STRIPE_WEBHOOK_SECRET=whsec_...
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+# RESEND_API_KEY=re_...
+
+# Instructions:
+# 1. Copy this content to a new file named .env.local
+# 2. Replace 'paste-your-anon-key-here' with your actual anon key from Supabase
+# 3. Replace 'paste-your-service-role-key-here' with your service role key
+# 4. Replace 'your-db-password' with your database password
