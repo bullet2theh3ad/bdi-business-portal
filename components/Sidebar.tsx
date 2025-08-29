@@ -30,7 +30,7 @@ const navigationItems: NavItem[] = [
   },
   {
     title: 'CPFR',
-    icon: 'forecasts',
+    icon: 'cpfr',
     children: [
       {
         title: 'Forecasts',
@@ -56,17 +56,17 @@ const navigationItems: NavItem[] = [
   },
   {
     title: 'Inventory',
-    icon: 'supply',
+    icon: 'inventory_analytics',
     children: [
       {
         title: 'Items',
         href: '/inventory/items',
-        icon: 'supply',
+        icon: 'inventory_items',
       },
       {
         title: 'Sites',
         href: '/inventory/sites',
-        icon: 'supply',
+        icon: 'sites',
       },
     ],
   },

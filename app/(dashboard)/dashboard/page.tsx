@@ -69,7 +69,7 @@ function QuickActions() {
           </Link>
           <Link href="/inventory">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
-              <SemanticBDIIcon semantic="analytics" size={24} />
+              <SemanticBDIIcon semantic="inventory_analytics" size={24} />
               <span className="text-sm">Inventory</span>
             </Button>
           </Link>

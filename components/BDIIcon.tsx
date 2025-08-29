@@ -124,11 +124,15 @@ export function BDIIcon({ name, size = 24, className, alt }: BDIIconProps) {
 // Semantic icon mappings for common UI elements
 export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   dashboard: 'app-1',
-  forecasts: 'ecommerce-1',
+  forecasts: 'retail-2', // Chart/analytics looking icon
+  cpfr: 'ecommerce-4', // More chart-like for CPFR analytics
   supply: 'warehouse-1',
+  sites: 'network-10', // More geo/location-like icon
+  inventory_items: 'warehouse-2', // Different warehouse icon
+  inventory_analytics: 'ecommerce-1', // Different from forecasts
   collaboration: 'network-2',
-  analytics: 'ecommerce-4',
-  reports: 'retail-1',
+  analytics: 'retail-1', // Complex analytics icon
+  reports: 'ecommerce-3',
   settings: 'repair-1',
   users: 'app-2',
   profile: 'mobile-2',
