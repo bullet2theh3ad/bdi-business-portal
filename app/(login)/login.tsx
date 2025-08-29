@@ -30,7 +30,11 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <Link href="/">
-              <div className="text-xl md:text-2xl font-semibold text-gray-900">BDI Business Portal</div>
+              <img 
+                src="/logos/SVG/Full Lockup Color.svg" 
+                alt="BDI Business Portal" 
+                className="h-8"
+              />
             </Link>
           </div>
         </div>
@@ -40,7 +44,11 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
       <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
-            <CircleIcon className="h-12 w-12 text-orange-500" />
+            <img 
+              src="/logos/SVG/Full Lockup Color.svg" 
+              alt="BDI Business Portal" 
+              className="h-16"
+            />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             {mode === 'signin'
@@ -157,7 +165,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               <Button
                 type="submit"
                 disabled={pending}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-full text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-full text-white bg-bdi-green-1 hover:bg-bdi-green-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bdi-green-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {mode === 'signin' 
@@ -172,7 +180,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               <div className="text-center">
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-orange-600 hover:text-orange-500 font-medium"
+                  className="text-sm text-bdi-green-1 hover:text-bdi-green-2 font-medium"
                 >
                   Forgot your password?
                 </Link>
@@ -191,7 +199,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               href={`${mode === 'signin' ? '/sign-up' : '/sign-in'}${
                 redirect ? `?redirect=${redirect}` : ''
               }${priceId ? `&priceId=${priceId}` : ''}`}
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bdi-green-1"
             >
               {mode === 'signin'
                 ? 'Create an account'

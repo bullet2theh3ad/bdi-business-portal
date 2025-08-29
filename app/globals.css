@@ -6,9 +6,17 @@
 
 @import "tw-animate-css";
 
+
+
 @variant dark (&:is(.dark *));
 
 @theme {
+  /* BDI Brand Colors */
+  --color-bdi-green-1: #1D897A;
+  --color-bdi-green-2: #6BC06F;
+  --color-bdi-blue: #1F295A;
+  
+  /* Updated theme colors using brand palette */
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
 
@@ -18,7 +26,7 @@
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
 
-  --color-primary: hsl(var(--primary));
+  --color-primary: var(--color-bdi-green-1);
   --color-primary-foreground: hsl(var(--primary-foreground));
 
   --color-secondary: hsl(var(--secondary));
@@ -27,7 +35,7 @@
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
 
-  --color-accent: hsl(var(--accent));
+  --color-accent: var(--color-bdi-green-2);
   --color-accent-foreground: hsl(var(--accent-foreground));
 
   --color-destructive: hsl(var(--destructive));
@@ -35,22 +43,22 @@
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  --color-ring: var(--color-bdi-green-1);
 
-  --color-chart-1: hsl(var(--chart-1));
-  --color-chart-2: hsl(var(--chart-2));
-  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-1: var(--color-bdi-green-1);
+  --color-chart-2: var(--color-bdi-green-2);
+  --color-chart-3: var(--color-bdi-blue);
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
 
   --color-sidebar: hsl(var(--sidebar-background));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary: var(--color-bdi-green-1);
   --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
   --color-sidebar-accent: hsl(var(--sidebar-accent));
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-sidebar-ring: var(--color-bdi-green-1);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -79,6 +87,54 @@
   body {
     font-family: "Manrope", Arial, Helvetica, sans-serif;
   }
+  
+  /* BDI Brand Color Utilities */
+  .bg-bdi-green-1 {
+    background-color: var(--color-bdi-green-1);
+  }
+  
+  .bg-bdi-green-2 {
+    background-color: var(--color-bdi-green-2);
+  }
+  
+  .bg-bdi-blue {
+    background-color: var(--color-bdi-blue);
+  }
+  
+  .text-bdi-green-1 {
+    color: var(--color-bdi-green-1);
+  }
+  
+  .text-bdi-green-2 {
+    color: var(--color-bdi-green-2);
+  }
+  
+  .text-bdi-blue {
+    color: var(--color-bdi-blue);
+  }
+  
+  .border-bdi-green-1 {
+    border-color: var(--color-bdi-green-1);
+  }
+  
+  .border-bdi-green-2 {
+    border-color: var(--color-bdi-green-2);
+  }
+  
+  .border-bdi-blue {
+    border-color: var(--color-bdi-blue);
+  }
+  
+  /* BDI Gradient Utilities */
+  .bg-bdi-gradient {
+    background: linear-gradient(135deg, var(--color-bdi-green-1), var(--color-bdi-green-2));
+  }
+  
+  .bg-bdi-gradient-hover {
+    background: linear-gradient(135deg, var(--color-bdi-green-2), var(--color-bdi-green-1));
+  }
+  
+  /* Legacy TRON styles - keeping for compatibility */
   .bg-tron-dark {
     background-color: #001a2c;
   }

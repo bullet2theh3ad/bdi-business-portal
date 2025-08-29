@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-bdi-green-1/10 to-bdi-green-2/10">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center">
                   <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
@@ -16,7 +16,7 @@ export default function HomePage() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-in">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button size="lg" className="bg-bdi-green-1 hover:bg-bdi-green-2">
                 Sign In
               </Button>
             </Link>

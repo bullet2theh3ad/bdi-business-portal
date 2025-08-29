@@ -11,15 +11,9 @@ import {
 import useSWR from 'swr';
 import Link from 'next/link';
 import { 
-  Building2, 
-  Users, 
-  Package, 
-  TrendingUp, 
-  AlertCircle,
-  BarChart3,
-  Calendar,
-  Settings
+  AlertCircle
 } from 'lucide-react';
+import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { User } from '@/lib/db/schema';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -38,11 +32,11 @@ function WelcomeCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-xs text-amber-800 font-medium mb-1">
+        <div className="bg-bdi-green-1/10 border border-bdi-green-1/20 rounded-lg p-4">
+          <p className="text-xs text-bdi-green-1 font-medium mb-1">
             🔒 Boundless Devices Inc - Proprietary & Confidential
           </p>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-bdi-blue">
             By using this portal, you agree to our Terms and Conditions of Use. 
             All data and processes are confidential and proprietary to Boundless Devices Inc.
           </p>
@@ -62,26 +56,26 @@ function QuickActions() {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/cpfr/forecasts">
-            <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-              <TrendingUp className="h-6 w-6" />
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
+              <SemanticBDIIcon semantic="forecasts" size={24} />
               <span className="text-sm">View Forecasts</span>
             </Button>
           </Link>
           <Link href="/cpfr/supply-signals">
-            <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-              <Package className="h-6 w-6" />
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
+              <SemanticBDIIcon semantic="supply" size={24} />
               <span className="text-sm">Supply Signals</span>
             </Button>
           </Link>
           <Link href="/inventory">
-            <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-              <BarChart3 className="h-6 w-6" />
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
+              <SemanticBDIIcon semantic="analytics" size={24} />
               <span className="text-sm">Inventory</span>
             </Button>
           </Link>
           <Link href="/teams">
-            <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-              <Users className="h-6 w-6" />
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
+              <SemanticBDIIcon semantic="users" size={24} />
               <span className="text-sm">Manage Teams</span>
             </Button>
           </Link>
@@ -100,7 +94,7 @@ function SystemOverview() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Active Organizations</CardTitle>
-          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <SemanticBDIIcon semantic="collaboration" size={16} className="text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">--</div>
@@ -113,7 +107,7 @@ function SystemOverview() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Active Forecasts</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <SemanticBDIIcon semantic="forecasts" size={16} className="text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">--</div>
@@ -126,7 +120,7 @@ function SystemOverview() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Supply Commitments</CardTitle>
-          <Package className="h-4 w-4 text-muted-foreground" />
+          <SemanticBDIIcon semantic="supply" size={16} className="text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">--</div>
@@ -149,7 +143,7 @@ function RecentActivity() {
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center space-x-4">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <div className="w-2 h-2 bg-bdi-green-1 rounded-full"></div>
             <div className="flex-1">
               <p className="text-sm">System initialized - ready for configuration</p>
               <p className="text-xs text-muted-foreground">Just now</p>
@@ -175,10 +169,10 @@ function AdminActions() {
   }
   
   return (
-    <Card className="mb-8 border-orange-200 bg-orange-50">
+    <Card className="mb-8 border-bdi-blue/20 bg-bdi-blue/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Settings className="h-5 w-5" />
+          <SemanticBDIIcon semantic="settings" size={20} />
           Super Admin Actions
         </CardTitle>
         <CardDescription>System administration and setup</CardDescription>
@@ -186,26 +180,26 @@ function AdminActions() {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link href="/admin/organizations">
-            <Button variant="outline" className="w-full justify-start">
-              <Building2 className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="w-full justify-start hover:border-bdi-blue hover:bg-bdi-blue/10">
+              <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2" />
               Manage Organizations
             </Button>
           </Link>
           <Link href="/admin/users">
-            <Button variant="outline" className="w-full justify-start">
-              <Users className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="w-full justify-start hover:border-bdi-blue hover:bg-bdi-blue/10">
+              <SemanticBDIIcon semantic="users" size={16} className="mr-2" />
               Manage Users
             </Button>
           </Link>
           <Link href="/admin/system">
-            <Button variant="outline" className="w-full justify-start">
-              <Settings className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="w-full justify-start hover:border-bdi-blue hover:bg-bdi-blue/10">
+              <SemanticBDIIcon semantic="settings" size={16} className="mr-2" />
               System Settings
             </Button>
           </Link>
           <Link href="/admin/audit">
-            <Button variant="outline" className="w-full justify-start">
-              <Calendar className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="w-full justify-start hover:border-bdi-blue hover:bg-bdi-blue/10">
+              <SemanticBDIIcon semantic="reports" size={16} className="mr-2" />
               Audit Logs
             </Button>
           </Link>

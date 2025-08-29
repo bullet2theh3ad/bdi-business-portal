@@ -4,18 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { 
-  BarChart3, 
-  Building2, 
-  Package, 
-  TrendingUp, 
-  Users, 
-  User,
-  Settings,
-  BookOpen,
-  Home,
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
+import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { User as UserType } from '@/lib/db/schema';
@@ -25,7 +17,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 interface NavItem {
   title: string;
   href?: string;
-  icon: React.ComponentType<any>;
+  icon: keyof typeof import('@/components/BDIIcon').SEMANTIC_ICONS;
   children?: NavItem[];
   requiresRole?: string[];
 }
@@ -34,97 +26,97 @@ const navigationItems: NavItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
-    icon: Home,
+    icon: 'dashboard',
   },
   {
     title: 'CPFR',
-    icon: TrendingUp,
+    icon: 'forecasts',
     children: [
       {
         title: 'Forecasts',
         href: '/cpfr/forecasts',
-        icon: TrendingUp,
+        icon: 'forecasts',
       },
       {
         title: 'Supply Signals',
         href: '/cpfr/supply-signals',
-        icon: Package,
+        icon: 'supply',
       },
       {
         title: 'Cycles',
         href: '/cpfr/cycles',
-        icon: BarChart3,
+        icon: 'analytics',
       },
       {
         title: 'Overview',
         href: '/cpfr/overview',
-        icon: BarChart3,
+        icon: 'reports',
       },
     ],
   },
   {
     title: 'Inventory',
-    icon: Package,
+    icon: 'supply',
     children: [
       {
         title: 'Items',
         href: '/inventory/items',
-        icon: Package,
+        icon: 'supply',
       },
       {
         title: 'Sites',
         href: '/inventory/sites',
-        icon: Building2,
+        icon: 'supply',
       },
     ],
   },
   {
     title: 'Teams',
     href: '/teams',
-    icon: Users,
+    icon: 'users',
   },
   {
     title: 'My Account',
-    icon: User,
+    icon: 'profile',
     children: [
       {
         title: 'Profile',
         href: '/account/profile',
-        icon: User,
+        icon: 'profile',
       },
       {
         title: 'Settings',
         href: '/account/settings',
-        icon: Settings,
+        icon: 'settings',
       },
     ],
   },
   {
     title: 'Admin',
-    icon: Settings,
+    icon: 'settings',
     requiresRole: ['super_admin', 'admin'],
     children: [
       {
         title: 'Organizations',
         href: '/admin/organizations',
-        icon: Building2,
+        icon: 'collaboration',
       },
       {
         title: 'Users',
         href: '/admin/users',
-        icon: Users,
+        icon: 'users',
       },
       {
         title: 'System',
         href: '/admin/system',
-        icon: Settings,
+        icon: 'settings',
       },
     ],
   },
   {
     title: 'BDI Business Portal User Guide',
     href: '/user-guide',
-    icon: BookOpen,
+    icon: 'help',
   },
 ];
 
@@ -174,14 +166,14 @@ export function Sidebar({ className }: SidebarProps) {
             onClick={() => toggleExpanded(item.title)}
             className={cn(
               'flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors',
-              'hover:bg-gray-100 hover:text-gray-900',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500',
+              'hover:bg-gray-100 hover:text-bdi-green-1',
+              'focus:outline-none focus:ring-2 focus:ring-bdi-green-1',
               level > 0 && 'ml-4',
-              active && 'bg-blue-50 text-blue-700'
+              active && 'bg-bdi-green-1/10 text-bdi-green-1'
             )}
           >
             <div className="flex items-center">
-              <item.icon className="mr-3 h-5 w-5" />
+              <SemanticBDIIcon semantic={item.icon} size={20} className="mr-3" />
               {item.title}
             </div>
             {isExpanded ? (
@@ -207,15 +199,15 @@ export function Sidebar({ className }: SidebarProps) {
         href={item.href}
         className={cn(
           'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
-          'hover:bg-gray-100 hover:text-gray-900',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500',
+          'hover:bg-gray-100 hover:text-bdi-green-1',
+          'focus:outline-none focus:ring-2 focus:ring-bdi-green-1',
           level > 0 && 'ml-4',
           active 
-            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
+            ? 'bg-bdi-green-1/10 text-bdi-green-1 border-r-2 border-bdi-green-1' 
             : 'text-gray-700'
         )}
       >
-        <item.icon className="mr-3 h-5 w-5" />
+        <SemanticBDIIcon semantic={item.icon} size={20} className="mr-3" />
         {item.title}
       </Link>
     );
@@ -224,8 +216,12 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div className={cn('flex flex-col w-64 bg-white border-r border-gray-200', className)}>
       <div className="flex items-center px-6 py-4 border-b border-gray-200">
-        <Link href="/dashboard" className="flex items-center">
-          <div className="text-xl font-bold text-gray-900">BDI Business Portal</div>
+        <Link href="/dashboard" className="flex items-center space-x-3">
+          <img 
+            src="/logos/SVG/Full Lockup Color.svg" 
+            alt="BDI Business Portal" 
+            className="h-8"
+          />
         </Link>
       </div>
       
@@ -236,8 +232,8 @@ export function Sidebar({ className }: SidebarProps) {
       {user && (
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-center text-sm">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-              <User className="h-4 w-4 text-blue-600" />
+            <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center mr-3">
+              <SemanticBDIIcon semantic="profile" size={16} className="text-bdi-green-1" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 truncate">
