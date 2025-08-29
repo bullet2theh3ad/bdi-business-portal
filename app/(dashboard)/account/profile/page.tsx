@@ -63,34 +63,46 @@ export default function ProfilePage() {
   // Initialize form data when user data loads
   React.useEffect(() => {
     if (user) {
-      setFormData(prev => ({
-        ...prev,
+      setFormData({
+        // Personal Information
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
         title: user.title || '',
         department: user.department || '',
         
-        // B2B fields
-        supplierCode: user.supplierCode || '',
-        preferredCommunication: user.preferredCommunication || 'portal',
-        standardLeadTime: user.standardLeadTime?.toString() || '',
-        expeditedLeadTime: user.expeditedLeadTime?.toString() || '',
-        minimumOrderQty: user.minimumOrderQty?.toString() || '',
-        paymentTerms: user.paymentTerms || 'NET30',
-        businessHours: user.businessHours || '9:00 AM - 5:00 PM EST',
-        timeZone: user.timeZone || 'America/New_York',
-        dataExchangeFormats: user.dataExchangeFormats || ['JSON'],
-        frequencyPreference: user.frequencyPreference || 'daily',
+        // Business Information (from organization or user)
+        companyName: user.organization?.name || '',
+        companyLegalName: user.organization?.legalName || '',
+        dunsNumber: user.organization?.dunsNumber || '',
+        taxId: user.organization?.taxId || '',
+        industryCode: user.organization?.industryCode || '',
+        companySize: user.organization?.companySize || '',
         
-        // Contact fields
+        // Contact Information
+        businessAddress: user.organization?.businessAddress || '',
+        billingAddress: user.organization?.billingAddress || '',
         primaryContactName: user.primaryContactName || '',
         primaryContactEmail: user.primaryContactEmail || '',
         primaryContactPhone: user.primaryContactPhone || '',
         technicalContactName: user.technicalContactName || '',
         technicalContactEmail: user.technicalContactEmail || '',
         technicalContactPhone: user.technicalContactPhone || '',
-      }));
+        
+        // Supply Chain Preferences
+        supplierCode: user.supplierCode || '',
+        preferredCommunication: user.preferredCommunication || 'portal',
+        standardLeadTime: user.standardLeadTime?.toString() || '',
+        expeditedLeadTime: user.expeditedLeadTime?.toString() || '',
+        minimumOrderQty: user.minimumOrderQty?.toString() || '',
+        paymentTerms: user.paymentTerms || 'NET30',
+        
+        // Technical Integration
+        dataExchangeFormats: user.dataExchangeFormats || ['JSON'],
+        frequencyPreference: user.frequencyPreference || 'daily',
+        businessHours: user.businessHours || '9:00 AM - 5:00 PM EST',
+        timeZone: user.timeZone || 'America/New_York'
+      });
     }
   }, [user]);
 
@@ -135,8 +147,13 @@ export default function ProfilePage() {
         billingAddress: formData.billingAddress,
       };
 
+      // Debug logging
+      console.log('User object:', user);
+      console.log('User organization:', user.organization);
+      console.log('Organization data to save:', organizationData);
+
       // Only update organization data if user has an organization
-      if (user.organization?.uuid) {
+      if (user.organization?.id) {
         // Call server action using authId
         const result = await updateCompleteProfile(
           user.authId, 

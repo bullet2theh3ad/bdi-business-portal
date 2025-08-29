@@ -70,7 +70,15 @@ export async function GET() {
         organization: {
           id: organizations.id,
           name: organizations.name,
+          legalName: organizations.legalName,
           code: organizations.code,
+          type: organizations.type,
+          dunsNumber: organizations.dunsNumber,
+          taxId: organizations.taxId,
+          industryCode: organizations.industryCode,
+          companySize: organizations.companySize,
+          businessAddress: organizations.businessAddress,
+          billingAddress: organizations.billingAddress,
         },
         membershipRole: organizationMembers.role,
       })
@@ -90,6 +98,10 @@ export async function GET() {
         membershipRole: 'owner',
       });
     }
+
+    // Debug logging
+    console.log('DB User:', dbUser);
+    console.log('User Organizations:', userOrganizations);
 
     // Return user with their organization memberships
     return Response.json({
