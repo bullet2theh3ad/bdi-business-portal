@@ -444,6 +444,23 @@ export const integrationSettings = pgTable('integration_settings', {
   createdBy: uuid('created_by').references(() => users.id),
 });
 
+// Organization Connections (for cross-org collaboration controlled by BDI Super Admin)
+export const organizationConnections = pgTable('organization_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationAId: uuid('organization_a_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  organizationBId: uuid('organization_b_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  connectionType: varchar('connection_type', { length: 50 }).notNull().default('messaging'), // 'messaging', 'file_share', 'full_collaboration'
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active', 'pending', 'suspended'
+  permissions: jsonb('permissions').default({}), // JSON object defining what each org can access
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }), // BDI Super Admin
+  approvedBy: uuid('approved_by').references(() => users.authId), // Optional approval workflow
+  description: text('description'), // Purpose of the connection
+  startDate: date('start_date').defaultNow(),
+  endDate: date('end_date'), // Optional expiration
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // Relations for new tables
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   user: one(users, {

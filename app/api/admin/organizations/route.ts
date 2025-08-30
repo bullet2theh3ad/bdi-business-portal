@@ -62,14 +62,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden - BDI Super Admin required' }, { status: 403 });
     }
 
-    // Get all external organizations (not BDI)
-    const externalOrganizations = await db
-      .select()
-      .from(organizations)
-      .where(
-        // Exclude BDI organization - anything that's not 'internal' type
-        ne(organizations.type, 'internal')
-      );
+    // For connections, we need ALL organizations including BDI
+    // Check if this is for connections (based on request path or query param)
+    const isForConnections = request.url.includes('connections') || request.nextUrl.searchParams.get('includeInternal') === 'true';
+    
+    let organizationsQuery;
+    if (isForConnections) {
+      // Include ALL organizations (including BDI) for connections
+      organizationsQuery = await db
+        .select()
+        .from(organizations);
+    } else {
+      // Exclude BDI organization for regular organization management
+      organizationsQuery = await db
+        .select()
+        .from(organizations)
+        .where(ne(organizations.type, 'internal'));
+    }
+
+    const externalOrganizations = organizationsQuery;
 
     console.log('External organizations found:', externalOrganizations);
 

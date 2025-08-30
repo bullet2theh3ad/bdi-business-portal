@@ -100,6 +100,11 @@ const navigationItems: NavItem[] = [
         icon: 'collaboration',
       },
       {
+        title: 'Connections',
+        href: '/admin/connections',
+        icon: 'connect',
+      },
+      {
         title: 'Users',
         href: '/admin/users',
         icon: 'users',
