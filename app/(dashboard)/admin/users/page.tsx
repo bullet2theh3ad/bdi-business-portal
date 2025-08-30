@@ -93,13 +93,96 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (!user || user.role !== 'super_admin') {
+  const handleRevokeInvitation = async (userId: string, userName: string, userEmail: string) => {
+    if (!confirm(`Are you sure you want to revoke the invitation for ${userName} (${userEmail})?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/revoke-invitation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invitationId: userId }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        mutateBdiUsers(); // Refresh user list
+        setSelectedUser(null);
+        alert('Invitation revoked successfully');
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error revoking invitation:', error);
+      alert('Failed to revoke invitation');
+    }
+  };
+
+  const handleReactivateUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to reactivate ${userName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        mutateBdiUsers();
+        setSelectedUser(null);
+        alert('User reactivated successfully');
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error reactivating user:', error);
+      alert('Failed to reactivate user');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string, userEmail: string) => {
+    if (!confirm(`Are you sure you want to PERMANENTLY DELETE ${userName} (${userEmail})? This cannot be undone and will allow re-invitation.`)) {
+      return;
+    }
+
+    try {
+      console.log('Deleting user:', { userId, userName, userEmail });
+
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: userEmail }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        mutateBdiUsers(); // Refresh user list
+        setSelectedUser(null);
+        alert('User permanently deleted - you can now re-invite this email');
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Failed to delete user');
+    }
+  };
+
+  if (!user || !['super_admin', 'admin'].includes(user.role)) {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <SemanticBDIIcon semantic="settings" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Access denied. Super Admin required.</p>
+            <p className="text-muted-foreground">Access denied. Admin privileges required.</p>
           </div>
         </div>
       </div>
@@ -266,7 +349,7 @@ export default function AdminUsersPage() {
                         <div className="text-sm text-gray-500 space-y-1">
                           <div className="font-medium">{bdiUser.email}</div>
                           <div>{bdiUser.title || 'No title'} • {bdiUser.department || 'No department'}</div>
-                          <div>Last login: {bdiUser.lastLoginAt ? new Date(bdiUser.lastLoginAt).toLocaleDateString() : 'Never'}</div>
+                          <div>Created: {new Date(bdiUser.createdAt).toLocaleDateString()}</div>
                         </div>
                       </div>
                     </div>
@@ -305,17 +388,31 @@ export default function AdminUsersPage() {
                         </Button>
                       )}
                       
-                      {bdiUser.authId !== user?.authId && (
+                                          {bdiUser.authId !== user?.authId && (
+                      bdiUser.passwordHash === 'invitation_pending' ? (
+                        // Pending invitation - show Revoke
                         <Button 
                           variant="outline" 
                           size="sm" 
                           className="w-full sm:w-auto justify-center sm:justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeactivateUser(bdiUser.authId, bdiUser.name)}
+                          onClick={() => handleRevokeInvitation(bdiUser.id, bdiUser.name, bdiUser.email)}
                         >
-                          <span className="sm:hidden">Deactivate User</span>
-                          <span className="hidden sm:inline">Deactivate</span>
+                          <span className="sm:hidden">Revoke Invitation</span>
+                          <span className="hidden sm:inline">Revoke</span>
                         </Button>
-                      )}
+                      ) : (
+                        // Accepted user - show Delete
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto justify-center sm:justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteUser(bdiUser.id, bdiUser.name, bdiUser.email)}
+                        >
+                          <span className="sm:hidden">Delete User</span>
+                          <span className="hidden sm:inline">Delete</span>
+                        </Button>
+                      )
+                    )}
                     </div>
                   </div>
                 </div>

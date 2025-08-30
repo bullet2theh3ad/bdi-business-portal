@@ -115,7 +115,7 @@ export default function ProfilePage() {
         paymentTerms: user.paymentTerms || 'NET30',
         
         // Technical Integration
-        dataExchangeFormats: user.dataExchangeFormats || ['JSON'],
+        dataExchangeFormats: Array.isArray(user.dataExchangeFormats) ? user.dataExchangeFormats : ['JSON'],
         frequencyPreference: user.frequencyPreference || 'daily',
         businessHours: user.businessHours || '9:00 AM - 5:00 PM EST',
         timeZone: user.timeZone || 'America/New_York'

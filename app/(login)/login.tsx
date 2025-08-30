@@ -14,14 +14,14 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
   const priceId = searchParams.get('priceId');
-  const inviteId = searchParams.get('inviteId');
+  const token = searchParams.get('token');
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     mode === 'signin' ? signIn : signUp,
     { error: '' }
   );
 
   // Check if this is an invitation signup
-  const isInvitationSignup = mode === 'signup' && inviteId;
+  const isInvitationSignup = mode === 'signup' && token;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50">
@@ -68,7 +68,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
           <form className="space-y-6" action={formAction}>
             <input type="hidden" name="redirect" value={redirect || ''} />
             <input type="hidden" name="priceId" value={priceId || ''} />
-            <input type="hidden" name="inviteId" value={inviteId || ''} />
+            <input type="hidden" name="token" value={token || ''} />
             <div>
               <Label
                 htmlFor="email"
@@ -137,7 +137,29 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                   </div>
                 </div>
                 
-                {!isInvitationSignup && (
+                {isInvitationSignup ? (
+                  <div>
+                    <Label
+                      htmlFor="organizationName"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Organization
+                    </Label>
+                    <div className="mt-1">
+                      <Input
+                        id="organizationName"
+                        name="organizationName"
+                        type="text"
+                        value="Boundless Devices Inc"
+                        disabled
+                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-full focus:outline-none sm:text-sm"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      You've been invited to join this organization
+                    </p>
+                  </div>
+                ) : (
                   <div>
                     <Label
                       htmlFor="organizationName"
@@ -152,7 +174,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                         type="text"
                         required
                         maxLength={100}
-                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-full focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-full focus:outline-none focus:ring-bdi-green-1 focus:border-bdi-green-1 focus:z-10 sm:text-sm"
                         placeholder="Enter your organization name"
                       />
                     </div>

@@ -129,52 +129,95 @@ export async function POST(request: NextRequest) {
         role: validatedData.role,
       });
 
-    // Send invitation email using Supabase Auth
+    // Send invitation email using Resend (like WHEELS system)
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-up?token=${invitationToken}`;
     
-    try {
-      // Create admin client with service role key for admin operations
-      const supabaseAdmin = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!, // Service role key required for admin operations
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        }
-      );
-      
-      // Use Supabase Auth to send invitation email
-      const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(validatedData.email, {
-        redirectTo: inviteUrl,
-        data: {
-          name: validatedData.name,
-          role: validatedData.role,
-          title: validatedData.title,
-          department: validatedData.department,
-          invited_by: currentUser.name,
-          organization: 'Boundless Devices Inc'
-        }
-      });
+    if (resend) {
+      try {
+        console.log('Sending BDI invitation email to:', validatedData.email);
+        
+        const { data, error } = await resend.emails.send({
+          from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
+          to: [validatedData.email],
+          subject: `Invitation to join BDI Business Portal`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #1D897A; font-size: 28px; margin: 0; font-weight: bold;">
+                  BDI Business Portal
+                </h1>
+                <p style="color: #1F295A; font-size: 16px; margin: 5px 0 0 0; font-weight: 500;">
+                  Boundless Devices Inc
+                </p>
+                <div style="width: 60px; height: 3px; background: linear-gradient(135deg, #1D897A, #6BC06F); margin: 10px auto 0 auto; border-radius: 2px;"></div>
+              </div>
+              
+              <h2 style="color: #1F295A; margin-bottom: 20px;">You're invited to join Boundless Devices Inc!</h2>
+              
+              <p style="color: #6b7280; font-size: 16px; margin-bottom: 15px;">
+                Hi ${validatedData.name},
+              </p>
+              
+              <p style="color: #6b7280; font-size: 16px; margin-bottom: 25px;">
+                <strong>${currentUser.name}</strong> has invited you to join the <strong>BDI Business Portal</strong> as a <strong>${validatedData.role.replace('_', ' ')}</strong>.
+              </p>
+              
+              <div style="background: linear-gradient(135deg, #1D897A, #6BC06F); padding: 25px; border-radius: 12px; margin: 25px 0; color: white;">
+                <p style="margin: 0; font-size: 16px;">
+                  🎯 <strong>Your Role:</strong> ${validatedData.title} - ${validatedData.department}<br><br>
+                  📊 <strong>Access Level:</strong> ${validatedData.role.replace('_', ' ').toUpperCase()}<br><br>
+                  🏢 <strong>Organization:</strong> Boundless Devices Inc<br><br>
+                  🔗 <strong>Platform:</strong> CPFR Supply Chain Management Portal
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin: 35px 0;">
+                <a href="${inviteUrl}" 
+                   style="background: linear-gradient(135deg, #1D897A, #6BC06F); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 12px rgba(29, 137, 122, 0.3);">
+                  Accept Invitation & Set Password
+                </a>
+              </div>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h3 style="color: #1F295A; margin-top: 0;">What is BDI Business Portal?</h3>
+                <p style="color: #6b7280; margin: 0; font-size: 14px;">
+                  🔄 <strong>CPFR Management:</strong> Collaborative Planning, Forecasting & Replenishment<br>
+                  📦 <strong>Supply Chain:</strong> Monitor inventory, sites, and supply signals<br>
+                  🤝 <strong>B2B Integration:</strong> API access and data exchange with partners<br>
+                  📊 <strong>Analytics:</strong> Real-time insights and reporting
+                </p>
+              </div>
+              
+              <p style="color: #9ca3af; font-size: 14px; margin-bottom: 10px;">
+                If you can't click the button, copy and paste this link into your browser:<br>
+                <a href="${inviteUrl}" style="color: #1D897A; word-break: break-all;">${inviteUrl}</a>
+              </p>
+              
+              <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">
+                This invitation will expire in 7 days. If you have any questions, please contact ${currentUser.email}.<br><br>
+                <strong>Boundless Devices Inc</strong> - Proprietary & Confidential
+              </p>
+            </div>
+          `,
+        });
 
-      if (error) {
-        console.error('Error sending Supabase invitation:', error);
-        console.error('Supabase error details:', error.message, error.status);
-        // Continue anyway - user was created, just email failed
-      } else {
-        console.log('Supabase invitation sent successfully to:', validatedData.email);
-        console.log('Invitation data:', data);
+        if (error) {
+          console.error('❌ Resend email failed:', error);
+        } else {
+          console.log('✅ BDI invitation email sent successfully to:', validatedData.email);
+          console.log('Email ID:', data?.id);
+        }
+      } catch (emailError) {
+        console.error('Error sending Resend email:', emailError);
       }
-    } catch (emailError) {
-      console.error('Error sending invitation email:', emailError);
-      // Continue anyway - user was created, just email failed
+    } else {
+      console.log('❌ Resend API key not configured');
     }
 
     return NextResponse.json({
       success: true,
       message: resend ? 'User invitation sent successfully' : 'User created successfully (email not configured)',
-      inviteUrl: resend ? undefined : inviteUrl, // Provide invite URL if email not sent
+      inviteUrl: inviteUrl, // Always provide invite URL for debugging
       user: {
         id: newUser.id,
         name: newUser.name,

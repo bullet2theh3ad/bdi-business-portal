@@ -11,7 +11,7 @@ import {
   invitations,
   users,
 } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 // Create Supabase server client
 async function createSupabaseServerClient() {
@@ -75,9 +75,9 @@ export async function signIn(prevState: any, formData: FormData) {
 const signUpSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  name: z.string().min(1).max(100).optional(),
-  organizationName: z.string().min(1).max(100).optional(),
-  inviteId: z.string().optional(),
+  name: z.string().optional(),
+  organizationName: z.string().optional(),
+  token: z.string().optional(),
 });
 
 export async function signUp(prevState: any, formData: FormData) {
@@ -85,12 +85,18 @@ export async function signUp(prevState: any, formData: FormData) {
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
   const organizationName = formData.get('organizationName') as string;
-  const inviteId = formData.get('inviteId') as string;
+  const token = formData.get('token') as string;
 
-  const result = signUpSchema.safeParse({ email, password, name, organizationName, inviteId });
+  // For invitation signups, organizationName is not required
+  const validationData = token 
+    ? { email, password, name, token }  // Invitation signup - no organizationName needed
+    : { email, password, name, organizationName, token }; // Regular signup - organizationName required
+
+  const result = signUpSchema.safeParse(validationData);
   if (!result.success) {
+    console.error('Validation errors:', result.error.errors);
     return {
-      error: 'Invalid form data. Please check your inputs.',
+      error: `Invalid form data: ${result.error.errors.map(e => e.message).join(', ')}`,
       email,
       password
     };
@@ -98,14 +104,15 @@ export async function signUp(prevState: any, formData: FormData) {
 
   const supabase = await createSupabaseServerClient();
 
-  // Create user in Supabase Auth
+  // Create user in Supabase Auth (disable email confirmation for invitations)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: undefined, // Disable email confirmation
       data: {
         name: name || null,
-        role: 'super_admin',
+        role: 'member',
       }
     }
   });
@@ -127,93 +134,139 @@ export async function signUp(prevState: any, formData: FormData) {
   }
 
   try {
-    // Create user record in our database
-    const [dbUser] = await db
-      .insert(users)
-      .values({
-        authId: data.user.id,
-        email: data.user.email!,
-        name: name || data.user.email!.split('@')[0],
-        role: 'member', // Default role, will be updated based on invitation
-        passwordHash: 'supabase_managed',
-      })
-      .returning();
-
     let targetOrganization = null;
     let userRole = 'member';
+    let dbUser = null;
 
-    // Check if this is an invitation-based signup
-    if (inviteId) {
-      const [invitation] = await db
+    // Check if this is an invitation-based signup using token
+    if (token) {
+      // Find the pending user by reset token (invitation token)
+      const [pendingUser] = await db
         .select()
-        .from(invitations)
-        .where(eq(invitations.id, parseInt(inviteId)))
+        .from(users)
+        .where(
+          and(
+            eq(users.resetToken, token),
+            eq(users.email, email),
+            eq(users.passwordHash, 'invitation_pending'),
+            eq(users.isActive, false)
+          )
+        )
         .limit(1);
 
-      if (invitation && invitation.email === email && invitation.status === 'pending') {
-        // Get the organization from the invitation
-        if (invitation.organizationId) {
-          const [org] = await db
-            .select()
-            .from(organizations)
-            .where(eq(organizations.id, invitation.organizationId))
-            .limit(1);
-          
-          if (org) {
-            targetOrganization = org;
-            userRole = invitation.role;
+      if (pendingUser) {
+        // Get the organization from the user's membership
+        const [membership] = await db
+          .select({
+            organization: {
+              id: organizations.id,
+              name: organizations.name,
+              code: organizations.code,
+            },
+            role: organizationMembers.role,
+          })
+          .from(organizationMembers)
+          .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+          .where(eq(organizationMembers.userAuthId, pendingUser.authId))
+          .limit(1);
 
-            // Mark invitation as accepted
-            await db
-              .update(invitations)
-              .set({ 
-                status: 'accepted',
-                acceptedAt: new Date()
-              })
-              .where(eq(invitations.id, invitation.id));
+        if (membership) {
+          targetOrganization = membership.organization;
+          userRole = membership.role;
+
+          // Delete old membership and user records
+          await db
+            .delete(organizationMembers)
+            .where(eq(organizationMembers.userAuthId, pendingUser.authId));
+
+          await db
+            .delete(users)
+            .where(eq(users.id, pendingUser.id));
+
+          // Create fresh user record with correct Supabase auth ID
+          [dbUser] = await db
+            .insert(users)
+            .values({
+              authId: data.user.id,
+              email: data.user.email!,
+              name: pendingUser.name || name || data.user.email!.split('@')[0],
+              role: userRole,
+              title: pendingUser.title,
+              department: pendingUser.department,
+              passwordHash: 'supabase_managed',
+              isActive: true,
+            })
+            .returning();
+
+          // Create fresh organization membership
+          await db
+            .insert(organizationMembers)
+            .values({
+              userAuthId: data.user.id,
+              organizationUuid: targetOrganization.id,
+              role: userRole,
+            });
+
+          console.log('✅ Created fresh user from invitation:', dbUser?.email);
+          
+          // For invitation signups, automatically sign them in
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (signInError) {
+            console.error('Auto sign-in failed:', signInError);
+            // Don't return error - user was created successfully, they can sign in manually
+          } else {
+            console.log('✅ User automatically signed in');
           }
         }
       } else {
         return {
-          error: 'Invalid or expired invitation.',
+          error: 'Invalid or expired invitation token.',
           email,
           password
         };
       }
     } else {
-      // No invitation - create new organization (Super Admin signup)
+      // No invitation - create new user and organization (Super Admin signup)
+      [dbUser] = await db
+        .insert(users)
+        .values({
+          authId: data.user.id,
+          email: data.user.email!,
+          name: name || data.user.email!.split('@')[0],
+          role: 'super_admin',
+          passwordHash: 'supabase_managed',
+        })
+        .returning();
+
       const [newOrg] = await db
         .insert(organizations)
         .values({
           name: organizationName || `${email}'s Organization`,
           type: 'internal',
           code: organizationName?.substring(0, 3).toUpperCase() || 'ORG',
-          uuid: crypto.randomUUID(),
         })
         .returning();
       
       targetOrganization = newOrg;
       userRole = 'super_admin';
-    }
 
-    // Update user role based on invitation or default
-    await db
-      .update(users)
-      .set({ role: userRole })
-      .where(eq(users.authId, data.user.id));
-
-    // Add user to organization
-    if (targetOrganization) {
+      // Add user to organization
       await db
         .insert(organizationMembers)
         .values({
-          userId: dbUser.id,
-          organizationId: targetOrganization.id,
+          userAuthId: dbUser.authId,
+          organizationUuid: targetOrganization.id,
           role: userRole,
         });
+
+      console.log('✅ Created new user and organization:', dbUser?.email);
     }
 
-    redirect('/dashboard');
+    // Success - redirect outside try/catch to avoid catching the NEXT_REDIRECT
   } catch (dbError) {
     console.error('Database error during signup:', dbError);
     
@@ -223,6 +276,9 @@ export async function signUp(prevState: any, formData: FormData) {
       password
     };
   }
+
+  // Redirect after successful completion
+  redirect('/dashboard');
 }
 
 export async function signOut() {

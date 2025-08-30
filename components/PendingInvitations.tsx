@@ -11,6 +11,8 @@ async function revokeInvitation(prevState: any, formData: FormData) {
   try {
     const invitationId = formData.get('invitationId') as string;
     
+    console.log('Revoking invitation ID:', invitationId); // Debug log
+    
     const response = await fetch('/api/admin/revoke-invitation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -18,8 +20,11 @@ async function revokeInvitation(prevState: any, formData: FormData) {
     });
 
     const result = await response.json();
+    console.log('Revoke result:', result); // Debug log
 
     if (result.success) {
+      // Force refresh of pending invitations
+      window.location.reload();
       return { success: result.message };
     } else {
       return { error: result.error };
@@ -100,7 +105,13 @@ function RevokeInvitationButton({ invitationId, email, mutate }: { invitationId:
 }
 
 export function PendingInvitations() {
+  const { data: user } = useSWR('/api/user', fetcher);
   const { data: invitations, error, mutate } = useSWR<Invitation[]>('/api/admin/pending-invitations', fetcher);
+
+  // Only show for Super Admin and Admin users
+  if (!user || !['super_admin', 'admin'].includes(user.role)) {
+    return null;
+  }
 
   // Handle 403 error (non-owner users) - don't show anything
   if (error?.status === 403 || error?.message === 'Forbidden' || (error && error.message?.includes('403'))) {

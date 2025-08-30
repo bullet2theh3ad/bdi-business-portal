@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
+import { users, organizationMembers } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 async function createSupabaseServerClient() {
@@ -59,15 +59,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invitation ID required' }, { status: 400 });
     }
 
-    // Soft delete the pending invitation by marking as deleted
-    const [revokedUser] = await db
-      .update(users)
-      .set({
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-        resetToken: null, // Clear the invitation token
-        resetTokenExpiry: null,
-      })
+    console.log('Attempting to revoke invitation ID:', invitationId);
+
+    // First, check what user record exists
+    const [userToCheck] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, invitationId))
+      .limit(1);
+
+    console.log('Found user record:', userToCheck);
+
+    // Get the pending user to verify it exists
+    const [pendingUser] = await db
+      .select()
+      .from(users)
       .where(
         and(
           eq(users.id, invitationId),
@@ -75,15 +81,52 @@ export async function POST(request: NextRequest) {
           eq(users.isActive, false)
         )
       )
-      .returning();
+      .limit(1);
 
-    if (!revokedUser) {
-      return NextResponse.json({ error: 'Invitation not found or already processed' }, { status: 404 });
+    console.log('Found pending user:', pendingUser);
+
+    if (!pendingUser) {
+      // Try to find any user with this ID (regardless of status)
+      const [anyUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, invitationId))
+        .limit(1);
+
+      if (anyUser) {
+        // Force delete any user with this ID
+        console.log('Force deleting user:', anyUser.email);
+        
+        await db
+          .delete(organizationMembers)
+          .where(eq(organizationMembers.userAuthId, anyUser.authId));
+
+        await db
+          .delete(users)
+          .where(eq(users.id, invitationId));
+
+        return NextResponse.json({
+          success: true,
+          message: `User ${anyUser.email} has been completely removed`
+        });
+      }
+
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    // Remove organization membership first
+    await db
+      .delete(organizationMembers)
+      .where(eq(organizationMembers.userAuthId, pendingUser.authId));
+
+    // Completely remove the pending user record
+    await db
+      .delete(users)
+      .where(eq(users.id, invitationId));
 
     return NextResponse.json({
       success: true,
-      message: `Invitation for ${revokedUser.email} has been revoked`
+      message: `Invitation for ${pendingUser.email} has been revoked and removed`
     });
     
   } catch (error) {

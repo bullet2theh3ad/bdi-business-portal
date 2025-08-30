@@ -36,12 +36,24 @@ export async function GET() {
       return Response.json(null);
     }
 
-    // Always find user by email to avoid UUID transition issues
+    console.log('Looking up user by email:', authUser.email);
+    console.log('Supabase auth user ID:', authUser.id);
+
+    // Try to find user by auth_id first, then by email as fallback
     let [dbUser] = await db
       .select()
       .from(users)
-      .where(eq(users.email, authUser.email!))
+      .where(eq(users.authId, authUser.id))
       .limit(1);
+
+    if (!dbUser) {
+      console.log('User not found by auth_id, trying by email...');
+      [dbUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, authUser.email!))
+        .limit(1);
+    }
 
     if (!dbUser) {
       // Create new user with proper auth_id
@@ -56,12 +68,8 @@ export async function GET() {
         })
         .returning();
     } else {
-      // Always update existing user with current auth_id (in case it changed or was missing)
-      [dbUser] = await db
-        .update(users)
-        .set({ authId: authUser.id })
-        .where(eq(users.email, authUser.email!))
-        .returning();
+      console.log('Found user by email:', dbUser.email);
+      // Don't update - just use the existing user data
     }
 
     // Check if user is a member of any organizations (based on invitations/assignments)
