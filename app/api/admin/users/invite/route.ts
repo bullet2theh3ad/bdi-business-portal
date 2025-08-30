@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -129,54 +129,43 @@ export async function POST(request: NextRequest) {
         role: validatedData.role,
       });
 
-    // Send invitation email
+    // Send invitation email using Supabase Auth
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-up?token=${invitationToken}`;
     
     try {
-      await resend.emails.send({
-        from: 'BDI Business Portal <noreply@boundlessdevices.com>',
-        to: [validatedData.email],
-        subject: `Invitation to join BDI Business Portal`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #1D897A; text-align: center;">BDI Business Portal</h1>
-            
-            <h2 style="color: #374151;">You're invited to join Boundless Devices Inc!</h2>
-            
-            <p style="color: #6b7280; font-size: 16px;">
-              Hi ${validatedData.name},
-            </p>
-            
-            <p style="color: #6b7280; font-size: 16px;">
-              <strong>${currentUser.name}</strong> has invited you to join <strong>BDI Business Portal</strong> as a <strong>${validatedData.role.replace('_', ' ')}</strong>.
-            </p>
-            
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="color: #374151; margin: 0;">
-                🎯 <strong>Your Role:</strong> ${validatedData.title} - ${validatedData.department}<br>
-                📊 <strong>Access Level:</strong> ${validatedData.role.replace('_', ' ').toUpperCase()}<br>
-                🏢 <strong>Organization:</strong> Boundless Devices Inc
-              </p>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${inviteUrl}" 
-                 style="background: #1D897A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-                Accept Invitation & Set Password
-              </a>
-            </div>
-            
-            <p style="color: #9ca3af; font-size: 14px;">
-              If you can't click the button, copy and paste this link into your browser:<br>
-              <a href="${inviteUrl}" style="color: #1D897A;">${inviteUrl}</a>
-            </p>
-            
-            <p style="color: #9ca3af; font-size: 12px;">
-              This invitation will expire in 7 days. If you have any questions, please contact ${currentUser.email}.
-            </p>
-          </div>
-        `,
+      // Create admin client with service role key for admin operations
+      const supabaseAdmin = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!, // Service role key required for admin operations
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+      
+      // Use Supabase Auth to send invitation email
+      const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(validatedData.email, {
+        redirectTo: inviteUrl,
+        data: {
+          name: validatedData.name,
+          role: validatedData.role,
+          title: validatedData.title,
+          department: validatedData.department,
+          invited_by: currentUser.name,
+          organization: 'Boundless Devices Inc'
+        }
       });
+
+      if (error) {
+        console.error('Error sending Supabase invitation:', error);
+        console.error('Supabase error details:', error.message, error.status);
+        // Continue anyway - user was created, just email failed
+      } else {
+        console.log('Supabase invitation sent successfully to:', validatedData.email);
+        console.log('Invitation data:', data);
+      }
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError);
       // Continue anyway - user was created, just email failed
@@ -184,7 +173,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'User invitation sent successfully',
+      message: resend ? 'User invitation sent successfully' : 'User created successfully (email not configured)',
+      inviteUrl: resend ? undefined : inviteUrl, // Provide invite URL if email not sent
       user: {
         id: newUser.id,
         name: newUser.name,

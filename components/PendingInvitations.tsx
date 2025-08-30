@@ -6,18 +6,44 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, X, AlertCircle } from 'lucide-react';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
-import { revokeInvitation } from '@/app/(login)/actions';
+// Revoke invitation action
+async function revokeInvitation(prevState: any, formData: FormData) {
+  try {
+    const invitationId = formData.get('invitationId') as string;
+    
+    const response = await fetch('/api/admin/revoke-invitation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitationId }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      return { success: result.message };
+    } else {
+      return { error: result.error };
+    }
+  } catch (error) {
+    console.error('Error revoking invitation:', error);
+    return { error: 'Failed to revoke invitation' };
+  }
+}
 import { useActionState } from 'react';
 
 interface Invitation {
-  id: number;
+  id: string;
   email: string;
   role: string;
   status: string;
   invitedAt: string;
-  invitedBy: number;
+  invitedBy: string;
   inviterName: string | null;
   inviterEmail: string;
+  name?: string;
+  title?: string;
+  department?: string;
+  expiresAt?: string;
 }
 
 const fetcher = async (url: string) => {
@@ -39,7 +65,7 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-function RevokeInvitationButton({ invitationId, email }: { invitationId: number; email: string }) {
+function RevokeInvitationButton({ invitationId, email, mutate }: { invitationId: string; email: string; mutate: () => void }) {
   const [state, action, isPending] = useActionState(revokeInvitation, { error: '' });
 
   return (
@@ -64,14 +90,17 @@ function RevokeInvitationButton({ invitationId, email }: { invitationId: number;
         <p className="text-sm text-red-500 mt-1">{state.error}</p>
       )}
       {'success' in state && state?.success && (
-        <p className="text-sm text-green-500 mt-1">{state.success}</p>
+        <>
+          <p className="text-sm text-green-500 mt-1">{state.success}</p>
+          {mutate()} {/* Refresh the list after successful revoke */}
+        </>
       )}
     </form>
   );
 }
 
 export function PendingInvitations() {
-  const { data: invitations, error, mutate } = useSWR<Invitation[]>('/api/organization/invitations', fetcher);
+  const { data: invitations, error, mutate } = useSWR<Invitation[]>('/api/admin/pending-invitations', fetcher);
 
   // Handle 403 error (non-owner users) - don't show anything
   if (error?.status === 403 || error?.message === 'Forbidden' || (error && error.message?.includes('403'))) {
@@ -156,7 +185,7 @@ export function PendingInvitations() {
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
+          <SemanticBDIIcon semantic="notifications" size={20} />
           Pending Invitations ({pendingInvitations.length})
         </CardTitle>
       </CardHeader>
@@ -171,32 +200,42 @@ export function PendingInvitations() {
                 <div className="flex items-center gap-3 mb-2">
                   <div className="flex items-center gap-2">
                     <SemanticBDIIcon semantic="profile" size={16} className="text-gray-500" />
-                    <span className="font-medium">{invitation.email}</span>
+                    <span className="font-medium">{invitation.name || invitation.email}</span>
                   </div>
-                  <Badge variant={invitation.role === 'owner' ? 'default' : 'secondary'}>
-                    {invitation.role}
+                  <Badge variant={invitation.role === 'super_admin' ? 'default' : 'secondary'}
+                         className={invitation.role === 'super_admin' ? 'bg-bdi-green-1 text-white' : 
+                                   invitation.role === 'admin' ? 'bg-bdi-green-2 text-white' :
+                                   invitation.role === 'developer' ? 'bg-bdi-blue text-white' : ''}>
+                    {invitation.role.replace('_', ' ').toUpperCase()}
                   </Badge>
-                  <Badge variant="outline" className="text-orange-600 border-orange-200">
+                  <Badge variant="outline" className="text-bdi-green-1 border-bdi-green-1">
                     <Clock className="h-3 w-3 mr-1" />
                     Pending
                   </Badge>
                 </div>
-                <div className="text-sm text-gray-500 flex items-center gap-4">
-                  <span>Invited {getDaysAgo(invitation.invitedAt)}</span>
-                  <span>•</span>
-                  <span>{formatDate(invitation.invitedAt)}</span>
-                  {invitation.inviterName && (
-                    <>
-                      <span>•</span>
-                      <span>by {invitation.inviterName}</span>
-                    </>
+                <div className="text-sm text-gray-500 space-y-1">
+                  <div>{invitation.email}</div>
+                  {invitation.title && invitation.department && (
+                    <div>{invitation.title} • {invitation.department}</div>
                   )}
+                  <div className="flex items-center gap-4">
+                    <span>Invited {getDaysAgo(invitation.invitedAt)}</span>
+                    <span>•</span>
+                    <span>{formatDate(invitation.invitedAt)}</span>
+                    {invitation.expiresAt && (
+                      <>
+                        <span>•</span>
+                        <span>Expires {formatDate(invitation.expiresAt)}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <RevokeInvitationButton 
                   invitationId={invitation.id} 
                   email={invitation.email}
+                  mutate={mutate}
                 />
               </div>
             </div>
