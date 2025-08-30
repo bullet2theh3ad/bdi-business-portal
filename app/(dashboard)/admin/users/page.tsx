@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Total BDI Users</CardTitle>
@@ -181,13 +181,13 @@ export default function AdminUsersPage() {
           <CardTitle className="text-lg">User Filters & Search</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Label>Filter by Role:</Label>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <Label className="text-sm font-medium">Filter by Role:</Label>
               <select 
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className="h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 text-sm"
+                className="h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 text-sm w-full sm:w-auto"
               >
                 <option value="all">All Roles</option>
                 <option value="super_admin">Super Admin</option>
@@ -197,10 +197,10 @@ export default function AdminUsersPage() {
               </select>
             </div>
             <div className="flex items-center space-x-2">
-              <Input placeholder="Search users..." className="w-64" />
-              <Button variant="outline" size="sm">
+              <Input placeholder="Search users..." className="flex-1 sm:w-64" />
+              <Button variant="outline" size="sm" className="flex-shrink-0">
                 <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
-                Search
+                <span className="hidden sm:inline">Search</span>
               </Button>
             </div>
           </div>
@@ -233,66 +233,90 @@ export default function AdminUsersPage() {
               </div>
             ) : (
               filteredUsers.map((bdiUser: any) => (
-                <div key={bdiUser.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-bdi-green-1/10 rounded-lg flex items-center justify-center">
-                      <SemanticBDIIcon semantic="profile" size={20} className="text-bdi-green-1" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-medium">{bdiUser.name || 'Unknown'}</h3>
-                        <Badge variant={bdiUser.role === 'super_admin' ? 'default' : 'secondary'} 
-                               className={bdiUser.role === 'super_admin' ? 'bg-bdi-green-1 text-white text-xs' : 
-                                          bdiUser.role === 'developer' ? 'bg-bdi-blue text-white text-xs' : 
-                                          bdiUser.role === 'admin' ? 'bg-bdi-green-2 text-white text-xs' : 'text-xs'}>
-                          {(bdiUser.role || 'member').replace('_', ' ').toUpperCase()}
-                        </Badge>
-                        <Badge variant={bdiUser.isActive ? 'default' : 'secondary'} 
-                               className={bdiUser.isActive ? 'bg-bdi-green-2 text-white text-xs' : 'text-xs'}>
-                          {bdiUser.isActive ? 'ACTIVE' : 'INACTIVE'}
-                        </Badge>
-                        {bdiUser.role === 'developer' && (
-                          <Badge variant="outline" className="border-bdi-blue text-bdi-blue text-xs">
-                            API ACCESS
+                <div key={bdiUser.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  {/* Mobile-first layout */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                    {/* User Info Section */}
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-bdi-green-1/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <SemanticBDIIcon semantic="profile" size={20} className="text-bdi-green-1" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {/* Name and Badges */}
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="font-medium text-lg">{bdiUser.name || 'Unknown'}</h3>
+                          <Badge variant={bdiUser.role === 'super_admin' ? 'default' : 'secondary'} 
+                                 className={bdiUser.role === 'super_admin' ? 'bg-bdi-green-1 text-white text-xs' : 
+                                            bdiUser.role === 'developer' ? 'bg-bdi-blue text-white text-xs' : 
+                                            bdiUser.role === 'admin' ? 'bg-bdi-green-2 text-white text-xs' : 'text-xs'}>
+                            {(bdiUser.role || 'member').replace('_', ' ').toUpperCase()}
                           </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {bdiUser.email} • {bdiUser.title || 'No title'} • {bdiUser.department || 'No department'} • 
-                        Last login: {bdiUser.lastLoginAt ? new Date(bdiUser.lastLoginAt).toLocaleDateString() : 'Never'}
+                          <Badge variant={bdiUser.isActive ? 'default' : 'secondary'} 
+                                 className={bdiUser.isActive ? 'bg-bdi-green-2 text-white text-xs' : 'text-xs'}>
+                            {bdiUser.isActive ? 'ACTIVE' : 'INACTIVE'}
+                          </Badge>
+                          {bdiUser.role === 'developer' && (
+                            <Badge variant="outline" className="border-bdi-blue text-bdi-blue text-xs">
+                              API ACCESS
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* User Details */}
+                        <div className="text-sm text-gray-500 space-y-1">
+                          <div className="font-medium">{bdiUser.email}</div>
+                          <div>{bdiUser.title || 'No title'} • {bdiUser.department || 'No department'}</div>
+                          <div>Last login: {bdiUser.lastLoginAt ? new Date(bdiUser.lastLoginAt).toLocaleDateString() : 'Never'}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => {
-                      setEditForm({
-                        name: bdiUser.name || '',
-                        email: bdiUser.email || '',
-                        role: bdiUser.role || 'member',
-                        title: bdiUser.title || '',
-                        department: bdiUser.department || 'Operations'
-                      });
-                      setSelectedUser(bdiUser);
-                    }}>
-                      <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                      Manage
-                    </Button>
-                    {bdiUser.role === 'developer' && (
-                      <Button variant="outline" size="sm" className="bg-bdi-blue/10 hover:bg-bdi-blue/20">
-                        <SemanticBDIIcon semantic="connect" size={14} className="mr-1" />
-                        API Keys
-                      </Button>
-                    )}
-                    {bdiUser.authId !== user?.authId && (
+                    
+                    {/* Action Buttons - Mobile Optimized */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full sm:w-auto">
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDeactivateUser(bdiUser.authId, bdiUser.name)}
+                        className="w-full sm:w-auto justify-center sm:justify-start"
+                        onClick={() => {
+                          setEditForm({
+                            name: bdiUser.name || '',
+                            email: bdiUser.email || '',
+                            role: bdiUser.role || 'member',
+                            title: bdiUser.title || '',
+                            department: bdiUser.department || 'Operations'
+                          });
+                          setSelectedUser(bdiUser);
+                        }}
                       >
-                        Deactivate
+                        <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
+                        <span className="sm:hidden">Manage User</span>
+                        <span className="hidden sm:inline">Manage</span>
                       </Button>
-                    )}
+                      
+                      {bdiUser.role === 'developer' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto justify-center sm:justify-start bg-bdi-blue/10 hover:bg-bdi-blue/20"
+                        >
+                          <SemanticBDIIcon semantic="connect" size={14} className="mr-2 sm:mr-1" />
+                          <span className="sm:hidden">API Keys</span>
+                          <span className="hidden sm:inline">API</span>
+                        </Button>
+                      )}
+                      
+                      {bdiUser.authId !== user?.authId && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto justify-center sm:justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeactivateUser(bdiUser.authId, bdiUser.name)}
+                        >
+                          <span className="sm:hidden">Deactivate User</span>
+                          <span className="hidden sm:inline">Deactivate</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

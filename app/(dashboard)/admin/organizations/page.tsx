@@ -106,23 +106,27 @@ export default function AdminOrganizationsPage() {
     <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
             <SemanticBDIIcon semantic="collaboration" size={32} />
             <div>
-              <h1 className="text-3xl font-bold">Organizations</h1>
-              <p className="text-muted-foreground">Manage external partner companies, suppliers, and vendors</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Organizations</h1>
+              <p className="text-muted-foreground text-sm sm:text-base">Manage external partner companies, suppliers, and vendors</p>
             </div>
           </div>
-          <Button className="bg-bdi-green-1 hover:bg-bdi-green-2" onClick={() => setShowCreateModal(true)}>
+          <Button 
+            className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto justify-center" 
+            onClick={() => setShowCreateModal(true)}
+          >
             <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2 brightness-0 invert" />
-            Create Organization
+            <span className="sm:hidden">Create New Organization</span>
+            <span className="hidden sm:inline">Create Organization</span>
           </Button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
@@ -181,67 +185,88 @@ export default function AdminOrganizationsPage() {
         <CardContent>
           <div className="space-y-4">
             {mockExternalOrgs.map((org) => (
-              <div key={org.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors">
-                {/* Organization Header */}
-                <div className="flex items-start justify-between mb-4">
+              <div key={org.id} className="border rounded-lg p-4 lg:p-6 hover:bg-gray-50 transition-colors">
+                {/* Mobile-first Organization Layout */}
+                <div className="flex flex-col space-y-4">
+                  {/* Organization Header - Mobile Optimized */}
                   <div className="flex items-start space-x-4">
-                    <div className="w-16 h-16 bg-bdi-green-1/10 rounded-xl flex items-center justify-center">
+                    <div className="w-12 h-12 lg:w-16 lg:h-16 bg-bdi-green-1/10 rounded-xl flex items-center justify-center flex-shrink-0">
                       <SemanticBDIIcon 
                         semantic={org.type === 'oem_partner' ? 'collaboration' : org.type === 'supplier' ? 'supply' : 'sync'} 
-                        size={24} 
+                        size={20} 
                         className="text-bdi-green-1" 
                       />
                     </div>
-                    <div>
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-semibold">{org.name}</h3>
-                        <Badge variant={org.type === 'oem_partner' ? 'default' : 'secondary'} className="bg-bdi-blue text-white">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="text-lg lg:text-xl font-semibold">{org.name}</h3>
+                        <Badge variant={org.type === 'oem_partner' ? 'default' : 'secondary'} className="bg-bdi-blue text-white text-xs">
                           {org.type.replace('_', ' ').toUpperCase()}
                         </Badge>
                         <Badge variant={org.status === 'active' ? 'default' : 'secondary'} 
-                               className={org.status === 'active' ? 'bg-bdi-green-1 text-white' : ''}>
+                               className={org.status === 'active' ? 'bg-bdi-green-1 text-white text-xs' : 'text-xs'}>
                           {org.status.toUpperCase()}
                         </Badge>
                       </div>
                       <div className="text-sm text-gray-600 space-y-1">
                         <div><strong>Legal Name:</strong> {org.legalName}</div>
-                        <div><strong>Code:</strong> {org.code} • <strong>DUNS:</strong> {org.dunsNumber} • <strong>Tax ID:</strong> {org.taxId}</div>
-                        <div><strong>Industry:</strong> {org.industryCode} • <strong>Size:</strong> {org.companySize} employees</div>
+                        <div className="flex flex-wrap gap-2">
+                          <span><strong>Code:</strong> {org.code}</span>
+                          <span><strong>DUNS:</strong> {org.dunsNumber}</span>
+                          <span><strong>Tax ID:</strong> {org.taxId}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <span><strong>Industry:</strong> {org.industryCode}</span>
+                          <span><strong>Size:</strong> {org.companySize} employees</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedOrg(org)}>
-                      <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                      Manage
+                  
+                  {/* Action Buttons - Mobile Optimized */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full sm:w-auto justify-center sm:justify-start"
+                      onClick={() => setSelectedOrg(org)}
+                    >
+                      <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
+                      <span className="sm:hidden">Manage Organization</span>
+                      <span className="hidden sm:inline">Manage</span>
                     </Button>
-                    <Button variant="outline" size="sm" className="bg-bdi-blue/10 hover:bg-bdi-blue/20">
-                      <SemanticBDIIcon semantic="notifications" size={14} className="mr-1" />
-                      Invite Admin
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full sm:w-auto justify-center sm:justify-start bg-bdi-blue/10 hover:bg-bdi-blue/20"
+                    >
+                      <SemanticBDIIcon semantic="notifications" size={14} className="mr-2 sm:mr-1" />
+                      <span className="sm:hidden">Invite Admin</span>
+                      <span className="hidden sm:inline">Invite Admin</span>
                     </Button>
                   </div>
                 </div>
 
-                {/* Organization Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                {/* Organization Stats - Mobile Optimized */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <SemanticBDIIcon semantic="users" size={16} className="mx-auto mb-1" />
-                    <div className="text-lg font-semibold">{org.totalUsers}</div>
+                    <div className="text-base lg:text-lg font-semibold">{org.totalUsers}</div>
                     <div className="text-xs text-gray-500">Users</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <SemanticBDIIcon semantic="connect" size={16} className="mx-auto mb-1" />
-                    <div className="text-lg font-semibold">{org.apiKeys}</div>
+                    <div className="text-base lg:text-lg font-semibold">{org.apiKeys}</div>
                     <div className="text-xs text-gray-500">API Keys</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <SemanticBDIIcon semantic="analytics" size={16} className="mx-auto mb-1" />
-                    <div className="text-lg font-semibold">{org.lastActivity}</div>
+                    <div className="text-base lg:text-lg font-semibold">{org.lastActivity}</div>
                     <div className="text-xs text-gray-500">Last Activity</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <SemanticBDIIcon semantic="reports" size={16} className="mx-auto mb-1" />
-                    <div className="text-lg font-semibold">{new Date(org.createdAt).toLocaleDateString()}</div>
+                    <div className="text-base lg:text-lg font-semibold">{new Date(org.createdAt).toLocaleDateString()}</div>
                     <div className="text-xs text-gray-500">Created</div>
                   </div>
                 </div>
@@ -252,19 +277,19 @@ export default function AdminOrganizationsPage() {
                     <SemanticBDIIcon semantic="users" size={16} className="mr-2" />
                     Organization Administrators
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {org.adminUsers.map((admin, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                         <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center flex-shrink-0">
                             <SemanticBDIIcon semantic="profile" size={12} className="text-bdi-green-1" />
                           </div>
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium">{admin.name}</div>
-                            <div className="text-xs text-gray-500">{admin.email}</div>
+                            <div className="text-xs text-gray-500 break-all">{admin.email}</div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center justify-start sm:justify-end space-x-2">
                           <Badge variant={admin.role === 'admin' ? 'default' : 'secondary'} className="text-xs">
                             {admin.role.toUpperCase()}
                           </Badge>
@@ -278,19 +303,25 @@ export default function AdminOrganizationsPage() {
                   </div>
                 </div>
 
-                {/* Contact Information */}
+                {/* Contact Information - Mobile Optimized */}
                 <Separator className="my-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="font-medium text-gray-700 mb-1">Contact Information</div>
-                    <div className="text-gray-600">
-                      <div>{org.contactEmail}</div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="font-medium text-gray-700 flex items-center">
+                      <SemanticBDIIcon semantic="connect" size={14} className="mr-2" />
+                      Contact Information
+                    </div>
+                    <div className="text-gray-600 space-y-1">
+                      <div className="break-all">{org.contactEmail}</div>
                       <div>{org.contactPhone}</div>
                     </div>
                   </div>
-                  <div>
-                    <div className="font-medium text-gray-700 mb-1">Business Address</div>
-                    <div className="text-gray-600 whitespace-pre-line">
+                  <div className="space-y-2">
+                    <div className="font-medium text-gray-700 flex items-center">
+                      <SemanticBDIIcon semantic="sites" size={14} className="mr-2" />
+                      Business Address
+                    </div>
+                    <div className="text-gray-600 whitespace-pre-line text-sm">
                       {org.businessAddress}
                     </div>
                   </div>
