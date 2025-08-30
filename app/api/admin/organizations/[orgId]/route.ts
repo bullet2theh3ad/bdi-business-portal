@@ -68,7 +68,7 @@ export async function DELETE(
 
     console.log('Deleted organization members:', deletedMembers);
 
-    // 2. Delete all users who were only part of this organization (pending users)
+    // 2. Delete all users who were only part of this organization
     for (const member of deletedMembers) {
       // Check if this user has other organization memberships
       const otherMemberships = await db
@@ -77,7 +77,7 @@ export async function DELETE(
         .where(eq(organizationMembers.userAuthId, member.userAuthId))
         .limit(1);
 
-      // If no other memberships and user is pending (invitation_pending), delete the user
+      // If no other memberships, delete the user (regardless of pending/active status)
       if (otherMemberships.length === 0) {
         const [userToDelete] = await db
           .select()
@@ -85,13 +85,15 @@ export async function DELETE(
           .where(eq(users.authId, member.userAuthId))
           .limit(1);
 
-        if (userToDelete && userToDelete.passwordHash === 'invitation_pending') {
+        if (userToDelete) {
           await db
             .delete(users)
             .where(eq(users.authId, member.userAuthId));
           
-          console.log('Deleted pending user:', userToDelete.email);
+          console.log('Deleted user:', userToDelete.email, 'Status:', userToDelete.passwordHash);
         }
+      } else {
+        console.log('User has other memberships, not deleting:', member.userAuthId);
       }
     }
 

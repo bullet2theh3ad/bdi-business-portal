@@ -24,15 +24,18 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const isInvitationSignup = mode === 'signup' && token;
   
   // Parse invitation token to get organization name
-  let invitationOrgName = 'Boundless Devices Inc'; // fallback
+  let invitationOrgName = 'Loading...'; // fallback
   if (token) {
     try {
-      const tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
-      // We need to decode the organization name from the token
-      // For now, we'll need to fetch it from the API or include it in the token
-      invitationOrgName = tokenData.organizationName || 'Loading...';
+      // Use atob for browser compatibility instead of Buffer.from with base64url
+      const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      const tokenData = JSON.parse(atob(padded));
+      console.log('Parsed invitation token:', tokenData);
+      invitationOrgName = tokenData.organizationName || 'Unknown Organization';
     } catch (error) {
       console.error('Error parsing invitation token:', error);
+      invitationOrgName = 'Unknown Organization';
     }
   }
 
