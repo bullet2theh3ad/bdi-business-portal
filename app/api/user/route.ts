@@ -94,17 +94,24 @@ export async function GET() {
       .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
       .where(eq(organizationMembers.userAuthId, dbUser.authId));
 
-    // For Super Admin, provide a default organization for now
+    // For Super Admin, provide BDI organization if they don't have memberships
     if (dbUser.role === 'super_admin' && userOrganizations.length === 0) {
-      // Provide default BDI organization info for Super Admin
-      userOrganizations.push({
-        organization: {
-          id: crypto.randomUUID(), // Temporary UUID for Super Admin
-          name: 'Boundless Devices Inc',
-          code: 'BDI',
-        },
-        membershipRole: 'owner',
-      });
+      // Get the actual BDI organization from database
+      const [bdiOrg] = await db
+        .select()
+        .from(organizations)
+        .where(and(
+          eq(organizations.code, 'BDI'),
+          eq(organizations.type, 'internal')
+        ))
+        .limit(1);
+
+      if (bdiOrg) {
+        userOrganizations.push({
+          organization: bdiOrg,
+          membershipRole: 'owner',
+        });
+      }
     }
 
     // Debug logging

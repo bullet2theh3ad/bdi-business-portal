@@ -176,13 +176,14 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (!user || !['super_admin', 'admin'].includes(user.role)) {
+  // Only BDI Super Admins and BDI Admins can access BDI user management
+  if (!user || !['super_admin', 'admin'].includes(user.role) || user.organization?.code !== 'BDI') {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <SemanticBDIIcon semantic="settings" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Access denied. Admin privileges required.</p>
+            <p className="text-muted-foreground">Access denied. BDI Admin privileges required.</p>
           </div>
         </div>
       </div>

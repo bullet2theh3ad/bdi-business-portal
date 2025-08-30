@@ -20,6 +20,8 @@ interface NavItem {
   icon: keyof typeof import('@/components/BDIIcon').SEMANTIC_ICONS;
   children?: NavItem[];
   requiresRole?: string[];
+  requiresBDI?: boolean; // Only show for BDI organization users
+  requiresNonBDI?: boolean; // Only show for non-BDI organization users
 }
 
 const navigationItems: NavItem[] = [
@@ -90,6 +92,7 @@ const navigationItems: NavItem[] = [
     title: 'Admin',
     icon: 'settings',
     requiresRole: ['super_admin', 'admin'],
+    requiresBDI: true, // Only show Admin menu for BDI users
     children: [
       {
         title: 'Organizations',
@@ -104,6 +107,24 @@ const navigationItems: NavItem[] = [
       {
         title: 'Teams',
         href: '/admin/teams',
+        icon: 'collaboration',
+      },
+    ],
+  },
+  {
+    title: 'Organization',
+    icon: 'collaboration',
+    requiresRole: ['admin'],
+    requiresNonBDI: true, // Only show for non-BDI organizations
+    children: [
+      {
+        title: 'Users',
+        href: '/organization/users',
+        icon: 'users',
+      },
+      {
+        title: 'Teams',
+        href: '/organization/teams',
         icon: 'collaboration',
       },
     ],
@@ -147,6 +168,16 @@ export function Sidebar({ className }: SidebarProps) {
 
   const renderNavItem = (item: NavItem, level = 0) => {
     if (!hasRequiredRole(item.requiresRole)) {
+      return null;
+    }
+
+    // Check if item requires BDI organization access
+    if (item.requiresBDI && user?.organization?.code !== 'BDI') {
+      return null;
+    }
+
+    // Check if item requires non-BDI organization access
+    if (item.requiresNonBDI && (user?.organization?.code === 'BDI' || user?.organization?.type === 'internal')) {
       return null;
     }
 

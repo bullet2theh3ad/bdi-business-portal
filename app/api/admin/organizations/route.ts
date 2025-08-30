@@ -41,6 +41,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden - Super Admin required' }, { status: 403 });
     }
 
+    // Verify user belongs to BDI organization
+    const userOrgMembership = await db
+      .select({
+        organization: {
+          code: organizations.code,
+          type: organizations.type,
+        }
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
+      .limit(1);
+
+    const isBDIUser = userOrgMembership.some(membership => 
+      membership.organization.code === 'BDI' && membership.organization.type === 'internal'
+    );
+
+    if (!isBDIUser) {
+      return NextResponse.json({ error: 'Forbidden - BDI Super Admin required' }, { status: 403 });
+    }
+
     // Get all external organizations (not BDI)
     const externalOrganizations = await db
       .select()

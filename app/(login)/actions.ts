@@ -103,34 +103,69 @@ export async function signUp(prevState: any, formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
+  let supabaseUser = null;
 
-  // Create user in Supabase Auth (disable email confirmation for invitations)
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: undefined, // Disable email confirmation
-      data: {
-        name: name || null,
-        role: 'member',
+  // For invitation signups, we already have the user in our database
+  // For regular signups, we need to create them in Supabase Auth
+  if (!token) {
+    // Regular signup - create user in Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: undefined,
+        data: {
+          name: name || null,
+          role: 'member',
+        }
       }
+    });
+
+    if (error) {
+      return {
+        error: error.message || 'Failed to create user. Please try again.',
+        email,
+        password
+      };
     }
-  });
 
-  if (error) {
-    return {
-      error: error.message || 'Failed to create user. Please try again.',
-      email,
-      password
-    };
-  }
+    if (!data.user) {
+      return {
+        error: 'Failed to create user. Please try again.',
+        email,
+        password
+      };
+    }
 
-  if (!data.user) {
-    return {
-      error: 'Failed to create user. Please try again.',
+    supabaseUser = data.user;
+  } else {
+    // Invitation signup - create Supabase user WITHOUT email confirmation
+    const { data, error } = await supabase.auth.admin.createUser({
       email,
-      password
-    };
+      password,
+      email_confirm: true, // Skip email confirmation for invitations
+      user_metadata: {
+        name: name || null,
+      }
+    });
+
+    if (error) {
+      return {
+        error: error.message || 'Failed to create user. Please try again.',
+        email,
+        password
+      };
+    }
+
+    if (!data.user) {
+      return {
+        error: 'Failed to create user. Please try again.',
+        email,
+        password
+      };
+    }
+
+    supabaseUser = data.user;
   }
 
   try {
@@ -200,9 +235,9 @@ export async function signUp(prevState: any, formData: FormData) {
           [dbUser] = await db
             .insert(users)
             .values({
-              authId: data.user.id,
-              email: data.user.email!,
-              name: pendingUser.name || name || data.user.email!.split('@')[0],
+                        authId: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: pendingUser.name || name || supabaseUser.email!.split('@')[0],
               role: userRole,
               title: pendingUser.title,
               department: pendingUser.department,
@@ -215,7 +250,7 @@ export async function signUp(prevState: any, formData: FormData) {
           await db
             .insert(organizationMembers)
             .values({
-              userAuthId: data.user.id,
+              userAuthId: supabaseUser.id,
               organizationUuid: targetOrganization.id,
               role: userRole,
             });
@@ -247,9 +282,9 @@ export async function signUp(prevState: any, formData: FormData) {
       [dbUser] = await db
         .insert(users)
         .values({
-          authId: data.user.id,
-          email: data.user.email!,
-          name: name || data.user.email!.split('@')[0],
+          authId: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: name || supabaseUser.email!.split('@')[0],
           role: 'super_admin',
           passwordHash: 'supabase_managed',
         })
@@ -258,7 +293,7 @@ export async function signUp(prevState: any, formData: FormData) {
       const [newOrg] = await db
         .insert(organizations)
         .values({
-          name: organizationName || `${email}'s Organization`,
+          name: organizationName || `${supabaseUser.email!.split('@')[0]}'s Organization`,
           type: 'internal',
           code: organizationName?.substring(0, 3).toUpperCase() || 'ORG',
         })

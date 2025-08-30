@@ -54,6 +54,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Verify user belongs to BDI organization
+    const userOrgMembership = await db
+      .select({
+        organization: {
+          code: organizations.code,
+          type: organizations.type,
+        }
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, currentUser.authId))
+      .limit(1);
+
+    const isBDIUser = userOrgMembership.some(membership => 
+      membership.organization.code === 'BDI' && membership.organization.type === 'internal'
+    );
+
+    if (!isBDIUser) {
+      return NextResponse.json({ error: 'Forbidden - BDI access required' }, { status: 403 });
+    }
+
     // Get BDI organization
     const [bdiOrg] = await db
       .select()
@@ -118,6 +139,27 @@ export async function POST(request: NextRequest) {
     
     if (!currentUser || !['super_admin', 'admin'].includes(currentUser.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user belongs to BDI organization
+    const userOrgMembership = await db
+      .select({
+        organization: {
+          code: organizations.code,
+          type: organizations.type,
+        }
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, currentUser.authId))
+      .limit(1);
+
+    const isBDIUser = userOrgMembership.some(membership => 
+      membership.organization.code === 'BDI' && membership.organization.type === 'internal'
+    );
+
+    if (!isBDIUser) {
+      return NextResponse.json({ error: 'Forbidden - BDI access required' }, { status: 403 });
     }
 
     const body = await request.json();
