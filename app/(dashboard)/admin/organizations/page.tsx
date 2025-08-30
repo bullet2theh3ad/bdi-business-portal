@@ -13,81 +13,98 @@ import { User } from '@/lib/db/schema';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Mock data for external organizations (partners/vendors)
-const mockExternalOrgs = [
-  {
-    id: '1',
-    name: 'ACME Manufacturing Corp',
-    legalName: 'ACME Manufacturing Corporation',
-    code: 'ACME',
-    type: 'oem_partner',
-    dunsNumber: '987654321',
-    taxId: '98-7654321',
-    industryCode: '336411',
-    companySize: '201-1000',
-    contactEmail: 'admin@acme-mfg.com',
-    contactPhone: '+1-555-0123',
-    businessAddress: '456 Manufacturing Blvd\nDetroit, MI 48201\nUnited States',
-    adminUsers: [
-      { name: 'John Smith', email: 'john.smith@acme-mfg.com', role: 'admin', status: 'active' },
-      { name: 'Sarah Johnson', email: 'sarah.j@acme-mfg.com', role: 'member', status: 'pending' }
-    ],
-    totalUsers: 12,
-    apiKeys: 2,
-    lastActivity: '2024-01-15',
-    status: 'active',
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '2',
-    name: 'TechCorp Solutions',
-    legalName: 'TechCorp Solutions LLC',
-    code: 'TECH',
-    type: 'supplier',
-    dunsNumber: '456789123',
-    taxId: '45-6789123',
-    industryCode: '541511',
-    companySize: '51-200',
-    contactEmail: 'contact@techcorp.com',
-    contactPhone: '+1-555-0456',
-    businessAddress: '789 Tech Drive\nAustin, TX 78701\nUnited States',
-    adminUsers: [
-      { name: 'Mike Chen', email: 'mike.chen@techcorp.com', role: 'admin', status: 'active' }
-    ],
-    totalUsers: 5,
-    apiKeys: 1,
-    lastActivity: '2024-01-10',
-    status: 'active',
-    createdAt: '2023-12-15'
-  },
-  {
-    id: '3',
-    name: 'Global Logistics Inc',
-    legalName: 'Global Logistics Incorporated',
-    code: 'GLOBAL',
-    type: '3pl',
-    dunsNumber: '789123456',
-    taxId: '78-9123456',
-    industryCode: '484110',
-    companySize: '1000+',
-    contactEmail: 'ops@globallogistics.com',
-    contactPhone: '+1-555-0789',
-    businessAddress: '321 Logistics Way\nMemphis, TN 38118\nUnited States',
-    adminUsers: [
-      { name: 'Lisa Wang', email: 'lisa.wang@globallogistics.com', role: 'admin', status: 'pending' }
-    ],
-    totalUsers: 0,
-    apiKeys: 0,
-    lastActivity: 'Never',
-    status: 'pending',
-    createdAt: '2024-01-20'
-  }
-];
+// Define available capabilities that can be granted to organizations
+const AVAILABLE_CAPABILITIES = [
+  { id: 'cpfr', name: 'CPFR Portal', description: 'Access to Collaborative Planning, Forecasting & Replenishment' },
+  { id: 'inventory', name: 'Inventory Analytics', description: 'View inventory levels, analytics, and reports' },
+  { id: 'supply_chain', name: 'Supply Chain', description: 'Supply chain visibility and management tools' },
+  { id: 'api_access', name: 'API Access', description: 'Programmatic access to data and services' },
+  { id: 'reporting', name: 'Advanced Reporting', description: 'Custom reports and data exports' },
+  { id: 'collaboration', name: 'Team Collaboration', description: 'Cross-organization team features' },
+  { id: 'document_management', name: 'Document Management', description: 'Upload and manage business documents' },
+] as const;
+
+type CapabilityId = typeof AVAILABLE_CAPABILITIES[number]['id'];
+
+interface OrganizationInvitation {
+  companyName: string;
+  organizationCode: string;
+  organizationType: 'contractor' | 'shipping_logistics' | 'oem_partner' | 'rd_partner' | 'distributor' | 'retail_partner' | 'threpl_partner';
+  adminName: string;
+  adminEmail: string;
+  capabilities: CapabilityId[];
+  description?: string;
+}
 
 export default function AdminOrganizationsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { data: organizations, mutate: mutateOrganizations } = useSWR('/api/admin/organizations', fetcher);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
+    companyName: '',
+    organizationCode: '',
+    organizationType: 'contractor',
+    adminName: '',
+    adminEmail: '',
+    capabilities: ['document_management'], // Default capability
+    description: ''
+  });
+
+  const handleInviteOrganization = async () => {
+    if (!inviteForm.companyName || !inviteForm.adminEmail || !inviteForm.adminName) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsInviting(true);
+    try {
+      const response = await fetch('/api/admin/organizations/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send invitation');
+      }
+
+      const result = await response.json();
+      console.log('Organization invitation sent:', result);
+      
+      // Reset form and close modal
+      setInviteForm({
+        companyName: '',
+        organizationCode: '',
+        organizationType: 'contractor',
+        adminName: '',
+        adminEmail: '',
+        capabilities: ['document_management'],
+        description: ''
+      });
+      setShowInviteModal(false);
+      
+      // Refresh organizations list
+      mutateOrganizations();
+      
+      alert('Organization invitation sent successfully!');
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      alert('Failed to send invitation. Please try again.');
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const toggleCapability = (capabilityId: CapabilityId) => {
+    setInviteForm(prev => ({
+      ...prev,
+      capabilities: prev.capabilities.includes(capabilityId)
+        ? prev.capabilities.filter(id => id !== capabilityId)
+        : [...prev.capabilities, capabilityId]
+    }));
+  };
 
   if (!user || user.role !== 'super_admin') {
     return (
@@ -116,11 +133,11 @@ export default function AdminOrganizationsPage() {
           </div>
           <Button 
             className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto justify-center" 
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowInviteModal(true)}
           >
-            <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2 brightness-0 invert" />
-            <span className="sm:hidden">Create New Organization</span>
-            <span className="hidden sm:inline">Create Organization</span>
+            <SemanticBDIIcon semantic="notifications" size={16} className="mr-2 brightness-0 invert" />
+            <span className="sm:hidden">Invite New Organization</span>
+            <span className="hidden sm:inline">Invite Organization</span>
           </Button>
         </div>
       </div>
@@ -132,7 +149,9 @@ export default function AdminOrganizationsPage() {
             <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-bdi-green-1">{mockExternalOrgs.length}</div>
+            <div className="text-2xl font-bold text-bdi-green-1">
+              {organizations ? organizations.length : '...'}
+            </div>
             <p className="text-xs text-muted-foreground">External partners</p>
           </CardContent>
         </Card>
@@ -142,31 +161,31 @@ export default function AdminOrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-2">
-              {mockExternalOrgs.filter(org => org.status === 'active').length}
+              {organizations ? organizations.filter((org: any) => org.isActive).length : '...'}
             </div>
             <p className="text-xs text-muted-foreground">Currently operational</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Total External Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending Invitations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-blue">
-              {mockExternalOrgs.reduce((total, org) => total + org.totalUsers, 0)}
+              {organizations ? organizations.filter((org: any) => !org.isActive).length : '...'}
             </div>
-            <p className="text-xs text-muted-foreground">Across all partners</p>
+            <p className="text-xs text-muted-foreground">Awaiting setup</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">API Integrations</CardTitle>
+            <CardTitle className="text-sm font-medium">Capabilities Granted</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-1">
-              {mockExternalOrgs.reduce((total, org) => total + org.apiKeys, 0)}
+              {AVAILABLE_CAPABILITIES.length}
             </div>
-            <p className="text-xs text-muted-foreground">Active API keys</p>
+            <p className="text-xs text-muted-foreground">Available features</p>
           </CardContent>
         </Card>
       </div>
@@ -183,152 +202,86 @@ export default function AdminOrganizationsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {mockExternalOrgs.map((org) => (
-              <div key={org.id} className="border rounded-lg p-4 lg:p-6 hover:bg-gray-50 transition-colors">
-                {/* Mobile-first Organization Layout */}
-                <div className="flex flex-col space-y-4">
-                  {/* Organization Header - Mobile Optimized */}
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 lg:w-16 lg:h-16 bg-bdi-green-1/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <SemanticBDIIcon 
-                        semantic={org.type === 'oem_partner' ? 'collaboration' : org.type === 'supplier' ? 'supply' : 'sync'} 
-                        size={20} 
-                        className="text-bdi-green-1" 
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <h3 className="text-lg lg:text-xl font-semibold">{org.name}</h3>
-                        <Badge variant={org.type === 'oem_partner' ? 'default' : 'secondary'} className="bg-bdi-blue text-white text-xs">
-                          {org.type.replace('_', ' ').toUpperCase()}
-                        </Badge>
-                        <Badge variant={org.status === 'active' ? 'default' : 'secondary'} 
-                               className={org.status === 'active' ? 'bg-bdi-green-1 text-white text-xs' : 'text-xs'}>
-                          {org.status.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <div><strong>Legal Name:</strong> {org.legalName}</div>
-                        <div className="flex flex-wrap gap-2">
-                          <span><strong>Code:</strong> {org.code}</span>
-                          <span><strong>DUNS:</strong> {org.dunsNumber}</span>
-                          <span><strong>Tax ID:</strong> {org.taxId}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <span><strong>Industry:</strong> {org.industryCode}</span>
-                          <span><strong>Size:</strong> {org.companySize} employees</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons - Mobile Optimized */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full sm:w-auto justify-center sm:justify-start"
-                      onClick={() => setSelectedOrg(org)}
-                    >
-                      <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
-                      <span className="sm:hidden">Manage Organization</span>
-                      <span className="hidden sm:inline">Manage</span>
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full sm:w-auto justify-center sm:justify-start bg-bdi-blue/10 hover:bg-bdi-blue/20"
-                    >
-                      <SemanticBDIIcon semantic="notifications" size={14} className="mr-2 sm:mr-1" />
-                      <span className="sm:hidden">Invite Admin</span>
-                      <span className="hidden sm:inline">Invite Admin</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Organization Stats - Mobile Optimized */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <SemanticBDIIcon semantic="users" size={16} className="mx-auto mb-1" />
-                    <div className="text-base lg:text-lg font-semibold">{org.totalUsers}</div>
-                    <div className="text-xs text-gray-500">Users</div>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <SemanticBDIIcon semantic="connect" size={16} className="mx-auto mb-1" />
-                    <div className="text-base lg:text-lg font-semibold">{org.apiKeys}</div>
-                    <div className="text-xs text-gray-500">API Keys</div>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <SemanticBDIIcon semantic="analytics" size={16} className="mx-auto mb-1" />
-                    <div className="text-base lg:text-lg font-semibold">{org.lastActivity}</div>
-                    <div className="text-xs text-gray-500">Last Activity</div>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <SemanticBDIIcon semantic="reports" size={16} className="mx-auto mb-1" />
-                    <div className="text-base lg:text-lg font-semibold">{new Date(org.createdAt).toLocaleDateString()}</div>
-                    <div className="text-xs text-gray-500">Created</div>
-                  </div>
-                </div>
-
-                {/* Organization Admins */}
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center">
-                    <SemanticBDIIcon semantic="users" size={16} className="mr-2" />
-                    Organization Administrators
-                  </h4>
-                  <div className="space-y-3">
-                    {org.adminUsers.map((admin, index) => (
-                      <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center flex-shrink-0">
-                            <SemanticBDIIcon semantic="profile" size={12} className="text-bdi-green-1" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium">{admin.name}</div>
-                            <div className="text-xs text-gray-500 break-all">{admin.email}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-start sm:justify-end space-x-2">
-                          <Badge variant={admin.role === 'admin' ? 'default' : 'secondary'} className="text-xs">
-                            {admin.role.toUpperCase()}
-                          </Badge>
-                          <Badge variant={admin.status === 'active' ? 'default' : 'secondary'} 
-                                 className={admin.status === 'active' ? 'bg-bdi-green-1 text-white text-xs' : 'text-xs'}>
-                            {admin.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Contact Information - Mobile Optimized */}
-                <Separator className="my-4" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700 flex items-center">
-                      <SemanticBDIIcon semantic="connect" size={14} className="mr-2" />
-                      Contact Information
-                    </div>
-                    <div className="text-gray-600 space-y-1">
-                      <div className="break-all">{org.contactEmail}</div>
-                      <div>{org.contactPhone}</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700 flex items-center">
-                      <SemanticBDIIcon semantic="sites" size={14} className="mr-2" />
-                      Business Address
-                    </div>
-                    <div className="text-gray-600 whitespace-pre-line text-sm">
-                      {org.businessAddress}
-                    </div>
-                  </div>
-                </div>
+          {!organizations ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <SemanticBDIIcon semantic="sync" size={32} className="mx-auto mb-4 text-muted-foreground animate-spin" />
+                <p className="text-muted-foreground">Loading organizations...</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : organizations.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <SemanticBDIIcon semantic="collaboration" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">No Organizations Yet</h3>
+                <p className="text-muted-foreground mb-4">Get started by inviting your first partner organization</p>
+                <Button 
+                  className="bg-bdi-green-1 hover:bg-bdi-green-2" 
+                  onClick={() => setShowInviteModal(true)}
+                >
+                  <SemanticBDIIcon semantic="notifications" size={16} className="mr-2 brightness-0 invert" />
+                  Invite Organization
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {organizations.map((org: any) => (
+                <div key={org.id} className="border rounded-lg p-4 lg:p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col space-y-4">
+                    {/* Organization Header */}
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 lg:w-16 lg:h-16 bg-bdi-green-1/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <SemanticBDIIcon 
+                          semantic="collaboration" 
+                          size={20} 
+                          className="text-bdi-green-1" 
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="text-lg lg:text-xl font-semibold">{org.name}</h3>
+                          <Badge variant={org.isActive ? 'default' : 'secondary'} 
+                                 className={org.isActive ? 'bg-bdi-green-1 text-white text-xs' : 'text-xs'}>
+                            {org.isActive ? 'ACTIVE' : 'PENDING'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div><strong>Code:</strong> {org.code}</div>
+                          <div><strong>Created:</strong> {new Date(org.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full sm:w-auto justify-center sm:justify-start"
+                        onClick={() => setSelectedOrg(org)}
+                      >
+                        <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
+                        <span className="sm:hidden">Manage Organization</span>
+                        <span className="hidden sm:inline">Manage</span>
+                      </Button>
+                      {!org.isActive && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto justify-center sm:justify-start bg-bdi-blue/10 hover:bg-bdi-blue/20"
+                        >
+                          <SemanticBDIIcon semantic="notifications" size={14} className="mr-2 sm:mr-1" />
+                          <span className="sm:hidden">Resend Invitation</span>
+                          <span className="hidden sm:inline">Resend Invite</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -487,57 +440,172 @@ export default function AdminOrganizationsPage() {
         </div>
       )}
 
-      {/* Create Organization Modal */}
-      {showCreateModal && (
+      {/* Organization Invitation Modal */}
+      {showInviteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <SemanticBDIIcon semantic="collaboration" size={24} className="mr-2" />
-                Create New Organization
+                <SemanticBDIIcon semantic="notifications" size={24} className="mr-2" />
+                Invite New Organization
               </CardTitle>
-              <CardDescription>Add a new partner company, supplier, or vendor</CardDescription>
+              <CardDescription>Send an invitation to a partner organization admin with customizable access capabilities</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="orgName">Company Name</Label>
-                    <Input id="orgName" placeholder="ACME Manufacturing Corp" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="orgCode">Organization Code</Label>
-                    <Input id="orgCode" placeholder="ACME" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="orgType">Organization Type</Label>
-                    <select className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 text-sm">
-                      <option value="oem_partner">OEM Partner</option>
-                      <option value="supplier">Supplier</option>
-                      <option value="3pl">3PL Provider</option>
-                      <option value="customer">Customer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="adminEmail">Admin Email</Label>
-                    <Input id="adminEmail" type="email" placeholder="admin@company.com" className="mt-1" />
+              <div className="space-y-6">
+                {/* Basic Organization Info */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Organization Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="companyName">Company Name *</Label>
+                      <Input 
+                        id="companyName" 
+                        placeholder="ACME Manufacturing Corp" 
+                        value={inviteForm.companyName}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, companyName: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="organizationCode">Organization Code *</Label>
+                      <Input 
+                        id="organizationCode" 
+                        placeholder="ACME" 
+                        value={inviteForm.organizationCode}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, organizationCode: e.target.value.toUpperCase() }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="organizationType">Organization Type *</Label>
+                      <select 
+                        id="organizationType"
+                        value={inviteForm.organizationType}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, organizationType: e.target.value as any }))}
+                        className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 text-sm"
+                      >
+                        <option value="contractor">Contractor</option>
+                        <option value="shipping_logistics">Shipping & Logistics</option>
+                        <option value="oem_partner">OEM Partner</option>
+                        <option value="rd_partner">R&D Partner</option>
+                        <option value="distributor">Distributor</option>
+                        <option value="retail_partner">Retail Partner</option>
+                        <option value="threpl_partner">3PL Partner</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
+
+                <Separator />
+
+                {/* Admin Contact Info */}
                 <div>
-                  <Label htmlFor="orgDescription">Description</Label>
+                  <h3 className="text-lg font-semibold mb-4">Administrator Contact</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="adminName">Admin Full Name *</Label>
+                      <Input 
+                        id="adminName" 
+                        placeholder="John Smith" 
+                        value={inviteForm.adminName}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, adminName: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="adminEmail">Admin Email *</Label>
+                      <Input 
+                        id="adminEmail" 
+                        type="email" 
+                        placeholder="john.smith@company.com" 
+                        value={inviteForm.adminEmail}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, adminEmail: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Capabilities Selection */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Access Capabilities</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Select which features and capabilities this organization will have access to. You can modify these later.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {AVAILABLE_CAPABILITIES.map((capability) => (
+                      <div 
+                        key={capability.id}
+                        className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                          inviteForm.capabilities.includes(capability.id)
+                            ? 'border-bdi-green-1 bg-bdi-green-1/5'
+                            : 'border-gray-200 hover:border-bdi-green-1/50'
+                        }`}
+                        onClick={() => toggleCapability(capability.id)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 ${
+                            inviteForm.capabilities.includes(capability.id)
+                              ? 'border-bdi-green-1 bg-bdi-green-1'
+                              : 'border-gray-300'
+                          }`}>
+                            {inviteForm.capabilities.includes(capability.id) && (
+                              <SemanticBDIIcon semantic="settings" size={12} className="text-white brightness-0 invert" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{capability.name}</h4>
+                            <p className="text-xs text-gray-500 mt-1">{capability.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Optional Description */}
+                <div>
+                  <Label htmlFor="description">Partnership Description (Optional)</Label>
                   <textarea
-                    id="orgDescription"
-                    placeholder="Brief description of the organization and partnership"
+                    id="description"
+                    placeholder="Brief description of the partnership and collaboration goals"
+                    value={inviteForm.description}
+                    onChange={(e) => setInviteForm(prev => ({ ...prev, description: e.target.value }))}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1"
                     rows={3}
                   />
                 </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowInviteModal(false)}
+                    disabled={isInviting}
+                  >
                     Cancel
                   </Button>
-                  <Button className="bg-bdi-green-1 hover:bg-bdi-green-2">
-                    Create & Send Invitation
+                  <Button 
+                    className="bg-bdi-green-1 hover:bg-bdi-green-2" 
+                    onClick={handleInviteOrganization}
+                    disabled={isInviting}
+                  >
+                    {isInviting ? (
+                      <>
+                        <SemanticBDIIcon semantic="sync" size={16} className="mr-2 brightness-0 invert animate-spin" />
+                        Sending Invitation...
+                      </>
+                    ) : (
+                      <>
+                        <SemanticBDIIcon semantic="notifications" size={16} className="mr-2 brightness-0 invert" />
+                        Send Invitation
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
