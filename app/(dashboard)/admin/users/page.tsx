@@ -189,9 +189,9 @@ export default function AdminUsersPage() {
     );
   }
 
-  const filteredUsers = bdiUsers && filterRole === 'all' 
+  const filteredUsers = Array.isArray(bdiUsers) && filterRole === 'all' 
     ? bdiUsers 
-    : bdiUsers?.filter((u: any) => u.role === filterRole) || [];
+    : Array.isArray(bdiUsers) ? bdiUsers.filter((u: any) => u.role === filterRole) : [];
 
   return (
     <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto">
@@ -229,7 +229,7 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-2">
-              {bdiUsers?.filter((u: any) => u.isActive).length || 0}
+              {Array.isArray(bdiUsers) ? bdiUsers.filter((u: any) => u.isActive).length : 0}
             </div>
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
@@ -240,7 +240,7 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-blue">
-              {bdiUsers?.filter((u: any) => u.role === 'developer').length || 0}
+              {Array.isArray(bdiUsers) ? bdiUsers.filter((u: any) => u.role === 'developer').length : 0}
             </div>
             <p className="text-xs text-muted-foreground">With API access</p>
           </CardContent>
@@ -251,7 +251,7 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-1">
-              {bdiUsers?.filter((u: any) => u.role === 'super_admin' || u.role === 'admin').length || 0}
+              {Array.isArray(bdiUsers) ? bdiUsers.filter((u: any) => u.role === 'super_admin' || u.role === 'admin').length : 0}
             </div>
             <p className="text-xs text-muted-foreground">Admin privileges</p>
           </CardContent>

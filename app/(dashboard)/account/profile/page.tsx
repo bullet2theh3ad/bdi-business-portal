@@ -96,15 +96,15 @@ export default function ProfilePage() {
         industryCode: user.organization?.industryCode || '',
         companySize: user.organization?.companySize || '',
         
-        // Contact Information
+        // Contact Information (personal + organization-level)
         businessAddress: user.organization?.businessAddress || '',
         billingAddress: user.organization?.billingAddress || '',
-        primaryContactName: user.primaryContactName || '',
-        primaryContactEmail: user.primaryContactEmail || '',
-        primaryContactPhone: user.primaryContactPhone || '',
-        technicalContactName: user.technicalContactName || '',
-        technicalContactEmail: user.technicalContactEmail || '',
-        technicalContactPhone: user.technicalContactPhone || '',
+        primaryContactName: user.primaryContactName || user.organization?.contactEmail?.split('@')[0] || '',
+        primaryContactEmail: user.primaryContactEmail || user.organization?.contactEmail || '',
+        primaryContactPhone: user.primaryContactPhone || user.organization?.contactPhone || '',
+        technicalContactName: user.technicalContactName || user.name || '',
+        technicalContactEmail: user.technicalContactEmail || user.email || '',
+        technicalContactPhone: user.technicalContactPhone || user.phone || '',
         
         // Supply Chain Preferences
         supplierCode: user.supplierCode || '',
@@ -169,9 +169,9 @@ export default function ProfilePage() {
       console.log('User organization:', user.organization);
       console.log('Organization data to save:', organizationData);
 
-      // Only update organization data if user has an organization
-      if (user.organization?.id) {
-        // Call server action using authId
+      // Only admins can update organization data
+      if (['super_admin', 'admin'].includes(user.role) && user.organization?.id) {
+        // Admin users can update both personal and organization data
         const result = await updateCompleteProfile(
           user.authId, 
           user.organization.id,
@@ -188,7 +188,7 @@ export default function ProfilePage() {
           // TODO: Show error toast
         }
       } else {
-        // User has no organization - only update user profile
+        // Members and developers can only update personal profile data
         const userResult = await updateUserProfile(user.authId, profileData);
         
         if (userResult.success) {
@@ -343,8 +343,20 @@ export default function ProfilePage() {
             <CardTitle className="flex items-center">
               <SemanticBDIIcon semantic="collaboration" size={20} className="mr-2" />
               Business Information
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  View Only
+                </Badge>
+              )}
             </CardTitle>
-            <CardDescription>Company details for B2B transactions and compliance</CardDescription>
+            <CardDescription>
+              Company details for B2B transactions and compliance
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  Contact your administrator to modify business information
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -353,7 +365,7 @@ export default function ProfilePage() {
                 id="companyName"
                 value={formData.companyName}
                 onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-                disabled={!isEditing}
+                disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 className="mt-1"
                 placeholder="Boundless Devices Inc"
               />
@@ -364,7 +376,7 @@ export default function ProfilePage() {
                 id="companyLegalName"
                 value={formData.companyLegalName}
                 onChange={(e) => setFormData(prev => ({ ...prev, companyLegalName: e.target.value }))}
-                disabled={!isEditing}
+                disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 className="mt-1"
                 placeholder="If different from company name"
               />
@@ -376,7 +388,7 @@ export default function ProfilePage() {
                   id="dunsNumber"
                   value={formData.dunsNumber}
                   onChange={(e) => setFormData(prev => ({ ...prev, dunsNumber: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="123456789"
                 />
@@ -387,7 +399,7 @@ export default function ProfilePage() {
                   id="taxId"
                   value={formData.taxId}
                   onChange={(e) => setFormData(prev => ({ ...prev, taxId: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="12-3456789"
                 />
@@ -400,7 +412,7 @@ export default function ProfilePage() {
                   id="industryCode"
                   value={formData.industryCode}
                   onChange={(e) => setFormData(prev => ({ ...prev, industryCode: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="334418"
                 />
@@ -411,7 +423,7 @@ export default function ProfilePage() {
                   id="companySize"
                   value={formData.companySize}
                   onChange={(e) => setFormData(prev => ({ ...prev, companySize: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100 text-sm"
                 >
                   <option value="">Select size</option>
@@ -432,21 +444,45 @@ export default function ProfilePage() {
             <CardTitle className="flex items-center">
               <SemanticBDIIcon semantic="connect" size={20} className="mr-2" />
               Contact Information
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  View Only
+                </Badge>
+              )}
             </CardTitle>
-            <CardDescription>Business addresses and key contacts</CardDescription>
+            <CardDescription>
+              Business addresses and key contacts
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  Contact information can only be modified by administrators
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="businessAddress">Business Address</Label>
+              <Label htmlFor="businessAddress">
+                Business Address
+                {!['super_admin', 'admin'].includes(user.role) && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    Admin Only
+                  </Badge>
+                )}
+              </Label>
               <textarea
                 id="businessAddress"
                 value={formData.businessAddress}
                 onChange={(e) => setFormData(prev => ({ ...prev, businessAddress: e.target.value }))}
-                disabled={!isEditing}
+                disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100"
                 rows={3}
                 placeholder="123 Business St, Suite 100&#10;City, State 12345&#10;United States"
               />
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Business address can only be modified by administrators
+                </p>
+              )}
             </div>
             
             <Separator />
@@ -458,20 +494,20 @@ export default function ProfilePage() {
                   placeholder="Contact Name"
                   value={formData.primaryContactName}
                   onChange={(e) => setFormData(prev => ({ ...prev, primaryContactName: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
                 <Input
                   type="email"
                   placeholder="contact@company.com"
                   value={formData.primaryContactEmail}
                   onChange={(e) => setFormData(prev => ({ ...prev, primaryContactEmail: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
                 <Input
                   placeholder="Phone Number"
                   value={formData.primaryContactPhone}
                   onChange={(e) => setFormData(prev => ({ ...prev, primaryContactPhone: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
               </div>
             </div>
@@ -485,20 +521,20 @@ export default function ProfilePage() {
                   placeholder="Technical Contact Name"
                   value={formData.technicalContactName}
                   onChange={(e) => setFormData(prev => ({ ...prev, technicalContactName: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
                 <Input
                   type="email"
                   placeholder="tech@company.com"
                   value={formData.technicalContactEmail}
                   onChange={(e) => setFormData(prev => ({ ...prev, technicalContactEmail: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
                 <Input
                   placeholder="Technical Phone Number"
                   value={formData.technicalContactPhone}
                   onChange={(e) => setFormData(prev => ({ ...prev, technicalContactPhone: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
               </div>
             </div>
@@ -511,8 +547,20 @@ export default function ProfilePage() {
             <CardTitle className="flex items-center">
               <SemanticBDIIcon semantic="supply" size={20} className="mr-2" />
               Supply Chain Preferences
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  View Only
+                </Badge>
+              )}
             </CardTitle>
-            <CardDescription>CPFR and supply chain specific settings</CardDescription>
+            <CardDescription>
+              CPFR and supply chain specific settings
+              {!['super_admin', 'admin'].includes(user.role) && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  Supply chain preferences can only be modified by administrators
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -522,7 +570,7 @@ export default function ProfilePage() {
                   id="supplierCode"
                   value={formData.supplierCode}
                   onChange={(e) => setFormData(prev => ({ ...prev, supplierCode: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="SUPP001"
                 />
@@ -533,7 +581,7 @@ export default function ProfilePage() {
                   id="preferredCommunication"
                   value={formData.preferredCommunication}
                   onChange={(e) => setFormData(prev => ({ ...prev, preferredCommunication: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100 text-sm"
                 >
                   <option value="portal">Portal</option>
@@ -552,7 +600,7 @@ export default function ProfilePage() {
                   type="number"
                   value={formData.standardLeadTime}
                   onChange={(e) => setFormData(prev => ({ ...prev, standardLeadTime: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="30"
                 />
@@ -564,7 +612,7 @@ export default function ProfilePage() {
                   type="number"
                   value={formData.expeditedLeadTime}
                   onChange={(e) => setFormData(prev => ({ ...prev, expeditedLeadTime: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="7"
                 />
@@ -579,7 +627,7 @@ export default function ProfilePage() {
                   type="number"
                   value={formData.minimumOrderQty}
                   onChange={(e) => setFormData(prev => ({ ...prev, minimumOrderQty: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1"
                   placeholder="100"
                 />
@@ -590,7 +638,7 @@ export default function ProfilePage() {
                   id="paymentTerms"
                   value={formData.paymentTerms}
                   onChange={(e) => setFormData(prev => ({ ...prev, paymentTerms: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100 text-sm"
                 >
                   <option value="NET15">NET 15</option>
@@ -610,12 +658,12 @@ export default function ProfilePage() {
                   placeholder="9:00 AM - 5:00 PM"
                   value={formData.businessHours}
                   onChange={(e) => setFormData(prev => ({ ...prev, businessHours: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                 />
                 <select
                   value={formData.timeZone}
                   onChange={(e) => setFormData(prev => ({ ...prev, timeZone: e.target.value }))}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
                   className="h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100 text-sm"
                 >
                   <option value="America/New_York">Eastern Time (EST/EDT)</option>
