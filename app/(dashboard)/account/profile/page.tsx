@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
+import FileUpload from '@/components/FileUpload';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 
@@ -74,7 +75,41 @@ export default function ProfilePage() {
     dataExchangeFormats: ['JSON'],
     frequencyPreference: 'daily',
     businessHours: '9:00 AM - 5:00 PM EST',
-    timeZone: 'America/New_York'
+    timeZone: 'America/New_York',
+    
+    // Banking Information
+    bankName: '',
+    bankAddress: '',
+    routingNumber: '',
+    accountNumber: '',
+    achNumber: '',
+    swiftCode: '',
+    ibanNumber: '',
+    sortCode: '',
+    bsbNumber: '',
+    branchCode: '',
+    correspondentBankName: '',
+    correspondentSwiftCode: '',
+    intermediaryBankName: '',
+    intermediarySwiftCode: '',
+    beneficiaryName: '',
+    beneficiaryAddress: '',
+    wireInstructions: '',
+    checkPayableTo: '',
+    remittanceAddress: '',
+    taxWithholdingInfo: '',
+    currencyPreference: 'USD',
+    
+    // Additional APAC Banking Fields
+    bankCode: '',
+    institutionNumber: '',
+    micr: '',
+    ifscCode: '',
+    upiId: '',
+    chineseUnionPayId: '',
+    bankLicenseNumber: '',
+    centralBankCode: '',
+    nationalIdNumber: ''
   });
 
   // Initialize form data when user data loads
@@ -118,7 +153,41 @@ export default function ProfilePage() {
         dataExchangeFormats: Array.isArray(user.dataExchangeFormats) ? user.dataExchangeFormats : ['JSON'],
         frequencyPreference: user.frequencyPreference || 'daily',
         businessHours: user.businessHours || '9:00 AM - 5:00 PM EST',
-        timeZone: user.timeZone || 'America/New_York'
+        timeZone: user.timeZone || 'America/New_York',
+        
+        // Banking Information
+        bankName: user.organization?.bankName || '',
+        bankAddress: user.organization?.bankAddress || '',
+        routingNumber: user.organization?.routingNumber || '',
+        accountNumber: user.organization?.accountNumber || '',
+        achNumber: user.organization?.achNumber || '',
+        swiftCode: user.organization?.swiftCode || '',
+        ibanNumber: user.organization?.ibanNumber || '',
+        sortCode: user.organization?.sortCode || '',
+        bsbNumber: user.organization?.bsbNumber || '',
+        branchCode: user.organization?.branchCode || '',
+        correspondentBankName: user.organization?.correspondentBankName || '',
+        correspondentSwiftCode: user.organization?.correspondentSwiftCode || '',
+        intermediaryBankName: user.organization?.intermediaryBankName || '',
+        intermediarySwiftCode: user.organization?.intermediarySwiftCode || '',
+        beneficiaryName: user.organization?.beneficiaryName || '',
+        beneficiaryAddress: user.organization?.beneficiaryAddress || '',
+        wireInstructions: user.organization?.wireInstructions || '',
+        checkPayableTo: user.organization?.checkPayableTo || '',
+        remittanceAddress: user.organization?.remittanceAddress || '',
+        taxWithholdingInfo: user.organization?.taxWithholdingInfo || '',
+        currencyPreference: user.organization?.currencyPreference || 'USD',
+        
+        // Additional APAC Banking Fields
+        bankCode: user.organization?.bankCode || '',
+        institutionNumber: user.organization?.institutionNumber || '',
+        micr: user.organization?.micr || '',
+        ifscCode: user.organization?.ifscCode || '',
+        upiId: user.organization?.upiId || '',
+        chineseUnionPayId: user.organization?.chineseUnionPayId || '',
+        bankLicenseNumber: user.organization?.bankLicenseNumber || '',
+        centralBankCode: user.organization?.centralBankCode || '',
+        nationalIdNumber: user.organization?.nationalIdNumber || ''
       });
     }
   }, [user]);
@@ -746,6 +815,617 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          <Separator className="my-6" />
+
+          {/* Business Documents */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="reports" size={16} className="mr-2" />
+              Business Documents
+            </h4>
+            <p className="text-sm text-gray-500 mb-4">
+              Upload business registration, licenses, certifications, and other legal documents
+            </p>
+            {user.organization?.id && (
+              <FileUpload
+                organizationId={user.organization.id}
+                category="business"
+                subcategory="registration"
+                maxFiles={10}
+                maxSizeInMB={50}
+                disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                onUploadComplete={(files) => {
+                  console.log('Business documents uploaded:', files);
+                  // You can add a toast notification here
+                }}
+                onUploadError={(error) => {
+                  console.error('Upload error:', error);
+                  // You can add error handling here
+                }}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Banking Information - Admin Only */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <SemanticBDIIcon semantic="analytics" size={20} className="mr-2" />
+            Banking Information
+            <Badge variant="secondary" className="ml-2 text-xs bg-bdi-blue text-white">
+              Admin Only
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Banking details for wire transfers, ACH, and international payments
+            <span className="block text-xs text-muted-foreground mt-1">
+              Sensitive financial information - Administrator access required
+            </span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Primary Banking Information */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
+              Primary Bank Account
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bankName">Bank Name</Label>
+                <Input
+                  id="bankName"
+                  value={formData.bankName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bankName: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="JPMorgan Chase Bank"
+                />
+              </div>
+              <div>
+                <Label htmlFor="currencyPreference">Primary Currency</Label>
+                <select
+                  id="currencyPreference"
+                  value={formData.currencyPreference}
+                  onChange={(e) => setFormData(prev => ({ ...prev, currencyPreference: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100 text-sm"
+                >
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="CAD">CAD - Canadian Dollar</option>
+                  <option value="JPY">JPY - Japanese Yen</option>
+                  <option value="AUD">AUD - Australian Dollar</option>
+                  <option value="CHF">CHF - Swiss Franc</option>
+                  <option value="CNY">CNY - Chinese Yuan</option>
+                  <option value="TWD">TWD - Taiwan Dollar</option>
+                  <option value="INR">INR - Indian Rupee</option>
+                  <option value="VND">VND - Vietnamese Dong</option>
+                  <option value="MYR">MYR - Malaysian Ringgit</option>
+                  <option value="SGD">SGD - Singapore Dollar</option>
+                  <option value="THB">THB - Thai Baht</option>
+                  <option value="KRW">KRW - South Korean Won</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="bankAddress">Bank Address</Label>
+                <textarea
+                  id="bankAddress"
+                  value={formData.bankAddress}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bankAddress: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100"
+                  rows={2}
+                  placeholder="Bank's full address including city, state/province, postal code, country"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* US Banking Details */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
+              US Banking Details
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="routingNumber">Routing Number (ABA)</Label>
+                <Input
+                  id="routingNumber"
+                  value={formData.routingNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="021000021"
+                />
+              </div>
+              <div>
+                <Label htmlFor="accountNumber">Account Number</Label>
+                <Input
+                  id="accountNumber"
+                  type="password"
+                  value={formData.accountNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="••••••••••"
+                />
+              </div>
+              <div>
+                <Label htmlFor="achNumber">ACH Number</Label>
+                <Input
+                  id="achNumber"
+                  value={formData.achNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, achNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Same as routing or different"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* International Banking Details */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
+              International Banking Details
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="swiftCode">SWIFT/BIC Code</Label>
+                <Input
+                  id="swiftCode"
+                  value={formData.swiftCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, swiftCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="CHASUS33"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ibanNumber">IBAN Number</Label>
+                <Input
+                  id="ibanNumber"
+                  value={formData.ibanNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ibanNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="GB82 WEST 1234 5698 7654 32"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sortCode">Sort Code (UK)</Label>
+                <Input
+                  id="sortCode"
+                  value={formData.sortCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sortCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="12-34-56"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bsbNumber">BSB Number (Australia)</Label>
+                <Input
+                  id="bsbNumber"
+                  value={formData.bsbNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bsbNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="123-456"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="branchCode">Branch Code / Transit Number</Label>
+                <Input
+                  id="branchCode"
+                  value={formData.branchCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, branchCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="For countries requiring branch identification"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* APAC Banking Details */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
+              APAC Banking Details
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="ifscCode">IFSC Code (India)</Label>
+                <Input
+                  id="ifscCode"
+                  value={formData.ifscCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ifscCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="HDFC0000001"
+                />
+              </div>
+              <div>
+                <Label htmlFor="micr">MICR Code (India)</Label>
+                <Input
+                  id="micr"
+                  value={formData.micr}
+                  onChange={(e) => setFormData(prev => ({ ...prev, micr: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="110240001"
+                />
+              </div>
+              <div>
+                <Label htmlFor="upiId">UPI ID (India)</Label>
+                <Input
+                  id="upiId"
+                  value={formData.upiId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, upiId: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="company@paytm"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bankCode">Bank Code (China/Taiwan/Malaysia)</Label>
+                <Input
+                  id="bankCode"
+                  value={formData.bankCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bankCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="012 (ICBC), 700 (Maybank)"
+                />
+              </div>
+              <div>
+                <Label htmlFor="chineseUnionPayId">China UnionPay ID</Label>
+                <Input
+                  id="chineseUnionPayId"
+                  value={formData.chineseUnionPayId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, chineseUnionPayId: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="For UnionPay transactions"
+                />
+              </div>
+              <div>
+                <Label htmlFor="institutionNumber">Institution Number</Label>
+                <Input
+                  id="institutionNumber"
+                  value={formData.institutionNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, institutionNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Financial institution identifier"
+                />
+              </div>
+              <div>
+                <Label htmlFor="centralBankCode">Central Bank Code</Label>
+                <Input
+                  id="centralBankCode"
+                  value={formData.centralBankCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, centralBankCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Central bank registration code"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bankLicenseNumber">Bank License Number</Label>
+                <Input
+                  id="bankLicenseNumber"
+                  value={formData.bankLicenseNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bankLicenseNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Banking license/permit number"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="nationalIdNumber">National ID / Tax Number</Label>
+                <Input
+                  id="nationalIdNumber"
+                  value={formData.nationalIdNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nationalIdNumber: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Company registration number, tax ID, or national identifier"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Correspondent & Intermediary Banks */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="connect" size={16} className="mr-2" />
+              Correspondent & Intermediary Banks
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="correspondentBankName">Correspondent Bank Name</Label>
+                <Input
+                  id="correspondentBankName"
+                  value={formData.correspondentBankName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, correspondentBankName: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="For international wire transfers"
+                />
+              </div>
+              <div>
+                <Label htmlFor="correspondentSwiftCode">Correspondent SWIFT Code</Label>
+                <Input
+                  id="correspondentSwiftCode"
+                  value={formData.correspondentSwiftCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, correspondentSwiftCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="CHASUS33XXX"
+                />
+              </div>
+              <div>
+                <Label htmlFor="intermediaryBankName">Intermediary Bank Name</Label>
+                <Input
+                  id="intermediaryBankName"
+                  value={formData.intermediaryBankName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, intermediaryBankName: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="If required for routing"
+                />
+              </div>
+              <div>
+                <Label htmlFor="intermediarySwiftCode">Intermediary SWIFT Code</Label>
+                <Input
+                  id="intermediarySwiftCode"
+                  value={formData.intermediarySwiftCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, intermediarySwiftCode: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="For complex routing"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Beneficiary Information */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2" />
+              Beneficiary Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="beneficiaryName">Beneficiary Name</Label>
+                <Input
+                  id="beneficiaryName"
+                  value={formData.beneficiaryName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, beneficiaryName: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Boundless Devices Inc"
+                />
+              </div>
+              <div>
+                <Label htmlFor="checkPayableTo">Check Payable To</Label>
+                <Input
+                  id="checkPayableTo"
+                  value={formData.checkPayableTo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, checkPayableTo: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1"
+                  placeholder="Exact name for check payments"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="beneficiaryAddress">Beneficiary Address</Label>
+                <textarea
+                  id="beneficiaryAddress"
+                  value={formData.beneficiaryAddress}
+                  onChange={(e) => setFormData(prev => ({ ...prev, beneficiaryAddress: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100"
+                  rows={2}
+                  placeholder="Complete beneficiary address for wire transfers"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Payment Instructions & Special Requirements */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+              <SemanticBDIIcon semantic="reports" size={16} className="mr-2" />
+              Payment Instructions & Tax Information
+            </h4>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="wireInstructions">Wire Transfer Instructions</Label>
+                <textarea
+                  id="wireInstructions"
+                  value={formData.wireInstructions}
+                  onChange={(e) => setFormData(prev => ({ ...prev, wireInstructions: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100"
+                  rows={3}
+                  placeholder="Special instructions for wire transfers (reference numbers, purpose codes, etc.)"
+                />
+              </div>
+              <div>
+                <Label htmlFor="remittanceAddress">Remittance Address</Label>
+                <textarea
+                  id="remittanceAddress"
+                  value={formData.remittanceAddress}
+                  onChange={(e) => setFormData(prev => ({ ...prev, remittanceAddress: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100"
+                  rows={2}
+                  placeholder="Address for sending checks and remittance advice"
+                />
+              </div>
+              <div>
+                <Label htmlFor="taxWithholdingInfo">Tax Withholding Information</Label>
+                <textarea
+                  id="taxWithholdingInfo"
+                  value={formData.taxWithholdingInfo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, taxWithholdingInfo: e.target.value }))}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 disabled:bg-gray-100"
+                  rows={2}
+                  placeholder="Tax withholding requirements, W-8/W-9 status, exemptions"
+                />
+              </div>
+            </div>
+          </div>
+
+          {['super_admin', 'admin'].includes(user.role) && (
+            <>
+              <Separator className="my-6" />
+              
+              {/* Banking Documents */}
+              <div>
+                <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+                  <SemanticBDIIcon semantic="reports" size={16} className="mr-2" />
+                  Banking Documents
+                </h4>
+                <p className="text-sm text-gray-500 mb-4">
+                  Upload bank statements, wire instructions, ACH forms, and other banking documentation
+                </p>
+                {user.organization?.id && (
+                  <FileUpload
+                    organizationId={user.organization.id}
+                    category="banking"
+                    subcategory="statements"
+                    maxFiles={15}
+                    maxSizeInMB={50}
+                    disabled={!isEditing}
+                    onUploadComplete={(files) => {
+                      console.log('Banking documents uploaded:', files);
+                    }}
+                    onUploadError={(error) => {
+                      console.error('Banking upload error:', error);
+                    }}
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          {!['super_admin', 'admin'].includes(user.role) && (
+            <div className="mt-6 p-4 bg-bdi-blue/5 border border-bdi-blue/20 rounded-lg">
+              <div className="flex items-center">
+                <SemanticBDIIcon semantic="settings" size={16} className="mr-2 text-bdi-blue" />
+                <div>
+                  <p className="text-sm font-medium text-bdi-blue">Restricted Access</p>
+                  <p className="text-xs text-gray-600">Banking information is only accessible to administrators for security and compliance reasons.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legal & Compliance Documents */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <SemanticBDIIcon semantic="reports" size={20} className="mr-2" />
+            Legal & Compliance Documents
+          </CardTitle>
+          <CardDescription>
+            Upload contracts, NDAs, compliance certificates, and other legal documentation
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Contracts & Agreements */}
+            <div>
+              <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+                <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2" />
+                Contracts & Agreements
+              </h4>
+              <p className="text-sm text-gray-500 mb-4">
+                NDAs, service agreements, partnership contracts
+              </p>
+              {user.organization?.id && (
+                <FileUpload
+                  organizationId={user.organization.id}
+                  category="legal"
+                  subcategory="contracts"
+                  maxFiles={20}
+                  maxSizeInMB={50}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  onUploadComplete={(files) => {
+                    console.log('Contract documents uploaded:', files);
+                  }}
+                  onUploadError={(error) => {
+                    console.error('Contract upload error:', error);
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Compliance & Certifications */}
+            <div>
+              <h4 className="font-medium text-gray-700 mb-4 flex items-center">
+                <SemanticBDIIcon semantic="settings" size={16} className="mr-2" />
+                Compliance & Certifications
+              </h4>
+              <p className="text-sm text-gray-500 mb-4">
+                ISO certificates, compliance reports, audit documents
+              </p>
+              {user.organization?.id && (
+                <FileUpload
+                  organizationId={user.organization.id}
+                  category="compliance"
+                  subcategory="certificates"
+                  maxFiles={15}
+                  maxSizeInMB={50}
+                  disabled={!isEditing || !['super_admin', 'admin'].includes(user.role)}
+                  onUploadComplete={(files) => {
+                    console.log('Compliance documents uploaded:', files);
+                  }}
+                  onUploadError={(error) => {
+                    console.error('Compliance upload error:', error);
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          {!['super_admin', 'admin'].includes(user.role) && (
+            <div className="mt-6 p-4 bg-bdi-blue/5 border border-bdi-blue/20 rounded-lg">
+              <div className="flex items-center">
+                <SemanticBDIIcon semantic="settings" size={16} className="mr-2 text-bdi-blue" />
+                <div>
+                  <p className="text-sm font-medium text-bdi-blue">Restricted Access</p>
+                  <p className="text-xs text-gray-600">Legal and compliance documents are only accessible to administrators for security reasons.</p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
