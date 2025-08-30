@@ -3,7 +3,31 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { organizations, users, organizationMembers, organizationConnections } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
+import { z } from 'zod';
+
+// Validation schema for updating connection permissions
+const updateConnectionSchema = z.object({
+  connectionType: z.enum(['messaging', 'file_share', 'full_collaboration']).optional(),
+  status: z.enum(['active', 'pending', 'suspended']).optional(),
+  permissions: z.object({
+    canViewPublicData: z.boolean(),
+    canViewPartnerData: z.boolean(),
+    canViewConfidentialData: z.boolean(),
+    canViewInternalData: z.boolean(),
+    canViewUsers: z.boolean(),
+    canViewTeams: z.boolean(),
+    canCreateCrossOrgTeams: z.boolean(),
+    canChat: z.boolean(),
+    canViewFiles: z.boolean(),
+    canShareFiles: z.boolean(),
+    canDownloadFiles: z.boolean(),
+    canUploadFiles: z.boolean(),
+  }).optional(),
+  allowedDataCategories: z.array(z.enum(['public', 'partner', 'confidential', 'internal'])).optional(),
+  description: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
 
 export async function DELETE(
   request: NextRequest,
@@ -33,96 +57,84 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify super admin permission
-    const [requestingUser] = await db
-      .select()
+    // Get the requesting user's role and organization
+    const [user] = await db
+      .select({
+        id: users.id,
+        authId: users.authId,
+        email: users.email,
+        role: users.role,
+        organizationId: organizationMembers.organizationId,
+      })
       .from(users)
-      .where(eq(users.authId, authUser.id))
+      .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
+      .where(eq(users.email, authUser.email!))
       .limit(1);
 
-    if (!requestingUser || requestingUser.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Forbidden - Super Admin required' }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Verify user belongs to BDI organization
-    const userOrgMembership = await db
-      .select({
-        organization: {
-          code: organizations.code,
-          type: organizations.type,
-        }
-      })
-      .from(organizationMembers)
-      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
-      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
-      .limit(1);
-
-    const isBDIUser = userOrgMembership.some(membership => 
-      membership.organization.code === 'BDI' && membership.organization.type === 'internal'
-    );
-
-    if (!isBDIUser) {
-      return NextResponse.json({ error: 'Forbidden - BDI Super Admin required' }, { status: 403 });
-    }
-
-    const { connectionId } = await params;
-    console.log('Deleting organization connection:', connectionId);
-
-    // Get connection details for logging
-    const [connection] = await db
-      .select({
-        id: organizationConnections.id,
-        organizationAId: organizationConnections.organizationAId,
-        organizationBId: organizationConnections.organizationBId,
-        connectionType: organizationConnections.connectionType,
-        description: organizationConnections.description,
-        orgAName: organizations.name,
-        orgACode: organizations.code,
-      })
-      .from(organizationConnections)
-      .leftJoin(organizations, eq(organizations.id, organizationConnections.organizationAId))
-      .where(eq(organizationConnections.id, connectionId))
-      .limit(1);
-
-    if (!connection) {
-      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
-    }
-
-    console.log('Found connection to delete:', connection);
-
-    // Get organization B details
-    const [orgB] = await db
-      .select({
-        name: organizations.name,
-        code: organizations.code,
-      })
+    // Security check: Only BDI Super Admin can delete connections
+    const [userOrg] = await db
+      .select({ code: organizations.code })
       .from(organizations)
-      .where(eq(organizations.id, connection.organizationBId))
+      .where(eq(organizations.id, user.organizationId!))
       .limit(1);
 
-    // Delete the connection
-    const deletedConnection = await db
-      .delete(organizationConnections)
-      .where(eq(organizationConnections.id, connectionId))
-      .returning();
+    if (user.role !== 'super_admin' || userOrg?.code !== 'BDI') {
+      return NextResponse.json({ error: 'Access denied. BDI Super Admin required.' }, { status: 403 });
+    }
 
-    console.log('Deleted connection:', deletedConnection);
+    const { connectionId } = params;
 
-    return NextResponse.json({
-      success: true,
-      message: `Connection between "${connection.orgAName}" and "${orgB?.name}" has been removed.`,
-      deletedConnection: {
-        id: connection.id,
-        organizationA: { name: connection.orgAName, code: connection.orgACode },
-        organizationB: { name: orgB?.name, code: orgB?.code },
-        connectionType: connection.connectionType
+    // Check if this is a bilateral connection ID (contains '|') or single directional connection
+    if (connectionId.includes('|')) {
+      // Bilateral disconnect - delete both directions
+      const [orgAId, orgBId] = connectionId.split('|');
+      
+      // Delete both directional connections
+      const deletedConnections = await db
+        .delete(organizationConnections)
+        .where(
+          or(
+            and(
+              eq(organizationConnections.sourceOrganizationId, orgAId),
+              eq(organizationConnections.targetOrganizationId, orgBId)
+            ),
+            and(
+              eq(organizationConnections.sourceOrganizationId, orgBId),
+              eq(organizationConnections.targetOrganizationId, orgAId)
+            )
+          )
+        )
+        .returning();
+
+      return NextResponse.json({
+        message: `Bilateral connection disconnected successfully`,
+        deletedConnections: deletedConnections.length,
+      });
+    } else {
+      // Single directional connection delete
+      const [deletedConnection] = await db
+        .delete(organizationConnections)
+        .where(eq(organizationConnections.id, connectionId))
+        .returning();
+
+      if (!deletedConnection) {
+        return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
       }
-    });
+
+      return NextResponse.json({
+        message: 'Directional connection deleted successfully',
+        deletedConnection,
+      });
+    }
 
   } catch (error) {
-    console.error('Error deleting organization connection:', error);
+    console.error('Error deleting connection:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to delete connection' },
       { status: 500 }
     );
   }
@@ -156,47 +168,78 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify super admin permission
-    const [requestingUser] = await db
-      .select()
+    // Get the requesting user's role and organization
+    const [user] = await db
+      .select({
+        id: users.id,
+        authId: users.authId,
+        email: users.email,
+        role: users.role,
+        organizationId: organizationMembers.organizationId,
+      })
       .from(users)
-      .where(eq(users.authId, authUser.id))
+      .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
+      .where(eq(users.email, authUser.email!))
       .limit(1);
 
-    if (!requestingUser || requestingUser.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Forbidden - Super Admin required' }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { connectionId } = await params;
-    const body = await request.json();
-    
-    console.log('Updating connection:', connectionId, body);
+    // Security check: Only BDI Super Admin can update connections
+    const [userOrg] = await db
+      .select({ code: organizations.code })
+      .from(organizations)
+      .where(eq(organizations.id, user.organizationId!))
+      .limit(1);
 
-    // Update the connection
+    if (user.role !== 'super_admin' || userOrg?.code !== 'BDI') {
+      return NextResponse.json({ error: 'Access denied. BDI Super Admin required.' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const validatedData = updateConnectionSchema.parse(body);
+    const { connectionId } = params;
+
+    // Check if this is a bilateral update or single directional update
+    if (connectionId.includes('|')) {
+      return NextResponse.json(
+        { error: 'Bilateral updates not supported. Update individual directional connections.' },
+        { status: 400 }
+      );
+    }
+
+    // Update single directional connection
     const [updatedConnection] = await db
       .update(organizationConnections)
       .set({
-        connectionType: body.connectionType,
-        permissions: body.permissions,
-        description: body.description,
-        status: body.status,
+        ...validatedData,
         updatedAt: new Date(),
       })
       .where(eq(organizationConnections.id, connectionId))
       .returning();
 
-    console.log('Updated connection:', updatedConnection);
+    if (!updatedConnection) {
+      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
+    }
 
     return NextResponse.json({
-      success: true,
+      message: 'Connection updated successfully',
       connection: updatedConnection,
-      message: 'Connection updated successfully'
     });
 
   } catch (error) {
-    console.error('Error updating organization connection:', error);
+    console.error('Error updating connection:', error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.errors },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to update connection' },
       { status: 500 }
     );
   }

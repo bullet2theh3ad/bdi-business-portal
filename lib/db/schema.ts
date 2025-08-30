@@ -10,8 +10,12 @@ import {
   date,
   uuid,
   jsonb,
+  pgEnum,
+  check,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { ne } from 'drizzle-orm';
 
 // ===== CORE USER & ORGANIZATION STRUCTURE =====
 
@@ -444,19 +448,43 @@ export const integrationSettings = pgTable('integration_settings', {
   createdBy: uuid('created_by').references(() => users.id),
 });
 
-// Organization Connections (for cross-org collaboration controlled by BDI Super Admin)
+// Data Category Enum for granular permissions
+export const dataCategoryEnum = pgEnum('data_category', [
+  'public',        // Company info, contact details
+  'partner',       // Inventory levels, shipping schedules  
+  'confidential',  // Financial data, contracts
+  'internal'       // Strategic plans, employee data
+]);
+
+// Organization Connections (ASYMMETRIC - directional with granular permissions)
 export const organizationConnections = pgTable('organization_connections', {
   id: uuid('id').primaryKey().defaultRandom(),
-  organizationAId: uuid('organization_a_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  organizationBId: uuid('organization_b_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Directional: source → target (source can access target's data based on permissions)
+  sourceOrganizationId: uuid('source_organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  targetOrganizationId: uuid('target_organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  
   connectionType: varchar('connection_type', { length: 50 }).notNull().default('messaging'), // 'messaging', 'file_share', 'full_collaboration'
   status: varchar('status', { length: 20 }).notNull().default('active'), // 'active', 'pending', 'suspended'
-  permissions: jsonb('permissions').default({}), // JSON object defining what each org can access
+  
+  // Granular permissions - what SOURCE can see/do with TARGET's data
+  permissions: jsonb('permissions').notNull().default('{}'),
+  
+  // Data category access control array  
+  allowedDataCategories: dataCategoryEnum('allowed_data_categories').array().default(['public']),
+  
+  // Connection metadata
+  description: text('description'),
+  tags: varchar('tags', { length: 50 }).array().default([]), // e.g., ['supply-chain', 'logistics']
+  
+  // Audit trail
   createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }), // BDI Super Admin
   approvedBy: uuid('approved_by').references(() => users.authId), // Optional approval workflow
-  description: text('description'), // Purpose of the connection
+  
+  // Time constraints
   startDate: date('start_date').defaultNow(),
   endDate: date('end_date'), // Optional expiration
+  
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -523,6 +551,8 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;
 export type NewIntegrationSetting = typeof integrationSettings.$inferInsert;
+export type OrganizationConnection = typeof organizationConnections.$inferSelect;
+export type NewOrganizationConnection = typeof organizationConnections.$inferInsert;
 
 // Complex types for UI
 export type OrganizationWithMembers = Organization & {
