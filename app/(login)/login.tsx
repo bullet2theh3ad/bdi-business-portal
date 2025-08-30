@@ -22,6 +22,19 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
 
   // Check if this is an invitation signup
   const isInvitationSignup = mode === 'signup' && token;
+  
+  // Parse invitation token to get organization name
+  let invitationOrgName = 'Boundless Devices Inc'; // fallback
+  if (token) {
+    try {
+      const tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
+      // We need to decode the organization name from the token
+      // For now, we'll need to fetch it from the API or include it in the token
+      invitationOrgName = tokenData.organizationName || 'Loading...';
+    } catch (error) {
+      console.error('Error parsing invitation token:', error);
+    }
+  }
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50">
@@ -150,7 +163,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                         id="organizationName"
                         name="organizationName"
                         type="text"
-                        value="Boundless Devices Inc"
+                        value={invitationOrgName}
                         disabled
                         className="appearance-none relative block w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-full focus:outline-none sm:text-sm"
                       />

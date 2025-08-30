@@ -22,7 +22,7 @@ const inviteOrganizationSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -57,9 +57,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('Received invitation request body:', body);
+    
     const validatedData = inviteOrganizationSchema.parse(body);
-
-    console.log('Creating organization invitation:', validatedData);
+    console.log('Validated invitation data:', validatedData);
 
     // Check if organization code already exists
     const existingOrg = await db
@@ -90,6 +91,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the organization
+    console.log('Creating organization with data:', {
+      name: validatedData.companyName,
+      code: validatedData.organizationCode,
+      type: validatedData.organizationType,
+      isActive: false,
+    });
+
     const [newOrganization] = await db
       .insert(organizations)
       .values({
@@ -105,6 +113,13 @@ export async function POST(request: NextRequest) {
     console.log('Created organization:', newOrganization);
 
     // Create the admin user (pending state)
+    console.log('Creating admin user with data:', {
+      name: validatedData.adminName,
+      email: validatedData.adminEmail,
+      role: 'admin',
+      isActive: false,
+    });
+
     const [newAdminUser] = await db
       .insert(users)
       .values({
@@ -112,6 +127,7 @@ export async function POST(request: NextRequest) {
         email: validatedData.adminEmail,
         passwordHash: 'invitation_pending', // Special marker for pending invitations
         role: 'admin',
+        authId: crypto.randomUUID(), // Generate a temporary UUID for now
         isActive: false, // Will be activated when they complete signup
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -121,6 +137,12 @@ export async function POST(request: NextRequest) {
     console.log('Created admin user:', newAdminUser);
 
     // Create organization membership
+    console.log('Creating organization membership with data:', {
+      organizationUuid: newOrganization.id,
+      userAuthId: newAdminUser.authId,
+      role: 'admin',
+    });
+
     await db
       .insert(organizationMembers)
       .values({
@@ -136,6 +158,7 @@ export async function POST(request: NextRequest) {
     const invitationToken = Buffer.from(
       JSON.stringify({
         organizationId: newOrganization.id,
+        organizationName: validatedData.companyName,
         adminEmail: validatedData.adminEmail,
         capabilities: validatedData.capabilities,
         timestamp: Date.now()
@@ -259,6 +282,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating organization invitation:', error);
     
     if (error instanceof z.ZodError) {
+      console.error('Validation errors:', error.errors);
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
         { status: 400 }
@@ -266,7 +290,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

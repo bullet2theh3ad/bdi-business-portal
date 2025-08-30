@@ -67,7 +67,7 @@ export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey().defaultRandom(), // UUID primary key
   name: varchar('name', { length: 200 }).notNull(),
   legalName: varchar('legal_name', { length: 200 }),
-  type: varchar('type', { length: 50 }).notNull(), // 'internal', 'oem_partner', 'supplier', '3pl'
+  type: varchar('type', { length: 50 }).notNull(), // 'internal', 'contractor', 'shipping_logistics', 'oem_partner', 'rd_partner', 'distributor', 'retail_partner', 'threpl_partner'
   code: varchar('code', { length: 20 }).unique(), // Short code like 'BDI', 'ACME'
   description: text('description'),
   

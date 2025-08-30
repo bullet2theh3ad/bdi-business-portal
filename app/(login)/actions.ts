@@ -140,13 +140,26 @@ export async function signUp(prevState: any, formData: FormData) {
 
     // Check if this is an invitation-based signup using token
     if (token) {
-      // Find the pending user by reset token (invitation token)
+      // Parse the invitation token to get organization info
+      let tokenData;
+      try {
+        tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
+        console.log('Parsed invitation token:', tokenData);
+      } catch (error) {
+        console.error('Invalid invitation token:', error);
+        return {
+          error: 'Invalid or expired invitation token.',
+          email,
+          password
+        };
+      }
+
+      // Find the pending user by email and organization
       const [pendingUser] = await db
         .select()
         .from(users)
         .where(
           and(
-            eq(users.resetToken, token),
             eq(users.email, email),
             eq(users.passwordHash, 'invitation_pending'),
             eq(users.isActive, false)

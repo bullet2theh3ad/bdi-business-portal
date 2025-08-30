@@ -3,11 +3,11 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { organizations, users, organizationMembers } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,12 +45,15 @@ export async function GET(request: NextRequest) {
     const externalOrganizations = await db
       .select()
       .from(organizations)
-      .where(and(
-        // Exclude BDI organization
-        // You may need to adjust this condition based on your BDI org identifier
-      ));
+      .where(
+        // Exclude BDI organization - anything that's not 'internal' type
+        ne(organizations.type, 'internal')
+      );
 
-    return NextResponse.json(externalOrganizations);
+    console.log('External organizations found:', externalOrganizations);
+
+    // Ensure we always return an array
+    return NextResponse.json(Array.isArray(externalOrganizations) ? externalOrganizations : []);
 
   } catch (error) {
     console.error('Error fetching organizations:', error);

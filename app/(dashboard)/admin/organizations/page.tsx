@@ -42,6 +42,7 @@ export default function AdminOrganizationsPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [isInviting, setIsInviting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
@@ -106,6 +107,68 @@ export default function AdminOrganizationsPage() {
     }));
   };
 
+  const handleDeleteOrganization = async (orgId: string, orgName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete "${orgName}"? This will remove the organization, all its users, and cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete organization');
+      }
+
+      const result = await response.json();
+      console.log('Organization deleted:', result);
+      
+      // Close modal and refresh organizations list
+      setSelectedOrg(null);
+      mutateOrganizations();
+      
+      alert(`Organization "${orgName}" has been permanently deleted.`);
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      alert('Failed to delete organization. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRevokeInvitation = async (orgId: string, orgName: string) => {
+    if (!confirm(`Are you sure you want to revoke the invitation for "${orgName}"? This will delete the pending organization and admin user.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}/revoke`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to revoke invitation');
+      }
+
+      const result = await response.json();
+      console.log('Invitation revoked:', result);
+      
+      // Close modal and refresh organizations list
+      setSelectedOrg(null);
+      mutateOrganizations();
+      
+      alert(`Invitation for "${orgName}" has been revoked and organization deleted.`);
+    } catch (error) {
+      console.error('Error revoking invitation:', error);
+      alert('Failed to revoke invitation. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (!user || user.role !== 'super_admin') {
     return (
       <div className="flex-1 p-4 lg:p-8">
@@ -150,7 +213,7 @@ export default function AdminOrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-1">
-              {organizations ? organizations.length : '...'}
+              {Array.isArray(organizations) ? organizations.length : '...'}
             </div>
             <p className="text-xs text-muted-foreground">External partners</p>
           </CardContent>
@@ -161,7 +224,7 @@ export default function AdminOrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-2">
-              {organizations ? organizations.filter((org: any) => org.isActive).length : '...'}
+              {Array.isArray(organizations) ? organizations.filter((org: any) => org.isActive).length : '...'}
             </div>
             <p className="text-xs text-muted-foreground">Currently operational</p>
           </CardContent>
@@ -172,7 +235,7 @@ export default function AdminOrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-blue">
-              {organizations ? organizations.filter((org: any) => !org.isActive).length : '...'}
+              {Array.isArray(organizations) ? organizations.filter((org: any) => !org.isActive).length : '...'}
             </div>
             <p className="text-xs text-muted-foreground">Awaiting setup</p>
           </CardContent>
@@ -209,7 +272,7 @@ export default function AdminOrganizationsPage() {
                 <p className="text-muted-foreground">Loading organizations...</p>
               </div>
             </div>
-          ) : organizations.length === 0 ? (
+          ) : !Array.isArray(organizations) || organizations.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <SemanticBDIIcon semantic="collaboration" size={48} className="mx-auto mb-4 text-muted-foreground" />
@@ -265,15 +328,29 @@ export default function AdminOrganizationsPage() {
                         <span className="sm:hidden">Manage Organization</span>
                         <span className="hidden sm:inline">Manage</span>
                       </Button>
-                      {!org.isActive && (
+                      {!org.isActive ? (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="w-full sm:w-auto justify-center sm:justify-start bg-bdi-blue/10 hover:bg-bdi-blue/20"
+                          className="w-full sm:w-auto justify-center sm:justify-start bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                          onClick={() => handleRevokeInvitation(org.id, org.name)}
+                          disabled={isDeleting}
                         >
-                          <SemanticBDIIcon semantic="notifications" size={14} className="mr-2 sm:mr-1" />
-                          <span className="sm:hidden">Resend Invitation</span>
-                          <span className="hidden sm:inline">Resend Invite</span>
+                          <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
+                          <span className="sm:hidden">Revoke Invitation</span>
+                          <span className="hidden sm:inline">Revoke</span>
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto justify-center sm:justify-start bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                          onClick={() => handleDeleteOrganization(org.id, org.name)}
+                          disabled={isDeleting}
+                        >
+                          <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
+                          <span className="sm:hidden">Delete Organization</span>
+                          <span className="hidden sm:inline">Delete</span>
                         </Button>
                       )}
                     </div>
@@ -336,102 +413,135 @@ export default function AdminOrganizationsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Company Name</Label>
-                      <Input value={selectedOrg.name} disabled className="mt-1" />
+                      <Input value={selectedOrg.name || ''} disabled className="mt-1" />
                     </div>
                     <div>
                       <Label>Legal Business Name</Label>
-                      <Input value={selectedOrg.legalName} disabled className="mt-1" />
+                      <Input value={selectedOrg.legalName || ''} disabled className="mt-1" />
                     </div>
                     <div>
                       <Label>DUNS Number</Label>
-                      <Input value={selectedOrg.dunsNumber} disabled className="mt-1" />
+                      <Input value={selectedOrg.dunsNumber || ''} disabled className="mt-1" />
                     </div>
                     <div>
                       <Label>Tax ID / EIN</Label>
-                      <Input value={selectedOrg.taxId} disabled className="mt-1" />
+                      <Input value={selectedOrg.taxId || ''} disabled className="mt-1" />
                     </div>
                   </div>
                 </div>
 
-                {/* User Management */}
+                {/* Organization Status */}
                 <Separator />
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">User Management</h3>
-                    <Button size="sm" className="bg-bdi-green-1 hover:bg-bdi-green-2">
-                      <SemanticBDIIcon semantic="notifications" size={14} className="mr-1 brightness-0 invert" />
-                      Invite User
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    {selectedOrg.adminUsers.map((admin: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-bdi-green-1/10 rounded-full flex items-center justify-center">
-                            <SemanticBDIIcon semantic="profile" size={16} className="text-bdi-green-1" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{admin.name}</div>
-                            <div className="text-sm text-gray-500">{admin.email}</div>
-                          </div>
+                  <h3 className="text-lg font-semibold mb-4">Organization Status</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">Status</div>
+                          <div className="text-sm text-gray-500">Current organization state</div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={admin.role === 'admin' ? 'default' : 'secondary'}>
-                            {admin.role.toUpperCase()}
-                          </Badge>
-                          <Badge variant={admin.status === 'active' ? 'default' : 'secondary'} 
-                                 className={admin.status === 'active' ? 'bg-bdi-green-1 text-white' : ''}>
-                            {admin.status.toUpperCase()}
-                          </Badge>
-                          <Button variant="outline" size="sm">
-                            <SemanticBDIIcon semantic="settings" size={12} className="mr-1" />
-                            Manage
-                          </Button>
+                        <Badge variant={selectedOrg.isActive ? 'default' : 'secondary'} 
+                               className={selectedOrg.isActive ? 'bg-bdi-green-1 text-white' : ''}>
+                          {selectedOrg.isActive ? 'ACTIVE' : 'PENDING'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">Organization Type</div>
+                          <div className="text-sm text-gray-500">Business relationship</div>
+                        </div>
+                        <Badge variant="outline" className="bg-bdi-blue text-white">
+                          {selectedOrg.type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">Created</div>
+                          <div className="text-sm text-gray-500">Organization setup date</div>
+                        </div>
+                        <div className="text-sm font-medium">
+                          {new Date(selectedOrg.createdAt).toLocaleDateString()}
                         </div>
                       </div>
-                    ))}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">Organization Code</div>
+                          <div className="text-sm text-gray-500">Unique identifier</div>
+                        </div>
+                        <div className="text-sm font-medium font-mono">
+                          {selectedOrg.code}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* API & Integration Management */}
+                {/* Quick Actions */}
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">API & Integration Management</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">API Access</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{selectedOrg.apiKeys} Active Keys</div>
-                            <div className="text-sm text-gray-500">Developer access enabled</div>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            <SemanticBDIIcon semantic="connect" size={12} className="mr-1" />
-                            Manage Keys
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">Data Access</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">CPFR Portal</div>
-                            <div className="text-sm text-gray-500">Full access granted</div>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            <SemanticBDIIcon semantic="analytics" size={12} className="mr-1" />
-                            View Access
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10">
+                      <SemanticBDIIcon semantic="users" size={20} />
+                      <span className="text-sm">Manage Users</span>
+                    </Button>
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10">
+                      <SemanticBDIIcon semantic="connect" size={20} />
+                      <span className="text-sm">API Settings</span>
+                    </Button>
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10">
+                      <SemanticBDIIcon semantic="analytics" size={20} />
+                      <span className="text-sm">View Analytics</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Danger Zone */}
+                <Separator />
+                <div className="border border-red-200 rounded-lg p-4 bg-red-50/50">
+                  <h3 className="text-lg font-semibold mb-4 text-red-700 flex items-center">
+                    <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
+                    Danger Zone
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                      <div>
+                        <h4 className="font-medium text-red-700">
+                          {selectedOrg.isActive ? 'Delete Organization' : 'Revoke Invitation'}
+                        </h4>
+                        <p className="text-sm text-red-600">
+                          {selectedOrg.isActive 
+                            ? 'Permanently delete this organization and all associated data. This cannot be undone.'
+                            : 'Cancel the invitation and remove the pending organization. This cannot be undone.'
+                          }
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
+                        onClick={() => selectedOrg.isActive 
+                          ? handleDeleteOrganization(selectedOrg.id, selectedOrg.name)
+                          : handleRevokeInvitation(selectedOrg.id, selectedOrg.name)
+                        }
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <SemanticBDIIcon semantic="sync" size={14} className="mr-1 animate-spin" />
+                            {selectedOrg.isActive ? 'Deleting...' : 'Revoking...'}
+                          </>
+                        ) : (
+                          <>
+                            <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                            {selectedOrg.isActive ? 'Delete Organization' : 'Revoke Invitation'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
