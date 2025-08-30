@@ -11,12 +11,29 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
+
+// Extended user type that includes organization data
+interface UserWithOrganization extends User {
+  organization?: {
+    id: string;
+    name: string;
+    legalName?: string;
+    code: string;
+    type?: string;
+    dunsNumber?: string;
+    taxId?: string;
+    industryCode?: string;
+    companySize?: string;
+    businessAddress?: string;
+    billingAddress?: string;
+  } | null;
+}
 import { updateCompleteProfile, updateUserProfile } from '../actions';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ProfilePage() {
-  const { data: user, mutate } = useSWR<User>('/api/user', fetcher);
+  const { data: user, mutate } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({

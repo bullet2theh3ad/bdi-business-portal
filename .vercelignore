@@ -1,0 +1,32 @@
+# Development files
+*.log
+.env.local
+.env.development.local
+
+# Legacy directory (if you don't want it deployed)
+legacy_directory/
+
+# Database files
+*.sqlite
+*.db
+
+# IDE files
+.vscode/
+.cursor/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+**/*.test.*
+**/*.spec.*
+__tests__/
+
+# Build artifacts that don't need to be in source
+.next/
+node_modules/

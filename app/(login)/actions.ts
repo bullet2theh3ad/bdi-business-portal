@@ -254,3 +254,64 @@ export async function revokeInvitation(prevState: any, formData: FormData) {
     return { error: 'Failed to revoke invitation' };
   }
 }
+
+export async function requestPasswordReset(prevState: any, formData: FormData) {
+  try {
+    const email = formData.get('email') as string;
+    
+    if (!email) {
+      return { error: 'Email is required' };
+    }
+
+    const supabase = await createSupabaseServerClient();
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password`,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { success: 'Password reset email sent' };
+  } catch (error) {
+    console.error('Error requesting password reset:', error);
+    return { error: 'Failed to send password reset email' };
+  }
+}
+
+export async function resetPassword(prevState: any, formData: FormData) {
+  try {
+    const password = formData.get('password') as string;
+    
+    if (!password || password.length < 8) {
+      return { error: 'Password must be at least 8 characters' };
+    }
+
+    const supabase = await createSupabaseServerClient();
+    
+    const { error } = await supabase.auth.updateUser({
+      password: password
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    redirect('/dashboard');
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    return { error: 'Failed to reset password' };
+  }
+}
+
+export async function verifyResetToken(token: string) {
+  try {
+    // This function would verify the reset token
+    // For now, return true as Supabase handles token verification
+    return { valid: true };
+  } catch (error) {
+    console.error('Error verifying reset token:', error);
+    return { valid: false, error: 'Invalid or expired token' };
+  }
+}
