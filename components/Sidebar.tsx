@@ -61,6 +61,13 @@ const navigationItems: NavItem[] = [
     icon: 'inventory_analytics',
     children: [
       {
+        title: 'SKUs',
+        href: '/admin/skus',
+        icon: 'inventory_items',
+        requiresRole: ['super_admin', 'admin'],
+        requiresBDI: true,
+      },
+      {
         title: 'Items',
         href: '/inventory/items',
         icon: 'inventory_items',

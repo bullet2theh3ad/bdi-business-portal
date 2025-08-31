@@ -419,6 +419,45 @@ export const supplySignalsRelations = relations(supplySignals, ({ one }) => ({
 
 // ===== API KEYS & INTEGRATION TABLES =====
 
+// Product SKUs for CPFR system
+export const productSkus = pgTable('product_skus', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Basic SKU Information
+  sku: varchar('sku', { length: 100 }).notNull().unique(),
+  name: varchar('name', { length: 200 }).notNull(),
+  description: text('description'),
+  category: varchar('category', { length: 100 }), // 'device', 'accessory', 'component', etc.
+  subcategory: varchar('subcategory', { length: 100 }),
+  
+  // Product Specifications
+  model: varchar('model', { length: 100 }),
+  version: varchar('version', { length: 50 }),
+  dimensions: varchar('dimensions', { length: 100 }), // "L x W x H"
+  weight: numeric('weight', { precision: 10, scale: 3 }), // in grams
+  color: varchar('color', { length: 50 }),
+  
+  // Business Information
+  unitCost: numeric('unit_cost', { precision: 10, scale: 2 }), // Manufacturing cost
+  msrp: numeric('msrp', { precision: 10, scale: 2 }), // Manufacturer's Suggested Retail Price
+  moq: integer('moq').default(1), // Minimum Order Quantity
+  leadTimeDays: integer('lead_time_days').default(30),
+  
+  // Inventory & Status
+  isActive: boolean('is_active').default(true),
+  isDiscontinued: boolean('is_discontinued').default(false),
+  replacementSku: varchar('replacement_sku', { length: 100 }), // If discontinued
+  
+  // Metadata
+  tags: varchar('tags', { length: 255 }).array(), // Searchable tags
+  specifications: jsonb('specifications'), // Flexible spec storage
+  
+  // Audit
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdBy: uuid('created_by').notNull().references(() => users.authId),
+});
+
 // API Keys for developer users
 export const apiKeys = pgTable('api_keys', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -547,6 +586,8 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export type NewActivityLog = typeof activityLogs.$inferInsert;
 export type Invitation = typeof invitations.$inferSelect;
 export type NewInvitation = typeof invitations.$inferInsert;
+export type ProductSku = typeof productSkus.$inferSelect;
+export type NewProductSku = typeof productSkus.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;
