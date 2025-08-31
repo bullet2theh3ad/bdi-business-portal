@@ -28,6 +28,8 @@ interface PurchaseOrder {
   requestedDeliveryWeek: string;
   status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
   terms: string; // NET30, NET60, etc.
+  incoterms: string; // FOB, CIF, DDP, etc.
+  incotermsLocation: string; // Shanghai Port, Los Angeles, etc.
   totalValue: number;
   notes?: string;
   createdBy: string;
@@ -45,6 +47,7 @@ export default function PurchaseOrdersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [customTerms, setCustomTerms] = useState(false);
 
   // Access control - Sales team and admins can manage POs
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -73,6 +76,8 @@ export default function PurchaseOrdersPage() {
           orderDate: formData.get('orderDate'),
           requestedDeliveryWeek: formData.get('requestedDeliveryWeek'),
           terms: formData.get('terms'),
+          incoterms: formData.get('incoterms'),
+          incotermsLocation: formData.get('incotermsLocation'),
           totalValue: parseFloat(formData.get('totalValue') as string),
           notes: formData.get('notes'),
         }),
@@ -297,21 +302,105 @@ export default function PurchaseOrdersPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="terms">Payment Terms *</Label>
+                  {!customTerms ? (
+                    <div>
+                      <select
+                        id="terms"
+                        name="terms"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                        onChange={(e) => {
+                          if (e.target.value === 'CUSTOM') {
+                            setCustomTerms(true);
+                          }
+                        }}
+                      >
+                        <option value="">Select Terms</option>
+                        <option value="NET15">NET 15 - Payment due in 15 days</option>
+                        <option value="NET30">NET 30 - Payment due in 30 days</option>
+                        <option value="NET60">NET 60 - Payment due in 60 days</option>
+                        <option value="NET90">NET 90 - Payment due in 90 days</option>
+                        <option value="COD">COD - Cash on Delivery</option>
+                        <option value="PREPAID">Prepaid - Payment in advance</option>
+                        <option value="CUSTOM">📝 Enter Custom Terms</option>
+                      </select>
+                      <div className="mt-1 text-xs text-gray-600">
+                        Standard payment terms or select custom
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="terms"
+                          name="terms"
+                          placeholder="e.g., NET45, 2/10 Net 30, Letter of Credit"
+                          required
+                          className="flex-1 mt-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setCustomTerms(false)}
+                          className="mt-1"
+                        >
+                          Presets
+                        </Button>
+                      </div>
+                      <div className="mt-1 text-xs text-blue-600">
+                        💡 Enter custom payment terms (e.g., "2/10 Net 30" for 2% discount if paid in 10 days)
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="incoterms">IncoTerms 2020 *</Label>
                   <select
-                    id="terms"
-                    name="terms"
+                    id="incoterms"
+                    name="incoterms"
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
                   >
-                    <option value="">Select Terms</option>
-                    <option value="NET15">NET 15 - Payment due in 15 days</option>
-                    <option value="NET30">NET 30 - Payment due in 30 days</option>
-                    <option value="NET60">NET 60 - Payment due in 60 days</option>
-                    <option value="NET90">NET 90 - Payment due in 90 days</option>
-                    <option value="COD">COD - Cash on Delivery</option>
-                    <option value="PREPAID">Prepaid - Payment in advance</option>
+                    <option value="">Select IncoTerms</option>
+                    <optgroup label="🌍 Any Mode of Transport">
+                      <option value="EXW">EXW - Ex Works (buyer arranges all transport)</option>
+                      <option value="FCA">FCA - Free Carrier (seller to carrier)</option>
+                      <option value="CPT">CPT - Carriage Paid To (seller pays freight)</option>
+                      <option value="CIP">CIP - Carriage & Insurance Paid To (seller pays freight + insurance)</option>
+                      <option value="DAP">DAP - Delivered at Place (seller delivers, buyer handles duties)</option>
+                      <option value="DPU">DPU - Delivered at Place Unloaded (seller delivers & unloads)</option>
+                      <option value="DDP">DDP - Delivered Duty Paid (seller handles everything)</option>
+                    </optgroup>
+                    <optgroup label="🚢 Sea & Inland Waterway Only">
+                      <option value="FAS">FAS - Free Alongside Ship (seller delivers to port)</option>
+                      <option value="FOB">FOB - Free on Board (seller loads vessel)</option>
+                      <option value="CFR">CFR - Cost and Freight (seller pays shipping)</option>
+                      <option value="CIF">CIF - Cost, Insurance & Freight (seller pays shipping + insurance)</option>
+                    </optgroup>
                   </select>
+                  <div className="mt-1 text-xs text-blue-600">
+                    💡 IncoTerms 2020 - International trade delivery terms
+                  </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="incotermsLocation">IncoTerms Location *</Label>
+                  <Input
+                    id="incotermsLocation"
+                    name="incotermsLocation"
+                    placeholder="e.g., Shanghai Port, Los Angeles, Factory Gate"
+                    required
+                    className="mt-1"
+                  />
+                  <div className="mt-1 text-xs text-gray-600">
+                    Named place where IncoTerms apply (e.g., "FOB Shanghai")
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
                 <div>
                   <Label htmlFor="totalValue">Total Value ($) *</Label>
                   <Input

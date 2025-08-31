@@ -42,6 +42,7 @@ interface SalesForecast {
   deliveryWeek: string; // ISO week format: 2025-W12
   quantity: number;
   confidence: 'low' | 'medium' | 'high';
+  shippingPreference: string; // AIR_EXPRESS, SEA_STANDARD, etc.
   notes?: string;
   createdBy: string;
   createdAt: string;
@@ -88,6 +89,7 @@ export default function SalesForecastsPage() {
           deliveryWeek: formData.get('deliveryWeek'),
           quantity: parseInt(formData.get('quantity') as string),
           confidence: formData.get('confidence'),
+          shippingPreference: formData.get('shippingPreference'),
           notes: formData.get('notes'),
         }),
       });
@@ -320,21 +322,21 @@ export default function SalesForecastsPage() {
       {/* Create Forecast Modal */}
       {showCreateModal && (
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
                 Create Sales Forecast
               </DialogTitle>
             </DialogHeader>
-            <form className="space-y-6" onSubmit={(e) => {
+            <form className="space-y-12 p-8" onSubmit={(e) => {
               e.preventDefault();
               handleCreateForecast(new FormData(e.currentTarget));
             }}>
               {/* SKU Selection */}
               <div>
                 <Label className="text-base font-semibold mb-3 block">Select Product SKU</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-64 overflow-y-auto border rounded-lg p-4">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-15 gap-4 max-h-80 overflow-y-auto border rounded-lg p-6">
                   {skusArray.map((sku) => {
                     const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : 'C';
                     const getProductTypeColor = (type: string) => {
@@ -374,26 +376,44 @@ export default function SalesForecastsPage() {
                   })}
                 </div>
                 {selectedSku && (
-                  <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="mt-4 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <Badge variant="outline" className="font-mono">{selectedSku.sku}</Badge>
-                        <span className="font-medium">{selectedSku.name}</span>
+                        <Badge variant="outline" className="font-mono text-sm px-3 py-1">{selectedSku.sku}</Badge>
+                        <span className="font-semibold text-lg">{selectedSku.name}</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div className="bg-white p-3 rounded border">
-                        <span className="text-gray-600">Units per Carton:</span>
-                        <p className="font-bold text-lg text-blue-600">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-10 text-sm">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                        <span className="text-gray-600 text-sm font-medium mb-2">Units per Carton</span>
+                        <p className="font-bold text-3xl text-blue-600 mb-2">
                           {(selectedSku as any).boxesPerCarton || 'Not Set'}
                         </p>
                         <p className="text-xs text-gray-500">
                           {(selectedSku as any).boxesPerCarton ? 'Forecast in multiples of this' : 'Configure in SKU settings'}
                         </p>
                       </div>
-                      <div className="bg-white p-3 rounded border">
-                        <span className="text-gray-600">Carton Dimensions:</span>
-                        <p className="font-medium">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                        <span className="text-gray-600 text-sm font-medium mb-2">Lead Time</span>
+                        <p className="font-bold text-3xl text-orange-600 mb-2">
+                          {(selectedSku as any).leadTimeDays || 30} days
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Order to delivery time
+                        </p>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                        <span className="text-gray-600 text-sm font-medium mb-2">MOQ</span>
+                        <p className="font-bold text-3xl text-green-600 mb-2">
+                          {((selectedSku as any).moq || 1).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Minimum order quantity
+                        </p>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                        <span className="text-gray-600 text-sm font-medium mb-2">Carton Dimensions</span>
+                        <p className="font-medium text-lg mb-2">
                           {(selectedSku as any).cartonLengthCm && (selectedSku as any).cartonWidthCm && (selectedSku as any).cartonHeightCm
                             ? `${(selectedSku as any).cartonLengthCm} × ${(selectedSku as any).cartonWidthCm} × ${(selectedSku as any).cartonHeightCm} cm`
                             : 'Not Set'
@@ -401,9 +421,9 @@ export default function SalesForecastsPage() {
                         </p>
                         <p className="text-xs text-gray-500">Length × Width × Height</p>
                       </div>
-                      <div className="bg-white p-3 rounded border">
-                        <span className="text-gray-600">Carton Weight:</span>
-                        <p className="font-medium">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                        <span className="text-gray-600 text-sm font-medium mb-2">Carton Weight</span>
+                        <p className="font-medium text-lg mb-2">
                           {(selectedSku as any).cartonWeightKg ? `${(selectedSku as any).cartonWeightKg} kg` : 'Not Set'}
                         </p>
                         <p className="text-xs text-gray-500">Per carton shipping weight</p>
@@ -414,7 +434,7 @@ export default function SalesForecastsPage() {
               </div>
 
               {/* Forecast Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-20 mt-12">
                 <div>
                   <Label htmlFor="deliveryWeek">Delivery Week *</Label>
                   <select
@@ -423,17 +443,65 @@ export default function SalesForecastsPage() {
                     required
                     defaultValue={selectedDate}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    onChange={(e) => {
+                      const selectedWeek = weeks.find(w => w.isoWeek === e.target.value);
+                      const leadTimeDays = (selectedSku as any)?.leadTimeDays || 30;
+                      
+                      if (selectedWeek && selectedSku) {
+                        const orderDate = new Date();
+                        const earliestDelivery = new Date(orderDate);
+                        earliestDelivery.setDate(orderDate.getDate() + leadTimeDays);
+                        
+                        if (selectedWeek.startDate < earliestDelivery) {
+                          const earliestWeek = weeks.find(w => w.startDate >= earliestDelivery);
+                          if (earliestWeek) {
+                            alert(`⚠️ Lead time is ${leadTimeDays} days. Earliest possible delivery: ${earliestWeek.isoWeek} (${earliestWeek.dateRange})`);
+                          }
+                        }
+                      }
+                    }}
                   >
                     <option value="">Select Delivery Week</option>
-                    {weeks.map(week => (
-                      <option key={week.isoWeek} value={week.isoWeek}>
-                        {week.isoWeek} ({week.dateRange})
-                      </option>
-                    ))}
+                    {weeks.map(week => {
+                      const leadTimeDays = (selectedSku as any)?.leadTimeDays || 30;
+                      const orderDate = new Date();
+                      const earliestDelivery = new Date(orderDate);
+                      earliestDelivery.setDate(orderDate.getDate() + leadTimeDays);
+                      
+                      const isTooEarly = selectedSku && week.startDate < earliestDelivery;
+                      
+                      return (
+                        <option 
+                          key={week.isoWeek} 
+                          value={week.isoWeek}
+                          style={isTooEarly ? { color: '#dc2626', fontStyle: 'italic' } : {}}
+                        >
+                          {week.isoWeek} ({week.dateRange})
+                          {isTooEarly ? ' ⚠️ Too Early' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div className="mt-1 text-xs text-gray-600">
                     ISO week format with Monday-Sunday date range
                   </div>
+                  {selectedSku && (
+                    <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+                      <span className="font-medium text-orange-800">
+                        ⏱️ Lead Time: {(selectedSku as any).leadTimeDays || 30} days
+                      </span>
+                      <br />
+                      <span className="text-orange-600">
+                        Earliest delivery: {(() => {
+                          const orderDate = new Date();
+                          const earliestDelivery = new Date(orderDate);
+                          earliestDelivery.setDate(orderDate.getDate() + ((selectedSku as any).leadTimeDays || 30));
+                          const earliestWeek = weeks.find(w => w.startDate >= earliestDelivery);
+                          return earliestWeek ? `${earliestWeek.isoWeek} (${earliestWeek.dateRange})` : 'TBD';
+                        })()}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="quantity">Quantity (units) *</Label>
@@ -468,7 +536,7 @@ export default function SalesForecastsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-10">
                 <div>
                   <Label htmlFor="purchaseOrderId">Link to Purchase Order</Label>
                   <select
@@ -500,6 +568,35 @@ export default function SalesForecastsPage() {
                     <option value="medium">🟡 Medium - Probable</option>
                     <option value="low">🔴 Low - Uncertain</option>
                   </select>
+                </div>
+                <div>
+                  <Label htmlFor="shippingPreference">Shipping Mode *</Label>
+                  <select
+                    id="shippingPreference"
+                    name="shippingPreference"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                  >
+                    <option value="">Select Shipping Mode</option>
+                    <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
+                      <option value="AIR_EXPRESS">Air Express - 5-10 days door-to-door (urgent orders)</option>
+                      <option value="AIR_STANDARD">Air Standard - 7-14 days door-to-door (high-value items)</option>
+                    </optgroup>
+                    <optgroup label="🚢 Ocean Freight (Bulk, Cost Efficient)">
+                      <option value="SEA_ASIA_WEST">Sea Asia→US West - 15-20 days port-to-port</option>
+                      <option value="SEA_ASIA_EAST">Sea Asia→US East - 25-35 days via Panama/Suez</option>
+                      <option value="SEA_EU_EAST">Sea EU→US East - 10-15 days port-to-port</option>
+                      <option value="SEA_STANDARD">Sea Standard - 25-50 days door-to-door (bulk orders)</option>
+                    </optgroup>
+                    <optgroup label="🚛 Ground Transport">
+                      <option value="TRUCK_EXPRESS">Truck Express - 1-2 weeks (regional)</option>
+                      <option value="TRUCK_STANDARD">Truck Standard - 2-4 weeks (domestic)</option>
+                      <option value="RAIL">Rail Freight - 3-5 weeks (cost efficient)</option>
+                    </optgroup>
+                  </select>
+                  <div className="mt-1 text-xs text-blue-600">
+                    💡 Air ≈ 5-10× sea cost but faster. Sea = bulk/planned orders.
+                  </div>
                 </div>
               </div>
 
@@ -551,3 +648,5 @@ export default function SalesForecastsPage() {
     </div>
   );
 }
+
+
