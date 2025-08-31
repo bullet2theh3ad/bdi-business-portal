@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
         dimensions: productSkus.dimensions,
         weight: productSkus.weight,
         color: productSkus.color,
-        // Business fields removed - moved to sales/PO tables
+        moq: productSkus.moq,
+        leadTimeDays: productSkus.leadTimeDays,
         isActive: productSkus.isActive,
         isDiscontinued: productSkus.isDiscontinued,
         replacementSku: productSkus.replacementSku,
@@ -226,6 +227,8 @@ export async function POST(request: NextRequest) {
         dimensions: null,
         weight: null,
         color: null,
+        moq: 1,
+        leadTimeDays: 30,
         tags: [],
         
         // New dimensional fields (metric)

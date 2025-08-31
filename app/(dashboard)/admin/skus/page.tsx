@@ -91,6 +91,10 @@ export default function SKUsPage() {
           palletWeight: formData.get('palletWeight') ? parseFloat(formData.get('palletWeight') as string) : undefined,
           palletMaterialType: formData.get('palletMaterialType') || undefined,
           palletNotes: formData.get('palletNotes') || undefined,
+          
+          // Business terms
+          moq: formData.get('moq') ? parseInt(formData.get('moq') as string) : 1,
+          leadTimeDays: formData.get('leadTimeDays') ? parseInt(formData.get('leadTimeDays') as string) : 30,
         }),
       });
 
@@ -153,6 +157,10 @@ export default function SKUsPage() {
           palletWeight: formData.get('editPalletWeight') ? parseFloat(formData.get('editPalletWeight') as string) : undefined,
           palletMaterialType: formData.get('editPalletMaterialType') || undefined,
           palletNotes: formData.get('editPalletNotes') || undefined,
+          
+          // Business terms
+          moq: formData.get('editMoq') ? parseInt(formData.get('editMoq') as string) : 1,
+          leadTimeDays: formData.get('editLeadTimeDays') ? parseInt(formData.get('editLeadTimeDays') as string) : 30,
         }),
       });
 
@@ -443,7 +451,14 @@ export default function SKUsPage() {
                             <p className="font-medium">{sku.model}</p>
                           </div>
                         )}
-                        {/* Business fields removed - moved to sales/PO system */}
+                        <div>
+                          <span className="text-gray-500">MOQ:</span>
+                          <p className="font-medium">{sku.moq || 1} units</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Lead Time:</span>
+                          <p className="font-medium">{sku.leadTimeDays || 30} days</p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -764,7 +779,7 @@ export default function SKUsPage() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center">
                   <SemanticBDIIcon semantic="info" size={16} className="mr-2 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-800">
+                  <span className="text-xs font-medium text-amber-800">
                     All dimensions in centimeters (cm), all weights in kilograms (kg)
                   </span>
                 </div>
@@ -970,6 +985,44 @@ export default function SKUsPage() {
                 </div>
               </div>
 
+              {/* Business Information */}
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
+                  Forecast Terms
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
+                    <Input
+                      name="moq"
+                      type="number"
+                      min="1"
+                      defaultValue="1"
+                      placeholder="1"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Minimum units that must be ordered
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Lead Time (Days)</Label>
+                    <Input
+                      name="leadTimeDays"
+                      type="number"
+                      min="1"
+                      defaultValue="30"
+                      placeholder="30"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Days from order to delivery
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
                   type="button"
@@ -1049,7 +1102,7 @@ export default function SKUsPage() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center">
                   <SemanticBDIIcon semantic="info" size={16} className="mr-2 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-800">
+                  <span className="text-xs font-medium text-amber-800">
                     All dimensions in centimeters (cm), all weights in kilograms (kg)
                   </span>
                 </div>
@@ -1252,6 +1305,44 @@ export default function SKUsPage() {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                     rows={2}
                   />
+                </div>
+              </div>
+
+              {/* Business Information */}
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
+                  Forecast Terms
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
+                    <Input
+                      name="editMoq"
+                      type="number"
+                      min="1"
+                      defaultValue={selectedSku?.moq || 1}
+                      placeholder="1"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Minimum units that must be ordered
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Lead Time (Days)</Label>
+                    <Input
+                      name="editLeadTimeDays"
+                      type="number"
+                      min="1"
+                      defaultValue={selectedSku?.leadTimeDays || 30}
+                      placeholder="30"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Days from order to delivery
+                    </div>
+                  </div>
                 </div>
               </div>
 

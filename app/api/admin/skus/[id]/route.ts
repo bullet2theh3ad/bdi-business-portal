@@ -77,6 +77,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         palletMaterialType: body.palletMaterialType,
         palletNotes: body.palletNotes,
         
+        // Business terms
+        moq: body.moq,
+        leadTimeDays: body.leadTimeDays,
+        
         updatedAt: new Date(),
       })
       .where(eq(productSkus.id, skuId))

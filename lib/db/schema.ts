@@ -437,7 +437,9 @@ export const productSkus = pgTable('product_skus', {
   weight: numeric('weight', { precision: 10, scale: 3 }), // in grams
   color: varchar('color', { length: 50 }),
   
-  // Business fields moved to separate sales/purchase order tables
+  // Business Information (restored for CPFR planning)
+  moq: integer('moq').default(1), // Minimum Order Quantity
+  leadTimeDays: integer('lead_time_days').default(30), // Lead time in days
   
   // Inventory & Status
   isActive: boolean('is_active').default(true),
