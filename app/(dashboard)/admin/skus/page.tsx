@@ -595,139 +595,191 @@ export default function SKUsPage() {
                 />
               </div>
 
-              {/* Categories */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <select
-                    id="category"
-                    name="category"
-                    className="w-full px-3 py-2 border rounded-md"
-                  >
-                    <option value="">Select category</option>
-                    <option value="device">Device</option>
-                    <option value="accessory">Accessory</option>
-                    <option value="component">Component</option>
-                    <option value="software">Software</option>
-                  </select>
+              {/* Unit Selection */}
+              <div className="flex items-center space-x-4 py-2">
+                <Label className="text-sm font-medium">Measurement Units:</Label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="units"
+                      value="metric"
+                      defaultChecked
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm">Metric (cm, kg)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="units"
+                      value="imperial"
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm">Imperial (in, lbs)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Box Dimensions/Weights */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Box Dims/Weights
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs">Length</Label>
+                    <Input
+                      name="boxLength"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width</Label>
+                    <Input
+                      name="boxWidth"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height</Label>
+                    <Input
+                      name="boxHeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Weight</Label>
+                    <Input
+                      name="boxWeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Carton Dimensions/Weights */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Carton Dims/Weights
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs">Length</Label>
+                    <Input
+                      name="cartonLength"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width</Label>
+                    <Input
+                      name="cartonWidth"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height</Label>
+                    <Input
+                      name="cartonHeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Weight</Label>
+                    <Input
+                      name="cartonWeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pallet Dimensions/Weights */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Pallet Dims/Weights
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <div>
+                    <Label className="text-xs">Length</Label>
+                    <Input
+                      name="palletLength"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width</Label>
+                    <Input
+                      name="palletWidth"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height</Label>
+                    <Input
+                      name="palletHeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Weight</Label>
+                    <Input
+                      name="palletWeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label htmlFor="subcategory">Subcategory</Label>
-                  <Input
-                    id="subcategory"
-                    name="subcategory"
-                    placeholder="e.g., Sensors, Cables, etc."
+                  <Label className="text-xs">Notes</Label>
+                  <textarea
+                    name="palletNotes"
+                    placeholder="pallet stacking"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    rows={2}
                   />
                 </div>
               </div>
 
-              {/* Specifications */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="model">Model</Label>
-                  <Input
-                    id="model"
-                    name="model"
-                    placeholder="e.g., WS-2024"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="version">Version</Label>
-                  <Input
-                    id="version"
-                    name="version"
-                    placeholder="e.g., v2.1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="color">Color</Label>
-                  <Input
-                    id="color"
-                    name="color"
-                    placeholder="e.g., Black, White"
-                  />
-                </div>
-              </div>
-
-              {/* Physical Properties */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="dimensions">Dimensions (L x W x H)</Label>
-                  <Input
-                    id="dimensions"
-                    name="dimensions"
-                    placeholder="e.g., 10 x 5 x 2 cm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="weight">Weight (grams)</Label>
-                  <Input
-                    id="weight"
-                    name="weight"
-                    type="number"
-                    step="0.001"
-                    placeholder="e.g., 125.5"
-                  />
-                </div>
-              </div>
-
-              {/* Business Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="unitCost">Unit Cost ($)</Label>
-                  <Input
-                    id="unitCost"
-                    name="unitCost"
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g., 45.99"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="msrp">MSRP ($)</Label>
-                  <Input
-                    id="msrp"
-                    name="msrp"
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g., 89.99"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="moq">Minimum Order Quantity</Label>
-                  <Input
-                    id="moq"
-                    name="moq"
-                    type="number"
-                    min="1"
-                    defaultValue="1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="leadTimeDays">Lead Time (days)</Label>
-                  <Input
-                    id="leadTimeDays"
-                    name="leadTimeDays"
-                    type="number"
-                    min="1"
-                    defaultValue="30"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
-                <Input
-                  id="tags"
-                  name="tags"
-                  placeholder="e.g., IoT, Wireless, Sensor"
-                />
-              </div>
-
-              {/* Actions */}
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
                   type="button"
@@ -737,11 +789,7 @@ export default function SKUsPage() {
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  className="bg-bdi-green-1 hover:bg-bdi-green-2"
-                  disabled={isLoading}
-                >
+                <Button type="submit" disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin" />
@@ -751,6 +799,260 @@ export default function SKUsPage() {
                     <>
                       <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
                       Create SKU
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit SKU Modal */}
+      {selectedSku && (
+        <Dialog open={!!selectedSku} onOpenChange={() => setSelectedSku(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
+                Edit SKU: {selectedSku.sku}
+              </DialogTitle>
+            </DialogHeader>
+            <form className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="editSku">SKU *</Label>
+                  <Input
+                    id="editSku"
+                    defaultValue={selectedSku.sku}
+                    className="font-mono bg-gray-50"
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editName">Product Name *</Label>
+                  <Input
+                    id="editName"
+                    defaultValue={selectedSku.name}
+                    placeholder="Enter product name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="editDescription">Description</Label>
+                <Input
+                  id="editDescription"
+                  defaultValue={selectedSku.description || ''}
+                  placeholder="Brief product description"
+                />
+              </div>
+
+              {/* Unit Selection */}
+              <div className="flex items-center space-x-4 py-2">
+                <Label className="text-sm font-medium">Measurement Units:</Label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="editUnits"
+                      value="metric"
+                      defaultChecked
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm">Metric (cm, kg)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="editUnits"
+                      value="imperial"
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm">Imperial (in, lbs)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Box Dimensions/Weights */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Box Dims/Weights
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs">Length</Label>
+                    <Input
+                      name="editBoxLength"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width</Label>
+                    <Input
+                      name="editBoxWidth"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height</Label>
+                    <Input
+                      name="editBoxHeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Weight</Label>
+                    <Input
+                      name="editBoxWeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Carton Dimensions/Weights */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Carton Dims/Weights
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs">Length</Label>
+                    <Input
+                      name="editCartonLength"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width</Label>
+                    <Input
+                      name="editCartonWidth"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height</Label>
+                    <Input
+                      name="editCartonHeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Weight</Label>
+                    <Input
+                      name="editCartonWeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pallet Dimensions/Weights */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Pallet Dims/Weights
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <div>
+                    <Label className="text-xs">Length</Label>
+                    <Input
+                      name="editPalletLength"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width</Label>
+                    <Input
+                      name="editPalletWidth"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height</Label>
+                    <Input
+                      name="editPalletHeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Weight</Label>
+                    <Input
+                      name="editPalletWeight"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Notes</Label>
+                  <textarea
+                    name="editPalletNotes"
+                    placeholder="pallet stacking"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedSku(null)}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <SemanticBDIIcon semantic="settings" size={16} className="mr-2" />
+                      Update SKU
                     </>
                   )}
                 </Button>
