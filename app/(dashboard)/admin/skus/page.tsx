@@ -677,7 +677,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Carton Dims/Weights
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <div>
                     <Label className="text-xs">Length</Label>
                     <Input
@@ -718,6 +718,16 @@ export default function SKUsPage() {
                       className="text-sm"
                     />
                   </div>
+                  <div>
+                    <Label className="text-xs">Boxes per carton</Label>
+                    <Input
+                      name="boxesPerCarton"
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -727,6 +737,35 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Pallet Dims/Weights
                 </h4>
+                
+                {/* Pallet Material Type */}
+                <div className="mb-4">
+                  <Label className="text-xs font-medium">Pallet Material Type</Label>
+                  <select
+                    name="palletMaterialType"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1"
+                  >
+                    <option value="">Select Material Type</option>
+                    <optgroup label="🌲 Wood Pallets (ISPM 15 Required)">
+                      <option value="WOOD_HT">Solid Wood - Heat Treated (HT + DB)</option>
+                      <option value="WOOD_MB">Solid Wood - Methyl Bromide (MB + DB)</option>
+                    </optgroup>
+                    <optgroup label="🔧 Alternative Materials (No ISPM 15)">
+                      <option value="PLASTIC_HDPE">Plastic - HDPE</option>
+                      <option value="PLASTIC_PP">Plastic - PP</option>
+                      <option value="PRESSWOOD">Composite/Presswood (Inka, Litco)</option>
+                      <option value="PLYWOOD_OSB">Plywood/OSB/MDF (Engineered Wood)</option>
+                      <option value="STEEL">Metal - Steel</option>
+                      <option value="ALUMINUM">Metal - Aluminum</option>
+                      <option value="PAPERBOARD">Cardboard/Paperboard</option>
+                    </optgroup>
+                  </select>
+                  <div className="mt-1 text-xs text-gray-600">
+                    <span className="font-medium">ISPM 15:</span> International standard for wood packaging. 
+                    <span className="text-blue-600">HT = Heat Treated, MB = Methyl Bromide, DB = Debarked</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
                     <Label className="text-xs">Length</Label>
@@ -931,7 +970,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Carton Dims/Weights
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <div>
                     <Label className="text-xs">Length</Label>
                     <Input
@@ -972,6 +1011,16 @@ export default function SKUsPage() {
                       className="text-sm"
                     />
                   </div>
+                  <div>
+                    <Label className="text-xs">Boxes per carton</Label>
+                    <Input
+                      name="editBoxesPerCarton"
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -981,6 +1030,35 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Pallet Dims/Weights
                 </h4>
+                
+                {/* Pallet Material Type */}
+                <div className="mb-4">
+                  <Label className="text-xs font-medium">Pallet Material Type</Label>
+                  <select
+                    name="editPalletMaterialType"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1"
+                  >
+                    <option value="">Select Material Type</option>
+                    <optgroup label="🌲 Wood Pallets (ISPM 15 Required)">
+                      <option value="WOOD_HT">Solid Wood - Heat Treated (HT + DB)</option>
+                      <option value="WOOD_MB">Solid Wood - Methyl Bromide (MB + DB)</option>
+                    </optgroup>
+                    <optgroup label="🔧 Alternative Materials (No ISPM 15)">
+                      <option value="PLASTIC_HDPE">Plastic - HDPE</option>
+                      <option value="PLASTIC_PP">Plastic - PP</option>
+                      <option value="PRESSWOOD">Composite/Presswood (Inka, Litco)</option>
+                      <option value="PLYWOOD_OSB">Plywood/OSB/MDF (Engineered Wood)</option>
+                      <option value="STEEL">Metal - Steel</option>
+                      <option value="ALUMINUM">Metal - Aluminum</option>
+                      <option value="PAPERBOARD">Cardboard/Paperboard</option>
+                    </optgroup>
+                  </select>
+                  <div className="mt-1 text-xs text-gray-600">
+                    <span className="font-medium">ISPM 15:</span> International standard for wood packaging. 
+                    <span className="text-blue-600">HT = Heat Treated, MB = Methyl Bromide, DB = Debarked</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
                     <Label className="text-xs">Length</Label>
