@@ -595,29 +595,13 @@ export default function SKUsPage() {
                 />
               </div>
 
-              {/* Unit Selection */}
-              <div className="flex items-center space-x-4 py-2">
-                <Label className="text-sm font-medium">Measurement Units:</Label>
-                <div className="flex items-center space-x-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="units"
-                      value="metric"
-                      defaultChecked
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm">Metric (cm, kg)</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="units"
-                      value="imperial"
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm">Imperial (in, lbs)</span>
-                  </label>
+              {/* Measurement Units Note */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center">
+                  <SemanticBDIIcon semantic="info" size={16} className="mr-2 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">
+                    All dimensions in centimeters (cm), all weights in kilograms (kg)
+                  </span>
                 </div>
               </div>
 
@@ -629,7 +613,7 @@ export default function SKUsPage() {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <Label className="text-xs">Length</Label>
+                    <Label className="text-xs">Length (cm)</Label>
                     <Input
                       name="boxLength"
                       type="number"
@@ -639,7 +623,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Width</Label>
+                    <Label className="text-xs">Width (cm)</Label>
                     <Input
                       name="boxWidth"
                       type="number"
@@ -649,7 +633,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Height</Label>
+                    <Label className="text-xs">Height (cm)</Label>
                     <Input
                       name="boxHeight"
                       type="number"
@@ -659,7 +643,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Weight</Label>
+                    <Label className="text-xs">Weight (kg)</Label>
                     <Input
                       name="boxWeight"
                       type="number"
@@ -679,7 +663,7 @@ export default function SKUsPage() {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <Label className="text-xs">Length</Label>
+                    <Label className="text-xs">Length (cm)</Label>
                     <Input
                       name="cartonLength"
                       type="number"
@@ -689,7 +673,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Width</Label>
+                    <Label className="text-xs">Width (cm)</Label>
                     <Input
                       name="cartonWidth"
                       type="number"
@@ -699,7 +683,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Height</Label>
+                    <Label className="text-xs">Height (cm)</Label>
                     <Input
                       name="cartonHeight"
                       type="number"
@@ -709,7 +693,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Weight</Label>
+                    <Label className="text-xs">Weight (kg)</Label>
                     <Input
                       name="cartonWeight"
                       type="number"
@@ -770,7 +754,7 @@ export default function SKUsPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <Label className="text-xs">Length</Label>
+                    <Label className="text-xs">Length (cm)</Label>
                     <Input
                       name="palletLength"
                       type="number"
@@ -780,7 +764,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Width</Label>
+                    <Label className="text-xs">Width (cm)</Label>
                     <Input
                       name="palletWidth"
                       type="number"
@@ -790,7 +774,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Height</Label>
+                    <Label className="text-xs">Height (cm)</Label>
                     <Input
                       name="palletHeight"
                       type="number"
@@ -800,7 +784,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Weight</Label>
+                    <Label className="text-xs">Weight (kg)</Label>
                     <Input
                       name="palletWeight"
                       type="number"
@@ -890,29 +874,13 @@ export default function SKUsPage() {
                 />
               </div>
 
-              {/* Unit Selection */}
-              <div className="flex items-center space-x-4 py-2">
-                <Label className="text-sm font-medium">Measurement Units:</Label>
-                <div className="flex items-center space-x-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="editUnits"
-                      value="metric"
-                      defaultChecked
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm">Metric (cm, kg)</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="editUnits"
-                      value="imperial"
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm">Imperial (in, lbs)</span>
-                  </label>
+              {/* Measurement Units Note */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center">
+                  <SemanticBDIIcon semantic="info" size={16} className="mr-2 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">
+                    All dimensions in centimeters (cm), all weights in kilograms (kg)
+                  </span>
                 </div>
               </div>
 
@@ -924,7 +892,7 @@ export default function SKUsPage() {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <Label className="text-xs">Length</Label>
+                    <Label className="text-xs">Length (cm)</Label>
                     <Input
                       name="editBoxLength"
                       type="number"
@@ -934,7 +902,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Width</Label>
+                    <Label className="text-xs">Width (cm)</Label>
                     <Input
                       name="editBoxWidth"
                       type="number"
@@ -944,7 +912,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Height</Label>
+                    <Label className="text-xs">Height (cm)</Label>
                     <Input
                       name="editBoxHeight"
                       type="number"
@@ -954,7 +922,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Weight</Label>
+                    <Label className="text-xs">Weight (kg)</Label>
                     <Input
                       name="editBoxWeight"
                       type="number"
@@ -974,7 +942,7 @@ export default function SKUsPage() {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <Label className="text-xs">Length</Label>
+                    <Label className="text-xs">Length (cm)</Label>
                     <Input
                       name="editCartonLength"
                       type="number"
@@ -984,7 +952,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Width</Label>
+                    <Label className="text-xs">Width (cm)</Label>
                     <Input
                       name="editCartonWidth"
                       type="number"
@@ -994,7 +962,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Height</Label>
+                    <Label className="text-xs">Height (cm)</Label>
                     <Input
                       name="editCartonHeight"
                       type="number"
@@ -1004,7 +972,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Weight</Label>
+                    <Label className="text-xs">Weight (kg)</Label>
                     <Input
                       name="editCartonWeight"
                       type="number"
@@ -1065,7 +1033,7 @@ export default function SKUsPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <Label className="text-xs">Length</Label>
+                    <Label className="text-xs">Length (cm)</Label>
                     <Input
                       name="editPalletLength"
                       type="number"
@@ -1075,7 +1043,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Width</Label>
+                    <Label className="text-xs">Width (cm)</Label>
                     <Input
                       name="editPalletWidth"
                       type="number"
@@ -1085,7 +1053,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Height</Label>
+                    <Label className="text-xs">Height (cm)</Label>
                     <Input
                       name="editPalletHeight"
                       type="number"
@@ -1095,7 +1063,7 @@ export default function SKUsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Weight</Label>
+                    <Label className="text-xs">Weight (kg)</Label>
                     <Input
                       name="editPalletWeight"
                       type="number"
