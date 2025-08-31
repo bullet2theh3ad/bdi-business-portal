@@ -32,6 +32,7 @@ export default function SKUsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [useSkuBuilder, setUseSkuBuilder] = useState(true);
   const [generatedSku, setGeneratedSku] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [skuBuilder, setSkuBuilder] = useState({
     brand: '',
     productType: '',
@@ -177,13 +178,41 @@ export default function SKUsPage() {
       sku.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sku.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = categoryFilter === 'all' || sku.category === categoryFilter;
+    // Extract product type from SKU for filtering
+    const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : null;
+    const matchesCategory = categoryFilter === 'all' || 
+      sku.category === categoryFilter || 
+      productType === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories for filter
-  const categories = Array.from(new Set(skusArray.map(sku => sku.category).filter(Boolean)));
+  // Get unique categories for filter including product types
+  const categories = Array.from(new Set([
+    ...skusArray.map(sku => sku.category).filter(Boolean),
+    ...skusArray.map(sku => {
+      // Extract product type from SKU (2nd character: MNQ -> Q)
+      const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : null;
+      return productType;
+    }).filter(Boolean)
+  ]));
+
+  // Color coding for product types
+  const getProductTypeColor = (productType: string) => {
+    const colors: { [key: string]: string } = {
+      'B': 'bg-blue-100 border-blue-300 text-blue-800', // Bridge
+      'G': 'bg-green-100 border-green-300 text-green-800', // Gateway
+      'Q': 'bg-purple-100 border-purple-300 text-purple-800', // Router/Wifi
+      'F': 'bg-orange-100 border-orange-300 text-orange-800', // FWA
+      'P': 'bg-pink-100 border-pink-300 text-pink-800', // HotSpot
+      'X': 'bg-indigo-100 border-indigo-300 text-indigo-800', // PON
+      'A': 'bg-yellow-100 border-yellow-300 text-yellow-800', // Accessories
+      'R': 'bg-red-100 border-red-300 text-red-800', // Red Cap
+      'M': 'bg-teal-100 border-teal-300 text-teal-800', // Modem
+      'C': 'bg-gray-100 border-gray-300 text-gray-800', // Cable/Accessory
+    };
+    return colors[productType] || 'bg-gray-100 border-gray-300 text-gray-800';
+  };
 
   // SKU Builder Configuration
   const skuConfig = {
@@ -313,9 +342,26 @@ export default function SKUsPage() {
           >
             <option value="all">All Categories</option>
             {categories.map(category => (
-              <option key={category} value={category || ''}>{category}</option>
+              <option key={category} value={category || ''}>
+                {category && category.length === 1 ? `${category} - Product Type` : category}
+              </option>
             ))}
           </select>
+          
+          <div className="flex border rounded-md ml-4">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              📋 List
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'grid' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              🔲 Grid
+            </button>
+          </div>
         </div>
       </div>
 
@@ -363,8 +409,10 @@ export default function SKUsPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredSkus.map((sku) => (
+            <>
+              {viewMode === 'list' ? (
+                <div className="space-y-4">
+                  {filteredSkus.map((sku) => (
                 <div key={sku.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -410,8 +458,39 @@ export default function SKUsPage() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                  {filteredSkus.map((sku) => {
+                    const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : 'C';
+                    return (
+                      <div 
+                        key={sku.id} 
+                        className={`relative border-2 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all ${getProductTypeColor(productType)}`}
+                        onClick={() => setSelectedSku(sku)}
+                      >
+                        <div className="text-center">
+                          <div className="text-xs font-mono font-bold mb-1 truncate">
+                            {sku.sku}
+                          </div>
+                          <div className="text-xs font-medium leading-tight line-clamp-2 min-h-[2.5rem] flex items-center justify-center">
+                            {sku.name}
+                          </div>
+                          {!sku.isActive && (
+                            <div className="absolute top-1 left-1">
+                              <Badge variant="destructive" className="text-xs px-1 py-0">
+                                ✕
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
