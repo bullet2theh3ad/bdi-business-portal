@@ -62,6 +62,7 @@ export default function SalesForecastsPage() {
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>('');
+  const [quantityError, setQuantityError] = useState<string>('');
 
   // Access control - Sales team and admins can create forecasts
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -468,7 +469,7 @@ export default function SalesForecastsPage() {
               {/* Forecast Details */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-20 mt-12">
                 <div>
-                  <Label htmlFor="deliveryWeek">Delivery Week *</Label>
+                  <Label htmlFor="deliveryWeek">Final Delivery Week *</Label>
                   <select
                     id="deliveryWeek"
                     name="deliveryWeek"
@@ -477,30 +478,63 @@ export default function SalesForecastsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     onChange={(e) => {
                       const selectedWeek = weeks.find(w => w.isoWeek === e.target.value);
-                      const leadTimeDays = (selectedSku as any)?.leadTimeDays || 30;
-                      
-                      if (selectedWeek && selectedSku) {
+                      if (selectedWeek && selectedSku && selectedShipping) {
                         const orderDate = new Date();
+                        const leadTime = (selectedSku as any)?.leadTimeDays || 30;
+                        const shippingDays: { [key: string]: number } = {
+                          'AIR_EXPRESS': 7.5,
+                          'AIR_STANDARD': 10.5,
+                          'SEA_ASIA_WEST': 17.5,
+                          'SEA_ASIA_EAST': 30,
+                          'SEA_EU_EAST': 12.5,
+                          'SEA_STANDARD': 37.5,
+                          'TRUCK_EXPRESS': 10.5,
+                          'TRUCK_STANDARD': 21,
+                          'RAIL': 28,
+                        };
+                        const shippingTime = shippingDays[selectedShipping] || 0;
+                        const totalDays = leadTime + shippingTime;
                         const earliestDelivery = new Date(orderDate);
-                        earliestDelivery.setDate(orderDate.getDate() + leadTimeDays);
+                        earliestDelivery.setDate(orderDate.getDate() + totalDays);
                         
                         if (selectedWeek.startDate < earliestDelivery) {
                           const earliestWeek = weeks.find(w => w.startDate >= earliestDelivery);
                           if (earliestWeek) {
-                            alert(`⚠️ Lead time is ${leadTimeDays} days. Earliest possible delivery: ${earliestWeek.isoWeek} (${earliestWeek.dateRange})`);
+                            alert(`⚠️ Total time is ${Math.round(totalDays)} days (${leadTime} lead + ${Math.round(shippingTime)} shipping). Earliest possible final delivery: ${earliestWeek.isoWeek} (${earliestWeek.dateRange})`);
                           }
                         }
                       }
                     }}
                   >
-                    <option value="">Select Delivery Week</option>
+                    <option value="">Select Final Delivery Week</option>
                     {weeks.map(week => {
-                      const leadTimeDays = (selectedSku as any)?.leadTimeDays || 30;
+                      if (!selectedSku || !selectedShipping) {
+                        return (
+                          <option key={week.isoWeek} value={week.isoWeek}>
+                            {week.isoWeek} ({week.dateRange})
+                          </option>
+                        );
+                      }
+
+                      const leadTime = (selectedSku as any)?.leadTimeDays || 30;
+                      const shippingDays: { [key: string]: number } = {
+                        'AIR_EXPRESS': 7.5,
+                        'AIR_STANDARD': 10.5,
+                        'SEA_ASIA_WEST': 17.5,
+                        'SEA_ASIA_EAST': 30,
+                        'SEA_EU_EAST': 12.5,
+                        'SEA_STANDARD': 37.5,
+                        'TRUCK_EXPRESS': 10.5,
+                        'TRUCK_STANDARD': 21,
+                        'RAIL': 28,
+                      };
+                      const shippingTime = shippingDays[selectedShipping] || 0;
+                      const totalDays = leadTime + shippingTime;
                       const orderDate = new Date();
                       const earliestDelivery = new Date(orderDate);
-                      earliestDelivery.setDate(orderDate.getDate() + leadTimeDays);
+                      earliestDelivery.setDate(orderDate.getDate() + totalDays);
                       
-                      const isTooEarly = selectedSku && week.startDate < earliestDelivery;
+                      const isTooEarly = week.startDate < earliestDelivery;
                       
                       return (
                         <option 
@@ -509,31 +543,51 @@ export default function SalesForecastsPage() {
                           style={isTooEarly ? { color: '#dc2626', fontStyle: 'italic' } : {}}
                         >
                           {week.isoWeek} ({week.dateRange})
-                          {isTooEarly ? ' ⚠️ Too Early' : ''}
+                          {isTooEarly ? ` ⚠️ Too Early (Need ${Math.round(totalDays)} days)` : ''}
                         </option>
                       );
                     })}
                   </select>
                   <div className="mt-1 text-xs text-gray-600">
-                    ISO week format with Monday-Sunday date range
+                    Final customer delivery week (includes lead time + shipping)
                   </div>
-                  {selectedSku && (
-                    <div className="mt-2 p-3 bg-gradient-to-r from-orange-50 to-purple-50 border border-orange-200 rounded-lg text-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedSku && selectedShipping && (
+                    <div className="mt-2 p-3 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <span className="font-medium text-orange-800">
                             ⏱️ Lead Time: {(selectedSku as any).leadTimeDays || 30} days
                           </span>
                           <br />
                           <span className="text-orange-600 text-xs">
-                            Production + preparation time
+                            Production + preparation
                           </span>
                         </div>
                         <div>
                           <span className="font-medium text-purple-800">
-                            🚚 Final Delivery Date: {(() => {
-                              if (!selectedShipping) return 'Select shipping method';
-                              const orderDate = new Date();
+                            🚚 Shipping: {(() => {
+                              const shippingTimes: { [key: string]: string } = {
+                                'AIR_EXPRESS': '5-10 days',
+                                'AIR_STANDARD': '7-14 days',
+                                'SEA_ASIA_WEST': '15-20 days',
+                                'SEA_ASIA_EAST': '25-35 days',
+                                'SEA_EU_EAST': '10-15 days',
+                                'SEA_STANDARD': '25-50 days',
+                                'TRUCK_EXPRESS': '7-14 days',
+                                'TRUCK_STANDARD': '14-28 days',
+                                'RAIL': '21-35 days',
+                              };
+                              return shippingTimes[selectedShipping] || 'TBD';
+                            })()} 
+                          </span>
+                          <br />
+                          <span className="text-purple-600 text-xs">
+                            Transit time
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-blue-800">
+                            📅 Total: {(() => {
                               const leadTime = (selectedSku as any).leadTimeDays || 30;
                               const shippingDays: { [key: string]: number } = {
                                 'AIR_EXPRESS': 7.5,
@@ -547,19 +601,12 @@ export default function SalesForecastsPage() {
                                 'RAIL': 28,
                               };
                               const shippingTime = shippingDays[selectedShipping] || 0;
-                              const totalDays = leadTime + shippingTime;
-                              const deliveryDate = new Date(orderDate);
-                              deliveryDate.setDate(orderDate.getDate() + totalDays);
-                              return deliveryDate.toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              });
+                              return `${Math.round(leadTime + shippingTime)} days`;
                             })()}
                           </span>
                           <br />
-                          <span className="text-purple-600 text-xs">
-                            Estimated final delivery
+                          <span className="text-blue-600 text-xs">
+                            Order to final delivery
                           </span>
                         </div>
                       </div>
@@ -580,22 +627,30 @@ export default function SalesForecastsPage() {
                         : "e.g., 5000"
                     }
                     required
-                    className="mt-1"
+                    className={`mt-1 ${quantityError ? 'border-red-500 bg-red-50 text-red-900' : ''}`}
                     onChange={(e) => {
                       const value = parseInt(e.target.value);
                       const unitsPerCarton = (selectedSku as any)?.boxesPerCarton;
-                      if (unitsPerCarton && value % unitsPerCarton !== 0) {
-                        e.target.setCustomValidity(`Must be multiple of ${unitsPerCarton} (units per carton)`);
+                      
+                      if (unitsPerCarton && value && value % unitsPerCarton !== 0) {
+                        const error = `Must be multiple of ${unitsPerCarton} (units per carton)`;
+                        setQuantityError(error);
+                        e.target.setCustomValidity(error);
                       } else {
+                        setQuantityError('');
                         e.target.setCustomValidity('');
                       }
                     }}
                   />
-                  {(selectedSku as any)?.boxesPerCarton && (
+                  {quantityError ? (
+                    <div className="mt-1 text-xs text-red-600 font-medium">
+                      ❌ {quantityError}
+                    </div>
+                  ) : (selectedSku as any)?.boxesPerCarton ? (
                     <div className="mt-1 text-xs text-blue-600">
                       💡 Must be multiple of {(selectedSku as any).boxesPerCarton} units (full cartons only)
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -690,7 +745,7 @@ export default function SalesForecastsPage() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isLoading || !selectedSku}
+                  disabled={isLoading || !selectedSku || !!quantityError}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   {isLoading ? (
