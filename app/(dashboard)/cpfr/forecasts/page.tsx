@@ -146,12 +146,15 @@ export default function SalesForecastsPage() {
     if (selectedSku && selectedShipping) {
       const leadTime = (selectedSku as any)?.leadTimeDays || 30;
       const shippingDays: { [key: string]: number } = {
-        'AIR_EXPRESS': 7.5,
-        'AIR_STANDARD': 10.5,
-        'SEA_ASIA_WEST': 17.5,
-        'SEA_ASIA_EAST': 30,
-        'SEA_EU_EAST': 12.5,
-        'SEA_STANDARD': 37.5,
+        'AIR_7_DAYS': 7,
+        'AIR_14_DAYS': 14,
+        'AIR_NLD': 14,
+        'AIR_AUT': 14,
+        'SEA_ASIA_US_WEST': 45,
+        'SEA_ASIA_US_EAST': 52,
+        'SEA_WEST_EXPEDITED': 35,
+        'SEA_ASIA_NLD': 45,
+        'SEA_ASIA_AUT': 45,
         'TRUCK_EXPRESS': 10.5,
         'TRUCK_STANDARD': 21,
         'RAIL': 28,
@@ -444,12 +447,15 @@ export default function SalesForecastsPage() {
                         <p className="font-bold text-3xl text-purple-600 mb-2">
                           {(() => {
                             const shippingTimes: { [key: string]: string } = {
-                              'AIR_EXPRESS': '5-10 days',
-                              'AIR_STANDARD': '7-14 days',
-                              'SEA_ASIA_WEST': '15-20 days',
-                              'SEA_ASIA_EAST': '25-35 days',
-                              'SEA_EU_EAST': '10-15 days',
-                              'SEA_STANDARD': '25-50 days',
+                              'AIR_7_DAYS': '7 days',
+                              'AIR_14_DAYS': '14 days',
+                              'AIR_NLD': '14 days',
+                              'AIR_AUT': '14 days',
+                              'SEA_ASIA_US_WEST': '45 days',
+                              'SEA_ASIA_US_EAST': '52 days',
+                              'SEA_WEST_EXPEDITED': '35 days',
+                              'SEA_ASIA_NLD': '45 days',
+                              'SEA_ASIA_AUT': '45 days',
                               'TRUCK_EXPRESS': '7-14 days',
                               'TRUCK_STANDARD': '14-28 days',
                               'RAIL': '21-35 days',
@@ -508,12 +514,15 @@ export default function SalesForecastsPage() {
                         const orderDate = new Date();
                         const leadTime = (selectedSku as any)?.leadTimeDays || 30;
                         const shippingDays: { [key: string]: number } = {
-                          'AIR_EXPRESS': 7.5,
-                          'AIR_STANDARD': 10.5,
-                          'SEA_ASIA_WEST': 17.5,
-                          'SEA_ASIA_EAST': 30,
-                          'SEA_EU_EAST': 12.5,
-                          'SEA_STANDARD': 37.5,
+                          'AIR_7_DAYS': 7,
+                          'AIR_14_DAYS': 14,
+                          'AIR_NLD': 14,
+                          'AIR_AUT': 14,
+                          'SEA_ASIA_US_WEST': 45,
+                          'SEA_ASIA_US_EAST': 52,
+                          'SEA_WEST_EXPEDITED': 35,
+                          'SEA_ASIA_NLD': 45,
+                          'SEA_ASIA_AUT': 45,
                           'TRUCK_EXPRESS': 10.5,
                           'TRUCK_STANDARD': 21,
                           'RAIL': 28,
@@ -544,12 +553,15 @@ export default function SalesForecastsPage() {
 
                       const leadTime = (selectedSku as any)?.leadTimeDays || 30;
                       const shippingDays: { [key: string]: number } = {
-                        'AIR_EXPRESS': 7.5,
-                        'AIR_STANDARD': 10.5,
-                        'SEA_ASIA_WEST': 17.5,
-                        'SEA_ASIA_EAST': 30,
-                        'SEA_EU_EAST': 12.5,
-                        'SEA_STANDARD': 37.5,
+                        'AIR_7_DAYS': 7,
+                        'AIR_14_DAYS': 14,
+                        'AIR_NLD': 14,
+                        'AIR_AUT': 14,
+                        'SEA_ASIA_US_WEST': 45,
+                        'SEA_ASIA_US_EAST': 52,
+                        'SEA_WEST_EXPEDITED': 35,
+                        'SEA_ASIA_NLD': 45,
+                        'SEA_ASIA_AUT': 45,
                         'TRUCK_EXPRESS': 10.5,
                         'TRUCK_STANDARD': 21,
                         'RAIL': 28,
@@ -623,12 +635,15 @@ export default function SalesForecastsPage() {
                             {(() => {
                               const leadTime = (selectedSku as any).leadTimeDays || 30;
                               const shippingDays: { [key: string]: number } = {
-                                'AIR_EXPRESS': 7.5,
-                                'AIR_STANDARD': 10.5,
-                                'SEA_ASIA_WEST': 17.5,
-                                'SEA_ASIA_EAST': 30,
-                                'SEA_EU_EAST': 12.5,
-                                'SEA_STANDARD': 37.5,
+                                'AIR_7_DAYS': 7,
+                                'AIR_14_DAYS': 14,
+                                'AIR_NLD': 14,
+                                'AIR_AUT': 14,
+                                'SEA_ASIA_US_WEST': 45,
+                                'SEA_ASIA_US_EAST': 52,
+                                'SEA_WEST_EXPEDITED': 35,
+                                'SEA_ASIA_NLD': 45,
+                                'SEA_ASIA_AUT': 45,
                                 'TRUCK_EXPRESS': 10.5,
                                 'TRUCK_STANDARD': 21,
                                 'RAIL': 28,
@@ -650,12 +665,15 @@ export default function SalesForecastsPage() {
                               const orderDate = new Date();
                               const leadTime = (selectedSku as any).leadTimeDays || 30;
                               const shippingDays: { [key: string]: number } = {
-                                'AIR_EXPRESS': 5, // Best case (minimum range)
-                                'AIR_STANDARD': 7,
-                                'SEA_ASIA_WEST': 15,
-                                'SEA_ASIA_EAST': 25,
-                                'SEA_EU_EAST': 10,
-                                'SEA_STANDARD': 25,
+                                'AIR_7_DAYS': 7, // Fixed timing
+                                'AIR_14_DAYS': 14,
+                                'AIR_NLD': 14,
+                                'AIR_AUT': 14,
+                                'SEA_ASIA_US_WEST': 45,
+                                'SEA_ASIA_US_EAST': 52,
+                                'SEA_WEST_EXPEDITED': 35,
+                                'SEA_ASIA_NLD': 45,
+                                'SEA_ASIA_AUT': 45,
                                 'TRUCK_EXPRESS': 7,
                                 'TRUCK_STANDARD': 14,
                                 'RAIL': 21,
@@ -800,14 +818,17 @@ export default function SalesForecastsPage() {
                   >
                     <option value="">Select Shipping Mode</option>
                     <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
-                      <option value="AIR_EXPRESS">Air Express - 5-10 days door-to-door (urgent orders)</option>
-                      <option value="AIR_STANDARD">Air Standard - 7-14 days door-to-door (high-value items)</option>
+                      <option value="AIR_7_DAYS">Air Express - 7 days door-to-door (urgent orders)</option>
+                      <option value="AIR_14_DAYS">Air Standard - 14 days door-to-door (standard air)</option>
+                      <option value="AIR_NLD">Air to Netherlands (NLD) - 14 days door-to-door</option>
+                      <option value="AIR_AUT">Air to Austria (AUT) - 14 days door-to-door</option>
                     </optgroup>
                     <optgroup label="🚢 Ocean Freight (Bulk, Cost Efficient)">
-                      <option value="SEA_ASIA_WEST">Sea Asia→US West - 15-20 days port-to-port</option>
-                      <option value="SEA_ASIA_EAST">Sea Asia→US East - 25-35 days via Panama/Suez</option>
-                      <option value="SEA_EU_EAST">Sea EU→US East - 10-15 days port-to-port</option>
-                      <option value="SEA_STANDARD">Sea Standard - 25-50 days door-to-door (bulk orders)</option>
+                      <option value="SEA_ASIA_US_WEST">Sea Asia→US West - 45 days door-to-door (bulk)</option>
+                      <option value="SEA_ASIA_US_EAST">Sea Asia→US East - 52 days door-to-door (bulk)</option>
+                      <option value="SEA_WEST_EXPEDITED">Sea West Expedited - 35 days door-to-door (faster bulk)</option>
+                      <option value="SEA_ASIA_NLD">Sea Asia→Netherlands (NLD) - 45 days door-to-door</option>
+                      <option value="SEA_ASIA_AUT">Sea Asia→Austria (AUT) - 45 days door-to-door</option>
                     </optgroup>
                     <optgroup label="🚛 Ground Transport">
                       <option value="TRUCK_EXPRESS">Truck Express - 1-2 weeks (regional)</option>
