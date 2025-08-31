@@ -430,23 +430,40 @@ export const productSkus = pgTable('product_skus', {
   category: varchar('category', { length: 100 }), // 'device', 'accessory', 'component', etc.
   subcategory: varchar('subcategory', { length: 100 }),
   
-  // Product Specifications
+  // Product Specifications (Legacy - kept for backward compatibility)
   model: varchar('model', { length: 100 }),
   version: varchar('version', { length: 50 }),
   dimensions: varchar('dimensions', { length: 100 }), // "L x W x H"
   weight: numeric('weight', { precision: 10, scale: 3 }), // in grams
   color: varchar('color', { length: 50 }),
   
-  // Business Information
-  unitCost: numeric('unit_cost', { precision: 10, scale: 2 }), // Manufacturing cost
-  msrp: numeric('msrp', { precision: 10, scale: 2 }), // Manufacturer's Suggested Retail Price
-  moq: integer('moq').default(1), // Minimum Order Quantity
-  leadTimeDays: integer('lead_time_days').default(30),
+  // Business fields moved to separate sales/purchase order tables
   
   // Inventory & Status
   isActive: boolean('is_active').default(true),
   isDiscontinued: boolean('is_discontinued').default(false),
   replacementSku: varchar('replacement_sku', { length: 100 }), // If discontinued
+  
+  // Box Dimensions/Weights (Metric)
+  boxLengthCm: numeric('box_length_cm', { precision: 10, scale: 2 }),
+  boxWidthCm: numeric('box_width_cm', { precision: 10, scale: 2 }),
+  boxHeightCm: numeric('box_height_cm', { precision: 10, scale: 2 }),
+  boxWeightKg: numeric('box_weight_kg', { precision: 10, scale: 3 }),
+  
+  // Carton Dimensions/Weights (Metric)
+  cartonLengthCm: numeric('carton_length_cm', { precision: 10, scale: 2 }),
+  cartonWidthCm: numeric('carton_width_cm', { precision: 10, scale: 2 }),
+  cartonHeightCm: numeric('carton_height_cm', { precision: 10, scale: 2 }),
+  cartonWeightKg: numeric('carton_weight_kg', { precision: 10, scale: 3 }),
+  boxesPerCarton: integer('boxes_per_carton'),
+  
+  // Pallet Dimensions/Weights (Metric)
+  palletLengthCm: numeric('pallet_length_cm', { precision: 10, scale: 2 }),
+  palletWidthCm: numeric('pallet_width_cm', { precision: 10, scale: 2 }),
+  palletHeightCm: numeric('pallet_height_cm', { precision: 10, scale: 2 }),
+  palletWeightKg: numeric('pallet_weight_kg', { precision: 10, scale: 3 }),
+  palletMaterialType: varchar('pallet_material_type', { length: 50 }), // WOOD_HT, PLASTIC_HDPE, etc.
+  palletNotes: text('pallet_notes'),
   
   // Metadata
   tags: varchar('tags', { length: 255 }).array(), // Searchable tags

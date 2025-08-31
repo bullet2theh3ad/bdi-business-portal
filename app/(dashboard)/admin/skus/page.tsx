@@ -68,26 +68,48 @@ export default function SKUsPage() {
           sku: formData.get('sku'),
           name: formData.get('name'),
           description: formData.get('description'),
-          category: formData.get('category'),
-          subcategory: formData.get('subcategory'),
-          model: formData.get('model'),
-          version: formData.get('version'),
-          dimensions: formData.get('dimensions'),
-          weight: formData.get('weight') ? parseFloat(formData.get('weight') as string) : null,
-          color: formData.get('color'),
-          unitCost: formData.get('unitCost') ? parseFloat(formData.get('unitCost') as string) : null,
-          msrp: formData.get('msrp') ? parseFloat(formData.get('msrp') as string) : null,
-          moq: formData.get('moq') ? parseInt(formData.get('moq') as string) : 1,
-          leadTimeDays: formData.get('leadTimeDays') ? parseInt(formData.get('leadTimeDays') as string) : 30,
-          tags: formData.get('tags') ? (formData.get('tags') as string).split(',').map(t => t.trim()) : [],
+          
+          // Box dimensions/weights (metric)
+          boxLength: formData.get('boxLength') ? parseFloat(formData.get('boxLength') as string) : undefined,
+          boxWidth: formData.get('boxWidth') ? parseFloat(formData.get('boxWidth') as string) : undefined,
+          boxHeight: formData.get('boxHeight') ? parseFloat(formData.get('boxHeight') as string) : undefined,
+          boxWeight: formData.get('boxWeight') ? parseFloat(formData.get('boxWeight') as string) : undefined,
+          
+          // Carton dimensions/weights (metric)
+          cartonLength: formData.get('cartonLength') ? parseFloat(formData.get('cartonLength') as string) : undefined,
+          cartonWidth: formData.get('cartonWidth') ? parseFloat(formData.get('cartonWidth') as string) : undefined,
+          cartonHeight: formData.get('cartonHeight') ? parseFloat(formData.get('cartonHeight') as string) : undefined,
+          cartonWeight: formData.get('cartonWeight') ? parseFloat(formData.get('cartonWeight') as string) : undefined,
+          boxesPerCarton: formData.get('boxesPerCarton') ? parseInt(formData.get('boxesPerCarton') as string) : undefined,
+          
+          // Pallet dimensions/weights (metric)
+          palletLength: formData.get('palletLength') ? parseFloat(formData.get('palletLength') as string) : undefined,
+          palletWidth: formData.get('palletWidth') ? parseFloat(formData.get('palletWidth') as string) : undefined,
+          palletHeight: formData.get('palletHeight') ? parseFloat(formData.get('palletHeight') as string) : undefined,
+          palletWeight: formData.get('palletWeight') ? parseFloat(formData.get('palletWeight') as string) : undefined,
+          palletMaterialType: formData.get('palletMaterialType') || undefined,
+          palletNotes: formData.get('palletNotes') || undefined,
         }),
       });
 
       if (response.ok) {
-        mutateSkus();
+        mutateSkus(); // Refresh the SKU list
         setShowCreateModal(false);
+        // Reset form
+        setGeneratedSku('');
+        setSkuBuilder({
+          brand: '',
+          productType: '',
+          modelNumber: '',
+          modelYear: '',
+          region: '',
+          color: '',
+          charger: '',
+          carrier: '',
+        });
       } else {
-        alert('Failed to create SKU');
+        const errorData = await response.json();
+        alert(`Failed to create SKU: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating SKU:', error);
@@ -315,20 +337,7 @@ export default function SKUsPage() {
                             <p className="font-medium">{sku.model}</p>
                           </div>
                         )}
-                        {sku.msrp && (
-                          <div>
-                            <span className="text-gray-500">MSRP:</span>
-                            <p className="font-medium">${sku.msrp}</p>
-                          </div>
-                        )}
-                        <div>
-                          <span className="text-gray-500">MOQ:</span>
-                          <p className="font-medium">{sku.moq} units</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Lead Time:</span>
-                          <p className="font-medium">{sku.leadTimeDays} days</p>
-                        </div>
+                        {/* Business fields removed - moved to sales/PO system */}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">

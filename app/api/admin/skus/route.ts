@@ -6,23 +6,35 @@ import { productSkus, users } from '@/lib/db/schema';
 import { eq, and, isNull, ilike, or } from 'drizzle-orm';
 import { z } from 'zod';
 
-// Validation schema for SKU creation
+// Validation schema for SKU creation - Updated for new dimensional data format
 const createSkuSchema = z.object({
   sku: z.string().min(1, 'SKU code is required'),
   name: z.string().min(1, 'Product name is required'),
   description: z.string().optional(),
-  category: z.string().optional(),
-  subcategory: z.string().optional(),
-  model: z.string().optional(),
-  version: z.string().optional(),
-  dimensions: z.string().optional(),
-  weight: z.number().positive().optional(),
-  color: z.string().optional(),
-  unitCost: z.number().positive().optional(),
-  msrp: z.number().positive().optional(),
-  moq: z.number().int().positive().default(1),
-  leadTimeDays: z.number().int().positive().default(30),
-  tags: z.array(z.string()).default([]),
+  
+  // Box dimensions/weights (metric)
+  boxLength: z.number().positive().optional(),
+  boxWidth: z.number().positive().optional(),
+  boxHeight: z.number().positive().optional(),
+  boxWeight: z.number().positive().optional(),
+  
+  // Carton dimensions/weights (metric)
+  cartonLength: z.number().positive().optional(),
+  cartonWidth: z.number().positive().optional(),
+  cartonHeight: z.number().positive().optional(),
+  cartonWeight: z.number().positive().optional(),
+  boxesPerCarton: z.number().int().positive().optional(),
+  
+  // Pallet dimensions/weights (metric)
+  palletLength: z.number().positive().optional(),
+  palletWidth: z.number().positive().optional(),
+  palletHeight: z.number().positive().optional(),
+  palletWeight: z.number().positive().optional(),
+  palletMaterialType: z.enum([
+    'WOOD_HT', 'WOOD_MB', 'PLASTIC_HDPE', 'PLASTIC_PP', 
+    'PRESSWOOD', 'PLYWOOD_OSB', 'STEEL', 'ALUMINUM', 'PAPERBOARD'
+  ]).optional(),
+  palletNotes: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -68,7 +80,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
 
     // Build query conditions
-    const conditions = [isNull(productSkus.createdAt)]; // Always include (dummy condition)
+    const conditions = [];
     
     if (search) {
       conditions.push(
@@ -84,7 +96,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(productSkus.category, category));
     }
 
-    // Fetch SKUs with creator info
+    // Fetch SKUs with creator info and new dimensional fields
     const skusList = await db
       .select({
         id: productSkus.id,
@@ -98,15 +110,30 @@ export async function GET(request: NextRequest) {
         dimensions: productSkus.dimensions,
         weight: productSkus.weight,
         color: productSkus.color,
-        unitCost: productSkus.unitCost,
-        msrp: productSkus.msrp,
-        moq: productSkus.moq,
-        leadTimeDays: productSkus.leadTimeDays,
+        // Business fields removed - moved to sales/PO tables
         isActive: productSkus.isActive,
         isDiscontinued: productSkus.isDiscontinued,
         replacementSku: productSkus.replacementSku,
         tags: productSkus.tags,
         specifications: productSkus.specifications,
+        
+        // New dimensional fields (metric)
+        boxLengthCm: productSkus.boxLengthCm,
+        boxWidthCm: productSkus.boxWidthCm,
+        boxHeightCm: productSkus.boxHeightCm,
+        boxWeightKg: productSkus.boxWeightKg,
+        cartonLengthCm: productSkus.cartonLengthCm,
+        cartonWidthCm: productSkus.cartonWidthCm,
+        cartonHeightCm: productSkus.cartonHeightCm,
+        cartonWeightKg: productSkus.cartonWeightKg,
+        boxesPerCarton: productSkus.boxesPerCarton,
+        palletLengthCm: productSkus.palletLengthCm,
+        palletWidthCm: productSkus.palletWidthCm,
+        palletHeightCm: productSkus.palletHeightCm,
+        palletWeightKg: productSkus.palletWeightKg,
+        palletMaterialType: productSkus.palletMaterialType,
+        palletNotes: productSkus.palletNotes,
+        
         createdAt: productSkus.createdAt,
         updatedAt: productSkus.updatedAt,
         createdBy: productSkus.createdBy,
@@ -115,8 +142,10 @@ export async function GET(request: NextRequest) {
       })
       .from(productSkus)
       .leftJoin(users, eq(productSkus.createdBy, users.authId))
-      .where(and(...conditions.filter(Boolean)))
+      .where(conditions.length > 0 ? and(...conditions.filter(Boolean)) : undefined)
       .orderBy(productSkus.createdAt);
+
+
 
     return NextResponse.json(skusList);
 
@@ -183,25 +212,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the SKU
+    // Create the SKU with full dimensional data
     const [newSku] = await db
       .insert(productSkus)
       .values({
         sku: validatedData.sku,
         name: validatedData.name,
         description: validatedData.description,
-        category: validatedData.category,
-        subcategory: validatedData.subcategory,
-        model: validatedData.model,
-        version: validatedData.version,
-        dimensions: validatedData.dimensions,
-        weight: validatedData.weight?.toString(),
-        color: validatedData.color,
-        unitCost: validatedData.unitCost?.toString(),
-        msrp: validatedData.msrp?.toString(),
-        moq: validatedData.moq,
-        leadTimeDays: validatedData.leadTimeDays,
-        tags: validatedData.tags,
+        category: 'device', // Default category
+        subcategory: null,
+        model: null,
+        version: null,
+        dimensions: null,
+        weight: null,
+        color: null,
+        tags: [],
+        
+        // New dimensional fields (metric)
+        boxLengthCm: validatedData.boxLength ? validatedData.boxLength.toString() : null,
+        boxWidthCm: validatedData.boxWidth ? validatedData.boxWidth.toString() : null,
+        boxHeightCm: validatedData.boxHeight ? validatedData.boxHeight.toString() : null,
+        boxWeightKg: validatedData.boxWeight ? validatedData.boxWeight.toString() : null,
+        cartonLengthCm: validatedData.cartonLength ? validatedData.cartonLength.toString() : null,
+        cartonWidthCm: validatedData.cartonWidth ? validatedData.cartonWidth.toString() : null,
+        cartonHeightCm: validatedData.cartonHeight ? validatedData.cartonHeight.toString() : null,
+        cartonWeightKg: validatedData.cartonWeight ? validatedData.cartonWeight.toString() : null,
+        boxesPerCarton: validatedData.boxesPerCarton,
+        palletLengthCm: validatedData.palletLength ? validatedData.palletLength.toString() : null,
+        palletWidthCm: validatedData.palletWidth ? validatedData.palletWidth.toString() : null,
+        palletHeightCm: validatedData.palletHeight ? validatedData.palletHeight.toString() : null,
+        palletWeightKg: validatedData.palletWeight ? validatedData.palletWeight.toString() : null,
+        palletMaterialType: validatedData.palletMaterialType,
+        palletNotes: validatedData.palletNotes,
+        
         createdBy: requestingUser.authId,
       })
       .returning();
