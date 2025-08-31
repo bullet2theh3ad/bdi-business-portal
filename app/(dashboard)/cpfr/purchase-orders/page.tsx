@@ -31,6 +31,7 @@ interface PurchaseOrder {
   incoterms: string; // FOB, CIF, DDP, etc.
   incotermsLocation: string; // Shanghai Port, Los Angeles, etc.
   totalValue: number;
+  documents?: string[]; // Array of document URLs/paths
   notes?: string;
   createdBy: string;
   createdAt: string;
@@ -48,6 +49,7 @@ export default function PurchaseOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [customTerms, setCustomTerms] = useState(false);
+  const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
 
   // Access control - Sales team and admins can manage POs
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -413,6 +415,80 @@ export default function PurchaseOrdersPage() {
                     required
                     className="mt-1"
                   />
+                </div>
+              </div>
+
+              {/* Document Upload Section */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                  <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
+                  Supporting Documents
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="documents">Upload Documents</Label>
+                    <input
+                      type="file"
+                      id="documents"
+                      name="documents"
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setUploadedDocs(prev => [...prev, ...files]);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      PDF, Word, Excel, Images - Max 10MB per file
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="block mb-2">Uploaded Documents ({uploadedDocs.length})</Label>
+                    <div className="min-h-[100px] max-h-[120px] overflow-y-auto border border-gray-300 rounded-md p-3 bg-white">
+                      {uploadedDocs.length === 0 ? (
+                        <div className="text-center text-gray-500 text-sm py-4">
+                          <SemanticBDIIcon semantic="upload" size={24} className="mx-auto mb-2 opacity-50" />
+                          No documents uploaded
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {uploadedDocs.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-6 h-6 flex items-center justify-center">
+                                  {file.type.includes('pdf') ? (
+                                    <span className="text-red-600 text-xs font-bold">PDF</span>
+                                  ) : file.type.includes('word') || file.type.includes('document') ? (
+                                    <span className="text-blue-600 text-xs font-bold">DOC</span>
+                                  ) : file.type.includes('sheet') || file.type.includes('excel') ? (
+                                    <span className="text-green-600 text-xs font-bold">XLS</span>
+                                  ) : file.type.includes('image') ? (
+                                    <span className="text-purple-600 text-xs font-bold">IMG</span>
+                                  ) : (
+                                    <span className="text-gray-600 text-xs font-bold">FILE</span>
+                                  )}
+                                </div>
+                                <span className="text-sm truncate max-w-[150px]" title={file.name}>
+                                  {file.name}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  ({(file.size / 1024).toFixed(1)}KB)
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setUploadedDocs(prev => prev.filter((_, i) => i !== index))}
+                                className="text-red-500 hover:text-red-700 text-xs"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
