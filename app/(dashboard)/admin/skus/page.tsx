@@ -677,7 +677,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Carton Dims/Weights
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
                     <Label className="text-xs">Length</Label>
                     <Input
@@ -718,8 +718,10 @@ export default function SKUsPage() {
                       className="text-sm"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Boxes per carton</Label>
+                    <Label className="text-xs">Boxes/Carton</Label>
                     <Input
                       name="boxesPerCarton"
                       type="number"
@@ -970,7 +972,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Carton Dims/Weights
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   <div>
                     <Label className="text-xs">Length</Label>
                     <Input
@@ -1011,8 +1013,10 @@ export default function SKUsPage() {
                       className="text-sm"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Boxes per carton</Label>
+                    <Label className="text-xs">Boxes/Carton</Label>
                     <Input
                       name="editBoxesPerCarton"
                       type="number"
