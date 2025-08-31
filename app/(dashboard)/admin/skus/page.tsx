@@ -37,6 +37,7 @@ export default function SKUsPage() {
     productType: '',
     modelNumber: '',
     modelYear: '',
+    variant: '',
     region: '',
     color: '',
     charger: '',
@@ -102,6 +103,7 @@ export default function SKUsPage() {
           productType: '',
           modelNumber: '',
           modelYear: '',
+          variant: '',
           region: '',
           color: '',
           charger: '',
@@ -114,6 +116,55 @@ export default function SKUsPage() {
     } catch (error) {
       console.error('Error creating SKU:', error);
       alert('Failed to create SKU');
+    }
+    setIsLoading(false);
+  };
+
+  const handleEditSku = async (formData: FormData) => {
+    if (!selectedSku) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/skus/${selectedSku.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('editName'),
+          description: formData.get('editDescription'),
+          
+          // Box dimensions/weights (metric)
+          boxLength: formData.get('editBoxLength') ? parseFloat(formData.get('editBoxLength') as string) : undefined,
+          boxWidth: formData.get('editBoxWidth') ? parseFloat(formData.get('editBoxWidth') as string) : undefined,
+          boxHeight: formData.get('editBoxHeight') ? parseFloat(formData.get('editBoxHeight') as string) : undefined,
+          boxWeight: formData.get('editBoxWeight') ? parseFloat(formData.get('editBoxWeight') as string) : undefined,
+          
+          // Carton dimensions/weights (metric)
+          cartonLength: formData.get('editCartonLength') ? parseFloat(formData.get('editCartonLength') as string) : undefined,
+          cartonWidth: formData.get('editCartonWidth') ? parseFloat(formData.get('editCartonWidth') as string) : undefined,
+          cartonHeight: formData.get('editCartonHeight') ? parseFloat(formData.get('editCartonHeight') as string) : undefined,
+          cartonWeight: formData.get('editCartonWeight') ? parseFloat(formData.get('editCartonWeight') as string) : undefined,
+          boxesPerCarton: formData.get('editBoxesPerCarton') ? parseInt(formData.get('editBoxesPerCarton') as string) : undefined,
+          
+          // Pallet dimensions/weights (metric)
+          palletLength: formData.get('editPalletLength') ? parseFloat(formData.get('editPalletLength') as string) : undefined,
+          palletWidth: formData.get('editPalletWidth') ? parseFloat(formData.get('editPalletWidth') as string) : undefined,
+          palletHeight: formData.get('editPalletHeight') ? parseFloat(formData.get('editPalletHeight') as string) : undefined,
+          palletWeight: formData.get('editPalletWeight') ? parseFloat(formData.get('editPalletWeight') as string) : undefined,
+          palletMaterialType: formData.get('editPalletMaterialType') || undefined,
+          palletNotes: formData.get('editPalletNotes') || undefined,
+        }),
+      });
+
+      if (response.ok) {
+        mutateSkus(); // Refresh the SKU list
+        setSelectedSku(null); // Close modal
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update SKU: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating SKU:', error);
+      alert('Failed to update SKU');
     }
     setIsLoading(false);
   };
@@ -151,7 +202,14 @@ export default function SKUsPage() {
       { code: 'A', name: 'Accessories' },
       { code: 'R', name: 'Red Cap' },
     ],
-    // Variants removed - not needed in new format
+    variants: [
+      { code: 'T', name: 'Telephony' },
+      { code: 'A', name: 'Antenna' },
+      { code: 'B', name: 'External Battery' },
+      { code: 'D', name: 'Dual Pack' },
+      { code: 'M', name: 'Multi Pack' },
+      { code: 'S', name: 'Service' },
+    ],
     regions: [
       { code: '30', name: 'Local (30)' },
       { code: '80', name: 'Global (80)' },
@@ -180,15 +238,15 @@ export default function SKUsPage() {
     ],
   };
 
-  // Generate SKU from builder selections - Format: MNQ1525-30W-U
+  // Generate SKU from builder selections - Format: MNQ1525-D30W-U (with variant) or MNQ1525-30W-U (no variant)
   const generateSku = () => {
-    const { brand, productType, modelNumber, modelYear, region, color, charger, carrier } = skuBuilder;
+    const { brand, productType, modelNumber, modelYear, variant, region, color, charger, carrier } = skuBuilder;
     
     // First part: Brand + ProductType + ModelNumber + ModelYear (e.g., MNQ1525)
     const firstPart = `${brand}${productType}${modelNumber}${modelYear}`;
     
-    // Second part: Region + Color (e.g., 30W)
-    const secondPart = `${region}${color}`;
+    // Second part: Variant + Region + Color (e.g., D30W or 30W)
+    const secondPart = variant ? `${variant}${region}${color}` : `${region}${color}`;
     
     // Third part: Charger (e.g., U)
     const thirdPart = charger;
@@ -196,7 +254,7 @@ export default function SKUsPage() {
     // Fourth part: Carrier (can be empty)
     const fourthPart = carrier;
     
-    // Combine with proper formatting: MNQ1525-30W-U or MNQ1525-30W-U-T
+    // Combine with proper formatting: MNQ1525-D30W-U or MNQ1525-30W-U
     if (!brand || !productType || !modelNumber || !modelYear || !region || !color || !charger) {
       return '';
     }
@@ -466,6 +524,25 @@ export default function SKUsPage() {
                         maxLength={2}
                         required
                       />
+                    </div>
+
+                    {/* Variant */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Variant
+                      </label>
+                      <select
+                        value={skuBuilder.variant}
+                        onChange={(e) => updateGeneratedSku('variant', e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">None</option>
+                        {skuConfig.variants.map(variant => (
+                          <option key={variant.code} value={variant.code}>
+                            {variant.code} - {variant.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Distribution */}
@@ -852,7 +929,10 @@ export default function SKUsPage() {
                 Edit SKU: {selectedSku.sku}
               </DialogTitle>
             </DialogHeader>
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={(e) => {
+              e.preventDefault();
+              handleEditSku(new FormData(e.currentTarget));
+            }}>
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -868,8 +948,10 @@ export default function SKUsPage() {
                   <Label htmlFor="editName">Product Name *</Label>
                   <Input
                     id="editName"
+                    name="editName"
                     defaultValue={selectedSku.name}
                     placeholder="Enter product name"
+                    required
                   />
                 </div>
               </div>
@@ -878,6 +960,7 @@ export default function SKUsPage() {
                 <Label htmlFor="editDescription">Description</Label>
                 <Input
                   id="editDescription"
+                  name="editDescription"
                   defaultValue={selectedSku.description || ''}
                   placeholder="Brief product description"
                 />
