@@ -578,20 +578,25 @@ export default function SalesForecastsPage() {
                     Final customer delivery week (includes lead time + shipping)
                   </div>
                   {selectedSku && selectedShipping && (
-                    <div className="mt-2 p-3 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg text-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <span className="font-medium text-orange-800">
-                            ⏱️ Lead Time: {(selectedSku as any).leadTimeDays || 30} days
+                    <div className="mt-2 p-4 bg-gradient-to-r from-green-50 via-blue-50 to-emerald-50 border border-green-200 rounded-lg text-sm shadow-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="text-center">
+                          <span className="font-medium text-orange-800 block">
+                            ⏱️ Lead Time
                           </span>
-                          <br />
+                          <p className="font-bold text-xl text-orange-600 my-1">
+                            {(selectedSku as any).leadTimeDays || 30} days
+                          </p>
                           <span className="text-orange-600 text-xs">
-                            Production + preparation
+                            Production + prep
                           </span>
                         </div>
-                        <div>
-                          <span className="font-medium text-purple-800">
-                            🚚 Shipping: {(() => {
+                        <div className="text-center">
+                          <span className="font-medium text-purple-800 block">
+                            🚚 Shipping Time
+                          </span>
+                          <p className="font-bold text-xl text-purple-600 my-1">
+                            {(() => {
                               const shippingTimes: { [key: string]: string } = {
                                 'AIR_EXPRESS': '5-10 days',
                                 'AIR_STANDARD': '7-14 days',
@@ -605,15 +610,17 @@ export default function SalesForecastsPage() {
                               };
                               return shippingTimes[selectedShipping] || 'TBD';
                             })()} 
-                          </span>
-                          <br />
+                          </p>
                           <span className="text-purple-600 text-xs">
                             Transit time
                           </span>
                         </div>
-                        <div>
-                          <span className="font-medium text-blue-800">
-                            📅 Total: {(() => {
+                        <div className="text-center">
+                          <span className="font-medium text-blue-800 block">
+                            📅 Total Timeline
+                          </span>
+                          <p className="font-bold text-xl text-blue-600 my-1">
+                            {(() => {
                               const leadTime = (selectedSku as any).leadTimeDays || 30;
                               const shippingDays: { [key: string]: number } = {
                                 'AIR_EXPRESS': 7.5,
@@ -629,10 +636,43 @@ export default function SalesForecastsPage() {
                               const shippingTime = shippingDays[selectedShipping] || 0;
                               return `${Math.round(leadTime + shippingTime)} days`;
                             })()}
-                          </span>
-                          <br />
+                          </p>
                           <span className="text-blue-600 text-xs">
-                            Order to final delivery
+                            Order to delivery
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="font-medium text-emerald-800 block">
+                            🎯 Best Case Delivery
+                          </span>
+                          <p className="font-bold text-xl text-emerald-600 my-1">
+                            {(() => {
+                              const orderDate = new Date();
+                              const leadTime = (selectedSku as any).leadTimeDays || 30;
+                              const shippingDays: { [key: string]: number } = {
+                                'AIR_EXPRESS': 5, // Best case (minimum range)
+                                'AIR_STANDARD': 7,
+                                'SEA_ASIA_WEST': 15,
+                                'SEA_ASIA_EAST': 25,
+                                'SEA_EU_EAST': 10,
+                                'SEA_STANDARD': 25,
+                                'TRUCK_EXPRESS': 7,
+                                'TRUCK_STANDARD': 14,
+                                'RAIL': 21,
+                              };
+                              const bestCaseShipping = shippingDays[selectedShipping] || 0;
+                              const bestCaseDays = leadTime + bestCaseShipping;
+                              const bestCaseDate = new Date(orderDate);
+                              bestCaseDate.setDate(orderDate.getDate() + bestCaseDays);
+                              return bestCaseDate.toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                            })()}
+                          </p>
+                          <span className="text-emerald-600 text-xs">
+                            Earliest possible
                           </span>
                         </div>
                       </div>
