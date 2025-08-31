@@ -279,6 +279,17 @@ export async function signUp(prevState: any, formData: FormData) {
 
           console.log('✅ Created fresh user from invitation:', dbUser?.email);
           
+          // Activate the organization when the admin completes signup
+          await db
+            .update(organizations)
+            .set({
+              isActive: true,
+              updatedAt: new Date(),
+            })
+            .where(eq(organizations.id, targetOrganization.id));
+          
+          console.log('✅ Activated organization:', targetOrganization.name);
+          
           // For invitation signups, automatically sign them in
           const { error: signInError } = await supabase.auth.signInWithPassword({
             email,
