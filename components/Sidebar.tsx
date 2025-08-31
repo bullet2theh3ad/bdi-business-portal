@@ -35,9 +35,19 @@ const navigationItems: NavItem[] = [
     icon: 'cpfr',
     children: [
       {
+        title: 'Purchase Orders',
+        href: '/cpfr/purchase-orders',
+        icon: 'orders',
+      },
+      {
         title: 'Forecasts',
         href: '/cpfr/forecasts',
         icon: 'forecasts',
+      },
+      {
+        title: 'Shipments',
+        href: '/cpfr/shipments',
+        icon: 'shipping',
       },
       {
         title: 'Supply Signals',

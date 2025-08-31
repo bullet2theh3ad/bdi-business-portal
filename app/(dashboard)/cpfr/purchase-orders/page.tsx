@@ -1,0 +1,374 @@
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SemanticBDIIcon } from '@/components/BDIIcon';
+import useSWR from 'swr';
+import { User } from '@/lib/db/schema';
+
+interface UserWithOrganization extends User {
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  };
+}
+
+interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierName: string;
+  orderDate: string;
+  requestedDeliveryWeek: string;
+  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
+  terms: string; // NET30, NET60, etc.
+  totalValue: number;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+export default function PurchaseOrdersPage() {
+  const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
+  const { data: purchaseOrders, mutate: mutatePOs } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Access control - Sales team and admins can manage POs
+  if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
+    return (
+      <div className="flex-1 p-4 lg:p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">Sales team access required for purchase order management.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleCreatePO = async (formData: FormData) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/cpfr/purchase-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poNumber: formData.get('poNumber'),
+          supplierName: formData.get('supplierName'),
+          orderDate: formData.get('orderDate'),
+          requestedDeliveryWeek: formData.get('requestedDeliveryWeek'),
+          terms: formData.get('terms'),
+          totalValue: parseFloat(formData.get('totalValue') as string),
+          notes: formData.get('notes'),
+        }),
+      });
+
+      if (response.ok) {
+        mutatePOs();
+        setShowCreateModal(false);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to create PO: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error creating PO:', error);
+      alert('Failed to create PO');
+    }
+    setIsLoading(false);
+  };
+
+  const posArray = Array.isArray(purchaseOrders) ? purchaseOrders : [];
+  const filteredPOs = posArray.filter(po => {
+    const matchesSearch = !searchTerm || 
+      po.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      po.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      'draft': 'bg-gray-100 text-gray-800',
+      'sent': 'bg-blue-100 text-blue-800',
+      'confirmed': 'bg-green-100 text-green-800',
+      'shipped': 'bg-purple-100 text-purple-800',
+      'delivered': 'bg-emerald-100 text-emerald-800',
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  return (
+    <div className="flex-1 p-4 lg:p-8 space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <SemanticBDIIcon semantic="orders" size={32} />
+            <div>
+              <h1 className="text-3xl font-bold">Purchase Orders</h1>
+              <p className="text-muted-foreground">Manage supplier orders and delivery terms</p>
+            </div>
+          </div>
+          <Button className="bg-green-600 hover:bg-green-700" onClick={() => setShowCreateModal(true)}>
+            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+            Create PO
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search by PO number or supplier name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="status-filter">Status:</Label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border rounded-md"
+          >
+            <option value="all">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Purchase Orders List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <SemanticBDIIcon semantic="orders" size={20} className="mr-2" />
+            Purchase Orders ({filteredPOs.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredPOs.length === 0 ? (
+            <div className="text-center py-12">
+              <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
+              <p className="text-muted-foreground mb-4">Create your first PO to start managing supplier orders</p>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
+                Create First PO
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPOs.map((po) => (
+                <div key={po.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-semibold text-lg">PO #{po.poNumber}</h3>
+                        <Badge className={getStatusColor(po.status)}>
+                          {po.status}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                        <div>
+                          <span className="text-gray-500">Supplier:</span>
+                          <p className="font-medium">{po.supplierName}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Order Date:</span>
+                          <p className="font-medium">{new Date(po.orderDate).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Delivery Week:</span>
+                          <p className="font-medium">{po.requestedDeliveryWeek}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Terms:</span>
+                          <p className="font-medium">{po.terms}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Total Value:</span>
+                          <span className="font-bold text-green-600">${po.totalValue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      {po.notes && (
+                        <p className="text-sm text-gray-600 mt-2">{po.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedPO(po)}>
+                        <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create PO Modal */}
+      {showCreateModal && (
+        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <SemanticBDIIcon semantic="orders" size={20} className="mr-2" />
+                Create Purchase Order
+              </DialogTitle>
+            </DialogHeader>
+            <form className="space-y-6" onSubmit={(e) => {
+              e.preventDefault();
+              handleCreatePO(new FormData(e.currentTarget));
+            }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="poNumber">PO Number *</Label>
+                  <Input
+                    id="poNumber"
+                    name="poNumber"
+                    placeholder="e.g., PO-2025-001"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="supplierName">Supplier Name *</Label>
+                  <Input
+                    id="supplierName"
+                    name="supplierName"
+                    placeholder="e.g., Motorola Solutions"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="orderDate">Order Date *</Label>
+                  <Input
+                    id="orderDate"
+                    name="orderDate"
+                    type="date"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="requestedDeliveryWeek">Requested Delivery Week *</Label>
+                  <Input
+                    id="requestedDeliveryWeek"
+                    name="requestedDeliveryWeek"
+                    placeholder="e.g., 2025-W12"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="terms">Payment Terms *</Label>
+                  <select
+                    id="terms"
+                    name="terms"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                  >
+                    <option value="">Select Terms</option>
+                    <option value="NET15">NET 15 - Payment due in 15 days</option>
+                    <option value="NET30">NET 30 - Payment due in 30 days</option>
+                    <option value="NET60">NET 60 - Payment due in 60 days</option>
+                    <option value="NET90">NET 90 - Payment due in 90 days</option>
+                    <option value="COD">COD - Cash on Delivery</option>
+                    <option value="PREPAID">Prepaid - Payment in advance</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="totalValue">Total Value ($) *</Label>
+                  <Input
+                    id="totalValue"
+                    name="totalValue"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g., 125000.00"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  placeholder="Special instructions, delivery requirements, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateModal(false)}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isLoading ? (
+                    <>
+                      <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <SemanticBDIIcon semantic="orders" size={16} className="mr-2 brightness-0 invert" />
+                      Create PO
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

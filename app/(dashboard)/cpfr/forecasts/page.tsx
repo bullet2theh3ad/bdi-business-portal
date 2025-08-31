@@ -20,10 +20,25 @@ interface UserWithOrganization extends User {
   };
 }
 
+interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierName: string;
+  orderDate: string;
+  requestedDeliveryWeek: string;
+  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
+  terms: string;
+  totalValue: number;
+  createdBy: string;
+  createdAt: string;
+}
+
 interface SalesForecast {
   id: string;
   skuId: string;
   sku: ProductSku;
+  purchaseOrderId?: string; // Link to PO
+  purchaseOrder?: PurchaseOrder;
   deliveryWeek: string; // ISO week format: 2025-W12
   quantity: number;
   confidence: 'low' | 'medium' | 'high';
@@ -38,6 +53,7 @@ export default function SalesForecastsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
+  const { data: purchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSku, setSelectedSku] = useState<ProductSku | null>(null);
@@ -68,6 +84,7 @@ export default function SalesForecastsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           skuId: selectedSku?.id,
+          purchaseOrderId: formData.get('purchaseOrderId') || null,
           deliveryWeek: formData.get('deliveryWeek'),
           quantity: parseInt(formData.get('quantity') as string),
           confidence: formData.get('confidence'),
@@ -141,6 +158,7 @@ export default function SalesForecastsPage() {
   const weeks = getNext12Weeks();
   const skusArray = Array.isArray(skus) ? skus : [];
   const forecastsArray = Array.isArray(forecasts) ? forecasts : [];
+  const posArray = Array.isArray(purchaseOrders) ? purchaseOrders : [];
 
   return (
     <div className="flex-1 p-4 lg:p-8 space-y-6">
@@ -452,6 +470,24 @@ export default function SalesForecastsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
+                  <Label htmlFor="purchaseOrderId">Link to Purchase Order</Label>
+                  <select
+                    id="purchaseOrderId"
+                    name="purchaseOrderId"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                  >
+                    <option value="">No PO (Independent Forecast)</option>
+                    {posArray.map(po => (
+                      <option key={po.id} value={po.id}>
+                        PO #{po.poNumber} - {po.supplierName} ({po.requestedDeliveryWeek})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-1 text-xs text-gray-600">
+                    Optional: Link forecast to existing Purchase Order
+                  </div>
+                </div>
+                <div>
                   <Label htmlFor="confidence">Confidence Level *</Label>
                   <select
                     id="confidence"
@@ -465,15 +501,17 @@ export default function SalesForecastsPage() {
                     <option value="low">🔴 Low - Uncertain</option>
                   </select>
                 </div>
-                <div>
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Input
-                    id="notes"
-                    name="notes"
-                    placeholder="Market conditions, customer feedback, etc."
-                    className="mt-1"
-                  />
-                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  placeholder="Market conditions, customer feedback, special requirements, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                  rows={3}
+                />
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">
