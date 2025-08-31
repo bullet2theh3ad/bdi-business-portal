@@ -386,7 +386,9 @@ export default function ConnectionsPage() {
                           disabled={isLoading}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          <SemanticBDIIcon semantic="disconnect" className="w-4 h-4" />
+                          <SemanticBDIIcon semantic="disconnect" className="w-4 h-4 mr-2" />
+                          <span className="hidden sm:inline">Disconnect</span>
+                          <span className="sm:hidden">✕</span>
                         </Button>
                       </div>
                     </div>
