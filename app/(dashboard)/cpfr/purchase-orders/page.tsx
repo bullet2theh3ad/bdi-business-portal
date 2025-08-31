@@ -244,18 +244,18 @@ export default function PurchaseOrdersPage() {
       {/* Create PO Modal */}
       {showCreateModal && (
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="orders" size={20} className="mr-2" />
                 Create Purchase Order
               </DialogTitle>
             </DialogHeader>
-            <form className="space-y-6" onSubmit={(e) => {
+            <form className="space-y-12 p-8" onSubmit={(e) => {
               e.preventDefault();
               handleCreatePO(new FormData(e.currentTarget));
             }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
                 <div>
                   <Label htmlFor="poNumber">PO Number *</Label>
                   <Input
@@ -278,7 +278,7 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
                 <div>
                   <Label htmlFor="orderDate">Order Date *</Label>
                   <Input
@@ -301,9 +301,9 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="terms">Payment Terms *</Label>
+                              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+                  <div>
+                    <Label htmlFor="terms">Payment Terms *</Label>
                   {!customTerms ? (
                     <div>
                       <select
@@ -424,7 +424,7 @@ export default function PurchaseOrdersPage() {
                   <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
                   Supporting Documents
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
                   <div>
                     <Label htmlFor="documents">Upload Documents</Label>
                     <input
@@ -503,7 +503,7 @@ export default function PurchaseOrdersPage() {
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-4 pt-8">
                 <Button
                   type="button"
                   variant="outline"
