@@ -61,6 +61,7 @@ export default function SalesForecastsPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedShipping, setSelectedShipping] = useState<string>('');
 
   // Access control - Sales team and admins can create forecasts
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -412,21 +413,52 @@ export default function SalesForecastsPage() {
                         </p>
                       </div>
                       <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
-                        <span className="text-gray-600 text-sm font-medium mb-2">Carton Dimensions</span>
-                        <p className="font-medium text-lg mb-2">
-                          {(selectedSku as any).cartonLengthCm && (selectedSku as any).cartonWidthCm && (selectedSku as any).cartonHeightCm
-                            ? `${(selectedSku as any).cartonLengthCm} × ${(selectedSku as any).cartonWidthCm} × ${(selectedSku as any).cartonHeightCm} cm`
-                            : 'Not Set'
-                          }
+                        <span className="text-gray-600 text-sm font-medium mb-2">Shipping Time</span>
+                        <p className="font-bold text-3xl text-purple-600 mb-2">
+                          {(() => {
+                            const shippingTimes: { [key: string]: string } = {
+                              'AIR_EXPRESS': '5-10 days',
+                              'AIR_STANDARD': '7-14 days',
+                              'SEA_ASIA_WEST': '15-20 days',
+                              'SEA_ASIA_EAST': '25-35 days',
+                              'SEA_EU_EAST': '10-15 days',
+                              'SEA_STANDARD': '25-50 days',
+                              'TRUCK_EXPRESS': '7-14 days',
+                              'TRUCK_STANDARD': '14-28 days',
+                              'RAIL': '21-35 days',
+                            };
+                            return selectedShipping ? shippingTimes[selectedShipping] || 'TBD' : 'Select shipping';
+                          })()}
                         </p>
-                        <p className="text-xs text-gray-500">Length × Width × Height</p>
+                        <p className="text-xs text-gray-500">
+                          Transit time for selected method
+                        </p>
                       </div>
                       <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
-                        <span className="text-gray-600 text-sm font-medium mb-2">Carton Weight</span>
-                        <p className="font-medium text-lg mb-2">
-                          {(selectedSku as any).cartonWeightKg ? `${(selectedSku as any).cartonWeightKg} kg` : 'Not Set'}
+                        <span className="text-gray-600 text-sm font-medium mb-2">Total Delivery Time</span>
+                        <p className="font-bold text-3xl text-indigo-600 mb-2">
+                          {(() => {
+                            if (!selectedShipping) return 'Select shipping';
+                            const leadTime = (selectedSku as any).leadTimeDays || 30;
+                            const shippingDays: { [key: string]: number } = {
+                              'AIR_EXPRESS': 7.5, // Average of 5-10
+                              'AIR_STANDARD': 10.5, // Average of 7-14
+                              'SEA_ASIA_WEST': 17.5, // Average of 15-20
+                              'SEA_ASIA_EAST': 30, // Average of 25-35
+                              'SEA_EU_EAST': 12.5, // Average of 10-15
+                              'SEA_STANDARD': 37.5, // Average of 25-50
+                              'TRUCK_EXPRESS': 10.5, // Average of 7-14
+                              'TRUCK_STANDARD': 21, // Average of 14-28
+                              'RAIL': 28, // Average of 21-35
+                            };
+                            const shippingTime = shippingDays[selectedShipping] || 0;
+                            const totalDays = leadTime + shippingTime;
+                            return `${Math.round(totalDays)} days`;
+                          })()}
                         </p>
-                        <p className="text-xs text-gray-500">Per carton shipping weight</p>
+                        <p className="text-xs text-gray-500">
+                          Lead time + shipping time
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -486,20 +518,51 @@ export default function SalesForecastsPage() {
                     ISO week format with Monday-Sunday date range
                   </div>
                   {selectedSku && (
-                    <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
-                      <span className="font-medium text-orange-800">
-                        ⏱️ Lead Time: {(selectedSku as any).leadTimeDays || 30} days
-                      </span>
-                      <br />
-                      <span className="text-orange-600">
-                        Earliest delivery: {(() => {
-                          const orderDate = new Date();
-                          const earliestDelivery = new Date(orderDate);
-                          earliestDelivery.setDate(orderDate.getDate() + ((selectedSku as any).leadTimeDays || 30));
-                          const earliestWeek = weeks.find(w => w.startDate >= earliestDelivery);
-                          return earliestWeek ? `${earliestWeek.isoWeek} (${earliestWeek.dateRange})` : 'TBD';
-                        })()}
-                      </span>
+                    <div className="mt-2 p-3 bg-gradient-to-r from-orange-50 to-purple-50 border border-orange-200 rounded-lg text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium text-orange-800">
+                            ⏱️ Lead Time: {(selectedSku as any).leadTimeDays || 30} days
+                          </span>
+                          <br />
+                          <span className="text-orange-600 text-xs">
+                            Production + preparation time
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-purple-800">
+                            🚚 Final Delivery Date: {(() => {
+                              if (!selectedShipping) return 'Select shipping method';
+                              const orderDate = new Date();
+                              const leadTime = (selectedSku as any).leadTimeDays || 30;
+                              const shippingDays: { [key: string]: number } = {
+                                'AIR_EXPRESS': 7.5,
+                                'AIR_STANDARD': 10.5,
+                                'SEA_ASIA_WEST': 17.5,
+                                'SEA_ASIA_EAST': 30,
+                                'SEA_EU_EAST': 12.5,
+                                'SEA_STANDARD': 37.5,
+                                'TRUCK_EXPRESS': 10.5,
+                                'TRUCK_STANDARD': 21,
+                                'RAIL': 28,
+                              };
+                              const shippingTime = shippingDays[selectedShipping] || 0;
+                              const totalDays = leadTime + shippingTime;
+                              const deliveryDate = new Date(orderDate);
+                              deliveryDate.setDate(orderDate.getDate() + totalDays);
+                              return deliveryDate.toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                              });
+                            })()}
+                          </span>
+                          <br />
+                          <span className="text-purple-600 text-xs">
+                            Estimated final delivery
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -575,6 +638,8 @@ export default function SalesForecastsPage() {
                     id="shippingPreference"
                     name="shippingPreference"
                     required
+                    value={selectedShipping}
+                    onChange={(e) => setSelectedShipping(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                   >
                     <option value="">Select Shipping Mode</option>
