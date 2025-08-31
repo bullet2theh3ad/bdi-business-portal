@@ -63,6 +63,7 @@ export default function SalesForecastsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>('');
   const [quantityError, setQuantityError] = useState<string>('');
+  const [moqOverride, setMoqOverride] = useState<boolean>(false);
 
   // Access control - Sales team and admins can create forecasts
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -92,6 +93,7 @@ export default function SalesForecastsPage() {
           quantity: parseInt(formData.get('quantity') as string),
           confidence: formData.get('confidence'),
           shippingPreference: formData.get('shippingPreference'),
+          moqOverride: moqOverride,
           notes: formData.get('notes'),
         }),
       });
@@ -100,6 +102,8 @@ export default function SalesForecastsPage() {
         mutateForecasts();
         setShowCreateModal(false);
         setSelectedSku(null);
+        setMoqOverride(false);
+        setQuantityError('');
       } else {
         const errorData = await response.json();
         alert(`Failed to create forecast: ${errorData.error || 'Unknown error'}`);
@@ -631,26 +635,61 @@ export default function SalesForecastsPage() {
                     onChange={(e) => {
                       const value = parseInt(e.target.value);
                       const unitsPerCarton = (selectedSku as any)?.boxesPerCarton;
+                      const moq = (selectedSku as any)?.moq || 1;
                       
+                      let error = '';
+                      
+                      // Check carton multiple
                       if (unitsPerCarton && value && value % unitsPerCarton !== 0) {
-                        const error = `Must be multiple of ${unitsPerCarton} (units per carton)`;
-                        setQuantityError(error);
-                        e.target.setCustomValidity(error);
-                      } else {
-                        setQuantityError('');
-                        e.target.setCustomValidity('');
+                        error = `Must be multiple of ${unitsPerCarton} (units per carton)`;
                       }
+                      // Check MOQ (unless override is enabled)
+                      else if (!moqOverride && value && value < moq) {
+                        error = `Below MOQ of ${moq.toLocaleString()} units`;
+                      }
+                      
+                      setQuantityError(error);
+                      e.target.setCustomValidity(error);
                     }}
                   />
                   {quantityError ? (
                     <div className="mt-1 text-xs text-red-600 font-medium">
                       ❌ {quantityError}
+                      {quantityError.includes('Below MOQ') && (
+                        <div className="mt-2">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={moqOverride}
+                              onChange={(e) => {
+                                setMoqOverride(e.target.checked);
+                                if (e.target.checked) {
+                                  setQuantityError('');
+                                  const quantityInput = document.getElementById('quantity') as HTMLInputElement;
+                                  if (quantityInput) quantityInput.setCustomValidity('');
+                                }
+                              }}
+                              className="w-4 h-4 text-red-600"
+                            />
+                            <span className="text-red-700 font-medium">Override MOQ (special order)</span>
+                          </label>
+                        </div>
+                      )}
                     </div>
-                  ) : (selectedSku as any)?.boxesPerCarton ? (
-                    <div className="mt-1 text-xs text-blue-600">
-                      💡 Must be multiple of {(selectedSku as any).boxesPerCarton} units (full cartons only)
+                  ) : (
+                    <div className="space-y-1">
+                      {(selectedSku as any)?.boxesPerCarton && (
+                        <div className="text-xs text-blue-600">
+                          💡 Must be multiple of {(selectedSku as any).boxesPerCarton} units (full cartons only)
+                        </div>
+                      )}
+                      {(selectedSku as any)?.moq && (
+                        <div className="text-xs text-green-600">
+                          📊 MOQ: {((selectedSku as any).moq || 1).toLocaleString()} units minimum
+                        </div>
+                      )}
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -738,6 +777,9 @@ export default function SalesForecastsPage() {
                   onClick={() => {
                     setShowCreateModal(false);
                     setSelectedSku(null);
+                    setMoqOverride(false);
+                    setQuantityError('');
+                    setSelectedShipping('');
                   }}
                   disabled={isLoading}
                 >
