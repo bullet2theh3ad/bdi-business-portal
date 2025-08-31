@@ -46,7 +46,7 @@ async function getCurrentUser() {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser();

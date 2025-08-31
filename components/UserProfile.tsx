@@ -119,8 +119,8 @@ export function UserProfile({
             <div>
               <CardTitle className="text-xl">{getUserDisplayName()}</CardTitle>
               <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
-              {user.teamDisplayName && (
-                <p className="text-sm text-blue-600">{user.teamDisplayName}</p>
+              {(user as any).teamDisplayName && (
+                <p className="text-sm text-blue-600">{(user as any).teamDisplayName}</p>
               )}
             </div>
           </div>
@@ -144,36 +144,36 @@ export function UserProfile({
                   <p className="font-medium">{user.phone}</p>
                 </div>
               )}
-              {user.riderId && (
+              {(user as any).riderId && (
                 <div>
                   <span className="text-gray-500">Rider ID:</span>
-                  <p className="font-medium font-mono text-xs">{user.riderId}</p>
+                  <p className="font-medium font-mono text-xs">{(user as any).riderId}</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Emergency Contact */}
-          {(user.emergencyContactName || user.emergencyContactEmail || user.emergencyContactPhone) && (
+          {((user as any).emergencyContactName || (user as any).emergencyContactEmail || (user as any).emergencyContactPhone) && (
             <div>
               <h4 className="font-medium text-sm text-gray-700 mb-2">Emergency Contact</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                {user.emergencyContactName && (
+                {(user as any).emergencyContactName && (
                   <div>
                     <span className="text-gray-500">Name:</span>
-                    <p className="font-medium">{user.emergencyContactName}</p>
+                    <p className="font-medium">{(user as any).emergencyContactName}</p>
                   </div>
                 )}
-                {user.emergencyContactEmail && (
+                {(user as any).emergencyContactEmail && (
                   <div>
                     <span className="text-gray-500">Email:</span>
-                    <p className="font-medium">{user.emergencyContactEmail}</p>
+                    <p className="font-medium">{(user as any).emergencyContactEmail}</p>
                   </div>
                 )}
-                {user.emergencyContactPhone && (
+                {(user as any).emergencyContactPhone && (
                   <div className="col-span-full">
                     <span className="text-gray-500">Phone:</span>
-                    <p className="font-medium">{user.emergencyContactPhone}</p>
+                    <p className="font-medium">{(user as any).emergencyContactPhone}</p>
                   </div>
                 )}
               </div>
@@ -181,11 +181,11 @@ export function UserProfile({
           )}
 
           {/* Allergies */}
-          {user.allergies && (
+          {(user as any).allergies && (
             <div>
               <h4 className="font-medium text-sm text-gray-700 mb-2">Allergies & Medical Notes</h4>
               <p className="text-sm bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
-                {user.allergies}
+                {(user as any).allergies}
               </p>
             </div>
           )}
@@ -306,7 +306,7 @@ export function UserProfile({
                   <Input
                     id="teamDisplayName"
                     name="teamDisplayName"
-                    defaultValue={user.teamDisplayName || ''}
+                    defaultValue={(user as any).teamDisplayName || ''}
                     placeholder="e.g., Lead Rider, Safety Officer, etc."
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -326,7 +326,7 @@ export function UserProfile({
                 <Input
                   id="emergencyContactName"
                   name="emergencyContactName"
-                  defaultValue={user.emergencyContactName || ''}
+                  defaultValue={(user as any).emergencyContactName || ''}
                   placeholder="Emergency contact name"
                 />
               </div>
@@ -336,7 +336,7 @@ export function UserProfile({
                   id="emergencyContactPhone"
                   name="emergencyContactPhone"
                   type="tel"
-                  defaultValue={user.emergencyContactPhone || ''}
+                  defaultValue={(user as any).emergencyContactPhone || ''}
                   placeholder="+1 (555) 987-6543"
                 />
               </div>
@@ -346,7 +346,7 @@ export function UserProfile({
                   id="emergencyContactEmail"
                   name="emergencyContactEmail"
                   type="email"
-                  defaultValue={user.emergencyContactEmail || ''}
+                  defaultValue={(user as any).emergencyContactEmail || ''}
                   placeholder="emergency@contact.com"
                 />
               </div>
@@ -362,7 +362,7 @@ export function UserProfile({
                 id="allergies"
                 name="allergies"
                 rows={3}
-                defaultValue={user.allergies || ''}
+                defaultValue={(user as any).allergies || ''}
                 placeholder="List any allergies, medical conditions, or important medical information..."
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />

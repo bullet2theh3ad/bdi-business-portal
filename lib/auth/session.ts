@@ -46,7 +46,7 @@ export async function getSession() {
 export async function setSession(user: NewUser) {
   const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session: SessionData = {
-    user: { id: user.riderId! }, // 🔄 MIGRATION: Use riderId (Supabase UUID) instead of id (integer)
+    user: { id: user.authId! }, // 🔄 MIGRATION: Use authId (Supabase UUID) instead of id (integer)
     expires: expiresInOneDay.toISOString(),
   };
   const encryptedSession = await signToken(session);

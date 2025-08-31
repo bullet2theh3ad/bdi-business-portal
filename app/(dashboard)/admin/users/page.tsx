@@ -177,7 +177,7 @@ export default function AdminUsersPage() {
   };
 
   // Only BDI Super Admins and BDI Admins can access BDI user management
-  if (!user || !['super_admin', 'admin'].includes(user.role) || user.organization?.code !== 'BDI') {
+  if (!user || !['super_admin', 'admin'].includes(user.role) || (user as any).organization?.code !== 'BDI') {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">

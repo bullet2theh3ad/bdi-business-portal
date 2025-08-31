@@ -177,12 +177,12 @@ export function Sidebar({ className }: SidebarProps) {
     }
 
     // Check if item requires BDI organization access
-    if (item.requiresBDI && user?.organization?.code !== 'BDI') {
+    if (item.requiresBDI && (user as any)?.organization?.code !== 'BDI') {
       return null;
     }
 
     // Check if item requires non-BDI organization access
-    if (item.requiresNonBDI && (user?.organization?.code === 'BDI' || user?.organization?.type === 'internal')) {
+    if (item.requiresNonBDI && ((user as any)?.organization?.code === 'BDI' || (user as any)?.organization?.type === 'internal')) {
       return null;
     }
 

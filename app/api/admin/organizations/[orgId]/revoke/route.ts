@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -57,7 +57,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden - Super Admin required' }, { status: 403 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
     console.log('Revoking invitation for organization:', orgId);
 
     // Get organization details

@@ -170,7 +170,7 @@ export default function AdminOrganizationsPage() {
   };
 
   // Only BDI Super Admins can access organization management
-  if (!user || user.role !== 'super_admin' || user.organization?.code !== 'BDI') {
+  if (!user || user.role !== 'super_admin' || (user as any).organization?.code !== 'BDI') {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">

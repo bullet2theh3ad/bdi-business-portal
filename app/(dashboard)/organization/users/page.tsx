@@ -133,7 +133,7 @@ export default function OrganizationUsersPage() {
   };
 
   // Only organization admins can access this page
-  if (!user || user.role !== 'admin' || user.organization?.code === 'BDI') {
+  if (!user || user.role !== 'admin' || (user as any).organization?.code === 'BDI') {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
@@ -154,7 +154,7 @@ export default function OrganizationUsersPage() {
           <div className="flex items-center space-x-4">
             <SemanticBDIIcon semantic="users" size={32} />
             <div>
-              <h1 className="text-3xl font-bold">{user.organization?.name} Users</h1>
+              <h1 className="text-3xl font-bold">{(user as any).organization?.name} Users</h1>
               <p className="text-muted-foreground">Manage your organization's team members and access</p>
             </div>
           </div>
@@ -221,7 +221,7 @@ export default function OrganizationUsersPage() {
             Organization Members
           </CardTitle>
           <CardDescription>
-            Manage users and access for {user.organization?.name}
+            Manage users and access for {(user as any).organization?.name}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -334,7 +334,7 @@ export default function OrganizationUsersPage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <SemanticBDIIcon semantic="users" size={24} className="mr-2" />
-                Invite User to {user.organization?.name}
+                Invite User to {(user as any).organization?.name}
               </CardTitle>
               <CardDescription>Send an invitation to join your organization</CardDescription>
             </CardHeader>

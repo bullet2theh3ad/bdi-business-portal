@@ -83,7 +83,7 @@ export function FileUpload({
         file,
         status: error ? 'error' : 'pending',
         progress: 0,
-        error
+        error: error || undefined
       });
     }
     

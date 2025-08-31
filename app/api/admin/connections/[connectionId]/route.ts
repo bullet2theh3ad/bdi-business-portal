@@ -31,7 +31,7 @@ const updateConnectionSchema = z.object({
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { connectionId: string } }
+  { params }: { params: Promise<{ connectionId: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -64,7 +64,7 @@ export async function DELETE(
         authId: users.authId,
         email: users.email,
         role: users.role,
-        organizationId: organizationMembers.organizationId,
+        organizationId: organizationMembers.organizationUuid,
       })
       .from(users)
       .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
@@ -86,7 +86,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Access denied. BDI Super Admin required.' }, { status: 403 });
     }
 
-    const { connectionId } = params;
+    const { connectionId } = await params;
 
     // Check if this is a bilateral connection ID (contains '|') or single directional connection
     if (connectionId.includes('|')) {
@@ -142,7 +142,7 @@ export async function DELETE(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { connectionId: string } }
+  { params }: { params: Promise<{ connectionId: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -175,7 +175,7 @@ export async function PUT(
         authId: users.authId,
         email: users.email,
         role: users.role,
-        organizationId: organizationMembers.organizationId,
+        organizationId: organizationMembers.organizationUuid,
       })
       .from(users)
       .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
@@ -199,7 +199,7 @@ export async function PUT(
 
     const body = await request.json();
     const validatedData = updateConnectionSchema.parse(body);
-    const { connectionId } = params;
+    const { connectionId } = await params;
 
     // Check if this is a bilateral update or single directional update
     if (connectionId.includes('|')) {

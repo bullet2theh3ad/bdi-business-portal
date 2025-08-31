@@ -30,7 +30,7 @@ function ResetPasswordForm() {
     }
 
     // Verify the token
-    verifyResetToken({ token }, new FormData())
+    verifyResetToken(token)
       .then((result) => {
         if ('error' in result && result.error) {
           setVerificationState({
@@ -38,11 +38,11 @@ function ResetPasswordForm() {
             valid: false,
             error: result.error
           });
-        } else if ('success' in result && result.success && 'user' in result) {
+        } else if ('valid' in result && result.valid) {
           setVerificationState({
             loading: false,
             valid: true,
-            user: result.user
+            user: undefined
           });
         } else {
           setVerificationState({

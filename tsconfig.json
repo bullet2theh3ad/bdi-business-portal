@@ -39,6 +39,7 @@
   ],
   "exclude": [
     "node_modules",
-    "legacy_assets"
+    "legacy_assets",
+    "legacy_directory"
   ]
 }
