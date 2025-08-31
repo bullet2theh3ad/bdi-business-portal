@@ -6,6 +6,20 @@
 # Legacy directory (if you don't want it deployed)
 legacy_directory/
 
+# Legacy files not needed for B2B Portal
+components/RideSelector.tsx
+components/RideCalendarModal.tsx
+components/LicenseDashboard.tsx
+components/CalendarButton.tsx
+components/TeamGroups.tsx
+app/api/team/
+app/api/stripe/
+app/api/status-ping/
+app/(dashboard)/pricing/
+app/(dashboard)/debug-info.tsx
+app/(dashboard)/subscription-status.tsx
+lib/payments/
+
 # Database files
 *.sqlite
 *.db
