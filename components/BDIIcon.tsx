@@ -146,6 +146,11 @@ export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   download: 'freight-4',
   sync: 'network-4',
   connect: 'network-5',
+  orders: 'ecommerce-2', // Purchase orders icon
+  shipping: 'freight-5', // Shipments/delivery icon
+  plus: 'network-6', // Plus/add icon
+  inventory: 'warehouse-3', // Inventory icon
+  info: 'mobile-10', // Info icon
 };
 
 interface SemanticBDIIconProps {
