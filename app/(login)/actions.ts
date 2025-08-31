@@ -105,7 +105,7 @@ export async function signUp(prevState: any, formData: FormData) {
   const supabase = await createSupabaseServerClient();
   let supabaseUser = null;
 
-  // For invitation signups, we already have the user in our database
+  // For invitation signups, Supabase user already exists - just update password and sign in
   // For regular signups, we need to create them in Supabase Auth
   if (!token) {
     // Regular signup - create user in Supabase Auth
@@ -139,33 +139,55 @@ export async function signUp(prevState: any, formData: FormData) {
 
     supabaseUser = data.user;
   } else {
-    // Invitation signup - create Supabase user WITHOUT email confirmation
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Skip email confirmation for invitations
-      user_metadata: {
-        name: name || null,
+    // Invitation signup - parse token to get Supabase user ID
+    let tokenData;
+    try {
+      tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
+      console.log('Parsed invitation token for password update:', { email: tokenData.adminEmail, supabaseUserId: tokenData.supabaseUserId });
+    } catch (error) {
+      console.error('Invalid invitation token:', error);
+      return {
+        error: 'Invalid or expired invitation token.',
+        email,
+        password
+      };
+    }
+
+    // Update the existing Supabase user's password using admin client
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          get() { return undefined; },
+          set() {},
+          remove() {},
+        },
       }
-    });
+    );
 
-    if (error) {
+    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      tokenData.supabaseUserId,
+      {
+        password: password,
+        user_metadata: {
+          name: name || null,
+          password_set: true,
+        }
+      }
+    );
+
+    if (updateError || !updateData.user) {
+      console.error('Failed to update user password:', updateError);
       return {
-        error: error.message || 'Failed to create user. Please try again.',
+        error: 'Failed to set password. Please try again.',
         email,
         password
       };
     }
 
-    if (!data.user) {
-      return {
-        error: 'Failed to create user. Please try again.',
-        email,
-        password
-      };
-    }
-
-    supabaseUser = data.user;
+    console.log('✅ Updated Supabase user password for invitation signup');
+    supabaseUser = updateData.user;
   }
 
   try {
@@ -267,7 +289,7 @@ export async function signUp(prevState: any, formData: FormData) {
             console.error('Auto sign-in failed:', signInError);
             // Don't return error - user was created successfully, they can sign in manually
           } else {
-            console.log('✅ User automatically signed in');
+            console.log('✅ User automatically signed in after invitation signup');
           }
         }
       } else {
@@ -347,8 +369,7 @@ export async function revokeInvitation(prevState: any, formData: FormData) {
     await db
       .update(invitations)
       .set({ 
-        status: 'revoked',
-        updatedAt: new Date()
+        status: 'revoked'
       })
       .where(eq(invitations.id, invitationId));
 

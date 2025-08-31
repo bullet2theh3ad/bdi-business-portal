@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { organizations, users, organizationMembers } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(
   request: NextRequest,
@@ -32,6 +33,18 @@ export async function POST(
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Create admin client for user deletion
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
 
     // Verify super admin permission
     const [requestingUser] = await db
@@ -94,11 +107,22 @@ export async function POST(
           .limit(1);
 
         if (userToDelete) {
+          // Delete from Supabase Auth (for invited users, this should always exist now)
+          const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(
+            userToDelete.authId
+          );
+          if (deleteAuthError) {
+            console.error('Failed to delete Supabase auth user:', deleteAuthError);
+          } else {
+            console.log('✅ Deleted Supabase auth user:', userToDelete.email);
+          }
+
+          // Delete from our database
           await db
             .delete(users)
             .where(eq(users.authId, member.userAuthId));
           
-          console.log('Deleted user:', userToDelete.email, 'Status:', userToDelete.passwordHash);
+          console.log('✅ Deleted database user:', userToDelete.email, 'Status:', userToDelete.passwordHash);
         }
       } else {
         console.log('User has other memberships, not deleting:', member.userAuthId);

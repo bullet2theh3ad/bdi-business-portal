@@ -6,6 +6,7 @@ import { organizations, users, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { Resend } from 'resend';
 import { z } from 'zod';
+import { createClient } from '@supabase/supabase-js';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -37,6 +38,18 @@ export async function POST(request: NextRequest) {
             );
           },
         },
+      }
+    );
+
+    // Create admin client for user creation
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
     );
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -112,12 +125,43 @@ export async function POST(request: NextRequest) {
 
     console.log('Created organization:', newOrganization);
 
-    // Create the admin user (pending state)
-    console.log('Creating admin user with data:', {
+    // Create Supabase auth user silently (no email sent)
+    console.log('Creating Supabase auth user silently for:', validatedData.adminEmail);
+    
+    // Generate a temporary password that the user will change during signup
+    const tempPassword = crypto.randomUUID();
+    
+    const { data: supabaseUser, error: supabaseError } = await supabaseAdmin.auth.admin.createUser({
+      email: validatedData.adminEmail,
+      password: tempPassword,
+      email_confirm: true, // Skip email confirmation
+      user_metadata: {
+        name: validatedData.adminName,
+        invitation_signup: true,
+        organization_id: newOrganization.id,
+        organization_name: validatedData.companyName
+      }
+    });
+
+    if (supabaseError || !supabaseUser.user) {
+      console.error('Failed to create Supabase user:', supabaseError);
+      // Clean up the organization if user creation failed
+      await db.delete(organizations).where(eq(organizations.id, newOrganization.id));
+      return NextResponse.json(
+        { error: 'Failed to create user account. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Created Supabase user silently:', supabaseUser.user.id);
+
+    // Create the admin user in our database
+    console.log('Creating admin user in database with data:', {
       name: validatedData.adminName,
       email: validatedData.adminEmail,
       role: 'admin',
-      isActive: false,
+      authId: supabaseUser.user.id,
+      isActive: false, // Will be activated when they set their password
     });
 
     const [newAdminUser] = await db
@@ -127,14 +171,14 @@ export async function POST(request: NextRequest) {
         email: validatedData.adminEmail,
         passwordHash: 'invitation_pending', // Special marker for pending invitations
         role: 'admin',
-        authId: crypto.randomUUID(), // Generate a temporary UUID for now
+        authId: supabaseUser.user.id, // Use actual Supabase auth ID
         isActive: false, // Will be activated when they complete signup
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
 
-    console.log('Created admin user:', newAdminUser);
+    console.log('Created admin user in database:', newAdminUser);
 
     // Create organization membership
     console.log('Creating organization membership with data:', {
@@ -154,12 +198,13 @@ export async function POST(request: NextRequest) {
 
     console.log('Created organization membership');
 
-    // Generate invitation token (you can make this more sophisticated)
+    // Generate invitation token with Supabase user ID
     const invitationToken = Buffer.from(
       JSON.stringify({
         organizationId: newOrganization.id,
         organizationName: validatedData.companyName,
         adminEmail: validatedData.adminEmail,
+        supabaseUserId: supabaseUser.user.id,
         capabilities: validatedData.capabilities,
         timestamp: Date.now()
       })
