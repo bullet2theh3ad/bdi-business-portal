@@ -115,8 +115,8 @@ export default function SalesForecastsPage() {
     setIsLoading(false);
   };
 
-  // Get next 12 weeks for calendar view with ISO week numbers
-  const getNext12Weeks = () => {
+  // Get planning weeks - extends 6 weeks beyond earliest possible delivery
+  const getPlanningWeeks = () => {
     const weeks = [];
     const now = new Date();
     
@@ -140,7 +140,29 @@ export default function SalesForecastsPage() {
       return new Date(date.setDate(diff));
     };
     
-    for (let i = 0; i < 12; i++) {
+    // Calculate how many weeks we need based on selected SKU and shipping
+    let totalWeeks = 12; // Default minimum
+    
+    if (selectedSku && selectedShipping) {
+      const leadTime = (selectedSku as any)?.leadTimeDays || 30;
+      const shippingDays: { [key: string]: number } = {
+        'AIR_EXPRESS': 7.5,
+        'AIR_STANDARD': 10.5,
+        'SEA_ASIA_WEST': 17.5,
+        'SEA_ASIA_EAST': 30,
+        'SEA_EU_EAST': 12.5,
+        'SEA_STANDARD': 37.5,
+        'TRUCK_EXPRESS': 10.5,
+        'TRUCK_STANDARD': 21,
+        'RAIL': 28,
+      };
+      const shippingTime = shippingDays[selectedShipping] || 0;
+      const totalDays = leadTime + shippingTime;
+      const weeksUntilEarliest = Math.ceil(totalDays / 7);
+      totalWeeks = Math.max(12, weeksUntilEarliest + 6); // 6 weeks beyond earliest
+    }
+    
+    for (let i = 0; i < totalWeeks; i++) {
       const weekStart = new Date(now);
       weekStart.setDate(now.getDate() + (i * 7));
       const monday = getMondayOfWeek(new Date(weekStart));
@@ -163,7 +185,7 @@ export default function SalesForecastsPage() {
     return weeks;
   };
 
-  const weeks = getNext12Weeks();
+  const weeks = getPlanningWeeks();
   const skusArray = Array.isArray(skus) ? skus : [];
   const forecastsArray = Array.isArray(forecasts) ? forecasts : [];
   const posArray = Array.isArray(purchaseOrders) ? purchaseOrders : [];
