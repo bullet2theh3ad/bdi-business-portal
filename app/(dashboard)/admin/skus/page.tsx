@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
-import { User, ProductSku } from '@/lib/db/schema';
+import { User, ProductSku, Organization } from '@/lib/db/schema';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -25,9 +25,12 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function SKUsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: skus, mutate: mutateSkus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
+  const { data: organizations } = useSWR<Organization[]>('/api/admin/organizations', fetcher);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSku, setSelectedSku] = useState<ProductSku | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [customMfg, setCustomMfg] = useState(false);
+  const [editCustomMfg, setEditCustomMfg] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [useSkuBuilder, setUseSkuBuilder] = useState(true);
@@ -1034,14 +1037,53 @@ export default function SKUsPage() {
                   </div>
                   <div>
                     <Label className="text-xs">Manufacturer (MFG)</Label>
-                    <Input
-                      name="mfg"
-                      type="text"
-                      placeholder="e.g., MOT, HYT, KEN"
-                      className="text-sm"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="org-mfg"
+                          name="mfgOption"
+                          checked={!customMfg}
+                          onChange={() => setCustomMfg(false)}
+                          className="text-green-600"
+                        />
+                        <label htmlFor="org-mfg" className="text-xs">From Organizations</label>
+                      </div>
+                      {!customMfg && (
+                        <select
+                          name="mfg"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="">Select Organization</option>
+                          {organizations?.map((org) => (
+                            <option key={org.id} value={org.code || ''}>
+                              {org.code || 'N/A'} - {org.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="custom-mfg"
+                          name="mfgOption"
+                          checked={customMfg}
+                          onChange={() => setCustomMfg(true)}
+                          className="text-green-600"
+                        />
+                        <label htmlFor="custom-mfg" className="text-xs">Custom Entry</label>
+                      </div>
+                      {customMfg && (
+                        <Input
+                          name="mfg"
+                          type="text"
+                          placeholder="e.g., MOT, HYT, KEN"
+                          className="text-sm"
+                        />
+                      )}
+                    </div>
                     <div className="mt-1 text-xs text-gray-600">
-                      Manufacturer code or name
+                      3-letter organization code or custom manufacturer
                     </div>
                   </div>
                 </div>
@@ -1382,15 +1424,55 @@ export default function SKUsPage() {
                   </div>
                   <div>
                     <Label className="text-xs">Manufacturer (MFG)</Label>
-                    <Input
-                      name="editMfg"
-                      type="text"
-                      defaultValue={selectedSku?.mfg || ''}
-                      placeholder="e.g., MOT, HYT, KEN"
-                      className="text-sm"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="edit-org-mfg"
+                          name="editMfgOption"
+                          checked={!editCustomMfg}
+                          onChange={() => setEditCustomMfg(false)}
+                          className="text-green-600"
+                        />
+                        <label htmlFor="edit-org-mfg" className="text-xs">From Organizations</label>
+                      </div>
+                      {!editCustomMfg && (
+                        <select
+                          name="editMfg"
+                          defaultValue={selectedSku?.mfg || ''}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="">Select Organization</option>
+                          {organizations?.map((org) => (
+                            <option key={org.id} value={org.code || ''}>
+                              {org.code || 'N/A'} - {org.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="edit-custom-mfg"
+                          name="editMfgOption"
+                          checked={editCustomMfg}
+                          onChange={() => setEditCustomMfg(true)}
+                          className="text-green-600"
+                        />
+                        <label htmlFor="edit-custom-mfg" className="text-xs">Custom Entry</label>
+                      </div>
+                      {editCustomMfg && (
+                        <Input
+                          name="editMfg"
+                          type="text"
+                          defaultValue={selectedSku?.mfg || ''}
+                          placeholder="e.g., MOT, HYT, KEN"
+                          className="text-sm"
+                        />
+                      )}
+                    </div>
                     <div className="mt-1 text-xs text-gray-600">
-                      Manufacturer code or name
+                      3-letter organization code or custom manufacturer
                     </div>
                   </div>
                 </div>

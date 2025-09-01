@@ -80,8 +80,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       mfg: body.editMfg,
         
         // Business terms
-        moq: body.moq,
-        leadTimeDays: body.leadTimeDays,
+        moq: body.editMoq,
+        leadTimeDays: body.editLeadTimeDays,
         
         updatedAt: new Date(),
       })
