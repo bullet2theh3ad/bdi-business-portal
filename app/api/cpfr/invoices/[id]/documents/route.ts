@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { uploadMultipleFiles } from '@/lib/storage/supabase-storage';
-import { invoiceDocuments } from '@/lib/db/schema';
+import { users, invoiceDocuments, organizationMembers } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -54,11 +52,73 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     console.log(`Uploading ${files.length} files for invoice ${invoiceId}`);
 
-    // Upload files to Supabase Storage
-    const uploadResults = await uploadMultipleFiles(files, {
-      category: 'invoices',
-      entityId: invoiceId
-    });
+    // Get user's organization for proper storage path
+    const [userOrg] = await db
+      .select({ organizationId: organizationMembers.organizationUuid })
+      .from(organizationMembers)
+      .where(eq(organizationMembers.userAuthId, authUser.id))
+      .limit(1);
+
+    if (!userOrg) {
+      return NextResponse.json({ error: 'User organization not found' }, { status: 404 });
+    }
+
+    const uploadResults = [];
+    
+    // Upload each file manually to have better control
+    for (const file of files) {
+      try {
+        // Generate file path: organizationId/invoices/invoiceId/filename
+        const timestamp = Date.now();
+        const fileName = `${timestamp}_${file.name}`;
+        const filePath = `${userOrg.organizationId}/invoices/${invoiceId}/${fileName}`;
+
+        console.log(`Uploading file to path: ${filePath}`);
+
+        // Upload to Supabase Storage with correct bucket name
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('organization-documents') // Use the correct bucket name
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error(`Upload failed for ${file.name}:`, uploadError);
+          uploadResults.push({ 
+            success: false, 
+            error: uploadError.message,
+            fileName: file.name 
+          });
+          continue;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('organization-documents')
+          .getPublicUrl(filePath);
+
+        uploadResults.push({
+          success: true,
+          filePath: uploadData.path,
+          publicUrl: urlData.publicUrl,
+          metadata: {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            uploadedAt: new Date().toISOString()
+          }
+        });
+
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error);
+        uploadResults.push({ 
+          success: false, 
+          error: 'Upload failed',
+          fileName: file.name 
+        });
+      }
+    }
 
     // Filter successful uploads
     const successfulUploads = uploadResults.filter(result => result.success);
@@ -87,6 +147,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       success: true,
       uploaded: successfulUploads.length,
       failed: failedUploads.length,
+      errors: failedUploads.map(f => ({ fileName: f.fileName, error: f.error })),
       files: successfulUploads.map(result => ({
         fileName: result.metadata?.fileName,
         filePath: result.filePath,
@@ -98,5 +159,50 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch (error) {
     console.error('Error uploading documents:', error);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  }
+}
+
+// GET endpoint to fetch existing documents
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: invoiceId } = await params;
+
+    // Fetch documents for this invoice
+    const documents = await db
+      .select()
+      .from(invoiceDocuments)
+      .where(eq(invoiceDocuments.invoiceId, invoiceId));
+
+    console.log(`Found ${documents.length} documents for invoice ${invoiceId}`);
+
+    return NextResponse.json(documents);
+
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });
   }
 }
