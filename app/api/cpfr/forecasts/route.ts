@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, productSkus } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // For now, we'll store forecasts in a simple structure
 // TODO: Create proper sales_forecasts table in future migration
@@ -19,8 +19,8 @@ interface ForecastData {
   createdAt: string;
 }
 
-// Temporary in-memory storage for forecasts (replace with database table later)
-const tempForecasts: ForecastData[] = [];
+// Note: Using direct SQL queries until sales_forecasts table is added to schema
+// Run create-sales-forecasts-table.sql in Supabase to create the table
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,11 +48,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // For now, return empty array since we're using temp storage
-    // TODO: Query from actual database table
-    console.log('📊 Fetching forecasts - currently using temporary storage');
-    
-    return NextResponse.json([]);
+    // Query forecasts from database table
+    try {
+      const forecastsQuery = await db.execute(sql`
+        SELECT 
+          sf.id,
+          sf.sku_id as "skuId",
+          sf.delivery_week as "deliveryWeek", 
+          sf.quantity,
+          sf.confidence,
+          sf.shipping_preference as "shippingPreference",
+          sf.forecast_type as "forecastType",
+          sf.notes,
+          sf.created_by as "createdBy",
+          sf.created_at as "createdAt",
+          ps.sku,
+          ps.name as "skuName"
+        FROM sales_forecasts sf
+        JOIN product_skus ps ON sf.sku_id = ps.id
+        ORDER BY sf.created_at DESC
+      `);
+      
+      const forecasts = forecastsQuery.rows.map((row: any) => ({
+        ...row,
+        sku: {
+          id: row.skuId,
+          sku: row.sku,
+          name: row.skuName
+        }
+      }));
+      
+      console.log(`📊 Fetching forecasts - found ${forecasts.length} from database`);
+      return NextResponse.json(forecasts);
+      
+    } catch (dbError) {
+      console.log('📊 Database table not found, returning empty array. Run create-sales-forecasts-table.sql');
+      return NextResponse.json([]);
+    }
 
   } catch (error) {
     console.error('Error fetching forecasts:', error);
@@ -116,29 +148,54 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
     }
 
-    // Create forecast (temporary - store in memory for now)
-    const newForecast: ForecastData = {
-      id: `forecast_${Date.now()}`,
-      skuId: body.skuId,
-      deliveryWeek: body.deliveryWeek,
-      quantity: parseInt(body.quantity),
-      confidence: body.confidence || 'medium',
-      shippingPreference: body.shippingPreference || '',
-      notes: body.notes || '',
-      createdBy: requestingUser.authId,
-      createdAt: new Date().toISOString()
-    };
-
-    tempForecasts.push(newForecast);
-    
-    console.log('✅ Forecast created (temporary storage):', newForecast);
-    console.log(`📊 Total forecasts: ${tempForecasts.length}`);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Forecast created successfully!',
-      forecast: newForecast
-    });
+    // Create forecast in database
+    try {
+      const insertResult = await db.execute(sql`
+        INSERT INTO sales_forecasts (
+          sku_id, delivery_week, quantity, confidence, shipping_preference,
+          forecast_type, notes, moq_override, created_by
+        ) VALUES (
+          ${body.skuId}, ${body.deliveryWeek}, ${parseInt(body.quantity)}, 
+          ${body.confidence || 'medium'}, ${body.shippingPreference || ''},
+          ${body.confidenceLevel || 'planning'}, ${body.notes || ''}, 
+          ${body.moqOverride || false}, ${requestingUser.authId}
+        ) RETURNING *
+      `);
+      
+      const newForecast = insertResult.rows[0];
+      console.log('✅ Forecast created in database:', newForecast);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Forecast created successfully!',
+        forecast: newForecast
+      });
+      
+    } catch (dbError) {
+      console.error('Database error - table may not exist:', dbError);
+      console.log('💡 Please run create-sales-forecasts-table.sql in Supabase');
+      
+      // Fallback to temporary storage if table doesn't exist
+      const newForecast: ForecastData = {
+        id: `temp_${Date.now()}`,
+        skuId: body.skuId,
+        deliveryWeek: body.deliveryWeek,
+        quantity: parseInt(body.quantity),
+        confidence: body.confidence || 'medium',
+        shippingPreference: body.shippingPreference || '',
+        notes: body.notes || '',
+        createdBy: requestingUser.authId,
+        createdAt: new Date().toISOString()
+      };
+      
+      console.log('⚠️ Using temporary storage - run SQL script for persistence');
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Forecast created (temporary) - Run SQL script for persistence',
+        forecast: newForecast
+      });
+    }
 
   } catch (error) {
     console.error('Error creating forecast:', error);
