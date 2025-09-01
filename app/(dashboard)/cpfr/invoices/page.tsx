@@ -62,6 +62,15 @@ export default function InvoicesPage() {
   }>>([]);
   const [editUploadedDocs, setEditUploadedDocs] = useState<File[]>([]);
   const [existingDocs, setExistingDocs] = useState<InvoiceDocument[]>([]);
+  const [editLineItems, setEditLineItems] = useState<Array<{
+    id: string;
+    skuId: string;
+    sku: string;
+    skuName: string;
+    quantity: number;
+    unitCost: number;
+    lineTotal: number;
+  }>>([]);
 
   // Helper functions for line items
   const addLineItem = () => {
@@ -299,6 +308,27 @@ export default function InvoicesPage() {
                         } catch (error) {
                           console.error('Error loading documents:', error);
                           setExistingDocs([]);
+                        }
+
+                        // Fetch existing line items for this invoice
+                        try {
+                          const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
+                          if (lineItemsResponse.ok) {
+                            const lineItems = await lineItemsResponse.json();
+                            setEditLineItems(lineItems.map((item: any) => ({
+                              id: item.id,
+                              skuId: item.skuId,
+                              sku: item.skuCode,
+                              skuName: item.skuName,
+                              quantity: item.quantity,
+                              unitCost: parseFloat(item.unitCost),
+                              lineTotal: parseFloat(item.lineTotal)
+                            })));
+                            console.log('Loaded existing line items:', lineItems);
+                          }
+                        } catch (error) {
+                          console.error('Error loading line items:', error);
+                          setEditLineItems([]);
                         }
                       }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
@@ -723,6 +753,9 @@ export default function InvoicesPage() {
               const formData = new FormData(e.currentTarget);
               
               try {
+                // Calculate new total from line items
+                const newTotal = editLineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+
                 const response = await fetch(`/api/cpfr/invoices/${selectedInvoice.id}`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
@@ -733,12 +766,34 @@ export default function InvoicesPage() {
                     editIncoterms: formData.get('editIncoterms'),
                     editIncotermsLocation: formData.get('editIncotermsLocation'),
                     editNotes: formData.get('editNotes'),
+                    editTotalValue: newTotal.toString(),
                   }),
                 });
 
                 if (response.ok) {
                   const result = await response.json();
                   console.log('✅ Invoice updated:', result);
+
+                  // Update line items
+                  if (editLineItems.length > 0) {
+                    console.log(`🔄 Updating ${editLineItems.length} line items`);
+                    try {
+                      const lineItemsResponse = await fetch(`/api/cpfr/invoices/${selectedInvoice.id}/line-items`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lineItems: editLineItems })
+                      });
+
+                      if (lineItemsResponse.ok) {
+                        const lineItemsResult = await lineItemsResponse.json();
+                        console.log('✅ Line items updated:', lineItemsResult);
+                      } else {
+                        console.error('Failed to update line items');
+                      }
+                    } catch (lineItemsError) {
+                      console.error('Line items update error:', lineItemsError);
+                    }
+                  }
                   
                   // Upload new documents if any
                   if (editUploadedDocs.length > 0) {
@@ -824,6 +879,155 @@ export default function InvoicesPage() {
                     placeholder="NET30"
                   />
                 </div>
+              </div>
+
+              {/* Line Items Section */}
+              <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold text-blue-800 flex items-center">
+                    <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                    Line Items
+                  </h4>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const newItem = {
+                        id: Date.now().toString(),
+                        skuId: '',
+                        sku: '',
+                        skuName: '',
+                        quantity: 0,
+                        unitCost: 0,
+                        lineTotal: 0
+                      };
+                      setEditLineItems([...editLineItems, newItem]);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                  >
+                    <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                {editLineItems.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <SemanticBDIIcon semantic="inventory" size={32} className="mx-auto mb-2 opacity-50" />
+                    <p>No line items found</p>
+                    <p className="text-xs">Click "Add Item" to add line items</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {editLineItems.map((item, index) => (
+                      <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                          <div>
+                            <Label className="text-xs">SKU *</Label>
+                            <select
+                              value={item.skuId}
+                              onChange={(e) => {
+                                const selectedSku = skus?.find(sku => sku.id === e.target.value);
+                                if (selectedSku) {
+                                  const updatedItems = [...editLineItems];
+                                  updatedItems[index] = {
+                                    ...item,
+                                    skuId: selectedSku.id,
+                                    sku: selectedSku.sku,
+                                    skuName: selectedSku.name,
+                                    lineTotal: item.quantity * item.unitCost
+                                  };
+                                  setEditLineItems(updatedItems);
+                                }
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              required
+                            >
+                              <option value="">Select SKU</option>
+                              {skus?.map((sku) => (
+                                <option key={sku.id} value={sku.id}>
+                                  {sku.sku} - {sku.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Quantity *</Label>
+                            <Input
+                              type="number"
+                              value={item.quantity === 0 ? '' : item.quantity}
+                              onChange={(e) => {
+                                const quantity = parseInt(e.target.value) || 0;
+                                const updatedItems = [...editLineItems];
+                                updatedItems[index] = {
+                                  ...item,
+                                  quantity,
+                                  lineTotal: quantity * item.unitCost
+                                };
+                                setEditLineItems(updatedItems);
+                              }}
+                              min="1"
+                              placeholder="0"
+                              className="text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Unit Cost *</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={item.unitCost === 0 ? '' : item.unitCost}
+                              onChange={(e) => {
+                                const unitCost = parseFloat(e.target.value) || 0;
+                                const updatedItems = [...editLineItems];
+                                updatedItems[index] = {
+                                  ...item,
+                                  unitCost,
+                                  lineTotal: item.quantity * unitCost
+                                };
+                                setEditLineItems(updatedItems);
+                              }}
+                              min="0"
+                              className="text-sm"
+                              placeholder="0.00"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Line Total</Label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
+                              ${item.lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setEditLineItems(editLineItems.filter((_, i) => i !== index));
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Updated Total Value Display */}
+                    <div className="bg-blue-100 p-4 rounded border border-blue-300">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-blue-800">Updated Invoice Total:</span>
+                        <span className="font-bold text-2xl text-blue-900">
+                          ${editLineItems.reduce((sum, item) => sum + item.lineTotal, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* File Management Section */}

@@ -57,6 +57,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         incoterms: body.editIncoterms,
         incotermsLocation: body.editIncotermsLocation,
         notes: body.editNotes,
+        totalValue: body.editTotalValue || undefined, // Update total value if provided
         updatedAt: new Date(),
       })
       .where(eq(invoices.id, invoiceId))
