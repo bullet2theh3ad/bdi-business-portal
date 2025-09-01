@@ -902,8 +902,8 @@ export default function SalesForecastsPage() {
                     id="quantity"
                     name="quantity"
                     type="number"
-                    min="1"
-                    step={(selectedSku as any)?.boxesPerCarton || 1}
+                    min="0"
+                    step="1"
                     placeholder={
                       (selectedSku as any)?.boxesPerCarton 
                         ? `Multiples of ${(selectedSku as any).boxesPerCarton} (e.g., ${(selectedSku as any).boxesPerCarton * 100})`
