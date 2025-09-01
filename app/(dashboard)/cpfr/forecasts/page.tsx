@@ -64,21 +64,22 @@ export default function SalesForecastsPage() {
   const [selectedShipping, setSelectedShipping] = useState<string>('');
   const [quantityError, setQuantityError] = useState<string>('');
   const [moqOverride, setMoqOverride] = useState<boolean>(false);
-  const [leadTimeOption, setLeadTimeOption] = useState<'mp_start' | 'normal' | 'custom'>('normal');
+  const [leadTimeOption, setLeadTimeOption] = useState<'mp_ready' | 'normal' | 'custom'>('normal');
   const [customLeadTime, setCustomLeadTime] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customDate, setCustomDate] = useState<string>('');
+  const [confidenceLevel, setConfidenceLevel] = useState<'part_of_po' | 'pre_po' | 'planning'>('planning');
 
   // Helper function to get effective lead time based on selected option
   const getEffectiveLeadTime = (): number => {
     if (!selectedSku) return 30;
     
     switch (leadTimeOption) {
-      case 'mp_start':
+      case 'mp_ready':
         if ((selectedSku as any)?.mpStartDate) {
-          const mpStart = new Date((selectedSku as any).mpStartDate);
+          const mpReady = new Date((selectedSku as any).mpStartDate);
           const today = new Date();
-          const diffTime = mpStart.getTime() - today.getTime();
+          const diffTime = mpReady.getTime() - today.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           return Math.max(1, diffDays); // Ensure at least 1 day
         }
@@ -463,16 +464,16 @@ export default function SalesForecastsPage() {
                           <div className="flex items-center space-x-2">
                             <input
                               type="radio"
-                              id="mp_start"
+                              id="mp_ready"
                               name="leadTimeOption"
-                              value="mp_start"
-                              checked={leadTimeOption === 'mp_start'}
-                              onChange={(e) => setLeadTimeOption(e.target.value as 'mp_start')}
+                              value="mp_ready"
+                              checked={leadTimeOption === 'mp_ready'}
+                              onChange={(e) => setLeadTimeOption(e.target.value as 'mp_ready')}
                               className="text-orange-600 flex-shrink-0"
                             />
                             <div className="flex flex-col min-w-0">
-                              <label htmlFor="mp_start" className="text-xs font-medium truncate">
-                                MP Start
+                              <label htmlFor="mp_ready" className="text-xs font-medium truncate">
+                                MP Ready (EXW)
                               </label>
                               <span className="text-xs text-gray-500 truncate">
                                 {(selectedSku as any)?.mpStartDate 
@@ -589,7 +590,7 @@ export default function SalesForecastsPage() {
                         <p className="font-bold text-3xl text-indigo-600 mb-2">
                           {(() => {
                             if (!selectedShipping) return 'Select shipping';
-                            const leadTime = (selectedSku as any).leadTimeDays || 30;
+                            const leadTime = getEffectiveLeadTime();
                             const shippingDays: { [key: string]: number } = {
                               'AIR_EXPRESS': 7.5, // Average of 5-10
                               'AIR_STANDARD': 10.5, // Average of 7-14
@@ -750,7 +751,7 @@ export default function SalesForecastsPage() {
                           </span>
                           <p className="font-bold text-xl text-blue-600 my-1">
                             {(() => {
-                              const leadTime = (selectedSku as any).leadTimeDays || 30;
+                              const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
                                 'AIR_7_DAYS': 7,
                                 'AIR_14_DAYS': 14,
@@ -780,7 +781,7 @@ export default function SalesForecastsPage() {
                           <p className="font-bold text-xl text-emerald-600 my-1">
                             {(() => {
                               const orderDate = new Date();
-                              const leadTime = (selectedSku as any).leadTimeDays || 30;
+                              const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
                                 'AIR_7_DAYS': 7, // Fixed timing
                                 'AIR_14_DAYS': 14,

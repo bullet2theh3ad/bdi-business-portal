@@ -114,6 +114,8 @@ export async function GET(request: NextRequest) {
         color: productSkus.color,
         moq: productSkus.moq,
         leadTimeDays: productSkus.leadTimeDays,
+        mpStartDate: productSkus.mpStartDate,
+        mfg: productSkus.mfg,
         isActive: productSkus.isActive,
         isDiscontinued: productSkus.isDiscontinued,
         replacementSku: productSkus.replacementSku,
