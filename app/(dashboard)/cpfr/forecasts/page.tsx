@@ -799,7 +799,7 @@ export default function SalesForecastsPage() {
                         </div>
                         <div className="text-center">
                           <span className="font-medium text-emerald-800 block">
-                            🎯 Best Case Delivery
+                            🎯 Best Case
                           </span>
                           <p className="font-bold text-xl text-emerald-600 my-1">
                             {(() => {
