@@ -312,10 +312,15 @@ export default function InvoicesPage() {
 
                         // Fetch existing line items for this invoice
                         try {
+                          console.log(`🔍 Fetching line items for invoice: ${invoice.id}`);
                           const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
+                          console.log('Line items response status:', lineItemsResponse.status);
+                          
                           if (lineItemsResponse.ok) {
                             const lineItems = await lineItemsResponse.json();
-                            setEditLineItems(lineItems.map((item: any) => ({
+                            console.log('Raw line items from API:', lineItems);
+                            
+                            const mappedItems = lineItems.map((item: any) => ({
                               id: item.id,
                               skuId: item.skuId,
                               sku: item.skuCode,
@@ -323,8 +328,14 @@ export default function InvoicesPage() {
                               quantity: item.quantity,
                               unitCost: parseFloat(item.unitCost),
                               lineTotal: parseFloat(item.lineTotal)
-                            })));
-                            console.log('Loaded existing line items:', lineItems);
+                            }));
+                            
+                            console.log('Mapped line items for UI:', mappedItems);
+                            setEditLineItems(mappedItems);
+                          } else {
+                            const errorText = await lineItemsResponse.text();
+                            console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
+                            setEditLineItems([]);
                           }
                         } catch (error) {
                           console.error('Error loading line items:', error);

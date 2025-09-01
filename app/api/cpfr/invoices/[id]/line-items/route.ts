@@ -44,6 +44,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id: invoiceId } = await params;
 
+    console.log(`🔍 Searching for line items for invoice ID: ${invoiceId}`);
+
     // Fetch line items for this invoice
     const lineItems = await db
       .select()
@@ -52,6 +54,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .orderBy(invoiceLineItems.createdAt);
 
     console.log(`Found ${lineItems.length} line items for invoice ${invoiceId}`);
+    if (lineItems.length > 0) {
+      console.log('First line item:', lineItems[0]);
+    }
 
     return NextResponse.json(lineItems);
 
