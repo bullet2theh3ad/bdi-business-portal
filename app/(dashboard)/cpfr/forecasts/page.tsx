@@ -994,6 +994,22 @@ export default function SalesForecastsPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* SKU Requirements Info - Moved Below for Better Alignment */}
+                      <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                        <div className="space-y-1">
+                          {(selectedSku as any)?.boxesPerCarton && (
+                            <div className="text-xs text-blue-600">
+                              💡 Must be multiple of {(selectedSku as any).boxesPerCarton} units (full cartons only)
+                            </div>
+                          )}
+                          {(selectedSku as any)?.moq && (
+                            <div className="text-xs text-green-600">
+                              📊 MOQ: {((selectedSku as any).moq || 1).toLocaleString()} units minimum
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1021,20 +1037,7 @@ export default function SalesForecastsPage() {
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {(selectedSku as any)?.boxesPerCarton && (
-                        <div className="text-xs text-blue-600">
-                          💡 Must be multiple of {(selectedSku as any).boxesPerCarton} units (full cartons only)
-                        </div>
-                      )}
-                      {(selectedSku as any)?.moq && (
-                        <div className="text-xs text-green-600">
-                          📊 MOQ: {((selectedSku as any).moq || 1).toLocaleString()} units minimum
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
