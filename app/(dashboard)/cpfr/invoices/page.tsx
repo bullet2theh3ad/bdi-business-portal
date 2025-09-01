@@ -147,6 +147,7 @@ export default function InvoicesPage() {
           incotermsLocation: formData.get('incotermsLocation'),
           totalValue: calculateTotal(),
           notes: formData.get('notes'),
+          lineItems: lineItems, // ✅ ADD LINE ITEMS TO CREATE REQUEST
         }),
       });
 
