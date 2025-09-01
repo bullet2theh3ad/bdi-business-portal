@@ -98,6 +98,8 @@ export default function SKUsPage() {
           // Business terms
           moq: formData.get('moq') ? parseInt(formData.get('moq') as string) : 1,
           leadTimeDays: formData.get('leadTimeDays') ? parseInt(formData.get('leadTimeDays') as string) : 30,
+          mpStartDate: formData.get('mpStartDate'),
+          mfg: formData.get('mfg'),
         }),
       });
 
@@ -164,6 +166,8 @@ export default function SKUsPage() {
           // Business terms
           moq: formData.get('editMoq') ? parseInt(formData.get('editMoq') as string) : 1,
           leadTimeDays: formData.get('editLeadTimeDays') ? parseInt(formData.get('editLeadTimeDays') as string) : 30,
+          editMpStartDate: formData.get('editMpStartDate'),
+          editMfg: formData.get('editMfg'),
         }),
       });
 
