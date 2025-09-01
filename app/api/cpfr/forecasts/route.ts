@@ -48,41 +48,55 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Query forecasts from database table
+    // Query forecasts from database table using Supabase client
     try {
-      const forecastsQuery = await db.execute(sql`
-        SELECT 
-          sf.id,
-          sf.sku_id as "skuId",
-          sf.delivery_week as "deliveryWeek", 
-          sf.quantity,
-          sf.confidence,
-          sf.shipping_preference as "shippingPreference",
-          sf.forecast_type as "forecastType",
-          sf.notes,
-          sf.created_by as "createdBy",
-          sf.created_at as "createdAt",
-          ps.sku,
-          ps.name as "skuName"
-        FROM sales_forecasts sf
-        JOIN product_skus ps ON sf.sku_id = ps.id
-        ORDER BY sf.created_at DESC
-      `);
-      
-      const forecasts = forecastsQuery.rows.map((row: any) => ({
-        ...row,
-        sku: {
-          id: row.skuId,
-          sku: row.sku,
-          name: row.skuName
-        }
+      const { data: forecastsData, error: forecastsError } = await supabase
+        .from('sales_forecasts')
+        .select(`
+          id,
+          sku_id,
+          delivery_week,
+          quantity,
+          confidence,
+          shipping_preference,
+          forecast_type,
+          notes,
+          created_by,
+          created_at,
+          product_skus (
+            id,
+            sku,
+            name
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (forecastsError) {
+        console.error('Database error:', forecastsError);
+        console.log('📊 Database table access error, returning empty array');
+        return NextResponse.json([]);
+      }
+
+      // Transform data to match frontend interface
+      const forecasts = (forecastsData || []).map((row: any) => ({
+        id: row.id,
+        skuId: row.sku_id,
+        deliveryWeek: row.delivery_week,
+        quantity: row.quantity,
+        confidence: row.confidence,
+        shippingPreference: row.shipping_preference,
+        forecastType: row.forecast_type,
+        notes: row.notes,
+        createdBy: row.created_by,
+        createdAt: row.created_at,
+        sku: row.product_skus
       }));
       
       console.log(`📊 Fetching forecasts - found ${forecasts.length} from database`);
       return NextResponse.json(forecasts);
       
     } catch (dbError) {
-      console.log('📊 Database table not found, returning empty array. Run create-sales-forecasts-table.sql');
+      console.log('📊 Database table not found, returning empty array. Error:', dbError);
       return NextResponse.json([]);
     }
 
@@ -148,21 +162,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
     }
 
-    // Create forecast in database
+    // Create forecast in database using Supabase client
     try {
-      const insertResult = await db.execute(sql`
-        INSERT INTO sales_forecasts (
-          sku_id, delivery_week, quantity, confidence, shipping_preference,
-          forecast_type, notes, moq_override, created_by
-        ) VALUES (
-          ${body.skuId}, ${body.deliveryWeek}, ${parseInt(body.quantity)}, 
-          ${body.confidence || 'medium'}, ${body.shippingPreference || ''},
-          ${body.confidenceLevel || 'planning'}, ${body.notes || ''}, 
-          ${body.moqOverride || false}, ${requestingUser.authId}
-        ) RETURNING *
-      `);
-      
-      const newForecast = insertResult.rows[0];
+      const { data: newForecast, error: insertError } = await supabase
+        .from('sales_forecasts')
+        .insert({
+          sku_id: body.skuId,
+          delivery_week: body.deliveryWeek,
+          quantity: parseInt(body.quantity),
+          confidence: body.confidence || 'medium',
+          shipping_preference: body.shippingPreference || '',
+          forecast_type: body.confidenceLevel || 'planning',
+          notes: body.notes || '',
+          moq_override: body.moqOverride || false,
+          created_by: requestingUser.authId
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw insertError;
+      }
+
       console.log('✅ Forecast created in database:', newForecast);
       
       return NextResponse.json({
@@ -173,28 +195,13 @@ export async function POST(request: NextRequest) {
       
     } catch (dbError) {
       console.error('Database error - table may not exist:', dbError);
-      console.log('💡 Please run create-sales-forecasts-table.sql in Supabase');
-      
-      // Fallback to temporary storage if table doesn't exist
-      const newForecast: ForecastData = {
-        id: `temp_${Date.now()}`,
-        skuId: body.skuId,
-        deliveryWeek: body.deliveryWeek,
-        quantity: parseInt(body.quantity),
-        confidence: body.confidence || 'medium',
-        shippingPreference: body.shippingPreference || '',
-        notes: body.notes || '',
-        createdBy: requestingUser.authId,
-        createdAt: new Date().toISOString()
-      };
-      
-      console.log('⚠️ Using temporary storage - run SQL script for persistence');
+      console.log('💡 Please verify sales_forecasts table exists in Supabase');
       
       return NextResponse.json({
-        success: true,
-        message: 'Forecast created (temporary) - Run SQL script for persistence',
-        forecast: newForecast
-      });
+        success: false,
+        error: 'Database error - please check table exists',
+        details: dbError instanceof Error ? dbError.message : 'Unknown error'
+      }, { status: 500 });
     }
 
   } catch (error) {
