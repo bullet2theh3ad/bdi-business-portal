@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
-import { User, ProductSku } from '@/lib/db/schema';
+import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -60,6 +60,8 @@ export default function InvoicesPage() {
     unitCost: number;
     lineTotal: number;
   }>>([]);
+  const [editUploadedDocs, setEditUploadedDocs] = useState<File[]>([]);
+  const [existingDocs, setExistingDocs] = useState<InvoiceDocument[]>([]);
 
   // Helper functions for line items
   const addLineItem = () => {
@@ -282,9 +284,22 @@ export default function InvoicesPage() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => {
+                      <Button variant="outline" size="sm" onClick={async () => {
                         setSelectedInvoice(invoice);
-                        console.log('Edit invoice:', invoice);
+                        setEditUploadedDocs([]);
+                        
+                        // Fetch existing documents for this invoice
+                        try {
+                          const docsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/documents`);
+                          if (docsResponse.ok) {
+                            const docs = await docsResponse.json();
+                            setExistingDocs(docs);
+                            console.log('Loaded existing documents:', docs);
+                          }
+                        } catch (error) {
+                          console.error('Error loading documents:', error);
+                          setExistingDocs([]);
+                        }
                       }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
@@ -721,9 +736,37 @@ export default function InvoicesPage() {
                 if (response.ok) {
                   const result = await response.json();
                   console.log('✅ Invoice updated:', result);
-                  alert('Invoice updated successfully!');
+                  
+                  // Upload new documents if any
+                  if (editUploadedDocs.length > 0) {
+                    console.log(`🔄 Uploading ${editUploadedDocs.length} new documents`);
+                    try {
+                      const uploadFormData = new FormData();
+                      editUploadedDocs.forEach(file => uploadFormData.append('files', file));
+                      
+                      const uploadResponse = await fetch(`/api/cpfr/invoices/${selectedInvoice.id}/documents`, {
+                        method: 'POST',
+                        body: uploadFormData
+                      });
+                      
+                      if (uploadResponse.ok) {
+                        const uploadResult = await uploadResponse.json();
+                        console.log('✅ New files uploaded:', uploadResult);
+                        alert(`Invoice updated with ${uploadResult.uploaded} new documents uploaded!`);
+                      } else {
+                        alert('Invoice updated but new file upload failed');
+                      }
+                    } catch (uploadError) {
+                      console.error('Upload error:', uploadError);
+                      alert('Invoice updated but new file upload failed');
+                    }
+                  } else {
+                    alert('Invoice updated successfully!');
+                  }
+                  
                   mutateInvoices(); // Refresh invoice list
                   setSelectedInvoice(null); // Close modal
+                  setEditUploadedDocs([]); // Clear new files
                 } else {
                   const errorData = await response.json();
                   alert(`Failed to update invoice: ${errorData.error || 'Unknown error'}`);
