@@ -823,6 +823,160 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
+              {/* File Management Section */}
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
+                  <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
+                  Document Management
+                </h4>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Existing Documents */}
+                  <div>
+                    <Label className="block mb-3">Existing Documents ({existingDocs.length})</Label>
+                    <div className="min-h-[150px] max-h-[200px] overflow-y-auto border border-gray-300 rounded-md p-3 bg-white">
+                      {existingDocs.length === 0 ? (
+                        <div className="text-center text-gray-500 text-sm py-8">
+                          <SemanticBDIIcon semantic="upload" size={24} className="mx-auto mb-2 opacity-50" />
+                          No documents uploaded yet
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {existingDocs.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 flex items-center justify-center">
+                                  {doc.fileType.includes('pdf') ? (
+                                    <span className="text-red-600 text-sm font-bold">📄</span>
+                                  ) : doc.fileType.includes('word') || doc.fileType.includes('document') ? (
+                                    <span className="text-blue-600 text-sm font-bold">📝</span>
+                                  ) : doc.fileType.includes('sheet') || doc.fileType.includes('excel') ? (
+                                    <span className="text-green-600 text-sm font-bold">📊</span>
+                                  ) : doc.fileType.includes('image') ? (
+                                    <span className="text-purple-600 text-sm font-bold">🖼️</span>
+                                  ) : (
+                                    <span className="text-gray-600 text-sm font-bold">📎</span>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium truncate block" title={doc.fileName}>
+                                    {doc.fileName}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {(doc.fileSize / 1024).toFixed(1)}KB • {new Date(doc.uploadedAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // TODO: Implement file download
+                                    alert(`Download ${doc.fileName} - Coming soon!`);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-sm"
+                                  title="Download file"
+                                >
+                                  ⬇️
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (confirm(`Delete ${doc.fileName}?`)) {
+                                      try {
+                                        const deleteResponse = await fetch(`/api/cpfr/invoices/${selectedInvoice.id}/documents/${doc.id}`, {
+                                          method: 'DELETE'
+                                        });
+                                        if (deleteResponse.ok) {
+                                          setExistingDocs(existingDocs.filter(d => d.id !== doc.id));
+                                          alert('File deleted successfully!');
+                                        } else {
+                                          alert('Failed to delete file');
+                                        }
+                                      } catch (error) {
+                                        alert('Failed to delete file');
+                                      }
+                                    }
+                                  }}
+                                  className="text-red-600 hover:text-red-800 text-sm"
+                                  title="Delete file"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Upload New Documents */}
+                  <div>
+                    <Label htmlFor="editDocuments">Upload New Documents</Label>
+                    <input
+                      type="file"
+                      id="editDocuments"
+                      name="editDocuments"
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setEditUploadedDocs(prev => [...prev, ...files]);
+                        console.log('New files selected for upload:', files.map(f => f.name));
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      PDF, Word, Excel, Images - Max 10MB per file
+                    </div>
+                    
+                    {/* Preview New Files */}
+                    {editUploadedDocs.length > 0 && (
+                      <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
+                        <div className="text-sm font-medium text-green-800 mb-2">
+                          New Files to Upload ({editUploadedDocs.length})
+                        </div>
+                        <div className="space-y-2">
+                          {editUploadedDocs.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-6 h-6 flex items-center justify-center">
+                                  {file.type.includes('pdf') ? (
+                                    <span className="text-red-600 text-xs font-bold">📄</span>
+                                  ) : file.type.includes('word') || file.type.includes('document') ? (
+                                    <span className="text-blue-600 text-xs font-bold">📝</span>
+                                  ) : file.type.includes('sheet') || file.type.includes('excel') ? (
+                                    <span className="text-green-600 text-xs font-bold">📊</span>
+                                  ) : file.type.includes('image') ? (
+                                    <span className="text-purple-600 text-xs font-bold">🖼️</span>
+                                  ) : (
+                                    <span className="text-gray-600 text-xs font-bold">📎</span>
+                                  )}
+                                </div>
+                                <span className="text-sm truncate max-w-[200px]" title={file.name}>
+                                  {file.name}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  ({(file.size / 1024).toFixed(1)}KB)
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setEditUploadedDocs(prev => prev.filter((_, i) => i !== index))}
+                                className="text-red-500 hover:text-red-700 text-xs"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-blue-100 p-4 rounded">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-blue-800">Total Value:</span>
