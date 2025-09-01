@@ -774,11 +774,12 @@ export default function SalesForecastsPage() {
                       );
                     })}
                   </select>
-                  <div className="mt-1 text-xs text-gray-600">
-                    Final customer delivery week (includes lead time + shipping)
-                  </div>
                   {selectedSku && selectedShipping && (
-                    <div className="mt-2 p-4 bg-gradient-to-r from-green-50 via-blue-50 to-emerald-50 border border-green-200 rounded-lg text-sm shadow-sm">
+                    <div className="mt-1">
+                      <div className="text-xs text-gray-600 mb-2">
+                        Final customer delivery week (includes lead time + shipping)
+                      </div>
+                      <div className="p-4 bg-gradient-to-r from-green-50 via-blue-50 to-emerald-50 border border-green-200 rounded-lg text-sm shadow-sm">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="text-center">
                           <span className="font-medium text-orange-800 block">
@@ -891,6 +892,7 @@ export default function SalesForecastsPage() {
                           </span>
                         </div>
                       </div>
+                    </div>
                     </div>
                   )}
                 </div>
