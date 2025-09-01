@@ -938,13 +938,20 @@ export default function SalesForecastsPage() {
                   <select
                     id="confidence"
                     name="confidence"
+                    value={confidenceLevel}
+                    onChange={(e) => setConfidenceLevel(e.target.value as 'part_of_po' | 'pre_po' | 'planning')}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 mt-1 font-medium ${
+                      confidenceLevel === 'part_of_po' 
+                        ? 'bg-green-50 border-green-300 text-green-800 focus:ring-green-500' 
+                        : confidenceLevel === 'pre_po'
+                        ? 'bg-yellow-50 border-yellow-300 text-yellow-800 focus:ring-yellow-500'
+                        : 'bg-red-50 border-red-300 text-red-800 focus:ring-red-500'
+                    }`}
                   >
-                    <option value="">Select Confidence</option>
-                    <option value="high">🟢 High - Very likely to meet</option>
-                    <option value="medium">🟡 Medium - Probable</option>
-                    <option value="low">🔴 Low - Uncertain</option>
+                    <option value="part_of_po" className="bg-green-50 text-green-800">🟢 Part of PO</option>
+                    <option value="pre_po" className="bg-yellow-50 text-yellow-800">🟡 Pre-PO</option>
+                    <option value="planning" className="bg-red-50 text-red-800">🔴 Planning</option>
                   </select>
                 </div>
                 <div>
