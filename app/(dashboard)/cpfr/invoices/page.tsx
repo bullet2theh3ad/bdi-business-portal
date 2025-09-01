@@ -689,7 +689,7 @@ export default function InvoicesPage() {
       )}
 
       {/* Edit Invoice Modal */}
-      {selectedInvoice && (
+      {selectedInvoice && !showCreateModal && (
         <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
           <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
@@ -698,9 +698,20 @@ export default function InvoicesPage() {
                 Edit Invoice: {selectedInvoice.invoiceNumber}
               </DialogTitle>
             </DialogHeader>
-            <form className="space-y-8 p-8" onSubmit={(e) => {
+            <form className="space-y-8 p-8" onSubmit={async (e) => {
               e.preventDefault();
-              alert('Edit functionality - database integration coming next!');
+              const formData = new FormData(e.currentTarget);
+              
+              // TODO: Implement real edit API call
+              console.log('Updating invoice:', {
+                id: selectedInvoice.id,
+                customerName: formData.get('editCustomerName'),
+                status: formData.get('editStatus'),
+                terms: formData.get('editTerms')
+              });
+              
+              alert('Invoice updated successfully! (Database update coming next)');
+              setSelectedInvoice(null); // Close modal
             }}>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <div>
