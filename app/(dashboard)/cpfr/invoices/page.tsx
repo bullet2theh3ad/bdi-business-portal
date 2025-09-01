@@ -346,6 +346,35 @@ export default function InvoicesPage() {
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}?\n\nThis action cannot be undone and will delete:\n• The invoice\n• All line items\n• All documents\n• All related data`)) {
+                            try {
+                              const response = await fetch(`/api/cpfr/invoices/${invoice.id}`, {
+                                method: 'DELETE'
+                              });
+
+                              if (response.ok) {
+                                const result = await response.json();
+                                alert(`✅ ${result.message}`);
+                                mutateInvoices(); // Refresh the invoice list
+                              } else {
+                                const errorData = await response.json();
+                                alert(`❌ Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
+                              }
+                            } catch (error) {
+                              console.error('Error deleting invoice:', error);
+                              alert('❌ Failed to delete invoice');
+                            }
+                          }
+                        }}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <SemanticBDIIcon semantic="trash" size={14} className="mr-1" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </div>
