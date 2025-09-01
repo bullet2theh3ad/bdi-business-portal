@@ -154,6 +154,10 @@ export default function InvoicesPage() {
       if (response.ok) {
         mutateInvoices();
         setShowCreateModal(false);
+        // Clear form state after successful creation
+        setLineItems([]);
+        setUploadedDocs([]);
+        setCustomTerms(false);
       } else {
         const errorData = await response.json();
         alert(`Failed to create PO: ${errorData.error || 'Unknown error'}`);
@@ -199,7 +203,13 @@ export default function InvoicesPage() {
               <p className="text-muted-foreground">Manage supplier orders and delivery terms</p>
             </div>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => setShowCreateModal(true)}>
+          <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
+            // Clear all form state for a fresh invoice
+            setLineItems([]);
+            setUploadedDocs([]);
+            setCustomTerms(false);
+            setShowCreateModal(true);
+          }}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
             Enter Invoice
           </Button>
@@ -248,7 +258,13 @@ export default function InvoicesPage() {
               <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No Invoices</h3>
               <p className="text-muted-foreground mb-4">Enter your first Invoice to start managing customer orders</p>
-              <Button onClick={() => setShowCreateModal(true)}>
+              <Button onClick={() => {
+                // Clear all form state for a fresh invoice
+                setLineItems([]);
+                setUploadedDocs([]);
+                setCustomTerms(false);
+                setShowCreateModal(true);
+              }}>
                 <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
                 Enter First Invoice
               </Button>
