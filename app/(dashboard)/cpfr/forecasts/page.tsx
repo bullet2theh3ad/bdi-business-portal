@@ -715,10 +715,18 @@ export default function SalesForecastsPage() {
                             ⏱️ Lead Time
                           </span>
                           <p className="font-bold text-xl text-orange-600 my-1">
-                            {(selectedSku as any).leadTimeDays || 30} days
+                            {(() => {
+                              if (leadTimeOption === 'mp_ready' && (selectedSku as any)?.mpStartDate) {
+                                const mpReady = new Date((selectedSku as any).mpStartDate);
+                                const today = new Date();
+                                const daysAway = Math.ceil((mpReady.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                return `${daysAway} days`;
+                              }
+                              return `${getEffectiveLeadTime()} days`;
+                            })()}
                           </p>
                           <span className="text-orange-600 text-xs">
-                            Production + prep
+                            {leadTimeOption === 'mp_ready' ? 'To MP Ready (Sep 29)' : 'Production + prep'}
                           </span>
                         </div>
                         <div className="text-center">
