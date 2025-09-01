@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,68 @@ export default function InvoicesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: invoices, mutate: mutateInvoices } = useSWR<Invoice[]>('/api/cpfr/invoices', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
+
+  // Fetch line items for all invoices when invoices are loaded
+  useEffect(() => {
+    if (invoices && invoices.length > 0) {
+      const fetchAllLineItems = async () => {
+        const lineItemsData: Record<string, Array<{
+          skuCode: string;
+          skuName: string;
+          quantity: number;
+        }>> = {};
+
+        for (const invoice of invoices) {
+          try {
+            const response = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
+            if (response.ok) {
+              const lineItems = await response.json();
+              lineItemsData[invoice.id] = lineItems.map((item: any) => ({
+                skuCode: item.skuCode,
+                skuName: item.skuName,
+                quantity: item.quantity
+              }));
+            }
+          } catch (error) {
+            console.error(`Error fetching line items for invoice ${invoice.id}:`, error);
+            lineItemsData[invoice.id] = [];
+          }
+        }
+
+        setInvoiceLineItems(lineItemsData);
+      };
+
+      fetchAllLineItems();
+    }
+  }, [invoices]);
+
+  // Helper function to aggregate SKU quantities for display
+  const getSkuSummary = (invoiceId: string) => {
+    const lineItems = invoiceLineItems[invoiceId] || [];
+    if (lineItems.length === 0) return 'No items';
+
+    // Aggregate quantities by SKU
+    const skuTotals: Record<string, { name: string; quantity: number }> = {};
+    
+    lineItems.forEach(item => {
+      if (skuTotals[item.skuCode]) {
+        skuTotals[item.skuCode].quantity += item.quantity;
+      } else {
+        skuTotals[item.skuCode] = {
+          name: item.skuName,
+          quantity: item.quantity
+        };
+      }
+    });
+
+    // Format for display with commas
+    const skuEntries = Object.entries(skuTotals);
+    if (skuEntries.length === 0) return 'No items';
+
+    return skuEntries.map(([sku, data]) => 
+      `${sku}: ${data.quantity.toLocaleString()}`
+    ).join(' • ');
+  };
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -71,6 +133,11 @@ export default function InvoicesPage() {
     unitCost: number;
     lineTotal: number;
   }>>([]);
+  const [invoiceLineItems, setInvoiceLineItems] = useState<Record<string, Array<{
+    skuCode: string;
+    skuName: string;
+    quantity: number;
+  }>>>({});
 
   // Helper functions for line items
   const addLineItem = () => {
@@ -298,6 +365,17 @@ export default function InvoicesPage() {
                           <span className="text-gray-500">Terms:</span>
                           <p className="font-medium">{invoice.terms}</p>
                         </div>
+                      </div>
+                      
+                      {/* SKU Summary */}
+                      <div className="bg-blue-50 p-3 rounded-md border border-blue-200 mb-3">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <SemanticBDIIcon semantic="inventory" size={14} className="text-blue-600" />
+                          <span className="text-blue-800 font-medium text-sm">Line Items Summary:</span>
+                        </div>
+                        <p className="text-sm text-blue-700 font-mono">
+                          {getSkuSummary(invoice.id)}
+                        </p>
                       </div>
                       <div className="flex items-center space-x-4 text-sm">
                         <div>
