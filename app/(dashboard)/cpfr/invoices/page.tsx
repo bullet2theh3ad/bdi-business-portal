@@ -700,18 +700,40 @@ export default function InvoicesPage() {
             </DialogHeader>
             <form className="space-y-8 p-8" onSubmit={async (e) => {
               e.preventDefault();
+              setIsLoading(true);
+              
               const formData = new FormData(e.currentTarget);
               
-              // TODO: Implement real edit API call
-              console.log('Updating invoice:', {
-                id: selectedInvoice.id,
-                customerName: formData.get('editCustomerName'),
-                status: formData.get('editStatus'),
-                terms: formData.get('editTerms')
-              });
+              try {
+                const response = await fetch(`/api/cpfr/invoices/${selectedInvoice.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    editCustomerName: formData.get('editCustomerName'),
+                    editStatus: formData.get('editStatus'),
+                    editTerms: formData.get('editTerms'),
+                    editIncoterms: formData.get('editIncoterms'),
+                    editIncotermsLocation: formData.get('editIncotermsLocation'),
+                    editNotes: formData.get('editNotes'),
+                  }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('✅ Invoice updated:', result);
+                  alert('Invoice updated successfully!');
+                  mutateInvoices(); // Refresh invoice list
+                  setSelectedInvoice(null); // Close modal
+                } else {
+                  const errorData = await response.json();
+                  alert(`Failed to update invoice: ${errorData.error || 'Unknown error'}`);
+                }
+              } catch (error) {
+                console.error('Error updating invoice:', error);
+                alert('Failed to update invoice');
+              }
               
-              alert('Invoice updated successfully! (Database update coming next)');
-              setSelectedInvoice(null); // Close modal
+              setIsLoading(false);
             }}>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <div>

@@ -5,6 +5,7 @@ import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { uploadMultipleFiles } from '@/lib/storage/supabase-storage';
+import { invoiceDocuments } from '@/lib/db/schema';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -67,8 +68,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       console.error('Some uploads failed:', failedUploads);
     }
 
-    // TODO: Save file metadata to invoice_documents table
-    // For now, return upload results
+    // Save file metadata to invoice_documents table
+    if (successfulUploads.length > 0) {
+      const documentsToInsert = successfulUploads.map(result => ({
+        invoiceId: invoiceId,
+        fileName: result.metadata!.fileName,
+        filePath: result.filePath!,
+        fileType: result.metadata!.fileType,
+        fileSize: result.metadata!.fileSize,
+        uploadedBy: requestingUser.authId,
+      }));
+
+      await db.insert(invoiceDocuments).values(documentsToInsert);
+      console.log(`✅ Saved ${documentsToInsert.length} file records to database`);
+    }
     
     return NextResponse.json({
       success: true,
@@ -77,7 +90,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       files: successfulUploads.map(result => ({
         fileName: result.metadata?.fileName,
         filePath: result.filePath,
-        publicUrl: result.publicUrl
+        publicUrl: result.publicUrl,
+        uploadedAt: result.metadata?.uploadedAt
       }))
     });
 
