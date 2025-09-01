@@ -583,12 +583,12 @@ export default function InvoicesPage() {
               </div>
 
               {/* Document Upload Section */}
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
                   <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
                   Supporting Documents
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div>
                     <Label htmlFor="documents">Upload Documents</Label>
                     <input
@@ -612,44 +612,47 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="block mb-2">Uploaded Documents ({uploadedDocs.length})</Label>
-                    <div className="min-h-[100px] max-h-[120px] overflow-y-auto border border-gray-300 rounded-md p-3 bg-white">
+                    <Label className="block mb-3">Selected Documents ({uploadedDocs.length})</Label>
+                    <div className="min-h-[150px] max-h-[200px] overflow-y-auto border border-gray-300 rounded-md p-3 bg-white">
                       {uploadedDocs.length === 0 ? (
-                        <div className="text-center text-gray-500 text-sm py-4">
+                        <div className="text-center text-gray-500 text-sm py-8">
                           <SemanticBDIIcon semantic="upload" size={24} className="mx-auto mb-2 opacity-50" />
-                          No documents uploaded
+                          No documents selected yet
                         </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {uploadedDocs.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-6 h-6 flex items-center justify-center">
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 flex items-center justify-center">
                                   {file.type.includes('pdf') ? (
-                                    <span className="text-red-600 text-xs font-bold">PDF</span>
+                                    <span className="text-red-600 text-sm font-bold">📄</span>
                                   ) : file.type.includes('word') || file.type.includes('document') ? (
-                                    <span className="text-blue-600 text-xs font-bold">DOC</span>
+                                    <span className="text-blue-600 text-sm font-bold">📝</span>
                                   ) : file.type.includes('sheet') || file.type.includes('excel') ? (
-                                    <span className="text-green-600 text-xs font-bold">XLS</span>
+                                    <span className="text-green-600 text-sm font-bold">📊</span>
                                   ) : file.type.includes('image') ? (
-                                    <span className="text-purple-600 text-xs font-bold">IMG</span>
+                                    <span className="text-purple-600 text-sm font-bold">🖼️</span>
                                   ) : (
-                                    <span className="text-gray-600 text-xs font-bold">FILE</span>
+                                    <span className="text-gray-600 text-sm font-bold">📎</span>
                                   )}
                                 </div>
-                                <span className="text-sm truncate max-w-[150px]" title={file.name}>
-                                  {file.name}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  ({(file.size / 1024).toFixed(1)}KB)
-                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium truncate block" title={file.name}>
+                                    {file.name}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {(file.size / 1024).toFixed(1)}KB
+                                  </span>
+                                </div>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => setUploadedDocs(prev => prev.filter((_, i) => i !== index))}
-                                className="text-red-500 hover:text-red-700 text-xs"
+                                className="text-red-600 hover:text-red-800 text-sm"
+                                title="Remove file"
                               >
-                                ✕
+                                🗑️
                               </button>
                             </div>
                           ))}
