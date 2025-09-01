@@ -831,7 +831,7 @@ export default function SalesForecastsPage() {
                             })()}
                           </p>
                           <span className="text-emerald-600 text-xs">
-                            Earliest possible
+                            Earliest delivery
                           </span>
                         </div>
                       </div>
