@@ -20,11 +20,11 @@ interface UserWithOrganization extends User {
   };
 }
 
-interface PurchaseOrder {
+interface Invoice {
   id: string;
-  poNumber: string;
-  supplierName: string;
-  orderDate: string;
+  invoiceNumber: string;
+  customerName: string;
+  invoiceDate: string;
   requestedDeliveryWeek: string;
   status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
   terms: string; // NET30, NET60, etc.
@@ -39,13 +39,13 @@ interface PurchaseOrder {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function PurchaseOrdersPage() {
+export default function InvoicesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: purchaseOrders, mutate: mutatePOs } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
+  const { data: invoices, mutate: mutateInvoices } = useSWR<Invoice[]>('/api/cpfr/invoices', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -105,7 +105,7 @@ export default function PurchaseOrdersPage() {
     return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
   };
 
-  // Access control - Sales team and admins can manage POs
+        // Access control - Sales team and admins can manage Invoices
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
     return (
       <div className="flex-1 p-4 lg:p-8">
@@ -120,10 +120,10 @@ export default function PurchaseOrdersPage() {
     );
   }
 
-  const handleCreatePO = async (formData: FormData) => {
+  const handleCreateInvoice = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/cpfr/purchase-orders', {
+      const response = await fetch('/api/cpfr/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,13 +134,13 @@ export default function PurchaseOrdersPage() {
           terms: formData.get('terms'),
           incoterms: formData.get('incoterms'),
           incotermsLocation: formData.get('incotermsLocation'),
-          totalValue: parseFloat(formData.get('totalValue') as string),
+          totalValue: calculateTotal(),
           notes: formData.get('notes'),
         }),
       });
 
       if (response.ok) {
-        mutatePOs();
+        mutateInvoices();
         setShowCreateModal(false);
       } else {
         const errorData = await response.json();
@@ -153,13 +153,13 @@ export default function PurchaseOrdersPage() {
     setIsLoading(false);
   };
 
-  const posArray = Array.isArray(purchaseOrders) ? purchaseOrders : [];
-  const filteredPOs = posArray.filter(po => {
+  const invoicesArray = Array.isArray(invoices) ? invoices : [];
+  const filteredInvoices = invoicesArray.filter(invoice => {
     const matchesSearch = !searchTerm || 
-      po.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      po.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
+      invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -183,13 +183,13 @@ export default function PurchaseOrdersPage() {
           <div className="flex items-center space-x-4">
             <SemanticBDIIcon semantic="orders" size={32} />
             <div>
-              <h1 className="text-3xl font-bold">Purchase Orders</h1>
+              <h1 className="text-3xl font-bold">Invoices</h1>
               <p className="text-muted-foreground">Manage supplier orders and delivery terms</p>
             </div>
           </div>
           <Button className="bg-green-600 hover:bg-green-700" onClick={() => setShowCreateModal(true)}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            Create PO
+            Enter Invoice
           </Button>
         </div>
       </div>
@@ -198,7 +198,7 @@ export default function PurchaseOrdersPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search by PO number or supplier name..."
+            placeholder="Search by Invoice number or customer name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -222,67 +222,67 @@ export default function PurchaseOrdersPage() {
         </div>
       </div>
 
-      {/* Purchase Orders List */}
+      {/* Invoices List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <SemanticBDIIcon semantic="orders" size={20} className="mr-2" />
-            Purchase Orders ({filteredPOs.length})
+            Invoices ({filteredInvoices.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredPOs.length === 0 ? (
+          {filteredInvoices.length === 0 ? (
             <div className="text-center py-12">
               <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
-              <p className="text-muted-foreground mb-4">Create your first PO to start managing supplier orders</p>
+              <h3 className="text-lg font-semibold mb-2">No Invoices</h3>
+              <p className="text-muted-foreground mb-4">Enter your first Invoice to start managing customer orders</p>
               <Button onClick={() => setShowCreateModal(true)}>
                 <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
-                Create First PO
+                Enter First Invoice
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredPOs.map((po) => (
-                <div key={po.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+              {filteredInvoices.map((invoice) => (
+                <div key={invoice.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">PO #{po.poNumber}</h3>
-                        <Badge className={getStatusColor(po.status)}>
-                          {po.status}
+                        <h3 className="font-semibold text-lg">Invoice #{invoice.invoiceNumber}</h3>
+                        <Badge className={getStatusColor(invoice.status)}>
+                          {invoice.status}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Supplier:</span>
-                          <p className="font-medium">{po.supplierName}</p>
+                          <p className="font-medium">{invoice.customerName}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Order Date:</span>
-                          <p className="font-medium">{new Date(po.orderDate).toLocaleDateString()}</p>
+                          <span className="text-gray-500">Invoice Date:</span>
+                          <p className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Delivery Week:</span>
-                          <p className="font-medium">{po.requestedDeliveryWeek}</p>
+                          <p className="font-medium">{invoice.requestedDeliveryWeek}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Terms:</span>
-                          <p className="font-medium">{po.terms}</p>
+                          <p className="font-medium">{invoice.terms}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4 text-sm">
                         <div>
                           <span className="text-gray-500">Total Value:</span>
-                          <span className="font-bold text-green-600">${po.totalValue.toLocaleString()}</span>
+                          <span className="font-bold text-green-600">${invoice.totalValue.toLocaleString()}</span>
                         </div>
                       </div>
-                      {po.notes && (
-                        <p className="text-sm text-gray-600 mt-2">{po.notes}</p>
+                      {invoice.notes && (
+                        <p className="text-sm text-gray-600 mt-2">{invoice.notes}</p>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedPO(po)}>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedInvoice(invoice)}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
@@ -295,37 +295,37 @@ export default function PurchaseOrdersPage() {
         </CardContent>
       </Card>
 
-      {/* Create PO Modal */}
+      {/* Enter Invoice Modal */}
       {showCreateModal && (
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="orders" size={20} className="mr-2" />
-                Create Purchase Order
+                Create Invoice
               </DialogTitle>
             </DialogHeader>
             <form className="space-y-12 p-8" onSubmit={(e) => {
               e.preventDefault();
-              handleCreatePO(new FormData(e.currentTarget));
+              handleCreateInvoice(new FormData(e.currentTarget));
             }}>
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
                 <div>
-                  <Label htmlFor="poNumber">PO Number *</Label>
+                  <Label htmlFor="poNumber">Invoice Number *</Label>
                   <Input
                     id="poNumber"
                     name="poNumber"
-                    placeholder="e.g., PO-2025-001"
+                    placeholder="e.g., INV-2025-001"
                     required
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="supplierName">Supplier Name *</Label>
+                  <Label htmlFor="supplierName">Customer Name *</Label>
                   <Input
                     id="supplierName"
                     name="supplierName"
-                    placeholder="e.g., Motorola Solutions"
+                    placeholder="e.g., ABC Electronics Inc"
                     required
                     className="mt-1"
                   />
@@ -334,7 +334,7 @@ export default function PurchaseOrdersPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
                 <div>
-                  <Label htmlFor="orderDate">Order Date *</Label>
+                  <Label htmlFor="orderDate">Invoice Date *</Label>
                   <Input
                     id="orderDate"
                     name="orderDate"
@@ -459,21 +459,7 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <Label htmlFor="totalValue">Total Value ($) *</Label>
-                  <Input
-                    id="totalValue"
-                    name="totalValue"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="e.g., 125000.00"
-                    required
-                    className="mt-1"
-                  />
-                </div>
-              </div>
+
 
               {/* Line Items Section */}
               <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
@@ -525,9 +511,10 @@ export default function PurchaseOrdersPage() {
                             <Label className="text-xs">Quantity *</Label>
                             <Input
                               type="number"
-                              value={item.quantity}
+                              value={item.quantity === 0 ? '' : item.quantity}
                               onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
                               min="1"
+                              placeholder="0"
                               className="text-sm"
                               required
                             />
@@ -537,7 +524,7 @@ export default function PurchaseOrdersPage() {
                             <Input
                               type="number"
                               step="0.01"
-                              value={item.unitCost}
+                              value={item.unitCost === 0 ? '' : item.unitCost}
                               onChange={(e) => updateLineItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
                               min="0"
                               className="text-sm"
@@ -548,7 +535,7 @@ export default function PurchaseOrdersPage() {
                           <div>
                             <Label className="text-xs">Line Total</Label>
                             <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
-                              ${item.lineTotal.toFixed(2)}
+                              ${item.lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           </div>
                           <div>
@@ -569,8 +556,8 @@ export default function PurchaseOrdersPage() {
                     {/* Total Value Display */}
                     <div className="bg-blue-100 p-4 rounded border border-blue-300">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-blue-800">Total PO Value:</span>
-                        <span className="font-bold text-2xl text-blue-900">${calculateTotal().toFixed(2)}</span>
+                        <span className="font-semibold text-blue-800">Total Invoice Value:</span>
+                        <span className="font-bold text-2xl text-blue-900">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
                   </div>
@@ -592,9 +579,13 @@ export default function PurchaseOrdersPage() {
                       name="documents"
                       multiple
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const files = Array.from(e.target.files || []);
                         setUploadedDocs(prev => [...prev, ...files]);
+                        
+                        // TODO: Implement real-time upload to Supabase
+                        // For now, just add to local state for preview
+                        console.log('Files selected for upload:', files.map(f => f.name));
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
                     />
@@ -684,7 +675,7 @@ export default function PurchaseOrdersPage() {
                   ) : (
                     <>
                       <SemanticBDIIcon semantic="orders" size={16} className="mr-2 brightness-0 invert" />
-                      Create PO
+                      Enter Invoice
                     </>
                   )}
                 </Button>

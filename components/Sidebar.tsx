@@ -35,8 +35,8 @@ const navigationItems: NavItem[] = [
     icon: 'cpfr',
     children: [
       {
-        title: 'Purchase Orders',
-        href: '/cpfr/purchase-orders',
+        title: 'Invoices',
+        href: '/cpfr/invoices',
         icon: 'orders',
       },
       {

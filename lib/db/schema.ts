@@ -611,6 +611,84 @@ export type Invitation = typeof invitations.$inferSelect;
 export type NewInvitation = typeof invitations.$inferInsert;
 export type ProductSku = typeof productSkus.$inferSelect;
 export type NewProductSku = typeof productSkus.$inferInsert;
+
+// ===== INVOICE TABLES =====
+
+// Main invoices table
+export const invoices = pgTable('invoices', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Invoice Details
+  invoiceNumber: varchar('invoice_number', { length: 100 }).notNull().unique(),
+  customerName: varchar('customer_name', { length: 255 }).notNull(),
+  invoiceDate: timestamp('invoice_date').notNull(),
+  requestedDeliveryWeek: timestamp('requested_delivery_week'),
+  
+  // Status and Business Terms
+  status: varchar('status', { length: 50 }).notNull().default('draft'),
+  terms: varchar('terms', { length: 100 }), // NET30, NET60, etc.
+  incoterms: varchar('incoterms', { length: 20 }), // FOB, CIF, DDP, etc.
+  incotermsLocation: varchar('incoterms_location', { length: 255 }),
+  
+  // Financial
+  totalValue: numeric('total_value', { precision: 15, scale: 2 }).notNull().default('0.00'),
+  
+  // Supporting Documents (JSON array of file paths/URLs)
+  documents: jsonb('documents').default('[]'),
+  
+  // Additional Info
+  notes: text('notes'),
+  
+  // Audit Fields
+  createdBy: uuid('created_by').notNull().references(() => users.authId),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Invoice line items table
+export const invoiceLineItems = pgTable('invoice_line_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Foreign Keys
+  invoiceId: uuid('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  skuId: uuid('sku_id').notNull().references(() => productSkus.id),
+  
+  // Line Item Details
+  skuCode: varchar('sku_code', { length: 100 }).notNull(),
+  skuName: varchar('sku_name', { length: 255 }).notNull(),
+  quantity: integer('quantity').notNull(),
+  unitCost: numeric('unit_cost', { precision: 15, scale: 2 }).notNull(),
+  lineTotal: numeric('line_total', { precision: 15, scale: 2 }).notNull().default('0.00'),
+  
+  // Audit
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Invoice documents table
+export const invoiceDocuments = pgTable('invoice_documents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Foreign Key
+  invoiceId: uuid('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  
+  // File Details
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  filePath: varchar('file_path', { length: 500 }).notNull(),
+  fileType: varchar('file_type', { length: 100 }).notNull(),
+  fileSize: integer('file_size').notNull(),
+  
+  // Upload Info
+  uploadedBy: uuid('uploaded_by').notNull().references(() => users.authId),
+  uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
+});
+
+export type Invoice = typeof invoices.$inferSelect;
+export type NewInvoice = typeof invoices.$inferInsert;
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+export type NewInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
+export type InvoiceDocument = typeof invoiceDocuments.$inferSelect;
+export type NewInvoiceDocument = typeof invoiceDocuments.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;
