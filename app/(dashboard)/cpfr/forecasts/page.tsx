@@ -592,20 +592,34 @@ export default function SalesForecastsPage() {
                             if (!selectedShipping) return 'Select shipping';
                             const leadTime = getEffectiveLeadTime();
                             const shippingDays: { [key: string]: number } = {
-                              'AIR_EXPRESS': 7.5, // Average of 5-10
-                              'AIR_STANDARD': 10.5, // Average of 7-14
-                              'SEA_ASIA_WEST': 17.5, // Average of 15-20
-                              'SEA_ASIA_EAST': 30, // Average of 25-35
-                              'SEA_EU_EAST': 12.5, // Average of 10-15
-                              'SEA_STANDARD': 37.5, // Average of 25-50
-                              'TRUCK_EXPRESS': 10.5, // Average of 7-14
-                              'TRUCK_STANDARD': 21, // Average of 14-28
-                              'RAIL': 28, // Average of 21-35
+                              'AIR_7_DAYS': 7,
+                              'AIR_14_DAYS': 14,
+                              'AIR_NLD': 14,
+                              'AIR_AUT': 14,
+                              'SEA_ASIA_US_WEST': 45,
+                              'SEA_ASIA_US_EAST': 52,
+                              'SEA_WEST_EXPEDITED': 35,
+                              'SEA_ASIA_EU_NLD': 45,
+                              'SEA_ASIA_EU_AUT': 45,
+                              'GROUND': 14
                             };
-                            const shippingTime = shippingDays[selectedShipping] || 0;
-                            const totalDays = leadTime + shippingTime;
-                            return `${Math.round(totalDays)} days`;
-                          })()}
+                            
+                            if (leadTimeOption === 'mp_ready' && (selectedSku as any)?.mpStartDate) {
+                              const mpReady = new Date((selectedSku as any).mpStartDate);
+                              const today = new Date();
+                              const daysToMpReady = Math.ceil((mpReady.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                              const shippingTime = shippingDays[selectedShipping] || 0;
+                              const totalDays = daysToMpReady + shippingTime;
+
+                              return totalDays;
+                            } else {
+                              const leadTime = getEffectiveLeadTime();
+                              const shippingTime = shippingDays[selectedShipping] || 0;
+                              const totalDays = leadTime + shippingTime;
+
+                              return totalDays;
+                            }
+                          })()} days
                         </p>
                         <p className="text-xs text-gray-500">
                           Lead time + shipping time
@@ -735,18 +749,19 @@ export default function SalesForecastsPage() {
                           </span>
                           <p className="font-bold text-xl text-purple-600 my-1">
                             {(() => {
-                              const shippingTimes: { [key: string]: string } = {
-                                'AIR_EXPRESS': '5-10 days',
-                                'AIR_STANDARD': '7-14 days',
-                                'SEA_ASIA_WEST': '15-20 days',
-                                'SEA_ASIA_EAST': '25-35 days',
-                                'SEA_EU_EAST': '10-15 days',
-                                'SEA_STANDARD': '25-50 days',
-                                'TRUCK_EXPRESS': '7-14 days',
-                                'TRUCK_STANDARD': '14-28 days',
-                                'RAIL': '21-35 days',
+                              const shippingDays: { [key: string]: number } = {
+                                'AIR_7_DAYS': 7,
+                                'AIR_14_DAYS': 14,
+                                'AIR_NLD': 14,
+                                'AIR_AUT': 14,
+                                'SEA_ASIA_US_WEST': 45,
+                                'SEA_ASIA_US_EAST': 52,
+                                'SEA_WEST_EXPEDITED': 35,
+                                'SEA_ASIA_EU_NLD': 45,
+                                'SEA_ASIA_EU_AUT': 45,
+                                'GROUND': 14
                               };
-                              return shippingTimes[selectedShipping] || 'TBD';
+                              return `${shippingDays[selectedShipping] || 0} days`;
                             })()} 
                           </p>
                           <span className="text-purple-600 text-xs">
