@@ -37,6 +37,10 @@ const createSkuSchema = z.object({
   palletNotes: z.string().optional(),
   mpStartDate: z.string().optional(), // Will be converted to timestamp
   mfg: z.string().optional(),
+  
+  // Business/Forecast Terms
+  moq: z.number().int().positive().optional().default(1),
+  leadTimeDays: z.number().int().positive().optional().default(30),
 });
 
 export async function GET(request: NextRequest) {
@@ -231,8 +235,8 @@ export async function POST(request: NextRequest) {
         dimensions: null,
         weight: null,
         color: null,
-        moq: 1,
-        leadTimeDays: 30,
+        moq: validatedData.moq || 1,
+        leadTimeDays: validatedData.leadTimeDays || 30,
         tags: [],
         
         // New dimensional fields (metric)
