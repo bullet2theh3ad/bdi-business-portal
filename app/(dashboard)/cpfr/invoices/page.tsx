@@ -282,7 +282,10 @@ export default function InvoicesPage() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedInvoice(invoice)}>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setSelectedInvoice(invoice);
+                        console.log('Edit invoice:', invoice);
+                      }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
