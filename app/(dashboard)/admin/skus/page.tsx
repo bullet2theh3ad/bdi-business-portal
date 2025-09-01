@@ -513,7 +513,7 @@ export default function SKUsPage() {
       {/* Create SKU Modal */}
       {showCreateModal && (
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="plus" size={24} className="mr-2" />
@@ -523,7 +523,7 @@ export default function SKUsPage() {
             <form onSubmit={(e) => {
               e.preventDefault();
               handleCreateSku(new FormData(e.currentTarget));
-            }} className="space-y-6">
+            }} className="space-y-12 p-8">
               {/* SKU Builder Toggle */}
               <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
                 <input
@@ -991,7 +991,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
                   Forecast Terms
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
                   <div>
                     <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
                     <Input
@@ -1021,7 +1021,7 @@ export default function SKUsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs">MP Start Date</Label>
+                    <Label className="text-xs">MP Ready Date (EXW)</Label>
                     <Input
                       name="mpStartDate"
                       type="date"
@@ -1078,14 +1078,14 @@ export default function SKUsPage() {
       {/* Edit SKU Modal */}
       {selectedSku && (
         <Dialog open={!!selectedSku} onOpenChange={() => setSelectedSku(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
                 Edit SKU: {selectedSku.sku}
               </DialogTitle>
             </DialogHeader>
-            <form className="space-y-6" onSubmit={(e) => {
+            <form className="space-y-12 p-8" onSubmit={(e) => {
               e.preventDefault();
               handleEditSku(new FormData(e.currentTarget));
             }}>
@@ -1338,7 +1338,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
                   Forecast Terms
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
                   <div>
                     <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
                     <Input
@@ -1368,7 +1368,7 @@ export default function SKUsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs">MP Start Date</Label>
+                    <Label className="text-xs">MP Ready Date (EXW)</Label>
                     <Input
                       name="editMpStartDate"
                       type="date"
