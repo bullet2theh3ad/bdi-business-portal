@@ -219,6 +219,36 @@ export default function InvoicesPage() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Invoice created:', result);
+        
+        // Upload documents if any were selected
+        if (uploadedDocs.length > 0) {
+          console.log(`🔄 Uploading ${uploadedDocs.length} documents for new invoice`);
+          try {
+            const uploadFormData = new FormData();
+            uploadedDocs.forEach(file => uploadFormData.append('files', file));
+            
+            const uploadResponse = await fetch(`/api/cpfr/invoices/${result.invoice.id}/documents`, {
+              method: 'POST',
+              body: uploadFormData
+            });
+            
+            if (uploadResponse.ok) {
+              const uploadResult = await uploadResponse.json();
+              console.log('✅ Documents uploaded:', uploadResult);
+              alert(`Invoice created successfully with ${uploadResult.uploaded} documents uploaded!`);
+            } else {
+              alert('Invoice created but document upload failed');
+            }
+          } catch (uploadError) {
+            console.error('Document upload error:', uploadError);
+            alert('Invoice created but document upload failed');
+          }
+        } else {
+          alert('Invoice created successfully!');
+        }
+        
         mutateInvoices();
         setShowCreateModal(false);
         // Clear form state after successful creation
@@ -766,8 +796,6 @@ export default function InvoicesPage() {
                         const files = Array.from(e.target.files || []);
                         setUploadedDocs(prev => [...prev, ...files]);
                         
-                        // TODO: Implement real-time upload to Supabase
-                        // For now, just add to local state for preview
                         console.log('Files selected for upload:', files.map(f => f.name));
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
