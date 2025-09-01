@@ -274,7 +274,7 @@ export default function InvoicesPage() {
                       <div className="flex items-center space-x-4 text-sm">
                         <div>
                           <span className="text-gray-500">Total Value:</span>
-                          <span className="font-bold text-green-600">${invoice.totalValue.toLocaleString()}</span>
+                          <span className="font-bold text-green-600">${Number(invoice.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                       {invoice.notes && (
