@@ -467,6 +467,10 @@ export const productSkus = pgTable('product_skus', {
   palletMaterialType: varchar('pallet_material_type', { length: 50 }), // WOOD_HT, PLASTIC_HDPE, etc.
   palletNotes: text('pallet_notes'),
   
+  // Manufacturing Program & Business Info
+  mpStartDate: timestamp('mp_start_date'), // Manufacturing Program Start Date
+  mfg: varchar('mfg', { length: 100 }), // Manufacturer code/name
+  
   // Metadata
   tags: varchar('tags', { length: 255 }).array(), // Searchable tags
   specifications: jsonb('specifications'), // Flexible spec storage

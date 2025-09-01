@@ -35,6 +35,8 @@ const createSkuSchema = z.object({
     'PRESSWOOD', 'PLYWOOD_OSB', 'STEEL', 'ALUMINUM', 'PAPERBOARD'
   ]).optional(),
   palletNotes: z.string().optional(),
+  mpStartDate: z.string().optional(), // Will be converted to timestamp
+  mfg: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -247,6 +249,8 @@ export async function POST(request: NextRequest) {
         palletWeightKg: validatedData.palletWeight ? validatedData.palletWeight.toString() : null,
         palletMaterialType: validatedData.palletMaterialType,
         palletNotes: validatedData.palletNotes,
+        mpStartDate: validatedData.mpStartDate ? new Date(validatedData.mpStartDate) : null,
+        mfg: validatedData.mfg,
         
         createdBy: requestingUser.authId,
       })

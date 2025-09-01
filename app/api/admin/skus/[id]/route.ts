@@ -74,8 +74,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         palletWidthCm: body.palletWidth ? body.palletWidth.toString() : null,
         palletHeightCm: body.palletHeight ? body.palletHeight.toString() : null,
         palletWeightKg: body.palletWeight ? body.palletWeight.toString() : null,
-        palletMaterialType: body.palletMaterialType,
-        palletNotes: body.palletNotes,
+              palletMaterialType: body.palletMaterialType,
+      palletNotes: body.palletNotes,
+      mpStartDate: body.editMpStartDate ? new Date(body.editMpStartDate) : null,
+      mfg: body.editMfg,
         
         // Business terms
         moq: body.moq,

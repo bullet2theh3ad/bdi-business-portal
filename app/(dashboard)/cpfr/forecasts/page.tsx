@@ -64,6 +64,39 @@ export default function SalesForecastsPage() {
   const [selectedShipping, setSelectedShipping] = useState<string>('');
   const [quantityError, setQuantityError] = useState<string>('');
   const [moqOverride, setMoqOverride] = useState<boolean>(false);
+  const [leadTimeOption, setLeadTimeOption] = useState<'mp_start' | 'normal' | 'custom'>('normal');
+  const [customLeadTime, setCustomLeadTime] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customDate, setCustomDate] = useState<string>('');
+
+  // Helper function to get effective lead time based on selected option
+  const getEffectiveLeadTime = (): number => {
+    if (!selectedSku) return 30;
+    
+    switch (leadTimeOption) {
+      case 'mp_start':
+        if ((selectedSku as any)?.mpStartDate) {
+          const mpStart = new Date((selectedSku as any).mpStartDate);
+          const today = new Date();
+          const diffTime = mpStart.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return Math.max(1, diffDays); // Ensure at least 1 day
+        }
+        return (selectedSku as any)?.leadTimeDays || 30; // Fallback to normal
+      case 'custom':
+        if (customDate) {
+          const customDeliveryDate = new Date(customDate);
+          const today = new Date();
+          const diffTime = customDeliveryDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return Math.max(1, diffDays);
+        }
+        return customLeadTime || (selectedSku as any)?.leadTimeDays || 30;
+      case 'normal':
+      default:
+        return (selectedSku as any)?.leadTimeDays || 30;
+    }
+  };
 
   // Access control - Sales team and admins can create forecasts
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -144,7 +177,7 @@ export default function SalesForecastsPage() {
     let totalWeeks = 12; // Default minimum
     
     if (selectedSku && selectedShipping) {
-      const leadTime = (selectedSku as any)?.leadTimeDays || 30;
+      const leadTime = getEffectiveLeadTime();
       const shippingDays: { [key: string]: number } = {
         'AIR_7_DAYS': 7,
         'AIR_14_DAYS': 14,
@@ -415,7 +448,7 @@ export default function SalesForecastsPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-10 text-sm">
-                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Units per Carton</span>
                         <p className="font-bold text-3xl text-blue-600 mb-2">
                           {(selectedSku as any).boxesPerCarton || 'Not Set'}
@@ -424,16 +457,100 @@ export default function SalesForecastsPage() {
                           {(selectedSku as any).boxesPerCarton ? 'Forecast in multiples of this' : 'Configure in SKU settings'}
                         </p>
                       </div>
-                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
-                        <span className="text-gray-600 text-sm font-medium mb-2">Lead Time</span>
-                        <p className="font-bold text-3xl text-orange-600 mb-2">
-                          {(selectedSku as any).leadTimeDays || 30} days
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Order to delivery time
-                        </p>
+                      <div className="bg-white p-4 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
+                        <span className="text-gray-600 text-sm font-medium mb-2">Lead Time Options</span>
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id="mp_start"
+                              name="leadTimeOption"
+                              value="mp_start"
+                              checked={leadTimeOption === 'mp_start'}
+                              onChange={(e) => setLeadTimeOption(e.target.value as 'mp_start')}
+                              className="text-orange-600 flex-shrink-0"
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <label htmlFor="mp_start" className="text-xs font-medium truncate">
+                                MP Start
+                              </label>
+                              <span className="text-xs text-gray-500 truncate">
+                                {(selectedSku as any)?.mpStartDate 
+                                  ? new Date((selectedSku as any).mpStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                  : 'Not set'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id="normal"
+                              name="leadTimeOption"
+                              value="normal"
+                              checked={leadTimeOption === 'normal'}
+                              onChange={(e) => setLeadTimeOption(e.target.value as 'normal')}
+                              className="text-orange-600 flex-shrink-0"
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <label htmlFor="normal" className="text-xs font-medium truncate">
+                                Normal
+                              </label>
+                              <span className="text-xs text-gray-500 truncate">
+                                {(selectedSku as any)?.leadTimeDays || 30} days
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id="custom"
+                              name="leadTimeOption"
+                              value="custom"
+                              checked={leadTimeOption === 'custom'}
+                              onChange={(e) => setLeadTimeOption(e.target.value as 'custom')}
+                              className="text-orange-600 flex-shrink-0"
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <label htmlFor="custom" className="text-xs font-medium truncate">
+                                Custom
+                              </label>
+                              {leadTimeOption === 'custom' ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    placeholder="Days"
+                                    value={customLeadTime || ''}
+                                    onChange={(e) => setCustomLeadTime(e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-12 px-1 py-0.5 border rounded text-xs"
+                                    min="1"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowDatePicker(!showDatePicker)}
+                                    className="px-1 py-0.5 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200"
+                                  >
+                                    📅
+                                  </button>
+                                  {showDatePicker && (
+                                    <input
+                                      type="date"
+                                      value={customDate}
+                                      onChange={(e) => setCustomDate(e.target.value)}
+                                      className="px-1 py-0.5 border rounded text-xs w-20"
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500 truncate">
+                                  Days or date
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">MOQ</span>
                         <p className="font-bold text-3xl text-green-600 mb-2">
                           {((selectedSku as any).moq || 1).toLocaleString()}
@@ -442,7 +559,7 @@ export default function SalesForecastsPage() {
                           Minimum order quantity
                         </p>
                       </div>
-                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Shipping Time</span>
                         <p className="font-bold text-3xl text-purple-600 mb-2">
                           {(() => {
@@ -467,7 +584,7 @@ export default function SalesForecastsPage() {
                           Transit time for selected method
                         </p>
                       </div>
-                      <div className="bg-white p-6 rounded-lg border shadow-sm min-h-[120px] flex flex-col justify-center">
+                      <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Total Delivery Time</span>
                         <p className="font-bold text-3xl text-indigo-600 mb-2">
                           {(() => {
@@ -512,7 +629,7 @@ export default function SalesForecastsPage() {
                       const selectedWeek = weeks.find(w => w.isoWeek === e.target.value);
                       if (selectedWeek && selectedSku && selectedShipping) {
                         const orderDate = new Date();
-                        const leadTime = (selectedSku as any)?.leadTimeDays || 30;
+                        const leadTime = getEffectiveLeadTime();
                         const shippingDays: { [key: string]: number } = {
                           'AIR_7_DAYS': 7,
                           'AIR_14_DAYS': 14,
@@ -551,7 +668,7 @@ export default function SalesForecastsPage() {
                         );
                       }
 
-                      const leadTime = (selectedSku as any)?.leadTimeDays || 30;
+                      const leadTime = getEffectiveLeadTime();
                       const shippingDays: { [key: string]: number } = {
                         'AIR_7_DAYS': 7,
                         'AIR_14_DAYS': 14,

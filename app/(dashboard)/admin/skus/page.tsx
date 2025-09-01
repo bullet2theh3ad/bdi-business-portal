@@ -991,7 +991,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
                   Forecast Terms
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                   <div>
                     <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
                     <Input
@@ -1018,6 +1018,30 @@ export default function SKUsPage() {
                     />
                     <div className="mt-1 text-xs text-gray-600">
                       Days from order to delivery
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">MP Start Date</Label>
+                    <Input
+                      name="mpStartDate"
+                      type="date"
+                      className="text-sm"
+                      placeholder="Select date..."
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      📅 Manufacturing Program start date
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Manufacturer (MFG)</Label>
+                    <Input
+                      name="mfg"
+                      type="text"
+                      placeholder="e.g., MOT, HYT, KEN"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Manufacturer code or name
                     </div>
                   </div>
                 </div>
@@ -1314,7 +1338,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
                   Forecast Terms
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                   <div>
                     <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
                     <Input
@@ -1341,6 +1365,32 @@ export default function SKUsPage() {
                     />
                     <div className="mt-1 text-xs text-gray-600">
                       Days from order to delivery
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">MP Start Date</Label>
+                    <Input
+                      name="editMpStartDate"
+                      type="date"
+                      defaultValue={selectedSku?.mpStartDate ? new Date(selectedSku.mpStartDate).toISOString().split('T')[0] : ''}
+                      className="text-sm"
+                      placeholder="Select date..."
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      📅 Manufacturing Program start date
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Manufacturer (MFG)</Label>
+                    <Input
+                      name="editMfg"
+                      type="text"
+                      defaultValue={selectedSku?.mfg || ''}
+                      placeholder="e.g., MOT, HYT, KEN"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Manufacturer code or name
                     </div>
                   </div>
                 </div>
