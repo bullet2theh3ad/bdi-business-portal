@@ -687,6 +687,85 @@ export default function InvoicesPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Edit Invoice Modal */}
+      {selectedInvoice && (
+        <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
+          <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
+                Edit Invoice: {selectedInvoice.invoiceNumber}
+              </DialogTitle>
+            </DialogHeader>
+            <form className="space-y-8 p-8" onSubmit={(e) => {
+              e.preventDefault();
+              alert('Edit functionality - database integration coming next!');
+            }}>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div>
+                  <Label htmlFor="editInvoiceNumber">Invoice Number</Label>
+                  <Input
+                    id="editInvoiceNumber"
+                    defaultValue={selectedInvoice.invoiceNumber}
+                    className="font-mono bg-gray-50"
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editCustomerName">Customer Name *</Label>
+                  <Input
+                    id="editCustomerName"
+                    name="editCustomerName"
+                    defaultValue={selectedInvoice.customerName}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editStatus">Status</Label>
+                  <select
+                    id="editStatus"
+                    name="editStatus"
+                    defaultValue={selectedInvoice.status}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="editTerms">Payment Terms</Label>
+                  <Input
+                    id="editTerms"
+                    name="editTerms"
+                    defaultValue={selectedInvoice.terms || ''}
+                    placeholder="NET30"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-100 p-4 rounded">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-blue-800">Total Value:</span>
+                  <span className="font-bold text-2xl text-blue-900">${Number(selectedInvoice.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setSelectedInvoice(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                  Update Invoice
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
