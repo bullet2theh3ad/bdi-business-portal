@@ -941,7 +941,7 @@ export default function SalesForecastsPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <SemanticBDIIcon semantic="inventory" size={14} className="text-blue-600" />
-                            <span className="text-blue-800 font-medium text-sm">Available Quantity:</span>
+                            <span className="text-blue-800 font-medium text-sm">Available Quantity ({selectedSku.sku}):</span>
                           </div>
                           <div className="text-right">
                             <span className="text-blue-900 font-bold text-lg">
@@ -950,8 +950,11 @@ export default function SalesForecastsPage() {
                             <span className="text-blue-700 text-sm ml-1">units</span>
                           </div>
                         </div>
-                        <div className="text-xs text-blue-600 mt-1">
-                          From {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} confirmed invoice(s)
+                        <div className="text-xs text-blue-600 mt-1 space-y-1">
+                          <div>Total from {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} invoice(s): {inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices?.toLocaleString() || '0'}</div>
+                          {inventoryData?.availability?.[selectedSku.id]?.alreadyAllocated > 0 && (
+                            <div>Already allocated: -{inventoryData.availability[selectedSku.id].alreadyAllocated.toLocaleString()}</div>
+                          )}
                         </div>
                       </div>
 

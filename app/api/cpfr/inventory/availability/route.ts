@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Calculating inventory availability from invoices...');
 
-    // Calculate available quantities by SKU from confirmed/shipped invoices
+    // Calculate total quantities by SKU from ALL invoices (not just confirmed)
     const availabilityQuery = await db
       .select({
         skuId: invoiceLineItems.skuId,
@@ -60,8 +60,7 @@ export async function GET(request: NextRequest) {
       .innerJoin(productSkus, eq(invoiceLineItems.skuId, productSkus.id))
       .where(
         and(
-          // Only count confirmed, shipped, or delivered invoices as "available"
-          sql`${invoices.status} IN ('confirmed', 'shipped', 'delivered')`,
+          // Count ALL invoices as available quantity (total supply)
           eq(productSkus.isActive, true)
         )
       )
@@ -74,13 +73,25 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found availability data for ${availabilityQuery.length} SKUs`);
 
-    // Transform to a more usable format
+    // TODO: Calculate already allocated quantities from existing forecasts
+    // For now, we'll just use total invoice quantities
+    // Future enhancement: Subtract existing forecast allocations
+
+    // Transform to a more usable format with net available calculation
     const availabilityMap = availabilityQuery.reduce((acc, item) => {
+      // For now: Available = Total from invoices
+      // Future: Available = Total from invoices - Already allocated in forecasts
+      const totalFromInvoices = item.totalQuantity;
+      const alreadyAllocated = 0; // TODO: Calculate from existing forecasts
+      const netAvailable = totalFromInvoices - alreadyAllocated;
+
       acc[item.skuId] = {
         skuId: item.skuId,
         skuCode: item.skuCode,
         skuName: item.skuName,
-        availableQuantity: item.totalQuantity,
+        totalFromInvoices: totalFromInvoices,
+        alreadyAllocated: alreadyAllocated,
+        availableQuantity: Math.max(0, netAvailable), // Never show negative
         sourceInvoices: item.invoiceCount,
         deliveryWindow: {
           earliest: item.earliestDelivery,
