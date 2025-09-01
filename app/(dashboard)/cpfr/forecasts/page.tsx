@@ -55,6 +55,7 @@ export default function SalesForecastsPage() {
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
   const { data: purchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
+  const { data: inventoryData } = useSWR('/api/cpfr/inventory/availability', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSku, setSelectedSku] = useState<ProductSku | null>(null);
@@ -69,6 +70,57 @@ export default function SalesForecastsPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customDate, setCustomDate] = useState<string>('');
   const [confidenceLevel, setConfidenceLevel] = useState<'part_of_po' | 'pre_po' | 'planning'>('planning');
+  const [forecastQuantity, setForecastQuantity] = useState<number>(0);
+
+  // Helper function to get available quantity for a SKU
+  const getAvailableQuantity = (skuId: string) => {
+    if (!inventoryData?.availability) return 0;
+    return inventoryData.availability[skuId]?.availableQuantity || 0;
+  };
+
+  // Helper function to generate CPFR signal based on demand vs availability
+  const getCpfrSignal = (skuId: string, demandQuantity: number) => {
+    const available = getAvailableQuantity(skuId);
+    const ratio = available > 0 ? demandQuantity / available : demandQuantity > 0 ? Infinity : 0;
+    
+    if (available === 0 && demandQuantity > 0) {
+      return { 
+        type: 'critical', 
+        message: 'No inventory available - Critical shortage!',
+        color: 'bg-red-100 border-red-300 text-red-800',
+        icon: '🚨'
+      };
+    } else if (ratio > 1) {
+      const shortage = demandQuantity - available;
+      return { 
+        type: 'shortage', 
+        message: `Shortage: Need ${shortage.toLocaleString()} more units`,
+        color: 'bg-orange-100 border-orange-300 text-orange-800',
+        icon: '⚠️'
+      };
+    } else if (ratio > 0.8) {
+      return { 
+        type: 'low', 
+        message: 'Low inventory - Monitor closely',
+        color: 'bg-yellow-100 border-yellow-300 text-yellow-800',
+        icon: '🔶'
+      };
+    } else if (ratio > 0) {
+      return { 
+        type: 'adequate', 
+        message: 'Adequate inventory available',
+        color: 'bg-green-100 border-green-300 text-green-800',
+        icon: '✅'
+      };
+    } else {
+      return { 
+        type: 'surplus', 
+        message: 'Surplus inventory available',
+        color: 'bg-blue-100 border-blue-300 text-blue-800',
+        icon: '📦'
+      };
+    }
+  };
 
   // Helper function to get effective lead time based on selected option
   const getEffectiveLeadTime = (): number => {
@@ -138,6 +190,7 @@ export default function SalesForecastsPage() {
         setSelectedSku(null);
         setMoqOverride(false);
         setQuantityError('');
+        setForecastQuantity(0);
       } else {
         const errorData = await response.json();
         alert(`Failed to create forecast: ${errorData.error || 'Unknown error'}`);
@@ -426,7 +479,10 @@ export default function SalesForecastsPage() {
                             ? 'ring-2 ring-blue-500 border-blue-500' 
                             : getProductTypeColor(productType)
                         } hover:shadow-md`}
-                        onClick={() => setSelectedSku(sku)}
+                        onClick={() => {
+                          setSelectedSku(sku);
+                          setForecastQuantity(0); // Reset forecast quantity when SKU changes
+                        }}
                       >
                         <div className="text-center">
                           <div className="text-xs font-mono font-bold mb-1 truncate">
@@ -858,6 +914,9 @@ export default function SalesForecastsPage() {
                       const unitsPerCarton = (selectedSku as any)?.boxesPerCarton;
                       const moq = (selectedSku as any)?.moq || 1;
                       
+                      // Update forecast quantity for CPFR calculations
+                      setForecastQuantity(value || 0);
+                      
                       let error = '';
                       
                       // Check carton multiple
@@ -873,6 +932,68 @@ export default function SalesForecastsPage() {
                       e.target.setCustomValidity(error);
                     }}
                   />
+                  
+                  {/* Real-time Inventory Availability & CPFR Signaling */}
+                  {selectedSku && (
+                    <div className="mt-3 space-y-3">
+                      {/* Available Quantity Display */}
+                      <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <SemanticBDIIcon semantic="inventory" size={14} className="text-blue-600" />
+                            <span className="text-blue-800 font-medium text-sm">Available Quantity:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-blue-900 font-bold text-lg">
+                              {getAvailableQuantity(selectedSku.id).toLocaleString()}
+                            </span>
+                            <span className="text-blue-700 text-sm ml-1">units</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">
+                          From {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} confirmed invoice(s)
+                        </div>
+                      </div>
+
+                      {/* CPFR Signal Display */}
+                      {forecastQuantity > 0 && (
+                        <div className={`p-3 rounded-md border ${getCpfrSignal(selectedSku.id, forecastQuantity).color}`}>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-lg">{getCpfrSignal(selectedSku.id, forecastQuantity).icon}</span>
+                            <span className="font-medium text-sm">CPFR Signal:</span>
+                            <span className="text-sm">{getCpfrSignal(selectedSku.id, forecastQuantity).message}</span>
+                          </div>
+                          {getCpfrSignal(selectedSku.id, forecastQuantity).type === 'shortage' && (
+                            <div className="mt-2 text-xs">
+                              💡 Consider increasing purchase orders or adjusting delivery timeline
+                            </div>
+                          )}
+                          {getCpfrSignal(selectedSku.id, forecastQuantity).type === 'critical' && (
+                            <div className="mt-2 text-xs">
+                              🚨 Urgent: Create purchase orders immediately to meet demand
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Remaining Inventory After Forecast */}
+                      {forecastQuantity > 0 && getAvailableQuantity(selectedSku.id) > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-700">Remaining after forecast:</span>
+                            <span className={`font-medium ${
+                              getAvailableQuantity(selectedSku.id) - forecastQuantity >= 0 
+                                ? 'text-green-600' 
+                                : 'text-red-600'
+                            }`}>
+                              {(getAvailableQuantity(selectedSku.id) - forecastQuantity).toLocaleString()} units
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {quantityError ? (
                     <div className="mt-1 text-xs text-red-600 font-medium">
                       ❌ {quantityError}
@@ -1007,10 +1128,11 @@ export default function SalesForecastsPage() {
                   variant="outline"
                   onClick={() => {
                     setShowCreateModal(false);
-                    setSelectedSku(null);
-                    setMoqOverride(false);
-                    setQuantityError('');
-                    setSelectedShipping('');
+                            setSelectedSku(null);
+        setMoqOverride(false);
+        setQuantityError('');
+        setSelectedShipping('');
+        setForecastQuantity(0);
                   }}
                   disabled={isLoading}
                 >
