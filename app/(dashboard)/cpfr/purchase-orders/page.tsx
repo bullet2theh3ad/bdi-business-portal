@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
-import { User } from '@/lib/db/schema';
+import { User, ProductSku } from '@/lib/db/schema';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -42,6 +42,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function PurchaseOrdersPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: purchaseOrders, mutate: mutatePOs } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
+  const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
@@ -50,6 +51,59 @@ export default function PurchaseOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [customTerms, setCustomTerms] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
+  const [lineItems, setLineItems] = useState<Array<{
+    id: string;
+    skuId: string;
+    sku: string;
+    skuName: string;
+    quantity: number;
+    unitCost: number;
+    lineTotal: number;
+  }>>([]);
+
+  // Helper functions for line items
+  const addLineItem = () => {
+    const newItem = {
+      id: Date.now().toString(),
+      skuId: '',
+      sku: '',
+      skuName: '',
+      quantity: 1,
+      unitCost: 0,
+      lineTotal: 0
+    };
+    setLineItems([...lineItems, newItem]);
+  };
+
+  const updateLineItem = (id: string, field: string, value: any) => {
+    setLineItems(lineItems.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, [field]: value };
+        
+        // If SKU is selected, populate SKU code and name
+        if (field === 'skuId' && value) {
+          const selectedSku = skus?.find(sku => sku.id === value);
+          if (selectedSku) {
+            updatedItem.sku = selectedSku.sku;
+            updatedItem.skuName = selectedSku.name;
+          }
+        }
+        
+        // Calculate line total
+        updatedItem.lineTotal = updatedItem.quantity * updatedItem.unitCost;
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  const removeLineItem = (id: string) => {
+    setLineItems(lineItems.filter(item => item.id !== id));
+  };
+
+  const calculateTotal = () => {
+    return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  };
 
   // Access control - Sales team and admins can manage POs
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -289,16 +343,19 @@ export default function PurchaseOrdersPage() {
                     className="mt-1"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="requestedDeliveryWeek">Requested Delivery Week *</Label>
-                  <Input
-                    id="requestedDeliveryWeek"
-                    name="requestedDeliveryWeek"
-                    placeholder="e.g., 2025-W12"
-                    required
-                    className="mt-1"
-                  />
-                </div>
+                                  <div>
+                    <Label htmlFor="requestedDeliveryWeek">Requested Delivery Week *</Label>
+                    <Input
+                      id="requestedDeliveryWeek"
+                      name="requestedDeliveryWeek"
+                      type="date"
+                      required
+                      className="mt-1"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      📅 Target delivery date
+                    </div>
+                  </div>
               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
@@ -416,6 +473,108 @@ export default function PurchaseOrdersPage() {
                     className="mt-1"
                   />
                 </div>
+              </div>
+
+              {/* Line Items Section */}
+              <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold text-blue-800 flex items-center">
+                    <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                    Line Items
+                  </h4>
+                  <Button
+                    type="button"
+                    onClick={addLineItem}
+                    variant="outline"
+                    size="sm"
+                    className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                  >
+                    <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                {lineItems.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <SemanticBDIIcon semantic="inventory" size={32} className="mx-auto mb-2 opacity-50" />
+                    <p>No line items added yet</p>
+                    <p className="text-xs">Click "Add Item" to start building your PO</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {lineItems.map((item, index) => (
+                      <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                          <div>
+                            <Label className="text-xs">SKU *</Label>
+                            <select
+                              value={item.skuId}
+                              onChange={(e) => updateLineItem(item.id, 'skuId', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              required
+                            >
+                              <option value="">Select SKU</option>
+                              {skus?.map((sku) => (
+                                <option key={sku.id} value={sku.id}>
+                                  {sku.sku} - {sku.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Quantity *</Label>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                              min="1"
+                              className="text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Unit Cost *</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={item.unitCost}
+                              onChange={(e) => updateLineItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
+                              min="0"
+                              className="text-sm"
+                              placeholder="0.00"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Line Total</Label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
+                              ${item.lineTotal.toFixed(2)}
+                            </div>
+                          </div>
+                          <div>
+                            <Button
+                              type="button"
+                              onClick={() => removeLineItem(item.id)}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Total Value Display */}
+                    <div className="bg-blue-100 p-4 rounded border border-blue-300">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-blue-800">Total PO Value:</span>
+                        <span className="font-bold text-2xl text-blue-900">${calculateTotal().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Document Upload Section */}
