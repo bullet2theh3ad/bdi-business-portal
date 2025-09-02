@@ -1633,41 +1633,44 @@ export default function SalesForecastsPage() {
                       {/* Three Signal Types - Responsive Layout */}
                       <div className="grid grid-cols-3 gap-2 md:gap-4">
                         {/* Sales */}
-                        <div className="bg-blue-50 p-2 rounded border border-blue-200">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                            <span className="text-xs md:text-sm font-medium text-blue-800">📊 Sales</span>
-                            <div className="flex items-center space-x-1 mt-1 md:mt-0">
-                              <span className={`text-sm ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
-                                {getSignalIcon(forecast.salesSignal || 'unknown')}
-                              </span>
-                              <span className="text-xs text-blue-700">{forecast.salesSignal || 'Unknown'}</span>
-                            </div>
+                        <div className="bg-blue-50 p-3 rounded border border-blue-200 text-center">
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <span className="text-lg">📊</span>
+                            <span className="text-sm font-medium text-blue-800">Sales</span>
+                          </div>
+                          <div className="flex items-center justify-center space-x-2">
+                            <span className={`text-lg ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
+                              {getSignalIcon(forecast.salesSignal || 'unknown')}
+                            </span>
+                            <span className="text-sm text-blue-700">{forecast.salesSignal || 'Unknown'}</span>
                           </div>
                         </div>
                         
                         {/* Factory */}
-                        <div className="bg-orange-50 p-2 rounded border border-orange-200">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                            <span className="text-xs md:text-sm font-medium text-orange-800">🏭 Factory</span>
-                            <div className="flex items-center space-x-1 mt-1 md:mt-0">
-                              <span className={`text-sm ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
-                                {getSignalIcon(forecast.factorySignal || 'unknown')}
-                              </span>
-                              <span className="text-xs text-orange-700">{forecast.factorySignal || 'Unknown'}</span>
-                            </div>
+                        <div className="bg-orange-50 p-3 rounded border border-orange-200 text-center">
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <span className="text-lg">🏭</span>
+                            <span className="text-sm font-medium text-orange-800">Factory</span>
+                          </div>
+                          <div className="flex items-center justify-center space-x-2">
+                            <span className={`text-lg ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
+                              {getSignalIcon(forecast.factorySignal || 'unknown')}
+                            </span>
+                            <span className="text-sm text-orange-700">{forecast.factorySignal || 'Unknown'}</span>
                           </div>
                         </div>
                         
                         {/* Shipping */}
-                        <div className="bg-green-50 p-2 rounded border border-green-200">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                            <span className="text-xs md:text-sm font-medium text-green-800">🚢 Shipping</span>
-                            <div className="flex items-center space-x-1 mt-1 md:mt-0">
-                              <span className={`text-sm ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
-                                {getSignalIcon(forecast.shippingSignal || 'unknown')}
-                              </span>
-                              <span className="text-xs text-green-700">{forecast.shippingSignal || 'Unknown'}</span>
-                            </div>
+                        <div className="bg-green-50 p-3 rounded border border-green-200 text-center">
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <span className="text-lg">🚢</span>
+                            <span className="text-sm font-medium text-green-800">Shipping</span>
+                          </div>
+                          <div className="flex items-center justify-center space-x-2">
+                            <span className={`text-lg ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
+                              {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                            </span>
+                            <span className="text-sm text-green-700">{forecast.shippingSignal || 'Unknown'}</span>
                           </div>
                         </div>
                       </div>
