@@ -419,7 +419,10 @@ export async function PUT(request: NextRequest) {
 
       console.log('✅ Forecast updated:', updatedForecast);
       
-      // 🚀 TRIGGER CPFR EMAIL ON SALES SIGNAL CHANGE
+      // 🚀 TRIGGER CPFR EMAIL ON ANY SIGNAL CHANGE
+      let emailTriggered = false;
+      
+      // Sales signal change (BDI → Factory)
       if (body.salesSignal === 'submitted') {
         console.log('📧 Sales signal changed to submitted - triggering CPFR email notification');
         
@@ -473,6 +476,7 @@ export async function PUT(request: NextRequest) {
               );
               
               console.log(`📧 CPFR email notification ${emailSent ? 'sent' : 'failed'} for ${invoiceData.mfgCode} (EDIT)`);
+              emailTriggered = true;
             } else {
               console.log('⚠️ No invoice data found for SKU - skipping email notification');
             }
@@ -480,6 +484,91 @@ export async function PUT(request: NextRequest) {
         } catch (emailError) {
           console.error('❌ CPFR email notification failed on edit:', emailError);
           // Don't fail the forecast update if email fails
+        }
+      }
+      
+      // Factory signal change (TC1 → BDI)
+      if (!emailTriggered && (body.factorySignal === 'awaiting' || body.factorySignal === 'accepted' || body.factorySignal === 'rejected')) {
+        console.log(`📧 Factory signal changed to ${body.factorySignal} - notifying BDI team`);
+        
+        try {
+          // Get SKU data for email
+          const [sku] = await db
+            .select()
+            .from(productSkus)
+            .where(eq(productSkus.id, updatedForecast.sku_id))
+            .limit(1);
+            
+          if (sku) {
+            // Get invoice data for context
+            const invoiceData = await getInvoiceDataFromSku(updatedForecast.sku_id);
+            
+            if (invoiceData) {
+              // Send notification to BDI team about factory response
+              const bdiEmailData = {
+                forecastId: updatedForecast.id,
+                mfgCode: invoiceData.mfgCode,
+                sku: sku.sku,
+                skuName: sku.name,
+                quantity: updatedForecast.quantity,
+                unitCost: invoiceData.unitCost,
+                totalValue: invoiceData.unitCost * updatedForecast.quantity,
+                deliveryWeek: updatedForecast.delivery_week,
+                deliveryDateRange: getWeekDateRange(updatedForecast.delivery_week),
+                shippingMethod: updatedForecast.shipping_preference || 'TBD',
+                notes: updatedForecast.notes,
+                portalLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/cpfr/forecasts`,
+                invoiceNumber: invoiceData.invoiceNumber,
+                factoryResponse: body.factorySignal
+              };
+              
+              // Send to BDI team (you and Dariush)
+              const bdiRecipients = [
+                'scistulli@boundlessdevices.com', // Personal
+                'dzand@boundlessdevices.com'      // Primary business
+              ];
+              
+              // Simple email notification for now
+              if (process.env.RESEND_API_KEY) {
+                const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY);
+                
+                const emailResult = await resend.emails.send({
+                  from: 'CPFR System <cpfr@bdibusinessportal.com>',
+                  to: bdiRecipients,
+                  subject: `🏭 CPFR Update: ${invoiceData.mfgCode} Factory Response - ${body.factorySignal.toUpperCase()}`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 20px; text-align: center;">
+                        <h1>🏭 CPFR Factory Response Received</h1>
+                        <p>${invoiceData.mfgCode} has responded to your forecast</p>
+                      </div>
+                      
+                      <div style="padding: 30px;">
+                        <div style="background: #F0FDF4; border: 1px solid #10B981; border-radius: 6px; padding: 20px; margin: 20px 0;">
+                          <h2 style="color: #059669; margin-top: 0;">📋 Factory Response Details</h2>
+                          <p><strong>SKU:</strong> ${sku.sku} - ${sku.name}</p>
+                          <p><strong>Quantity:</strong> ${updatedForecast.quantity.toLocaleString()} units</p>
+                          <p><strong>Factory Status:</strong> <strong style="color: #059669;">${body.factorySignal.toUpperCase()}</strong></p>
+                          <p><strong>Delivery Week:</strong> ${updatedForecast.delivery_week}</p>
+                          <p><strong>Invoice Reference:</strong> ${invoiceData.invoiceNumber}</p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                          <a href="${bdiEmailData.portalLink}" style="display: inline-block; background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                            🔗 View in CPFR Portal
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  `
+                });
+                
+                console.log(`📧 BDI notification sent for ${invoiceData.mfgCode} factory response:`, emailResult);
+              }
+            }
+          }
+        } catch (emailError) {
+          console.error('❌ BDI notification failed:', emailError);
         }
       }
       
