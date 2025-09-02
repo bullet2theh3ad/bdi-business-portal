@@ -211,3 +211,79 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create forecast' }, { status: 500 });
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const forecastId = body.forecastId;
+
+    console.log('🔄 Updating forecast:', forecastId, body);
+
+    // Update forecast in database
+    try {
+      const { data: updatedForecast, error: updateError } = await supabase
+        .from('sales_forecasts')
+        .update({
+          quantity: body.quantity,
+          sales_signal: body.salesSignal,
+          factory_signal: body.factorySignal,
+          shipping_signal: body.shippingSignal,
+          notes: body.notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', forecastId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Forecast updated:', updatedForecast);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Forecast updated successfully!',
+        forecast: updatedForecast
+      });
+      
+    } catch (dbError) {
+      console.error('Database error updating forecast:', dbError);
+      
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to update forecast',
+        details: dbError instanceof Error ? dbError.message : 'Unknown error'
+      }, { status: 500 });
+    }
+
+  } catch (error) {
+    console.error('Error updating forecast:', error);
+    return NextResponse.json({ error: 'Failed to update forecast' }, { status: 500 });
+  }
+}

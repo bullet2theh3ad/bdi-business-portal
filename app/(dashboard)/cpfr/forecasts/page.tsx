@@ -82,6 +82,8 @@ export default function SalesForecastsPage() {
   const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'accepted'>('draft');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedWeekForDetail, setSelectedWeekForDetail] = useState<string>('');
+  const [editingForecast, setEditingForecast] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
 
   // Helper function to get available quantity for a SKU
   const getAvailableQuantity = (skuId: string) => {
@@ -1622,7 +1624,80 @@ export default function SalesForecastsPage() {
                         <div>
                           <h4 className="font-mono font-bold text-lg">{forecast.sku.sku}</h4>
                           <p className="text-gray-600">{forecast.sku.name}</p>
-                          <p className="text-sm font-medium">{forecast.quantity.toLocaleString()} units</p>
+                          {editingForecast === forecast.id ? (
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Input
+                                type="number"
+                                value={editFormData.quantity || forecast.quantity}
+                                onChange={(e) => setEditFormData({...editFormData, quantity: parseInt(e.target.value)})}
+                                className="w-32 text-sm"
+                                min="1"
+                              />
+                              <span className="text-sm">units</span>
+                            </div>
+                          ) : (
+                            <p className="text-sm font-medium">{forecast.quantity.toLocaleString()} units</p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {editingForecast === forecast.id ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  // Save changes
+                                  try {
+                                    const response = await fetch(`/api/cpfr/forecasts`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        forecastId: forecast.id,
+                                        ...editFormData
+                                      })
+                                    });
+                                    if (response.ok) {
+                                      mutateForecasts();
+                                      setEditingForecast(null);
+                                      setEditFormData({});
+                                      alert('Forecast updated successfully!');
+                                    }
+                                  } catch (error) {
+                                    alert('Failed to update forecast');
+                                  }
+                                }}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                💾 Save
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingForecast(null);
+                                  setEditFormData({});
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingForecast(forecast.id);
+                                setEditFormData({
+                                  quantity: forecast.quantity,
+                                  salesSignal: forecast.salesSignal || 'unknown',
+                                  factorySignal: forecast.factorySignal || 'unknown',
+                                  shippingSignal: forecast.shippingSignal || 'unknown',
+                                  notes: forecast.notes || ''
+                                });
+                              }}
+                            >
+                              ✏️ Edit
+                            </Button>
+                          )}
                         </div>
                       </div>
                       
@@ -1634,12 +1709,25 @@ export default function SalesForecastsPage() {
                             <span className="text-lg">📊</span>
                             <span className="text-sm font-medium text-blue-800">Sales</span>
                           </div>
-                          <div className="flex items-center justify-center space-x-2">
-                            <span className={`text-lg ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
-                              {getSignalIcon(forecast.salesSignal || 'unknown')}
-                            </span>
-                            <span className="text-sm text-blue-700">{forecast.salesSignal || 'Unknown'}</span>
-                          </div>
+                          {editingForecast === forecast.id ? (
+                            <select
+                              value={editFormData.salesSignal || 'unknown'}
+                              onChange={(e) => setEditFormData({...editFormData, salesSignal: e.target.value})}
+                              className="w-full px-2 py-1 text-xs border rounded"
+                            >
+                              <option value="unknown">❓ Unknown</option>
+                              <option value="submitted">⏳ Submitted</option>
+                              <option value="accepted">✅ Accepted</option>
+                              <option value="rejected">❌ Rejected</option>
+                            </select>
+                          ) : (
+                            <div className="flex items-center justify-center space-x-2">
+                              <span className={`text-lg ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
+                                {getSignalIcon(forecast.salesSignal || 'unknown')}
+                              </span>
+                              <span className="text-sm text-blue-700">{forecast.salesSignal || 'Unknown'}</span>
+                            </div>
+                          )}
                         </div>
                         
                         {/* Factory */}
@@ -1648,12 +1736,25 @@ export default function SalesForecastsPage() {
                             <span className="text-lg">🏭</span>
                             <span className="text-sm font-medium text-orange-800">Factory</span>
                           </div>
-                          <div className="flex items-center justify-center space-x-2">
-                            <span className={`text-lg ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
-                              {getSignalIcon(forecast.factorySignal || 'unknown')}
-                            </span>
-                            <span className="text-sm text-orange-700">{forecast.factorySignal || 'Unknown'}</span>
-                          </div>
+                          {editingForecast === forecast.id ? (
+                            <select
+                              value={editFormData.factorySignal || 'unknown'}
+                              onChange={(e) => setEditFormData({...editFormData, factorySignal: e.target.value})}
+                              className="w-full px-2 py-1 text-xs border rounded"
+                            >
+                              <option value="unknown">❓ Unknown</option>
+                              <option value="awaiting">⏳ Awaiting</option>
+                              <option value="accepted">✅ Accepted</option>
+                              <option value="rejected">❌ Rejected</option>
+                            </select>
+                          ) : (
+                            <div className="flex items-center justify-center space-x-2">
+                              <span className={`text-lg ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
+                                {getSignalIcon(forecast.factorySignal || 'unknown')}
+                              </span>
+                              <span className="text-sm text-orange-700">{forecast.factorySignal || 'Unknown'}</span>
+                            </div>
+                          )}
                         </div>
                         
                         {/* Shipping */}
@@ -1662,12 +1763,25 @@ export default function SalesForecastsPage() {
                             <span className="text-lg">🚢</span>
                             <span className="text-sm font-medium text-green-800">Shipping</span>
                           </div>
-                          <div className="flex items-center justify-center space-x-2">
-                            <span className={`text-lg ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
-                              {getSignalIcon(forecast.shippingSignal || 'unknown')}
-                            </span>
-                            <span className="text-sm text-green-700">{forecast.shippingSignal || 'Unknown'}</span>
-                          </div>
+                          {editingForecast === forecast.id ? (
+                            <select
+                              value={editFormData.shippingSignal || 'unknown'}
+                              onChange={(e) => setEditFormData({...editFormData, shippingSignal: e.target.value})}
+                              className="w-full px-2 py-1 text-xs border rounded"
+                            >
+                              <option value="unknown">❓ Unknown</option>
+                              <option value="awaiting">⏳ Awaiting</option>
+                              <option value="accepted">✅ Accepted</option>
+                              <option value="rejected">❌ Rejected</option>
+                            </select>
+                          ) : (
+                            <div className="flex items-center justify-center space-x-2">
+                              <span className={`text-lg ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
+                                {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                              </span>
+                              <span className="text-sm text-green-700">{forecast.shippingSignal || 'Unknown'}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
