@@ -1617,10 +1617,10 @@ export default function SalesForecastsPage() {
                       
                       {/* Three Signal Types */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Sales Signal */}
+                        {/* Sales */}
                         <div className="bg-blue-50 p-3 rounded border border-blue-200">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-medium text-blue-800">📊 Sales Signal</span>
+                            <span className="font-medium text-blue-800">📊 Sales</span>
                             <span className={`text-lg ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
                               {getSignalIcon(forecast.salesSignal || 'unknown')}
                             </span>
@@ -1630,10 +1630,10 @@ export default function SalesForecastsPage() {
                           </p>
                         </div>
                         
-                        {/* Factory Signal */}
+                        {/* Factory */}
                         <div className="bg-orange-50 p-3 rounded border border-orange-200">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-medium text-orange-800">🏭 Factory Signal</span>
+                            <span className="font-medium text-orange-800">🏭 Factory</span>
                             <span className={`text-lg ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
                               {getSignalIcon(forecast.factorySignal || 'unknown')}
                             </span>
@@ -1643,10 +1643,10 @@ export default function SalesForecastsPage() {
                           </p>
                         </div>
                         
-                        {/* Shipping Signal */}
+                        {/* Shipping */}
                         <div className="bg-green-50 p-3 rounded border border-green-200">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-medium text-green-800">🚢 Shipping Signal</span>
+                            <span className="font-medium text-green-800">🚢 Shipping</span>
                             <span className={`text-lg ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
                               {getSignalIcon(forecast.shippingSignal || 'unknown')}
                             </span>
