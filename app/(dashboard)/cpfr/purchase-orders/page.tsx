@@ -45,33 +45,6 @@ export default function PurchaseOrdersPage() {
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
 
-  // State for modals and forms
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Line items state (matching Invoice structure exactly)
-  const [lineItems, setLineItems] = useState<Array<{
-    id: string;
-    skuId: string;
-    sku: string;
-    skuName: string;
-    quantity: number;
-    unitCost: number;
-    lineTotal: number;
-  }>>([]);
-
-  const [purchaseOrderLineItems, setPurchaseOrderLineItems] = useState<Record<string, Array<{
-    skuCode: string;
-    skuName: string;
-    quantity: number;
-  }>>>({});
-
-  // File upload state
-  const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
-  const [customTerms, setCustomTerms] = useState('');
-
   // Fetch line items for all purchase orders when purchase orders are loaded
   useEffect(() => {
     if (purchaseOrders && purchaseOrders.length > 0) {
@@ -125,13 +98,49 @@ export default function PurchaseOrdersPage() {
       }
     });
 
-    // Create summary string
-    return Object.entries(skuTotals)
-      .map(([sku, data]) => `${sku}: ${data.quantity.toLocaleString()}`)
-      .join(' • ');
-  };
+    // Format for display with commas
+    const skuEntries = Object.entries(skuTotals);
+    if (skuEntries.length === 0) return 'No items';
 
-  // Helper functions for line items (matching Invoice exactly)
+    return skuEntries.map(([sku, data]) => 
+      `${sku}: ${data.quantity.toLocaleString()}`
+    ).join(' • ');
+  };
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [customTerms, setCustomTerms] = useState(false);
+  const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
+  const [lineItems, setLineItems] = useState<Array<{
+    id: string;
+    skuId: string;
+    sku: string;
+    skuName: string;
+    quantity: number;
+    unitCost: number;
+    lineTotal: number;
+  }>>([]);
+  const [editUploadedDocs, setEditUploadedDocs] = useState<File[]>([]);
+  const [existingDocs, setExistingDocs] = useState<InvoiceDocument[]>([]);
+  const [editLineItems, setEditLineItems] = useState<Array<{
+    id: string;
+    skuId: string;
+    sku: string;
+    skuName: string;
+    quantity: number;
+    unitCost: number;
+    lineTotal: number;
+  }>>([]);
+  const [purchaseOrderLineItems, setPurchaseOrderLineItems] = useState<Record<string, Array<{
+    skuCode: string;
+    skuName: string;
+    quantity: number;
+  }>>>({});
+
+  // Helper functions for line items
   const addLineItem = () => {
     const newItem = {
       id: Date.now().toString(),
@@ -171,16 +180,24 @@ export default function PurchaseOrdersPage() {
     setLineItems(lineItems.filter(item => item.id !== id));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const newFiles = Array.from(event.target.files);
-      setUploadedDocs([...uploadedDocs, ...newFiles]);
-    }
+  const calculateTotal = () => {
+    return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
   };
 
-  const removeFile = (index: number) => {
-    setUploadedDocs(uploadedDocs.filter((_, i) => i !== index));
-  };
+  // Access control - Sales team and admins can manage Purchase Orders
+  if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
+    return (
+      <div className="flex-1 p-4 lg:p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">Sales team access required for purchase order management.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleCreatePurchaseOrder = async (formData: FormData) => {
     setIsLoading(true);
@@ -191,7 +208,8 @@ export default function PurchaseOrdersPage() {
       // Add purchase order data
       createFormData.append('purchaseOrderNumber', formData.get('purchaseOrderNumber') as string);
       createFormData.append('supplierName', formData.get('supplierName') as string);
-      createFormData.append('purchaseOrderDate', formData.get('purchaseOrderDate') as string);
+      createFormData.append('customSupplierName', formData.get('customSupplierName') as string);
+      createFormData.append('orderDate', formData.get('orderDate') as string);
       createFormData.append('requestedDeliveryDate', formData.get('requestedDeliveryDate') as string);
       createFormData.append('status', formData.get('status') as string);
       createFormData.append('terms', formData.get('terms') as string);
@@ -214,9 +232,10 @@ export default function PurchaseOrdersPage() {
       if (response.ok) {
         mutatePurchaseOrders();
         setShowCreateModal(false);
+        // Clear form state after successful creation
         setLineItems([]);
         setUploadedDocs([]);
-        setCustomTerms('');
+        setCustomTerms(false);
       } else {
         const errorData = await response.json();
         alert(`Failed to create purchase order: ${errorData.error || 'Unknown error'}`);
@@ -228,11 +247,15 @@ export default function PurchaseOrdersPage() {
     setIsLoading(false);
   };
 
-  const handleEditPurchaseOrder = (purchaseOrder: PurchaseOrder) => {
-    setSelectedPurchaseOrder(purchaseOrder);
-    setShowEditModal(true);
-    // Load existing line items for editing
-    // This would be implemented similarly to the invoice edit functionality
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newFiles = Array.from(event.target.files);
+      setUploadedDocs([...uploadedDocs, ...newFiles]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedDocs(uploadedDocs.filter((_, i) => i !== index));
   };
 
   const handleDeletePurchaseOrder = async (purchaseOrderId: string) => {
@@ -255,6 +278,14 @@ export default function PurchaseOrdersPage() {
     }
   };
 
+  // Filter purchase orders based on search and status
+  const filteredPurchaseOrders = purchaseOrders?.filter(po => {
+    const matchesSearch = po.purchaseOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         po.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  }) || [];
+
   const getStatusColor = (status: string) => {
     const colors = {
       'draft': 'bg-gray-100 text-gray-800',
@@ -266,10 +297,6 @@ export default function PurchaseOrdersPage() {
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
-  const calculateTotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
-  };
-
   return (
     <div className="flex-1 p-4 lg:p-8 space-y-6">
       {/* Header */}
@@ -279,14 +306,14 @@ export default function PurchaseOrdersPage() {
             <SemanticBDIIcon semantic="orders" size={32} />
             <div>
               <h1 className="text-3xl font-bold">Purchase Orders</h1>
-              <p className="text-muted-foreground">Manage procurement and supplier purchase orders</p>
+              <p className="text-muted-foreground">Manage supplier orders and delivery terms</p>
             </div>
           </div>
           <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
             // Clear all form state for a fresh purchase order
             setLineItems([]);
             setUploadedDocs([]);
-            setCustomTerms('');
+            setCustomTerms(false);
             setShowCreateModal(true);
           }}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
@@ -295,25 +322,53 @@ export default function PurchaseOrdersPage() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search by Purchase Order number or supplier name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="status-filter">Status:</Label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="all">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+          </select>
+        </div>
+      </div>
+
       {/* Purchase Orders List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="orders" size={20} />
-            <span>Purchase Orders ({purchaseOrders?.length || 0})</span>
+            <span>Purchase Orders ({filteredPurchaseOrders.length})</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!purchaseOrders || purchaseOrders.length === 0 ? (
+          {filteredPurchaseOrders.length === 0 ? (
             <div className="text-center py-12">
               <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
-              <p className="text-muted-foreground mb-4">Enter your first Purchase Order to start managing supplier procurement</p>
+              <p className="text-muted-foreground mb-4">Enter your first Purchase Order to start managing supplier orders</p>
               <Button onClick={() => {
                 // Clear all form state for a fresh purchase order
                 setLineItems([]);
                 setUploadedDocs([]);
-                setCustomTerms('');
+                setCustomTerms(false);
                 setShowCreateModal(true);
               }}>
                 <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
@@ -322,7 +377,7 @@ export default function PurchaseOrdersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {purchaseOrders.map((po) => (
+              {filteredPurchaseOrders.map((po) => (
                 <div key={po.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -338,7 +393,7 @@ export default function PurchaseOrdersPage() {
                           <p className="font-medium">{po.supplierName}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">PO Date:</span>
+                          <span className="text-gray-500">Purchase Order Date:</span>
                           <p className="font-medium">{new Date(po.purchaseOrderDate).toLocaleDateString()}</p>
                         </div>
                         <div>
@@ -372,7 +427,10 @@ export default function PurchaseOrdersPage() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEditPurchaseOrder(po)}>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setSelectedPurchaseOrder(po);
+                        setEditUploadedDocs([]);
+                      }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
@@ -398,183 +456,197 @@ export default function PurchaseOrdersPage() {
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
-            <DialogTitle>Create New Purchase Order</DialogTitle>
+            <DialogTitle>Create Purchase Order</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
             handleCreatePurchaseOrder(formData);
           }}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="purchaseOrderNumber">Purchase Order Number *</Label>
-                  <Input id="purchaseOrderNumber" name="purchaseOrderNumber" required />
-                </div>
-                
-                <div>
-                  <Label htmlFor="supplierName">Supplier Name *</Label>
-                  {organizations ? (
-                    <select
-                      id="supplierName"
-                      name="supplierName"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select Supplier Organization</option>
-                      {organizations.map((org: any) => (
-                        <option key={org.id} value={org.code}>
-                          {org.name} ({org.code})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <Input id="supplierName" name="supplierName" required />
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="customSupplierName">Custom Supplier Name (Optional)</Label>
-                  <Input 
-                    id="customSupplierName" 
-                    name="customSupplierName" 
-                    placeholder="Additional supplier details"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="purchaseOrderDate">Purchase Order Date *</Label>
-                  <Input 
-                    id="purchaseOrderDate" 
-                    name="purchaseOrderDate" 
-                    type="date" 
-                    required 
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div>
+                <Label htmlFor="purchaseOrderNumber">Purchase Order Number *</Label>
+                <Input
+                  id="purchaseOrderNumber"
+                  name="purchaseOrderNumber"
+                  placeholder="e.g., PO-2025-001"
+                  required
+                  className="mt-1"
+                />
+                <div className="mt-1 text-xs text-gray-600">
+                  Unique identifier for this purchase order
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="requestedDeliveryDate">Expected Delivery Date *</Label>
-                  <Input 
-                    id="requestedDeliveryDate" 
-                    name="requestedDeliveryDate" 
-                    type="date"
-                    required 
-                    className="w-full"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="status">Status *</Label>
+              <div>
+                <Label htmlFor="supplierName">Supplier Organization *</Label>
+                {organizations ? (
                   <select
-                    id="status"
-                    name="status"
+                    id="supplierName"
+                    name="supplierName"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="sent">Sent</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
+                    <option value="">Select Supplier Organization</option>
+                    {organizations.map((org: any) => (
+                      <option key={org.id} value={org.code}>
+                        {org.name} ({org.code})
+                      </option>
+                    ))}
                   </select>
+                ) : (
+                  <Input id="supplierName" name="supplierName" required className="mt-1" />
+                )}
+                <div className="mt-1 text-xs text-gray-600">
+                  Select the supplier/vendor organization (Factory) for CPFR signaling
                 </div>
-                
-                <div>
-                  <Label htmlFor="terms">Payment Terms *</Label>
-                  {!customTerms ? (
-                    <div>
-                      <select
-                        id="terms"
-                        name="terms"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
-                        onChange={(e) => {
-                          if (e.target.value === 'CUSTOM') {
-                            setCustomTerms('custom');
-                          }
-                        }}
-                      >
-                        <option value="">Select Terms</option>
-                        <option value="NET15">NET 15 - Payment due in 15 days</option>
-                        <option value="NET30">NET 30 - Payment due in 30 days</option>
-                        <option value="NET60">NET 60 - Payment due in 60 days</option>
-                        <option value="NET90">NET 90 - Payment due in 90 days</option>
-                        <option value="COD">COD - Cash on Delivery</option>
-                        <option value="PREPAID">Prepaid - Payment in advance</option>
-                        <option value="CUSTOM">📝 Enter Custom Terms</option>
-                      </select>
-                      <div className="mt-1 text-xs text-gray-600">
-                        Standard payment terms or select custom
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="terms"
-                          name="terms"
-                          placeholder="e.g., NET45, 2/10 Net 30, Letter of Credit"
-                          required
-                          className="flex-1 mt-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setCustomTerms('')}
-                          className="mt-1"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                      <div className="mt-1 text-xs text-gray-600">
-                        Enter your custom payment terms
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="incoterms">IncoTerms 2020 *</Label>
-                  <select
-                    id="incoterms"
-                    name="incoterms"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
-                  >
-                    <option value="">Select IncoTerms</option>
-                    <optgroup label="🌍 Any Mode of Transport">
-                      <option value="EXW">EXW - Ex Works (buyer arranges all transport)</option>
-                      <option value="FCA">FCA - Free Carrier (seller to carrier)</option>
-                      <option value="CPT">CPT - Carriage Paid To (seller pays freight)</option>
-                      <option value="CIP">CIP - Carriage & Insurance Paid To (seller pays freight + insurance)</option>
-                      <option value="DAP">DAP - Delivered at Place (seller delivers, buyer handles duties)</option>
-                      <option value="DPU">DPU - Delivered at Place Unloaded (seller delivers & unloads)</option>
-                      <option value="DDP">DDP - Delivered Duty Paid (seller handles everything)</option>
-                    </optgroup>
-                    <optgroup label="🚢 Sea & Inland Waterway Only">
-                      <option value="FAS">FAS - Free Alongside Ship (seller to ship's side)</option>
-                      <option value="FOB">FOB - Free on Board (seller loads ship)</option>
-                      <option value="CFR">CFR - Cost and Freight (seller pays freight)</option>
-                      <option value="CIF">CIF - Cost, Insurance & Freight (seller pays freight + insurance)</option>
-                    </optgroup>
-                  </select>
-                  <div className="mt-1 text-xs text-gray-600">
-                    International Commercial Terms - defines responsibilities
-                  </div>
+              </div>
+
+              <div>
+                <Label htmlFor="customSupplierName">Custom Supplier Name (Optional)</Label>
+                <Input 
+                  id="customSupplierName" 
+                  name="customSupplierName" 
+                  placeholder="Optional: Additional supplier information beyond organization code"
+                  className="mt-1"
+                />
+                <div className="mt-1 text-xs text-gray-600">
+                  Optional: Additional supplier information beyond organization code
                 </div>
               </div>
             </div>
 
-            <div className="mb-6">
-              <Label htmlFor="incotermsLocation">Incoterms Location</Label>
-              <Input 
-                id="incotermsLocation" 
-                name="incotermsLocation" 
-                placeholder="Shanghai Port, Los Angeles, etc." 
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <Label htmlFor="orderDate">Purchase Order Date *</Label>
+                <Input 
+                  id="orderDate" 
+                  name="orderDate" 
+                  type="date" 
+                  required 
+                  className="mt-1"
+                />
+                <div className="mt-1 text-xs text-gray-600">
+                  Date when this purchase order was created
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="requestedDeliveryDate">Requested Delivery Date *</Label>
+                <Input 
+                  id="requestedDeliveryDate" 
+                  name="requestedDeliveryDate" 
+                  type="date"
+                  required 
+                  className="mt-1"
+                />
+                <div className="mt-1 text-xs text-gray-600">
+                  📅 Target delivery date
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+              <div>
+                <Label htmlFor="terms">Payment Terms *</Label>
+                {!customTerms ? (
+                  <div>
+                    <select
+                      id="terms"
+                      name="terms"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                      onChange={(e) => {
+                        if (e.target.value === 'CUSTOM') {
+                          setCustomTerms(true);
+                        }
+                      }}
+                    >
+                      <option value="">Select Terms</option>
+                      <option value="NET15">NET 15 - Payment due in 15 days</option>
+                      <option value="NET30">NET 30 - Payment due in 30 days</option>
+                      <option value="NET60">NET 60 - Payment due in 60 days</option>
+                      <option value="NET90">NET 90 - Payment due in 90 days</option>
+                      <option value="COD">COD - Cash on Delivery</option>
+                      <option value="PREPAID">Prepaid - Payment in advance</option>
+                      <option value="CUSTOM">📝 Enter Custom Terms</option>
+                    </select>
+                    <div className="mt-1 text-xs text-gray-600">
+                      Standard payment terms or select custom
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="terms"
+                        name="terms"
+                        placeholder="e.g., NET45, 2/10 Net 30, Letter of Credit"
+                        required
+                        className="flex-1 mt-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCustomTerms(false)}
+                        className="mt-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-600">
+                      Enter your custom payment terms
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="incoterms">IncoTerms 2020 *</Label>
+                <select
+                  id="incoterms"
+                  name="incoterms"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                >
+                  <option value="">Select IncoTerms</option>
+                  <optgroup label="🌍 Any Mode of Transport">
+                    <option value="EXW">EXW - Ex Works (buyer arranges all transport)</option>
+                    <option value="FCA">FCA - Free Carrier (seller to carrier)</option>
+                    <option value="CPT">CPT - Carriage Paid To (seller pays freight)</option>
+                    <option value="CIP">CIP - Carriage & Insurance Paid To (seller pays freight + insurance)</option>
+                    <option value="DAP">DAP - Delivered at Place (seller delivers, buyer handles duties)</option>
+                    <option value="DPU">DPU - Delivered at Place Unloaded (seller delivers & unloads)</option>
+                    <option value="DDP">DDP - Delivered Duty Paid (seller handles everything)</option>
+                  </optgroup>
+                  <optgroup label="🚢 Sea & Inland Waterway Only">
+                    <option value="FAS">FAS - Free Alongside Ship (seller to ship's side)</option>
+                    <option value="FOB">FOB - Free on Board (seller loads ship)</option>
+                    <option value="CFR">CFR - Cost and Freight (seller pays freight)</option>
+                    <option value="CIF">CIF - Cost, Insurance & Freight (seller pays freight + insurance)</option>
+                  </optgroup>
+                </select>
+                <div className="mt-1 text-xs text-gray-600">
+                  <a href="https://iccwbo.org/business-solutions/incoterms-rules/" target="_blank" className="text-blue-600 hover:underline">
+                    IncoTerms 2020 - International trade delivery terms
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="incotermsLocation">IncoTerms Location *</Label>
+                <Input
+                  id="incotermsLocation"
+                  name="incotermsLocation"
+                  placeholder="e.g., Shanghai Port, Los Angeles, Factory Gate"
+                  required
+                  className="mt-1"
+                />
+                <div className="mt-1 text-xs text-gray-600">
+                  Named place where IncoTerms apply (e.g., "FOB Shanghai")
+                </div>
+              </div>
             </div>
 
             {/* Line Items Section */}
@@ -599,7 +671,7 @@ export default function PurchaseOrdersPage() {
               {lineItems.length === 0 ? (
                 <div className="text-center py-8">
                   <SemanticBDIIcon semantic="inventory" size={32} className="mx-auto mb-2 text-blue-400" />
-                  <p className="text-blue-600 text-sm">No line items added yet. Click "Add Item" to start.</p>
+                  <p className="text-blue-600 text-sm">No line items added yet. Click "Add Item" to start building your PO</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -681,9 +753,13 @@ export default function PurchaseOrdersPage() {
             </div>
 
             {/* File Upload Section */}
-            <div className="mb-6">
-              <Label className="text-lg font-semibold mb-4 block">Documents</Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+            <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+              <h4 className="font-semibold text-green-800 mb-4 flex items-center">
+                <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
+                Documents & Attachments
+              </h4>
+              
+              <div className="border-2 border-dashed border-green-300 rounded-lg p-6 bg-white">
                 <input
                   type="file"
                   multiple
@@ -694,24 +770,30 @@ export default function PurchaseOrdersPage() {
                 />
                 <label htmlFor="file-upload" className="cursor-pointer">
                   <div className="text-center">
-                    <SemanticBDIIcon semantic="upload" size={32} className="mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-600">Click to upload documents</p>
-                    <p className="text-sm text-gray-500">PDF, DOC, XLS, Images supported</p>
+                    <SemanticBDIIcon semantic="upload" size={32} className="mx-auto mb-2 text-green-400" />
+                    <p className="text-green-700 font-medium">Click to upload documents</p>
+                    <p className="text-sm text-green-600">PDF, DOC, XLS, Images supported • Multiple files allowed</p>
                   </div>
                 </label>
                 
                 {uploadedDocs.length > 0 && (
                   <div className="mt-4 space-y-2">
+                    <h5 className="font-medium text-green-800">Files to Upload:</h5>
                     {uploadedDocs.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm">{file.name}</span>
+                      <div key={index} className="flex items-center justify-between bg-green-100 p-3 rounded border border-green-200">
+                        <div className="flex items-center space-x-2">
+                          <SemanticBDIIcon semantic="upload" size={14} className="text-green-600" />
+                          <span className="text-sm font-medium text-green-800">{file.name}</span>
+                          <span className="text-xs text-green-600">({(file.size / 1024).toFixed(1)} KB)</span>
+                        </div>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => removeFile(index)}
-                          className="text-red-600"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
                         >
+                          <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
                           Remove
                         </Button>
                       </div>
@@ -721,24 +803,22 @@ export default function PurchaseOrdersPage() {
               </div>
             </div>
 
-
-
             <div className="mb-6">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Notes & Special Instructions</Label>
               <textarea
                 id="notes"
                 name="notes"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Additional notes or special instructions"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                placeholder="Any special instructions, delivery notes, or additional information"
               />
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end space-x-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700">
                 {isLoading ? 'Creating...' : 'Create Purchase Order'}
               </Button>
             </div>
