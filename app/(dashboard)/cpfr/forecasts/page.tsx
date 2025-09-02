@@ -620,33 +620,59 @@ export default function SalesForecastsPage() {
                   <CardContent>
                     {/* Activity Dots Preview */}
                     <div className="grid grid-cols-7 gap-1 mb-4">
-                      {/* Generate mini calendar with dots */}
-                      {Array.from({ length: 35 }, (_, i) => {
-                        const dayNumber = i - 6; // Approximate day positioning
-                        const hasActivity = month.forecasts.length > 0 && i % 7 === (month.forecasts.length % 7);
+                      {/* Generate mini calendar with accurate dots */}
+                      {(() => {
+                        const firstDay = new Date(month.date.getFullYear(), month.date.getMonth(), 1);
+                        const lastDay = new Date(month.date.getFullYear(), month.date.getMonth() + 1, 0);
+                        const startOfCalendar = new Date(firstDay);
+                        startOfCalendar.setDate(startOfCalendar.getDate() - firstDay.getDay());
                         
-                        return (
-                          <div
-                            key={i}
-                            className={`w-6 h-6 flex items-center justify-center text-xs rounded ${
-                              dayNumber > 0 && dayNumber <= 31 
-                                ? hasActivity 
-                                  ? 'bg-blue-100 text-blue-800 font-bold' 
-                                  : 'text-gray-400 hover:bg-gray-50'
-                                : ''
-                            }`}
-                          >
-                            {dayNumber > 0 && dayNumber <= 31 ? (
-                              <div className="relative">
-                                {dayNumber}
-                                {hasActivity && (
-                                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full"></div>
-                                )}
-                              </div>
-                            ) : ''}
-                          </div>
-                        );
-                      })}
+                        // Get actual dates with forecast activity
+                        const activeDates = new Set<number>();
+                        month.forecasts.forEach(forecast => {
+                          if (forecast.deliveryWeek.includes('W')) {
+                            const year = parseInt(forecast.deliveryWeek.split('-')[0]);
+                            const week = parseInt(forecast.deliveryWeek.split('W')[1]);
+                            const weekDate = getDateFromISOWeek(year, week);
+                            if (weekDate.getMonth() === month.date.getMonth()) {
+                              activeDates.add(weekDate.getDate());
+                            }
+                          }
+                        });
+                        
+                        return Array.from({ length: 35 }, (_, i) => {
+                          const currentDate = new Date(startOfCalendar);
+                          currentDate.setDate(startOfCalendar.getDate() + i);
+                          
+                          const dayNumber = currentDate.getDate();
+                          const isCurrentMonth = currentDate.getMonth() === month.date.getMonth();
+                          const hasActivity = isCurrentMonth && activeDates.has(dayNumber);
+                          
+                          return (
+                            <div
+                              key={i}
+                              className={`w-6 h-6 flex items-center justify-center text-xs rounded ${
+                                isCurrentMonth
+                                  ? hasActivity 
+                                    ? 'bg-blue-100 text-blue-800 font-bold' 
+                                    : 'text-gray-400 hover:bg-gray-50'
+                                  : 'text-gray-300'
+                              }`}
+                            >
+                              {isCurrentMonth ? (
+                                <div className="relative">
+                                  {dayNumber}
+                                  {hasActivity && (
+                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full"></div>
+                                  )}
+                                </div>
+                              ) : (
+                                currentDate.getDate()
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                     
                     <div className="text-center text-xs text-gray-600">
