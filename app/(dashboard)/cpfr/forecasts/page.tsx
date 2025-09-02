@@ -654,8 +654,8 @@ export default function SalesForecastsPage() {
                               else if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
                                 overallStatus = 'rejected';
                               }
-                              // Any awaiting = yellow dot
-                              else if (sales === 'awaiting' || factory === 'awaiting' || shipping === 'awaiting') {
+                              // Any awaiting/submitted = yellow dot
+                              else if (sales === 'submitted' || factory === 'awaiting' || shipping === 'awaiting') {
                                 overallStatus = 'awaiting';
                               }
                               
