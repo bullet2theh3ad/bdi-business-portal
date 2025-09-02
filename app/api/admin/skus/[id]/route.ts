@@ -47,6 +47,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     console.log('Update body:', body);
     console.log('SKU ID:', skuId);
+    console.log('HTS Code from body:', body.htsCode);
 
     // Validate required fields
     if (!body.name || body.name.trim() === '') {

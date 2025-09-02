@@ -123,6 +123,7 @@ export async function GET(request: NextRequest) {
         leadTimeDays: productSkus.leadTimeDays,
         mpStartDate: productSkus.mpStartDate,
         mfg: productSkus.mfg,
+        htsCode: productSkus.htsCode,
         isActive: productSkus.isActive,
         isDiscontinued: productSkus.isDiscontinued,
         replacementSku: productSkus.replacementSku,
