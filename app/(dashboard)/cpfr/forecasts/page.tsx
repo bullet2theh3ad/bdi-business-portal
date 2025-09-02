@@ -1084,7 +1084,7 @@ export default function SalesForecastsPage() {
                       </div>
                       <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Shipping Time</span>
-                        <p className="font-bold text-3xl text-purple-600 mb-2">
+                        <p className="font-bold text-xl text-purple-600 mb-2">
                           {(() => {
                             const shippingTimes: { [key: string]: string } = {
                               'AIR_7_DAYS': '7 days',
@@ -1104,7 +1104,7 @@ export default function SalesForecastsPage() {
                           })()}
                         </p>
                         <p className="text-xs text-gray-500">
-                          Transit time for selected method
+                          {selectedShipping ? 'Transit time for selected method' : 'Choose shipping method above'}
                         </p>
                       </div>
                       <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
@@ -1802,7 +1802,7 @@ export default function SalesForecastsPage() {
                       required
                       value={selectedShipping}
                       onChange={(e) => setSelectedShipping(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="">Select Shipping Mode</option>
                       <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
