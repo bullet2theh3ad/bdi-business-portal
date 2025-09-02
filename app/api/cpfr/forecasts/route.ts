@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, productSkus } from '@/lib/db/schema';
+import { users, productSkus, invoices, invoiceLineItems, organizations } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { sendCPFRNotification, generateCPFRPortalLink, logCPFRNotification, CPFRNotificationData } from '@/lib/email/cpfr-notifications';
 
 // For now, we'll store forecasts in a simple structure
 // TODO: Create proper sales_forecasts table in future migration
@@ -195,6 +196,60 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Forecast created in database:', newForecast);
       
+      // 🚀 TRIGGER CPFR EMAIL NOTIFICATIONS
+      if (body.status === 'submitted') {
+        console.log('📧 Triggering CPFR email notification for submitted forecast');
+        
+        try {
+          // Get MFG code from related invoice
+          const mfgCode = await getMfgCodeFromSku(body.skuId);
+          
+          if (mfgCode) {
+            // Generate portal link for factory response
+            const portalLink = generateCPFRPortalLink(
+              newForecast.id, 
+              mfgCode, 
+              'factory_response'
+            );
+            
+            // Get forecast email data
+            const emailData: CPFRNotificationData = {
+              forecastId: newForecast.id,
+              mfgCode: mfgCode,
+              sku: sku.sku,
+              skuName: sku.name,
+              quantity: parseInt(body.quantity),
+              unitCost: 0, // We'll get this from invoice
+              totalValue: 0, // We'll calculate this
+              deliveryWeek: body.deliveryWeek,
+              deliveryDateRange: getWeekDateRange(body.deliveryWeek),
+              shippingMethod: body.shippingPreference || 'TBD',
+              notes: body.notes,
+              portalLink: portalLink
+            };
+            
+            // Send CPFR notification
+            const emailSent = await sendCPFRNotification('FACTORY_RESPONSE_NEEDED', emailData);
+            
+            // Log the notification
+            await logCPFRNotification(
+              'FACTORY_RESPONSE_NEEDED',
+              newForecast.id,
+              mfgCode,
+              [], // Recipients will be logged in sendCPFRNotification
+              emailSent
+            );
+            
+            console.log(`📧 CPFR email notification ${emailSent ? 'sent' : 'failed'} for ${mfgCode}`);
+          } else {
+            console.log('⚠️ No MFG code found for SKU - skipping email notification');
+          }
+        } catch (emailError) {
+          console.error('❌ CPFR email notification failed:', emailError);
+          // Don't fail the forecast creation if email fails
+        }
+      }
+      
       return NextResponse.json({
         success: true,
         message: 'Forecast created successfully!',
@@ -371,5 +426,63 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Error deleting forecast:', error);
     return NextResponse.json({ error: 'Failed to delete forecast' }, { status: 500 });
+  }
+}
+
+// Helper function to get MFG code from SKU via invoices
+async function getMfgCodeFromSku(skuId: string): Promise<string | null> {
+  try {
+    console.log(`🔍 Getting MFG code for SKU ID: ${skuId}`);
+    
+    // Find invoice with this SKU to get the MFG (customerName)
+    const [invoiceWithSku] = await db
+      .select({
+        customerName: invoices.customerName,
+        skuCode: productSkus.sku,
+        skuName: productSkus.name
+      })
+      .from(invoiceLineItems)
+      .innerJoin(invoices, eq(invoices.id, invoiceLineItems.invoiceId))
+      .innerJoin(productSkus, eq(productSkus.id, invoiceLineItems.skuId))
+      .where(eq(invoiceLineItems.skuId, skuId))
+      .limit(1);
+    
+    if (invoiceWithSku) {
+      console.log(`✅ Found MFG code: ${invoiceWithSku.customerName} for SKU: ${invoiceWithSku.skuCode}`);
+      return invoiceWithSku.customerName;
+    }
+    
+    console.log(`⚠️ No invoice found for SKU ID: ${skuId}`);
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting MFG code from SKU:', error);
+    return null;
+  }
+}
+
+// Helper function to get week date range for display
+function getWeekDateRange(isoWeek: string): string {
+  try {
+    if (!isoWeek.includes('W')) return isoWeek;
+    
+    const [year, week] = isoWeek.split('-W').map(Number);
+    const jan1 = new Date(year, 0, 1);
+    const daysToFirstThursday = 4 - jan1.getDay();
+    const firstThursday = new Date(year, 0, 1 + daysToFirstThursday);
+    const weekStart = new Date(firstThursday);
+    weekStart.setDate(firstThursday.getDate() + (week - 1) * 7 - 3); // Monday
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6); // Sunday
+    
+    const formatDate = (date: Date) => date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    
+    return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+  } catch (error) {
+    console.error('Error parsing week date range:', error);
+    return isoWeek;
   }
 }
