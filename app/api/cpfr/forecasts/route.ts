@@ -404,6 +404,7 @@ export async function PUT(request: NextRequest) {
         .from('sales_forecasts')
         .update({
           quantity: body.quantity,
+          status: body.salesSignal === 'submitted' ? 'submitted' : 'draft', // 🔧 FIX: Update status based on sales signal
           sales_signal: body.salesSignal,
           factory_signal: body.factorySignal,
           shipping_signal: body.shippingSignal,
