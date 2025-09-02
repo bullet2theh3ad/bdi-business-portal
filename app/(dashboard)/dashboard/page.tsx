@@ -274,7 +274,7 @@ function ForecastMonthlyCharts() {
           <Calendar className="h-5 w-5" />
           Forecast Monthly Overview
         </CardTitle>
-        <CardDescription>6-month CPFR forecast activity and quantities</CardDescription>
+        <CardDescription>6-month CPFR forecast activity and quantities (bar length = total quantity)</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -311,6 +311,25 @@ function ForecastMonthlyCharts() {
               </div>
             </div>
           ))}
+        </div>
+        
+        {/* Chart Legend */}
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
+          <div className="text-xs text-gray-600 mb-2 font-medium">📊 Chart Legend:</div>
+          <div className="space-y-1 text-xs text-gray-600">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded"></div>
+              <span><strong>Bar Length</strong> = Total forecast quantity for the month</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-2 bg-gray-300 rounded"></div>
+              <span><strong>Gray</strong> = No forecasts planned</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-4 text-center">📊</span>
+              <span><strong>Active</strong> = Forecasts exist for this month</span>
+            </div>
+          </div>
         </div>
         
         <div className="mt-6 pt-4 border-t border-gray-200">
@@ -444,8 +463,8 @@ export default function DashboardPage() {
     <section className="flex-1 p-4 lg:p-8">
       <WelcomeCard />
       <CPFRMetrics />
-      <PendingInvitations />
       <ForecastMonthlyCharts />
+      <PendingInvitations />
       <RecentActivity />
     </section>
   );
