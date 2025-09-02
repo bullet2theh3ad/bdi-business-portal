@@ -1681,22 +1681,59 @@ export default function SalesForecastsPage() {
                               </Button>
                             </>
                           ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingForecast(forecast.id);
-                                setEditFormData({
-                                  quantity: forecast.quantity,
-                                  salesSignal: forecast.salesSignal || 'unknown',
-                                  factorySignal: forecast.factorySignal || 'unknown',
-                                  shippingSignal: forecast.shippingSignal || 'unknown',
-                                  notes: forecast.notes || ''
-                                });
-                              }}
-                            >
-                              ✏️ Edit
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingForecast(forecast.id);
+                                  setEditFormData({
+                                    quantity: forecast.quantity,
+                                    salesSignal: forecast.salesSignal || 'unknown',
+                                    factorySignal: forecast.factorySignal || 'unknown',
+                                    shippingSignal: forecast.shippingSignal || 'unknown',
+                                    notes: forecast.notes || ''
+                                  });
+                                }}
+                              >
+                                ✏️ Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  if (confirm(`Delete forecast for ${forecast.sku.sku} (${forecast.quantity.toLocaleString()} units)?\n\nThis action cannot be undone.`)) {
+                                    try {
+                                      const response = await fetch(`/api/cpfr/forecasts`, {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ forecastId: forecast.id })
+                                      });
+                                      
+                                      if (response.ok) {
+                                        mutateForecasts();
+                                        alert('Forecast deleted successfully!');
+                                        // Close modal if no more forecasts for this week
+                                        const remainingForecasts = forecastsArray.filter(f => 
+                                          f.deliveryWeek === selectedWeekForDetail && f.id !== forecast.id
+                                        );
+                                        if (remainingForecasts.length === 0) {
+                                          setShowDetailModal(false);
+                                        }
+                                      } else {
+                                        alert('Failed to delete forecast');
+                                      }
+                                    } catch (error) {
+                                      console.error('Error deleting forecast:', error);
+                                      alert('Failed to delete forecast');
+                                    }
+                                  }
+                                }}
+                                className="text-red-600 border-red-300 hover:bg-red-50"
+                              >
+                                🗑️ Delete
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>

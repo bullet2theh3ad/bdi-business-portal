@@ -293,3 +293,83 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to update forecast' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user has access
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!requestingUser || !['super_admin', 'admin', 'sales', 'member'].includes(requestingUser.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const forecastId = body.forecastId;
+
+    console.log('🗑️ Deleting forecast:', forecastId);
+
+    // Delete forecast from database
+    try {
+      const { data: deletedForecast, error: deleteError } = await supabase
+        .from('sales_forecasts')
+        .delete()
+        .eq('id', forecastId)
+        .select()
+        .single();
+
+      if (deleteError) {
+        console.error('Database delete error:', deleteError);
+        throw deleteError;
+      }
+
+      console.log('✅ Forecast deleted:', deletedForecast);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Forecast deleted successfully!',
+        forecast: deletedForecast
+      });
+      
+    } catch (dbError) {
+      console.error('Database error deleting forecast:', dbError);
+      
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to delete forecast',
+        details: dbError instanceof Error ? dbError.message : 'Unknown error'
+      }, { status: 500 });
+    }
+
+  } catch (error) {
+    console.error('Error deleting forecast:', error);
+    return NextResponse.json({ error: 'Failed to delete forecast' }, { status: 500 });
+  }
+}
