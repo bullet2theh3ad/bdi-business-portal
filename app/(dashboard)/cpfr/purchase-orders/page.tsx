@@ -895,8 +895,8 @@ export default function PurchaseOrdersPage() {
                     editSupplierName: formData.get('editSupplierName'),
                     editStatus: formData.get('editStatus'),
                     editTerms: formData.get('editTerms'),
-                    editIncoterms: formData.get('editIncoterms'),
-                    editIncotermsLocation: formData.get('editIncotermsLocation'),
+                    editIncoterms: formData.get('editIncoterms') || 'FOB',
+                    editIncotermsLocation: formData.get('editIncotermsLocation') || '',
                     editTotalValue: newTotal,
                     editNotes: formData.get('editNotes'),
                   }),
@@ -965,6 +965,40 @@ export default function PurchaseOrdersPage() {
                     name="editTerms"
                     defaultValue={selectedPurchaseOrder.terms || ''}
                     placeholder="NET30"
+                  />
+                </div>
+              </div>
+
+              {/* IncoTerms Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="editIncoterms">IncoTerms</Label>
+                  <select
+                    id="editIncoterms"
+                    name="editIncoterms"
+                    defaultValue={selectedPurchaseOrder.incoterms || 'FOB'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="EXW">EXW - Ex Works</option>
+                    <option value="FCA">FCA - Free Carrier</option>
+                    <option value="CPT">CPT - Carriage Paid To</option>
+                    <option value="CIP">CIP - Carriage & Insurance Paid To</option>
+                    <option value="DAP">DAP - Delivered at Place</option>
+                    <option value="DPU">DPU - Delivered at Place Unloaded</option>
+                    <option value="DDP">DDP - Delivered Duty Paid</option>
+                    <option value="FAS">FAS - Free Alongside Ship</option>
+                    <option value="FOB">FOB - Free on Board</option>
+                    <option value="CFR">CFR - Cost and Freight</option>
+                    <option value="CIF">CIF - Cost, Insurance & Freight</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="editIncotermsLocation">IncoTerms Location</Label>
+                  <Input
+                    id="editIncotermsLocation"
+                    name="editIncotermsLocation"
+                    defaultValue={selectedPurchaseOrder.incotermsLocation || ''}
+                    placeholder="e.g., Shanghai Port, Los Angeles"
                   />
                 </div>
               </div>

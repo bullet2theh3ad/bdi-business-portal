@@ -40,17 +40,28 @@ export async function PUT(
 
     console.log('🔄 Updating purchase order:', purchaseOrderId, body);
 
-    // Update purchase order in database
+    // First get current PO data to use as defaults
+    const { data: currentPO, error: fetchError } = await supabase
+      .from('purchase_orders')
+      .select('*')
+      .eq('id', purchaseOrderId)
+      .single();
+
+    if (fetchError || !currentPO) {
+      return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 });
+    }
+
+    // Update purchase order in database with proper defaults
     const { data: updatedPurchaseOrder, error: updateError } = await supabase
       .from('purchase_orders')
       .update({
-        supplier_name: body.editSupplierName,
-        status: body.editStatus,
-        terms: body.editTerms,
-        incoterms: body.editIncoterms,
-        incoterms_location: body.editIncotermsLocation,
-        total_value: body.editTotalValue,
-        notes: body.editNotes,
+        supplier_name: body.editSupplierName || currentPO.supplier_name,
+        status: body.editStatus || currentPO.status,
+        terms: body.editTerms || currentPO.terms,
+        incoterms: body.editIncoterms || currentPO.incoterms || 'FOB',
+        incoterms_location: body.editIncotermsLocation || currentPO.incoterms_location || '',
+        total_value: body.editTotalValue || currentPO.total_value,
+        notes: body.editNotes || currentPO.notes || '',
         updated_at: new Date().toISOString()
       })
       .eq('id', purchaseOrderId)
