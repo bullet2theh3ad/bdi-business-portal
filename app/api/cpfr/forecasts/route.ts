@@ -153,7 +153,8 @@ export async function GET(request: NextRequest) {
       if (isPartnerUser && userOrgCode) {
         console.log(`🔍 Filtering forecasts for partner organization: ${userOrgCode}`);
         
-        // Get SKU IDs that belong to this partner (from invoices)
+        // For partner organizations (TC1, etc.), show forecasts where:
+        // Invoice.customerName matches their Organization.code
         const partnerSkuIds = await db
           .select({
             skuId: invoiceLineItems.skuId
@@ -164,12 +165,19 @@ export async function GET(request: NextRequest) {
         
         const allowedSkuIds = partnerSkuIds.map(item => item.skuId);
         
+        console.log(`🔍 Found ${allowedSkuIds.length} SKU IDs for ${userOrgCode}:`, allowedSkuIds);
+        
         // Filter forecasts to only show those for partner's SKUs
         filteredForecasts = allForecasts.filter(forecast => 
           allowedSkuIds.includes(forecast.skuId)
         );
         
         console.log(`🔒 Partner ${userOrgCode} can see ${filteredForecasts.length} of ${allForecasts.length} forecasts`);
+        
+        // If no forecasts found, log debug info
+        if (filteredForecasts.length === 0) {
+          console.log(`⚠️ No forecasts found for ${userOrgCode}. Check that invoices have customerName = '${userOrgCode}'`);
+        }
       } else {
         console.log(`🔓 BDI user can see all ${allForecasts.length} forecasts`);
       }
