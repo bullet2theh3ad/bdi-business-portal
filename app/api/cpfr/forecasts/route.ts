@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, productSkus, invoices, invoiceLineItems, organizations } from '@/lib/db/schema';
+import { users, productSkus, invoices, invoiceLineItems, organizations, organizationMembers } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { sendCPFRNotification, generateCPFRPortalLink, logCPFRNotification, CPFRNotificationData } from '@/lib/email/cpfr-notifications';
 
@@ -49,6 +49,49 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the requesting user and their organization membership
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!requestingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Get user's organization membership
+    const userOrgMembership = await db
+      .select({
+        organization: {
+          id: organizations.id,
+          code: organizations.code,
+          type: organizations.type,
+        },
+        role: organizationMembers.role
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
+      .limit(1);
+
+    // Allow access for:
+    // 1. BDI users (super_admin, admin, sales, member) - see all forecasts
+    // 2. Partner organization users (TC1, etc.) - see only their forecasts
+    const isBDIUser = userOrgMembership.length > 0 && 
+      userOrgMembership[0].organization.code === 'BDI' && 
+      userOrgMembership[0].organization.type === 'internal';
+      
+    const isPartnerUser = userOrgMembership.length > 0 && 
+      userOrgMembership[0].organization.type !== 'internal';
+
+    if (!isBDIUser && !isPartnerUser) {
+      return NextResponse.json({ error: 'Forbidden - Organization access required' }, { status: 403 });
+    }
+
+    const userOrgCode = userOrgMembership[0]?.organization.code;
+    console.log(`🔐 CPFR Access: ${isBDIUser ? 'BDI (full access)' : `Partner ${userOrgCode} (filtered)`}`);
+
     // Query forecasts from database table using Supabase client
     try {
       const { data: forecastsData, error: forecastsError } = await supabase
@@ -83,7 +126,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Transform data to match frontend interface
-      const forecasts = (forecastsData || []).map((row: any) => ({
+      const allForecasts = (forecastsData || []).map((row: any) => ({
         id: row.id,
         skuId: row.sku_id,
         deliveryWeek: row.delivery_week,
@@ -99,9 +142,36 @@ export async function GET(request: NextRequest) {
         createdAt: row.created_at,
         sku: row.product_skus
       }));
+
+      // Filter forecasts based on user organization
+      let filteredForecasts = allForecasts;
       
-      console.log(`📊 Fetching forecasts - found ${forecasts.length} from database`);
-      return NextResponse.json(forecasts);
+      if (isPartnerUser && userOrgCode) {
+        console.log(`🔍 Filtering forecasts for partner organization: ${userOrgCode}`);
+        
+        // Get SKU IDs that belong to this partner (from invoices)
+        const partnerSkuIds = await db
+          .select({
+            skuId: invoiceLineItems.skuId
+          })
+          .from(invoiceLineItems)
+          .innerJoin(invoices, eq(invoices.id, invoiceLineItems.invoiceId))
+          .where(eq(invoices.customerName, userOrgCode));
+        
+        const allowedSkuIds = partnerSkuIds.map(item => item.skuId);
+        
+        // Filter forecasts to only show those for partner's SKUs
+        filteredForecasts = allForecasts.filter(forecast => 
+          allowedSkuIds.includes(forecast.skuId)
+        );
+        
+        console.log(`🔒 Partner ${userOrgCode} can see ${filteredForecasts.length} of ${allForecasts.length} forecasts`);
+      } else {
+        console.log(`🔓 BDI user can see all ${allForecasts.length} forecasts`);
+      }
+      
+      console.log(`📊 Fetching forecasts - returning ${filteredForecasts.length} forecasts`);
+      return NextResponse.json(filteredForecasts);
       
     } catch (dbError) {
       console.log('📊 Database table not found, returning empty array. Error:', dbError);
