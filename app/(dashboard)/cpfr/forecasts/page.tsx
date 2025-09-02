@@ -95,49 +95,7 @@ export default function SalesForecastsPage() {
     return inventoryData.availability[skuId]?.availableQuantity || 0;
   };
 
-  // Helper function to generate CPFR signal based on demand vs availability
-  const getCpfrSignal = (skuId: string, demandQuantity: number) => {
-    const available = getAvailableQuantity(skuId);
-    const ratio = available > 0 ? demandQuantity / available : demandQuantity > 0 ? Infinity : 0;
-    
-    if (available === 0 && demandQuantity > 0) {
-      return { 
-        type: 'critical', 
-        message: 'No inventory available - Critical shortage!',
-        color: 'bg-red-100 border-red-300 text-red-800',
-        icon: '🚨'
-      };
-    } else if (ratio > 1) {
-      const shortage = demandQuantity - available;
-      return { 
-        type: 'shortage', 
-        message: `Shortage: Need ${shortage.toLocaleString()} more units`,
-        color: 'bg-orange-100 border-orange-300 text-orange-800',
-        icon: '⚠️'
-      };
-    } else if (ratio > 0.8) {
-      return { 
-        type: 'low', 
-        message: 'Low inventory - Monitor closely',
-        color: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-        icon: '🔶'
-      };
-    } else if (ratio > 0) {
-      return { 
-        type: 'adequate', 
-        message: 'Adequate inventory available',
-        color: 'bg-green-100 border-green-300 text-green-800',
-        icon: '✅'
-      };
-    } else {
-      return { 
-        type: 'surplus', 
-        message: 'Surplus inventory available',
-        color: 'bg-blue-100 border-blue-300 text-blue-800',
-        icon: '📦'
-      };
-    }
-  };
+
 
   // CPFR Supply Chain Signal Icons
   const getSignalIcon = (status: 'unknown' | 'submitted' | 'awaiting' | 'rejected' | 'accepted') => {
@@ -1610,26 +1568,7 @@ export default function SalesForecastsPage() {
                         </div>
                       </div>
 
-                      {/* CPFR Signal Display */}
-                      {forecastQuantity > 0 && (
-                        <div className={`p-3 rounded-md border ${getCpfrSignal(selectedSku.id, forecastQuantity).color}`}>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-lg">{getCpfrSignal(selectedSku.id, forecastQuantity).icon}</span>
-                            <span className="font-medium text-sm">CPFR Signal:</span>
-                            <span className="text-sm">{getCpfrSignal(selectedSku.id, forecastQuantity).message}</span>
-                          </div>
-                          {getCpfrSignal(selectedSku.id, forecastQuantity).type === 'shortage' && (
-                            <div className="mt-2 text-xs">
-                              💡 Consider increasing purchase orders or adjusting delivery timeline
-                            </div>
-                          )}
-                          {getCpfrSignal(selectedSku.id, forecastQuantity).type === 'critical' && (
-                            <div className="mt-2 text-xs">
-                              🚨 Urgent: Create purchase orders immediately to meet demand
-                            </div>
-                          )}
-                        </div>
-                      )}
+
 
                       {/* Remaining Inventory After Forecast - Smart Color Logic */}
                       {forecastQuantity > 0 && getAvailableQuantity(selectedSku.id) > 0 && (
