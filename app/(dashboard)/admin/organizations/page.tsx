@@ -41,8 +41,10 @@ export default function AdminOrganizationsPage() {
   const { data: organizations, mutate: mutateOrganizations } = useSWR('/api/admin/organizations', fetcher);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
+  const [selectedOrgForCpfr, setSelectedOrgForCpfr] = useState<any>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingContacts, setIsSavingContacts] = useState(false);
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
@@ -328,6 +330,16 @@ export default function AdminOrganizationsPage() {
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
                         <span className="sm:hidden">Manage Organization</span>
                         <span className="hidden sm:inline">Manage</span>
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full sm:w-auto justify-center sm:justify-start bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
+                        onClick={() => setSelectedOrgForCpfr(org)}
+                      >
+                        <SemanticBDIIcon semantic="collaboration" size={14} className="mr-2 sm:mr-1" />
+                        <span className="sm:hidden">CPFR Contacts</span>
+                        <span className="hidden sm:inline">CPFR</span>
                       </Button>
                       {!org.isActive ? (
                         <Button 
@@ -722,6 +734,415 @@ export default function AdminOrganizationsPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* CPFR Contacts Management Modal */}
+      {selectedOrgForCpfr && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <SemanticBDIIcon semantic="collaboration" size={24} className="mr-3 text-blue-600" />
+                  <div>
+                    <h2 className="text-xl font-semibold">CPFR Contacts Management</h2>
+                    <p className="text-gray-600">{selectedOrgForCpfr.name} ({selectedOrgForCpfr.code})</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedOrgForCpfr(null)}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-8">
+              {/* Primary Contacts Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-blue-800">Primary CPFR Contacts</h3>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      const newContact = { name: '', email: '', role: '', active: true };
+                      const currentContacts = selectedOrgForCpfr.cpfrContacts?.primary_contacts || [];
+                      const updatedOrg = {
+                        ...selectedOrgForCpfr,
+                        cpfrContacts: {
+                          ...selectedOrgForCpfr.cpfrContacts,
+                          primary_contacts: [...currentContacts, newContact]
+                        }
+                      };
+                      setSelectedOrgForCpfr(updatedOrg);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    + Add Contact
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {(selectedOrgForCpfr.cpfrContacts?.primary_contacts || []).map((contact: any, index: number) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border rounded-lg bg-gray-50">
+                      <div>
+                        <Label className="text-xs">Name *</Label>
+                        <Input
+                          value={contact.name}
+                          onChange={(e) => {
+                            const updated = [...(selectedOrgForCpfr.cpfrContacts?.primary_contacts || [])];
+                            updated[index] = { ...updated[index], name: e.target.value };
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                primary_contacts: updated
+                              }
+                            });
+                          }}
+                          placeholder="John Doe"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Email *</Label>
+                        <Input
+                          type="email"
+                          value={contact.email}
+                          onChange={(e) => {
+                            const updated = [...(selectedOrgForCpfr.cpfrContacts?.primary_contacts || [])];
+                            updated[index] = { ...updated[index], email: e.target.value };
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                primary_contacts: updated
+                              }
+                            });
+                          }}
+                          placeholder="john@tc1.com"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Role</Label>
+                        <Input
+                          value={contact.role}
+                          onChange={(e) => {
+                            const updated = [...(selectedOrgForCpfr.cpfrContacts?.primary_contacts || [])];
+                            updated[index] = { ...updated[index], role: e.target.value };
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                primary_contacts: updated
+                              }
+                            });
+                          }}
+                          placeholder="Factory Manager"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const updated = (selectedOrgForCpfr.cpfrContacts?.primary_contacts || []).filter((_: any, i: number) => i !== index);
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                primary_contacts: updated
+                              }
+                            });
+                          }}
+                          className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {(!selectedOrgForCpfr.cpfrContacts?.primary_contacts || selectedOrgForCpfr.cpfrContacts.primary_contacts.length === 0) && (
+                    <div className="text-center p-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                      <SemanticBDIIcon semantic="collaboration" size={32} className="mx-auto mb-2 text-gray-400" />
+                      <p>No primary CPFR contacts configured</p>
+                      <p className="text-xs">Add contacts to receive immediate CPFR notifications</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Escalation Contacts Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-orange-800">Escalation Contacts (24hr)</h3>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      const newContact = { name: '', email: '', role: '', active: true };
+                      const currentContacts = selectedOrgForCpfr.cpfrContacts?.escalation_contacts || [];
+                      const updatedOrg = {
+                        ...selectedOrgForCpfr,
+                        cpfrContacts: {
+                          ...selectedOrgForCpfr.cpfrContacts,
+                          escalation_contacts: [...currentContacts, newContact]
+                        }
+                      };
+                      setSelectedOrgForCpfr(updatedOrg);
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    + Add Escalation
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {(selectedOrgForCpfr.cpfrContacts?.escalation_contacts || []).map((contact: any, index: number) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border rounded-lg bg-orange-50">
+                      <div>
+                        <Label className="text-xs">Name *</Label>
+                        <Input
+                          value={contact.name}
+                          onChange={(e) => {
+                            const updated = [...(selectedOrgForCpfr.cpfrContacts?.escalation_contacts || [])];
+                            updated[index] = { ...updated[index], name: e.target.value };
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                escalation_contacts: updated
+                              }
+                            });
+                          }}
+                          placeholder="Jane Smith"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Email *</Label>
+                        <Input
+                          type="email"
+                          value={contact.email}
+                          onChange={(e) => {
+                            const updated = [...(selectedOrgForCpfr.cpfrContacts?.escalation_contacts || [])];
+                            updated[index] = { ...updated[index], email: e.target.value };
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                escalation_contacts: updated
+                              }
+                            });
+                          }}
+                          placeholder="jane@tc1.com"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Role</Label>
+                        <Input
+                          value={contact.role}
+                          onChange={(e) => {
+                            const updated = [...(selectedOrgForCpfr.cpfrContacts?.escalation_contacts || [])];
+                            updated[index] = { ...updated[index], role: e.target.value };
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                escalation_contacts: updated
+                              }
+                            });
+                          }}
+                          placeholder="Operations Director"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const updated = (selectedOrgForCpfr.cpfrContacts?.escalation_contacts || []).filter((_: any, i: number) => i !== index);
+                            setSelectedOrgForCpfr({
+                              ...selectedOrgForCpfr,
+                              cpfrContacts: {
+                                ...selectedOrgForCpfr.cpfrContacts,
+                                escalation_contacts: updated
+                              }
+                            });
+                          }}
+                          className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {(!selectedOrgForCpfr.cpfrContacts?.escalation_contacts || selectedOrgForCpfr.cpfrContacts.escalation_contacts.length === 0) && (
+                    <div className="text-center p-8 text-gray-500 border-2 border-dashed border-orange-300 rounded-lg">
+                      <SemanticBDIIcon semantic="notifications" size={32} className="mx-auto mb-2 text-orange-400" />
+                      <p>No escalation contacts configured</p>
+                      <p className="text-xs">Add contacts for 24-hour escalation notifications</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notification Preferences */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-purple-800">Notification Preferences</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-lg bg-purple-50">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="immediateNotifications"
+                        checked={selectedOrgForCpfr.cpfrContacts?.notification_preferences?.immediate_notifications || false}
+                        onChange={(e) => {
+                          setSelectedOrgForCpfr({
+                            ...selectedOrgForCpfr,
+                            cpfrContacts: {
+                              ...selectedOrgForCpfr.cpfrContacts,
+                              notification_preferences: {
+                                ...selectedOrgForCpfr.cpfrContacts?.notification_preferences,
+                                immediate_notifications: e.target.checked
+                              }
+                            }
+                          });
+                        }}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <Label htmlFor="immediateNotifications" className="text-sm">Immediate Notifications</Label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="includeTechnicalTeam"
+                        checked={selectedOrgForCpfr.cpfrContacts?.notification_preferences?.include_technical_team || false}
+                        onChange={(e) => {
+                          setSelectedOrgForCpfr({
+                            ...selectedOrgForCpfr,
+                            cpfrContacts: {
+                              ...selectedOrgForCpfr.cpfrContacts,
+                              notification_preferences: {
+                                ...selectedOrgForCpfr.cpfrContacts?.notification_preferences,
+                                include_technical_team: e.target.checked
+                              }
+                            }
+                          });
+                        }}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <Label htmlFor="includeTechnicalTeam" className="text-sm">Include Technical Team</Label>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs">Escalation Hours</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="168"
+                        value={selectedOrgForCpfr.cpfrContacts?.notification_preferences?.escalation_hours || 24}
+                        onChange={(e) => {
+                          setSelectedOrgForCpfr({
+                            ...selectedOrgForCpfr,
+                            cpfrContacts: {
+                              ...selectedOrgForCpfr.cpfrContacts,
+                              notification_preferences: {
+                                ...selectedOrgForCpfr.cpfrContacts?.notification_preferences,
+                                escalation_hours: parseInt(e.target.value) || 24
+                              }
+                            }
+                          });
+                        }}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-600 mt-1">Hours before escalation (default: 24)</p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="businessHoursOnly"
+                        checked={selectedOrgForCpfr.cpfrContacts?.notification_preferences?.business_hours_only || false}
+                        onChange={(e) => {
+                          setSelectedOrgForCpfr({
+                            ...selectedOrgForCpfr,
+                            cpfrContacts: {
+                              ...selectedOrgForCpfr.cpfrContacts,
+                              notification_preferences: {
+                                ...selectedOrgForCpfr.cpfrContacts?.notification_preferences,
+                                business_hours_only: e.target.checked
+                              }
+                            }
+                          });
+                        }}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <Label htmlFor="businessHoursOnly" className="text-sm">Business Hours Only</Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Save/Cancel Actions */}
+              <div className="flex justify-end space-x-3 pt-6 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSelectedOrgForCpfr(null)}
+                  disabled={isSavingContacts}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    setIsSavingContacts(true);
+                    try {
+                      const response = await fetch(`/api/admin/organizations/${selectedOrgForCpfr.id}/cpfr-contacts`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          cpfrContacts: selectedOrgForCpfr.cpfrContacts
+                        })
+                      });
+
+                      if (response.ok) {
+                        mutateOrganizations();
+                        setSelectedOrgForCpfr(null);
+                        alert('CPFR contacts updated successfully!');
+                      } else {
+                        alert('Failed to update CPFR contacts');
+                      }
+                    } catch (error) {
+                      alert('Error updating CPFR contacts');
+                    } finally {
+                      setIsSavingContacts(false);
+                    }
+                  }}
+                  disabled={isSavingContacts}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSavingContacts ? (
+                    <>
+                      <SemanticBDIIcon semantic="sync" size={16} className="mr-2 brightness-0 invert animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2 brightness-0 invert" />
+                      Save CPFR Contacts
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
