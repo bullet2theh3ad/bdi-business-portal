@@ -98,11 +98,41 @@ function CPFRMetrics() {
   const activeOrgsCount = organizations?.length || 0;
   const activeForecastsCount = forecasts?.length || 0;
   
-  // Calculate shipment status/alarms
-  const shipmentAlarms = forecasts?.filter((f: any) => 
-    f.shippingSignal === 'rejected' || 
-    (f.salesSignal === 'submitted' && f.factorySignal === 'accepted' && f.shippingSignal === 'unknown')
-  ).length || 0;
+  // Calculate shipment status/alarms based on proper CPFR logic
+  const shipmentStatus = (() => {
+    if (!forecasts || forecasts.length === 0) return { status: 'green', count: 0, message: 'No active forecasts' };
+    
+    const activeForecasts = forecasts.filter((f: any) => 
+      f.salesSignal === 'submitted' || f.factorySignal === 'awaiting' || f.factorySignal === 'accepted'
+    );
+    
+    if (activeForecasts.length === 0) return { status: 'green', count: 0, message: 'No active orders' };
+    
+    // RED: Active orders with unknown/rejected shipping status
+    const redAlarms = activeForecasts.filter((f: any) => 
+      f.shippingSignal === 'rejected' || f.shippingSignal === 'unknown'
+    ).length;
+    
+    // YELLOW: Active orders with shipping delays (awaiting too long - future implementation)
+    const yellowWarnings = activeForecasts.filter((f: any) => 
+      f.shippingSignal === 'awaiting' // Future: && isOverdue
+    ).length;
+    
+    // GREEN: All active orders have proper shipping tracking
+    const greenTracked = activeForecasts.filter((f: any) => 
+      f.shippingSignal === 'accepted'
+    ).length;
+    
+    if (redAlarms > 0) {
+      return { status: 'red', count: redAlarms, message: 'Orders without shipping status' };
+    } else if (yellowWarnings > 0) {
+      return { status: 'yellow', count: yellowWarnings, message: 'Shipping delays detected' };
+    } else if (greenTracked === activeForecasts.length) {
+      return { status: 'green', count: greenTracked, message: 'All shipments on track' };
+    } else {
+      return { status: 'red', count: activeForecasts.length, message: 'Shipping status needs attention' };
+    }
+  })();
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -132,23 +162,45 @@ function CPFRMetrics() {
         </CardContent>
       </Card>
       
-      <Card className={`${shipmentAlarms > 0 ? 'border-red-200 bg-red-50/50' : 'border-purple-200 bg-purple-50/50'}`}>
+      <Card className={`${
+        shipmentStatus.status === 'red' ? 'border-red-200 bg-red-50/50' :
+        shipmentStatus.status === 'yellow' ? 'border-yellow-200 bg-yellow-50/50' :
+        'border-green-200 bg-green-50/50'
+      }`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className={`text-sm font-medium ${shipmentAlarms > 0 ? 'text-red-800' : 'text-purple-800'}`}>
+          <CardTitle className={`text-sm font-medium ${
+            shipmentStatus.status === 'red' ? 'text-red-800' :
+            shipmentStatus.status === 'yellow' ? 'text-yellow-800' :
+            'text-green-800'
+          }`}>
             Shipment Status
           </CardTitle>
           <SemanticBDIIcon 
             semantic="shipping" 
             size={16} 
-            className={shipmentAlarms > 0 ? 'text-red-600' : 'text-purple-600'} 
+            className={
+              shipmentStatus.status === 'red' ? 'text-red-600' :
+              shipmentStatus.status === 'yellow' ? 'text-yellow-600' :
+              'text-green-600'
+            } 
           />
         </CardHeader>
         <CardContent>
-          <div className={`text-3xl font-bold ${shipmentAlarms > 0 ? 'text-red-900' : 'text-purple-900'}`}>
-            {shipmentAlarms > 0 ? `⚠️ ${shipmentAlarms}` : '✅ 0'}
+          <div className={`text-3xl font-bold ${
+            shipmentStatus.status === 'red' ? 'text-red-900' :
+            shipmentStatus.status === 'yellow' ? 'text-yellow-900' :
+            'text-green-900'
+          }`}>
+            {shipmentStatus.status === 'red' ? `🚨 ${shipmentStatus.count}` :
+             shipmentStatus.status === 'yellow' ? `⚠️ ${shipmentStatus.count}` :
+             `✅ ${shipmentStatus.count}`}
           </div>
-          <p className={`text-xs ${shipmentAlarms > 0 ? 'text-red-700' : 'text-purple-700'}`}>
-            {shipmentAlarms > 0 ? 'Shipping alarms requiring attention' : 'All shipments on track'}
+          <p className={`text-xs ${
+            shipmentStatus.status === 'red' ? 'text-red-700' :
+            shipmentStatus.status === 'yellow' ? 'text-yellow-700' :
+            'text-green-700'
+          }`}>
+            {shipmentStatus.message}
           </p>
         </CardContent>
       </Card>
@@ -368,8 +420,8 @@ export default function DashboardPage() {
   return (
     <section className="flex-1 p-4 lg:p-8">
       <WelcomeCard />
-      <PendingInvitations />
       <CPFRMetrics />
+      <PendingInvitations />
       <ForecastMonthlyCharts />
       <RecentActivity />
     </section>
