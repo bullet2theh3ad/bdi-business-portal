@@ -51,12 +51,15 @@ export default function PurchaseOrdersPage() {
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Line items state
+  // Line items state (matching Invoice structure exactly)
   const [lineItems, setLineItems] = useState<Array<{
+    id: string;
     skuId: string;
+    sku: string;
+    skuName: string;
     quantity: number;
     unitCost: number;
-    totalCost: number;
+    lineTotal: number;
   }>>([]);
 
   const [purchaseOrderLineItems, setPurchaseOrderLineItems] = useState<Record<string, Array<{
@@ -128,24 +131,44 @@ export default function PurchaseOrdersPage() {
       .join(' • ');
   };
 
+  // Helper functions for line items (matching Invoice exactly)
   const addLineItem = () => {
-    setLineItems([...lineItems, { skuId: '', quantity: 0, unitCost: 0, totalCost: 0 }]);
+    const newItem = {
+      id: Date.now().toString(),
+      skuId: '',
+      sku: '',
+      skuName: '',
+      quantity: 1,
+      unitCost: 0,
+      lineTotal: 0
+    };
+    setLineItems([...lineItems, newItem]);
   };
 
-  const removeLineItem = (index: number) => {
-    setLineItems(lineItems.filter((_, i) => i !== index));
+  const updateLineItem = (id: string, field: string, value: any) => {
+    setLineItems(lineItems.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, [field]: value };
+        
+        // If SKU is selected, populate SKU code and name
+        if (field === 'skuId' && value) {
+          const selectedSku = skus?.find(sku => sku.id === value);
+          if (selectedSku) {
+            updatedItem.sku = selectedSku.sku;
+            updatedItem.skuName = selectedSku.name;
+          }
+        }
+        
+        // Calculate line total
+        updatedItem.lineTotal = updatedItem.quantity * updatedItem.unitCost;
+        return updatedItem;
+      }
+      return item;
+    }));
   };
 
-  const updateLineItem = (index: number, field: string, value: any) => {
-    const updated = [...lineItems];
-    updated[index] = { ...updated[index], [field]: value };
-    
-    // Recalculate total cost
-    if (field === 'quantity' || field === 'unitCost') {
-      updated[index].totalCost = updated[index].quantity * updated[index].unitCost;
-    }
-    
-    setLineItems(updated);
+  const removeLineItem = (id: string) => {
+    setLineItems(lineItems.filter(item => item.id !== id));
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,7 +267,7 @@ export default function PurchaseOrdersPage() {
   };
 
   const calculateTotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.totalCost, 0);
+    return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
   };
 
   return (
@@ -555,81 +578,103 @@ export default function PurchaseOrdersPage() {
             </div>
 
             {/* Line Items Section */}
-            <div className="mb-6">
+            <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between mb-4">
-                <Label className="text-lg font-semibold">Line Items</Label>
-                <Button type="button" onClick={addLineItem} variant="outline">
-                  <SemanticBDIIcon semantic="inventory_items" size={16} className="mr-2" />
+                <h4 className="font-semibold text-blue-800 flex items-center">
+                  <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                  Line Items
+                </h4>
+                <Button
+                  type="button"
+                  onClick={addLineItem}
+                  variant="outline"
+                  size="sm"
+                  className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                >
+                  <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
                   Add Item
                 </Button>
               </div>
               
-              <div className="space-y-3">
-                {lineItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 border rounded-lg">
-                    <div>
-                      <Label>SKU/Service</Label>
-                      <select
-                        value={item.skuId}
-                        onChange={(e) => updateLineItem(index, 'skuId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select SKU</option>
-                        {skus?.map((sku) => (
-                          <option key={sku.id} value={sku.id}>
-                            {sku.sku} - {sku.name}
-                          </option>
-                        ))}
-                      </select>
+              {lineItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <SemanticBDIIcon semantic="inventory" size={32} className="mx-auto mb-2 text-blue-400" />
+                  <p className="text-blue-600 text-sm">No line items added yet. Click "Add Item" to start.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {lineItems.map((item) => (
+                    <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
+                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                        <div>
+                          <Label className="text-xs">SKU *</Label>
+                          <select
+                            value={item.skuId}
+                            onChange={(e) => updateLineItem(item.id, 'skuId', e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            required
+                          >
+                            <option value="">Select SKU</option>
+                            {skus?.map((sku) => (
+                              <option key={sku.id} value={sku.id}>
+                                {sku.sku} - {sku.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Quantity *</Label>
+                          <Input
+                            type="number"
+                            value={item.quantity === 0 ? '' : item.quantity}
+                            onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                            min="1"
+                            placeholder="0"
+                            className="text-sm"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Unit Cost *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.unitCost === 0 ? '' : item.unitCost}
+                            onChange={(e) => updateLineItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
+                            min="0"
+                            className="text-sm"
+                            placeholder="0.00"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Line Total</Label>
+                          <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
+                            ${item.lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                        <div>
+                          <Button
+                            type="button"
+                            onClick={() => removeLineItem(item.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Quantity</Label>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateLineItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                        min="0"
-                      />
+                  ))}
+                  
+                  {/* Total Value Display */}
+                  <div className="bg-blue-100 p-4 rounded border border-blue-300">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-blue-800">Total Purchase Order Value:</span>
+                      <span className="font-bold text-2xl text-blue-900">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
-                    <div>
-                      <Label>Unit Cost</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.unitCost}
-                        onChange={(e) => updateLineItem(index, 'unitCost', parseFloat(e.target.value) || 0)}
-                        min="0"
-                      />
-                    </div>
-                    <div>
-                      <Label>Total Cost</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.totalCost}
-                        readOnly
-                        className="bg-gray-50"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => removeLineItem(index)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {lineItems.length > 0 && (
-                <div className="bg-blue-100 p-4 rounded border border-blue-300">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-blue-800">Total Purchase Order Value:</span>
-                    <span className="font-bold text-2xl text-blue-900">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               )}
