@@ -226,7 +226,7 @@ export default function InvoicesPage() {
         setLineItems([]);
         setUploadedDocs([]);
         setCustomTerms(false);
-      } else {e
+      } else {
         const errorData = await response.json();
         alert(`Failed to create PO: ${errorData.error || 'Unknown error'}`);
       }
