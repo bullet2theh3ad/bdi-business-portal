@@ -627,15 +627,35 @@ export default function SalesForecastsPage() {
                         const startOfCalendar = new Date(firstDay);
                         startOfCalendar.setDate(startOfCalendar.getDate() - firstDay.getDay());
                         
-                        // Get actual dates with forecast activity
-                        const activeDates = new Set<number>();
+                        // Get actual dates with forecast activity and their status
+                        const activeDates = new Map<number, string>(); // date -> overall status
                         month.forecasts.forEach(forecast => {
                           if (forecast.deliveryWeek.includes('W')) {
                             const year = parseInt(forecast.deliveryWeek.split('-')[0]);
                             const week = parseInt(forecast.deliveryWeek.split('W')[1]);
                             const weekDate = getDateFromISOWeek(year, week);
                             if (weekDate.getMonth() === month.date.getMonth()) {
-                              activeDates.add(weekDate.getDate());
+                              // Determine overall status for dot color
+                              const sales = forecast.salesSignal || 'unknown';
+                              const factory = forecast.factorySignal || 'unknown';
+                              const shipping = forecast.shippingSignal || 'unknown';
+                              
+                              let overallStatus = 'activity'; // Default red dot
+                              
+                              // All three confirmed = green dot
+                              if (sales === 'accepted' && factory === 'accepted' && shipping === 'accepted') {
+                                overallStatus = 'confirmed';
+                              }
+                              // Any rejected = red dot (stays red)
+                              else if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
+                                overallStatus = 'rejected';
+                              }
+                              // Any awaiting = yellow dot
+                              else if (sales === 'awaiting' || factory === 'awaiting' || shipping === 'awaiting') {
+                                overallStatus = 'awaiting';
+                              }
+                              
+                              activeDates.set(weekDate.getDate(), overallStatus);
                             }
                           }
                         });
@@ -646,14 +666,25 @@ export default function SalesForecastsPage() {
                           
                           const dayNumber = currentDate.getDate();
                           const isCurrentMonth = currentDate.getMonth() === month.date.getMonth();
-                          const hasActivity = isCurrentMonth && activeDates.has(dayNumber);
+                          const activityStatus = isCurrentMonth ? activeDates.get(dayNumber) : null;
+                          
+                          // Get dot color based on CPFR status
+                          const getDotColor = (status: string | null) => {
+                            switch (status) {
+                              case 'confirmed': return 'bg-green-400'; // All three signals accepted
+                              case 'awaiting': return 'bg-yellow-400'; // Some signals awaiting
+                              case 'rejected': return 'bg-red-400'; // Any signal rejected
+                              case 'activity': return 'bg-red-400'; // Default activity (unknown/submitted)
+                              default: return null;
+                            }
+                          };
                           
                           return (
                             <div
                               key={i}
                               className={`w-6 h-6 flex items-center justify-center text-xs rounded ${
                                 isCurrentMonth
-                                  ? hasActivity 
+                                  ? activityStatus 
                                     ? 'bg-blue-100 text-blue-800 font-bold' 
                                     : 'text-gray-400 hover:bg-gray-50'
                                   : 'text-gray-300'
@@ -662,8 +693,8 @@ export default function SalesForecastsPage() {
                               {isCurrentMonth ? (
                                 <div className="relative">
                                   {dayNumber}
-                                  {hasActivity && (
-                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full"></div>
+                                  {activityStatus && (
+                                    <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${getDotColor(activityStatus)}`}></div>
                                   )}
                                 </div>
                               ) : (
