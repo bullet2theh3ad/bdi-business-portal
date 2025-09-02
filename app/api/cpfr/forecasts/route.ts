@@ -134,6 +134,7 @@ export async function GET(request: NextRequest) {
         confidence: row.confidence,
         shippingPreference: row.shipping_preference,
         forecastType: row.forecast_type,
+        status: row.status, // 🔧 FIX: Map status field for Draft/Submitted logic
         salesSignal: row.sales_signal,
         factorySignal: row.factory_signal,
         shippingSignal: row.shipping_signal,
