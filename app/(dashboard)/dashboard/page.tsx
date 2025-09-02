@@ -11,7 +11,10 @@ import {
 import useSWR from 'swr';
 import Link from 'next/link';
 import { 
-  AlertCircle
+  AlertCircle,
+  TrendingUp,
+  Calendar,
+  Package
 } from 'lucide-react';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { User } from '@/lib/db/schema';
@@ -86,47 +89,66 @@ function QuickActions() {
   );
 }
 
-function SystemOverview() {
-  const { data: user } = useSWR<User>('/api/user', fetcher);
-  const isSuperAdmin = user?.role === 'super_admin';
+function CPFRMetrics() {
+  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
+  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
+  const { data: invoices } = useSWR('/api/cpfr/invoices', fetcher);
+  
+  // Calculate real metrics
+  const activeOrgsCount = organizations?.length || 0;
+  const activeForecastsCount = forecasts?.length || 0;
+  
+  // Calculate shipment status/alarms
+  const shipmentAlarms = forecasts?.filter((f: any) => 
+    f.shippingSignal === 'rejected' || 
+    (f.salesSignal === 'submitted' && f.factorySignal === 'accepted' && f.shippingSignal === 'unknown')
+  ).length || 0;
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-      <Card>
+      <Card className="border-blue-200 bg-blue-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active Organizations</CardTitle>
-          <SemanticBDIIcon semantic="collaboration" size={16} className="text-muted-foreground" />
+          <CardTitle className="text-sm font-medium text-blue-800">Active Organizations</CardTitle>
+          <SemanticBDIIcon semantic="collaboration" size={16} className="text-blue-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">--</div>
-          <p className="text-xs text-muted-foreground">
-            Organizations in the system
+          <div className="text-3xl font-bold text-blue-900">{activeOrgsCount}</div>
+          <p className="text-xs text-blue-700">
+            Connected partner organizations
           </p>
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="border-green-200 bg-green-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active Forecasts</CardTitle>
-          <SemanticBDIIcon semantic="forecasts" size={16} className="text-muted-foreground" />
+          <CardTitle className="text-sm font-medium text-green-800">Active Forecasts</CardTitle>
+          <SemanticBDIIcon semantic="forecasts" size={16} className="text-green-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">--</div>
-          <p className="text-xs text-muted-foreground">
-            Current period forecasts
+          <div className="text-3xl font-bold text-green-900">{activeForecastsCount}</div>
+          <p className="text-xs text-green-700">
+            Current CPFR forecasts in system
           </p>
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className={`${shipmentAlarms > 0 ? 'border-red-200 bg-red-50/50' : 'border-purple-200 bg-purple-50/50'}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Supply Commitments</CardTitle>
-          <SemanticBDIIcon semantic="supply" size={16} className="text-muted-foreground" />
+          <CardTitle className={`text-sm font-medium ${shipmentAlarms > 0 ? 'text-red-800' : 'text-purple-800'}`}>
+            Shipment Status
+          </CardTitle>
+          <SemanticBDIIcon 
+            semantic="shipping" 
+            size={16} 
+            className={shipmentAlarms > 0 ? 'text-red-600' : 'text-purple-600'} 
+          />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">--</div>
-          <p className="text-xs text-muted-foreground">
-            Confirmed supply signals
+          <div className={`text-3xl font-bold ${shipmentAlarms > 0 ? 'text-red-900' : 'text-purple-900'}`}>
+            {shipmentAlarms > 0 ? `⚠️ ${shipmentAlarms}` : '✅ 0'}
+          </div>
+          <p className={`text-xs ${shipmentAlarms > 0 ? 'text-red-700' : 'text-purple-700'}`}>
+            {shipmentAlarms > 0 ? 'Shipping alarms requiring attention' : 'All shipments on track'}
           </p>
         </CardContent>
       </Card>
@@ -134,27 +156,159 @@ function SystemOverview() {
   );
 }
 
+function ForecastMonthlyCharts() {
+  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
+  
+  // Generate 6 months of forecast data
+  const generateMonthlyData = () => {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 0; i < 6; i++) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      
+      // Count forecasts for this month
+      const monthForecasts = forecasts?.filter((f: any) => {
+        if (!f.deliveryWeek?.includes('W')) return false;
+        const [year, week] = f.deliveryWeek.split('-W').map(Number);
+        const weekDate = new Date(year, 0, 1 + (week - 1) * 7);
+        return weekDate.getMonth() === monthDate.getMonth() && weekDate.getFullYear() === monthDate.getFullYear();
+      }) || [];
+      
+      const totalQuantity = monthForecasts.reduce((sum: number, f: any) => sum + (f.quantity || 0), 0);
+      
+      months.push({
+        month: monthName,
+        forecasts: monthForecasts.length,
+        quantity: totalQuantity,
+        status: monthForecasts.length > 0 ? 'active' : 'empty'
+      });
+    }
+    
+    return months;
+  };
+  
+  const monthlyData = generateMonthlyData();
+  const maxQuantity = Math.max(...monthlyData.map(m => m.quantity), 1);
+  
+  return (
+    <Card className="mb-8">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Forecast Monthly Overview
+        </CardTitle>
+        <CardDescription>6-month CPFR forecast activity and quantities</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {monthlyData.map((month, index) => (
+            <div key={month.month} className="flex items-center space-x-4">
+              <div className="w-16 text-sm font-medium text-gray-700">
+                {month.month}
+              </div>
+              <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    month.status === 'active' 
+                      ? 'bg-gradient-to-r from-blue-400 to-blue-600' 
+                      : 'bg-gray-300'
+                  }`}
+                  style={{
+                    width: `${month.quantity > 0 ? Math.max(10, (month.quantity / maxQuantity) * 100) : 0}%`
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-medium text-gray-700">
+                    {month.forecasts} forecasts • {month.quantity.toLocaleString()} units
+                  </span>
+                </div>
+              </div>
+              <div className="w-20 text-right">
+                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  month.status === 'active' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {month.status === 'active' ? '📊 Active' : '📅 Planned'}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <Link href="/cpfr/forecasts">
+            <Button variant="outline" className="w-full hover:border-blue-500 hover:bg-blue-50">
+              <Calendar className="h-4 w-4 mr-2" />
+              View Full CPFR Calendar
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RecentActivity() {
+  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
+  
+  // Get recent forecast activities
+  const recentActivities = forecasts?.slice(0, 5).map((forecast: any) => ({
+    id: forecast.id,
+    type: 'forecast' as const,
+    message: `Forecast created for ${forecast.sku?.sku || 'Unknown SKU'} - ${forecast.quantity?.toLocaleString() || 0} units`,
+    time: new Date(forecast.createdAt).toLocaleDateString(),
+    status: forecast.salesSignal || 'unknown'
+  })) || [];
+
+  type Activity = {
+    id: string;
+    type: 'forecast';
+    message: string;
+    time: string;
+    status: string;
+  };
+  
   return (
     <Card className="mb-8">
       <CardHeader>
         <CardTitle>Recent Activity</CardTitle>
-        <CardDescription>Latest updates across your CPFR processes</CardDescription>
+        <CardDescription>Latest CPFR forecast and supply chain updates</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-2 h-2 bg-bdi-green-1 rounded-full"></div>
-            <div className="flex-1">
-              <p className="text-sm">System initialized - ready for configuration</p>
-              <p className="text-xs text-muted-foreground">Just now</p>
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity: Activity, index: number) => (
+              <div key={activity.id || index} className="flex items-center space-x-4">
+                <div className={`w-2 h-2 rounded-full ${
+                  activity.status === 'submitted' ? 'bg-blue-500' :
+                  activity.status === 'accepted' ? 'bg-green-500' :
+                  activity.status === 'rejected' ? 'bg-red-500' :
+                  'bg-gray-400'
+                }`}></div>
+                <div className="flex-1">
+                  <p className="text-sm">{activity.message}</p>
+                  <p className="text-xs text-muted-foreground">{activity.time}</p>
+                </div>
+                <div className={`text-xs px-2 py-1 rounded-full ${
+                  activity.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                  activity.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                  activity.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {activity.status}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+              <p>No recent activity yet</p>
+              <p className="text-xs">CPFR activity will appear here as forecasts are created</p>
             </div>
-          </div>
-          <div className="text-center py-4 text-muted-foreground">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-            <p>No recent activity yet</p>
-            <p className="text-xs">Activity will appear here as you use the system</p>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -214,10 +368,9 @@ export default function DashboardPage() {
   return (
     <section className="flex-1 p-4 lg:p-8">
       <WelcomeCard />
-      <AdminActions />
       <PendingInvitations />
-      <QuickActions />
-      <SystemOverview />
+      <CPFRMetrics />
+      <ForecastMonthlyCharts />
       <RecentActivity />
     </section>
   );
