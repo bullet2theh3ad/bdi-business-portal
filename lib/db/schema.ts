@@ -10,6 +10,7 @@ import {
   date,
   uuid,
   jsonb,
+  bigint,
   pgEnum,
   check,
   unique,
@@ -698,12 +699,63 @@ export const invoiceDocuments = pgTable('invoice_documents', {
   uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
 });
 
+// Purchase Orders (similar to invoices but for procurement)
+export const purchaseOrders = pgTable('purchase_orders', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  purchaseOrderNumber: varchar('purchase_order_number', { length: 255 }).notNull().unique(),
+  supplierName: varchar('supplier_name', { length: 255 }).notNull(),
+  customSupplierName: varchar('custom_supplier_name', { length: 255 }),
+  purchaseOrderDate: date('purchase_order_date').notNull(),
+  requestedDeliveryWeek: varchar('requested_delivery_week', { length: 50 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull().default('draft'),
+  terms: varchar('terms', { length: 100 }).notNull().default('NET30'),
+  incoterms: varchar('incoterms', { length: 50 }).notNull().default('FOB'),
+  incotermsLocation: varchar('incoterms_location', { length: 255 }),
+  totalValue: numeric('total_value', { precision: 15, scale: 2 }).notNull().default('0'),
+  notes: text('notes'),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  organizationId: uuid('organization_id').references(() => organizations.id),
+});
+
+export const purchaseOrderLineItems = pgTable('purchase_order_line_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  purchaseOrderId: uuid('purchase_order_id').notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  skuId: uuid('sku_id').references(() => productSkus.id),
+  skuCode: varchar('sku_code', { length: 255 }),
+  skuName: varchar('sku_name', { length: 255 }),
+  description: text('description'),
+  quantity: integer('quantity').notNull().default(0),
+  unitCost: numeric('unit_cost', { precision: 10, scale: 2 }).notNull().default('0'),
+  totalCost: numeric('total_cost', { precision: 15, scale: 2 }).notNull().default('0'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const purchaseOrderDocuments = pgTable('purchase_order_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  purchaseOrderId: uuid('purchase_order_id').notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  filePath: varchar('file_path', { length: 500 }).notNull(),
+  fileSize: bigint('file_size', { mode: 'number' }),
+  contentType: varchar('content_type', { length: 100 }),
+  uploadedBy: uuid('uploaded_by').notNull(),
+  uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
+});
+
 export type Invoice = typeof invoices.$inferSelect;
 export type NewInvoice = typeof invoices.$inferInsert;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type NewInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
 export type InvoiceDocument = typeof invoiceDocuments.$inferSelect;
 export type NewInvoiceDocument = typeof invoiceDocuments.$inferInsert;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type NewPurchaseOrder = typeof purchaseOrders.$inferInsert;
+export type PurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferSelect;
+export type NewPurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferInsert;
+export type PurchaseOrderDocument = typeof purchaseOrderDocuments.$inferSelect;
+export type NewPurchaseOrderDocument = typeof purchaseOrderDocuments.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;
