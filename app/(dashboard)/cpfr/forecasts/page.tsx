@@ -719,16 +719,25 @@ export default function SalesForecastsPage() {
                           >
                             <div className="font-mono text-xs font-bold">{forecast.sku.sku}</div>
                             <div className="text-xs">{forecast.quantity.toLocaleString()} units</div>
-                            <div className="flex items-center space-x-1 mt-1">
-                              <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
-                                {getSignalIcon(forecast.salesSignal || 'unknown')}
-                              </span>
-                              <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
-                                {getSignalIcon(forecast.factorySignal || 'unknown')}
-                              </span>
-                              <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
-                                {getSignalIcon(forecast.shippingSignal || 'unknown')}
-                              </span>
+                            <div className="flex items-center justify-between text-xs mt-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-600">Sales</span>
+                                <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
+                                  {getSignalIcon(forecast.salesSignal || 'unknown')}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-600">Factory</span>
+                                <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
+                                  {getSignalIcon(forecast.factorySignal || 'unknown')}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-600">Shipping</span>
+                                <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
+                                  {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -781,19 +790,25 @@ export default function SalesForecastsPage() {
                           <Badge variant="outline" className="font-mono text-xs">
                             {forecast.sku.sku}
                           </Badge>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-600">S:</span>
-                            <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
-                              {getSignalIcon(forecast.salesSignal || 'unknown')}
-                            </span>
-                            <span className="text-xs text-gray-600">F:</span>
-                            <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
-                              {getSignalIcon(forecast.factorySignal || 'unknown')}
-                            </span>
-                            <span className="text-xs text-gray-600">Sh:</span>
-                            <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
-                              {getSignalIcon(forecast.shippingSignal || 'unknown')}
-                            </span>
+                          <div className="flex items-center space-x-4 text-xs">
+                            <div className="flex items-center space-x-1">
+                              <span className="text-gray-600">Sales</span>
+                              <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
+                                {getSignalIcon(forecast.salesSignal || 'unknown')}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-gray-600">Factory</span>
+                              <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
+                                {getSignalIcon(forecast.factorySignal || 'unknown')}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-gray-600">Shipping</span>
+                              <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
+                                {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
