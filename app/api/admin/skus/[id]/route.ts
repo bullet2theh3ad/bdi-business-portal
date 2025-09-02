@@ -82,6 +82,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         // Business terms
         moq: body.moq,
         leadTimeDays: body.leadTimeDays,
+        htsCode: body.htsCode || null,
         
         updatedAt: new Date(),
       })

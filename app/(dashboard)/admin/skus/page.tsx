@@ -98,6 +98,7 @@ export default function SKUsPage() {
           // Business terms
           moq: formData.get('moq') ? parseInt(formData.get('moq') as string) : 1,
           leadTimeDays: formData.get('leadTimeDays') ? parseInt(formData.get('leadTimeDays') as string) : 30,
+          htsCode: formData.get('htsCode') || undefined,
           mpStartDate: formData.get('mpStartDate'),
           mfg: formData.get('mfg'),
         }),
@@ -166,6 +167,7 @@ export default function SKUsPage() {
           // Business terms
           moq: formData.get('editMoq') ? parseInt(formData.get('editMoq') as string) : 1,
           leadTimeDays: formData.get('editLeadTimeDays') ? parseInt(formData.get('editLeadTimeDays') as string) : 30,
+          htsCode: formData.get('htsCode') || undefined,
           editMpStartDate: formData.get('editMpStartDate'),
           editMfg: formData.get('editMfg'),
         }),
@@ -1028,6 +1030,34 @@ export default function SKUsPage() {
                     </div>
                   </div>
                   <div>
+                    <Label className="text-xs">HTS Code</Label>
+                    <Input
+                      name="htsCode"
+                      type="text"
+                      placeholder="8517.62.0050"
+                      maxLength={12}
+                      pattern="[0-9]{4}\.[0-9]{2}\.[0-9]{4}"
+                      className="text-sm font-mono"
+                      onInput={(e) => {
+                        // Auto-format HTS code as user types
+                        let value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                        if (value.length >= 4) {
+                          value = value.slice(0, 4) + '.' + value.slice(4);
+                        }
+                        if (value.length >= 7) {
+                          value = value.slice(0, 7) + '.' + value.slice(7);
+                        }
+                        if (value.length > 12) {
+                          value = value.slice(0, 12);
+                        }
+                        e.currentTarget.value = value;
+                      }}
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      🔎 Harmonized Tariff Schedule (e.g., 8517.62.0050 for communication devices)
+                    </div>
+                  </div>
+                  <div>
                     <Label className="text-xs">MP Ready Date (EXW)</Label>
                     <Input
                       name="mpStartDate"
@@ -1411,6 +1441,35 @@ export default function SKUsPage() {
                     />
                     <div className="mt-1 text-xs text-gray-600">
                       Days from order to delivery
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">HTS Code</Label>
+                    <Input
+                      name="htsCode"
+                      type="text"
+                      defaultValue={(selectedSku as any)?.htsCode || ''}
+                      placeholder="8517.62.0050"
+                      maxLength={12}
+                      pattern="[0-9]{4}\.[0-9]{2}\.[0-9]{4}"
+                      className="text-sm font-mono"
+                      onInput={(e) => {
+                        // Auto-format HTS code as user types
+                        let value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                        if (value.length >= 4) {
+                          value = value.slice(0, 4) + '.' + value.slice(4);
+                        }
+                        if (value.length >= 7) {
+                          value = value.slice(0, 7) + '.' + value.slice(7);
+                        }
+                        if (value.length > 12) {
+                          value = value.slice(0, 12);
+                        }
+                        e.currentTarget.value = value;
+                      }}
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      🔎 Harmonized Tariff Schedule (e.g., 8517.62.0050 for communication devices)
                     </div>
                   </div>
                   <div>

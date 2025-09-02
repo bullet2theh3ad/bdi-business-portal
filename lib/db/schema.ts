@@ -471,6 +471,9 @@ export const productSkus = pgTable('product_skus', {
   mpStartDate: timestamp('mp_start_date'), // Manufacturing Program Start Date
   mfg: varchar('mfg', { length: 100 }), // Manufacturer code/name
   
+  // Trade Classification
+  htsCode: varchar('hts_code', { length: 12 }), // Harmonized Tariff Schedule code (NNNN.NN.NNNN)
+  
   // Metadata
   tags: varchar('tags', { length: 255 }).array(), // Searchable tags
   specifications: jsonb('specifications'), // Flexible spec storage
