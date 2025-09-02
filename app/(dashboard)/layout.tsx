@@ -40,7 +40,7 @@ export default function DashboardLayout({
                   onClick={() => setSidebarOpen(false)}
                   className="p-2"
                 >
-                  <SemanticBDIIcon semantic="close" size={16} />
+                  ✕
                 </Button>
               </div>
               <div className="flex-1 overflow-y-auto">
@@ -63,7 +63,11 @@ export default function DashboardLayout({
                   onClick={() => setSidebarOpen(true)}
                   className="p-2"
                 >
-                  <SemanticBDIIcon semantic="menu" size={20} />
+                  <div className="w-5 h-5 flex flex-col justify-center space-y-1">
+                    <div className="w-full h-0.5 bg-gray-700"></div>
+                    <div className="w-full h-0.5 bg-gray-700"></div>
+                    <div className="w-full h-0.5 bg-gray-700"></div>
+                  </div>
                 </Button>
                 <div className="text-xl font-bold text-gray-900">BDI Business Portal</div>
               </div>
