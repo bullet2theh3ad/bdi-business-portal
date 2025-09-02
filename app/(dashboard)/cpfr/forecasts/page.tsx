@@ -79,7 +79,7 @@ export default function SalesForecastsPage() {
   const [customDate, setCustomDate] = useState<string>('');
   const [confidenceLevel, setConfidenceLevel] = useState<'part_of_po' | 'pre_po' | 'planning'>('planning');
   const [forecastQuantity, setForecastQuantity] = useState<number>(0);
-  const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'accepted'>('draft');
+  const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'confirmed'>('draft');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedWeekForDetail, setSelectedWeekForDetail] = useState<string>('');
   const [editingForecast, setEditingForecast] = useState<string | null>(null);
@@ -1800,9 +1800,9 @@ export default function SalesForecastsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                   >
                     <option value="draft">📝 Draft - Not submitted</option>
-                    <option value="submitted">⏳ Submitted - Awaiting ODM</option>
-                    <option value="confirmed">✅ Confirmed - ODM accepted</option>
-                    <option value="rejected">❌ Rejected - ODM declined</option>
+                    <option value="submitted">📤 Submitted - Awaiting ODM response</option>
+                    <option value="confirmed">✅ Confirmed - ODM accepted forecast</option>
+                    <option value="rejected">❌ Rejected - ODM declined forecast</option>
                   </select>
                   <div className="mt-1 text-xs text-gray-600">
                     Sales team forecast submission status
