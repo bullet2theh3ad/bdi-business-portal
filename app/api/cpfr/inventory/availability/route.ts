@@ -74,18 +74,29 @@ export async function GET(request: NextRequest) {
     console.log(`Found availability data for ${availabilityQuery.length} SKUs`);
 
     // Calculate already allocated quantities from existing forecasts
-    const allocationQuery = await db.execute(sql`
-      SELECT 
-        sku_id,
-        SUM(quantity) as allocated_quantity
-      FROM sales_forecasts
-      GROUP BY sku_id
-    `);
+    let allocationsMap: Record<string, number> = {};
+    
+    try {
+      const { data: allocationsData, error: allocationsError } = await supabase
+        .from('sales_forecasts')
+        .select('sku_id, quantity');
 
-    const allocationsMap = allocationQuery.rows.reduce((acc: any, row: any) => {
-      acc[row.sku_id] = parseInt(row.allocated_quantity) || 0;
-      return acc;
-    }, {});
+      if (allocationsError) {
+        console.log('📊 No allocations table found, using zero allocations');
+        allocationsMap = {};
+      } else {
+        // Sum quantities by SKU
+        allocationsMap = (allocationsData || []).reduce((acc: any, row: any) => {
+          const skuId = row.sku_id;
+          const quantity = parseInt(row.quantity) || 0;
+          acc[skuId] = (acc[skuId] || 0) + quantity;
+          return acc;
+        }, {});
+      }
+    } catch (allocError) {
+      console.log('📊 Error calculating allocations, using zero:', allocError);
+      allocationsMap = {};
+    }
 
     console.log('📊 Calculated forecast allocations:', allocationsMap);
 
