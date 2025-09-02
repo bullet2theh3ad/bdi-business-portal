@@ -45,24 +45,14 @@ const navigationItems: NavItem[] = [
         icon: 'forecasts',
       },
       {
+        title: 'Purchase Orders',
+        href: '/cpfr/purchase-orders',
+        icon: 'orders',
+      },
+      {
         title: 'Shipments',
         href: '/cpfr/shipments',
         icon: 'shipping',
-      },
-      {
-        title: 'Supply Signals',
-        href: '/cpfr/supply-signals',
-        icon: 'supply',
-      },
-      {
-        title: 'Cycles',
-        href: '/cpfr/cycles',
-        icon: 'analytics',
-      },
-      {
-        title: 'Overview',
-        href: '/cpfr/overview',
-        icon: 'reports',
       },
     ],
   },
