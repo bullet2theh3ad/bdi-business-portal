@@ -88,6 +88,18 @@ export const organizations = pgTable('organizations', {
   businessAddress: text('business_address'),
   billingAddress: text('billing_address'),
   
+  // CPFR Contacts for signaling automation
+  cpfrContacts: jsonb('cpfr_contacts').default({
+    primary_contacts: [],
+    escalation_contacts: [],
+    notification_preferences: {
+      immediate_notifications: true,
+      escalation_hours: 24,
+      include_technical_team: true,
+      business_hours_only: false
+    }
+  }),
+  
   // Settings
   isActive: boolean('is_active').default(true),
   settings: jsonb('settings'), // JSON for org-specific settings
