@@ -102,7 +102,10 @@ function QuickActions() {
 function CPFRMetrics() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
-  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
+  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher, {
+    refreshInterval: 30000, // Refresh every 30 seconds
+    revalidateOnFocus: true, // Refresh when user focuses the tab
+  });
   const { data: invoices } = useSWR('/api/cpfr/invoices', fetcher);
   const { data: orgUsers } = useSWR('/api/organization/users', fetcher);
   
@@ -232,7 +235,11 @@ function CPFRMetrics() {
 }
 
 function ForecastMonthlyCharts() {
-  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
+  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher, {
+    refreshInterval: 30000, // Refresh every 30 seconds
+    revalidateOnFocus: true, // Refresh when user focuses the tab
+    revalidateOnReconnect: true // Refresh when internet reconnects
+  });
   
   // Generate 6 months of forecast data
   const generateMonthlyData = () => {
