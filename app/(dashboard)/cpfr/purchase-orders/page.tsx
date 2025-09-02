@@ -427,9 +427,51 @@ export default function PurchaseOrdersPage() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => {
+                      <Button variant="outline" size="sm" onClick={async () => {
                         setSelectedPurchaseOrder(po);
                         setEditUploadedDocs([]);
+                        
+                        // Fetch existing documents for this purchase order
+                        try {
+                          const docsResponse = await fetch(`/api/cpfr/purchase-orders/${po.id}/documents`);
+                          if (docsResponse.ok) {
+                            const docs = await docsResponse.json();
+                            setExistingDocs(docs);
+                          } else {
+                            console.error('Failed to fetch documents');
+                            setExistingDocs([]);
+                          }
+                        } catch (error) {
+                          console.error('Error fetching documents:', error);
+                          setExistingDocs([]);
+                        }
+
+                        // Fetch existing line items for this purchase order
+                        try {
+                          const lineItemsResponse = await fetch(`/api/cpfr/purchase-orders/${po.id}/line-items`);
+                          if (lineItemsResponse.ok) {
+                            const lineItems = await lineItemsResponse.json();
+                            const mappedItems = lineItems.map((item: any) => ({
+                              id: item.id,
+                              skuId: item.skuId,
+                              sku: item.skuCode,
+                              skuName: item.skuName,
+                              quantity: item.quantity,
+                              unitCost: parseFloat(item.unitCost),
+                              lineTotal: parseFloat(item.totalCost)
+                            }));
+                            
+                            console.log('Mapped line items for UI:', mappedItems);
+                            setEditLineItems(mappedItems);
+                          } else {
+                            const errorText = await lineItemsResponse.text();
+                            console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
+                            setEditLineItems([]);
+                          }
+                        } catch (error) {
+                          console.error('Error fetching line items:', error);
+                          setEditLineItems([]);
+                        }
                       }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
@@ -827,7 +869,26 @@ export default function PurchaseOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Purchase Order Modal would go here - similar to create but with pre-filled data */}
+      {/* Edit Purchase Order Modal */}
+      <Dialog open={!!selectedPurchaseOrder} onOpenChange={() => setSelectedPurchaseOrder(null)}>
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+          <DialogHeader>
+            <DialogTitle>Edit Purchase Order #{selectedPurchaseOrder?.purchaseOrderNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedPurchaseOrder && (
+            <div className="p-8">
+              <p className="text-center text-lg font-semibold text-blue-600 mb-4">
+                Edit functionality will be implemented in the next update.
+              </p>
+              <div className="flex justify-center">
+                <Button onClick={() => setSelectedPurchaseOrder(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
