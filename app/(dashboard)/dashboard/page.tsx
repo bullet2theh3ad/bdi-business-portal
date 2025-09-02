@@ -20,6 +20,16 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { User } from '@/lib/db/schema';
 import { PendingInvitations } from '@/components/PendingInvitations';
 
+// Extended user type with organization data
+interface UserWithOrganization extends User {
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  } | null;
+}
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function WelcomeCard() {
@@ -90,12 +100,21 @@ function QuickActions() {
 }
 
 function CPFRMetrics() {
+  const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
   const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
   const { data: invoices } = useSWR('/api/cpfr/invoices', fetcher);
+  const { data: orgUsers } = useSWR('/api/organization/users', fetcher);
   
-  // Calculate real metrics
-  const activeOrgsCount = organizations?.length || 0;
+  // Check if user is BDI or partner organization
+  const isBDIUser = user?.organization?.code === 'BDI' && user?.organization?.type === 'internal';
+  const userOrgCode = user?.organization?.code;
+  
+  // Calculate metrics based on user type
+  const firstMetric = isBDIUser 
+    ? { label: 'Active Organizations', value: organizations?.length || 0, description: 'Connected partner organizations' }
+    : { label: 'Active Users', value: orgUsers?.length || 0, description: `Users in ${userOrgCode} organization` };
+    
   const activeForecastsCount = forecasts?.length || 0;
   
   // Calculate shipment status/alarms based on proper CPFR logic
@@ -138,13 +157,17 @@ function CPFRMetrics() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       <Card className="border-blue-200 bg-blue-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-blue-800">Active Organizations</CardTitle>
-          <SemanticBDIIcon semantic="collaboration" size={16} className="text-blue-600" />
+          <CardTitle className="text-sm font-medium text-blue-800">{firstMetric.label}</CardTitle>
+          <SemanticBDIIcon 
+            semantic={isBDIUser ? "collaboration" : "users"} 
+            size={16} 
+            className="text-blue-600" 
+          />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-blue-900">{activeOrgsCount}</div>
+          <div className="text-3xl font-bold text-blue-900">{firstMetric.value}</div>
           <p className="text-xs text-blue-700">
-            Connected partner organizations
+            {firstMetric.description}
           </p>
         </CardContent>
       </Card>
