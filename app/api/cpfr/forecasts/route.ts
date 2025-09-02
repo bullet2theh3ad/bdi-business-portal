@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
           confidence,
           shipping_preference,
           forecast_type,
+          status,
           notes,
           created_by,
           created_at,
@@ -173,6 +174,7 @@ export async function POST(request: NextRequest) {
           confidence: body.confidence || 'medium',
           shipping_preference: body.shippingPreference || '',
           forecast_type: body.confidenceLevel || 'planning',
+          status: body.status || 'draft',
           notes: body.notes || '',
           moq_override: body.moqOverride || false,
           created_by: requestingUser.authId
