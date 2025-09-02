@@ -1630,13 +1630,13 @@ export default function SalesForecastsPage() {
                         </div>
                       </div>
                       
-                      {/* Three Signal Types */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Three Signal Types - Responsive Layout */}
+                      <div className="grid grid-cols-3 gap-2 md:gap-4">
                         {/* Sales */}
                         <div className="bg-blue-50 p-2 rounded border border-blue-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-blue-800">📊 Sales</span>
-                            <div className="flex items-center space-x-2">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <span className="text-xs md:text-sm font-medium text-blue-800">📊 Sales</span>
+                            <div className="flex items-center space-x-1 mt-1 md:mt-0">
                               <span className={`text-sm ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
                                 {getSignalIcon(forecast.salesSignal || 'unknown')}
                               </span>
@@ -1647,9 +1647,9 @@ export default function SalesForecastsPage() {
                         
                         {/* Factory */}
                         <div className="bg-orange-50 p-2 rounded border border-orange-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-orange-800">🏭 Factory</span>
-                            <div className="flex items-center space-x-2">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <span className="text-xs md:text-sm font-medium text-orange-800">🏭 Factory</span>
+                            <div className="flex items-center space-x-1 mt-1 md:mt-0">
                               <span className={`text-sm ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
                                 {getSignalIcon(forecast.factorySignal || 'unknown')}
                               </span>
@@ -1660,9 +1660,9 @@ export default function SalesForecastsPage() {
                         
                         {/* Shipping */}
                         <div className="bg-green-50 p-2 rounded border border-green-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-green-800">🚢 Shipping</span>
-                            <div className="flex items-center space-x-2">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <span className="text-xs md:text-sm font-medium text-green-800">🚢 Shipping</span>
+                            <div className="flex items-center space-x-1 mt-1 md:mt-0">
                               <span className={`text-sm ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
                                 {getSignalIcon(forecast.shippingSignal || 'unknown')}
                               </span>
