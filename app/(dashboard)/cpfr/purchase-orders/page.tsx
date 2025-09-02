@@ -876,16 +876,387 @@ export default function PurchaseOrdersPage() {
             <DialogTitle>Edit Purchase Order #{selectedPurchaseOrder?.purchaseOrderNumber}</DialogTitle>
           </DialogHeader>
           {selectedPurchaseOrder && (
-            <div className="p-8">
-              <p className="text-center text-lg font-semibold text-blue-600 mb-4">
-                Edit functionality will be implemented in the next update.
-              </p>
-              <div className="flex justify-center">
-                <Button onClick={() => setSelectedPurchaseOrder(null)}>
-                  Close
+            <form className="space-y-12 p-8" onSubmit={async (e) => {
+              e.preventDefault();
+              
+              const formData = new FormData(e.currentTarget);
+              
+              try {
+                // Calculate new total from line items
+                const newTotal = editLineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+
+                const response = await fetch(`/api/cpfr/purchase-orders/${selectedPurchaseOrder.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    editSupplierName: formData.get('editSupplierName'),
+                    editStatus: formData.get('editStatus'),
+                    editTerms: formData.get('editTerms'),
+                    editIncoterms: formData.get('editIncoterms'),
+                    editIncotermsLocation: formData.get('editIncotermsLocation'),
+                    editTotalValue: newTotal,
+                    editNotes: formData.get('editNotes'),
+                  }),
+                });
+
+                if (response.ok) {
+                  // Update line items
+                  const lineItemsResponse = await fetch(`/api/cpfr/purchase-orders/${selectedPurchaseOrder.id}/line-items`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      lineItems: editLineItems
+                    }),
+                  });
+
+                  if (lineItemsResponse.ok) {
+                    console.log('✅ Line items updated successfully');
+                  } else {
+                    console.error('Failed to update line items');
+                  }
+
+                  mutatePurchaseOrders();
+                  setSelectedPurchaseOrder(null);
+                  setEditLineItems([]);
+                  setEditUploadedDocs([]);
+                } else {
+                  const errorData = await response.json();
+                  alert(`Failed to update purchase order: ${errorData.error || 'Unknown error'}`);
+                }
+              } catch (error) {
+                console.error('Error updating purchase order:', error);
+                alert('Failed to update purchase order');
+              }
+            }}>
+              
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <Label htmlFor="editSupplierName">Supplier Name</Label>
+                  <Input
+                    id="editSupplierName"
+                    name="editSupplierName"
+                    defaultValue={selectedPurchaseOrder.supplierName || ''}
+                    placeholder="Supplier name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editStatus">Status</Label>
+                  <select
+                    id="editStatus"
+                    name="editStatus"
+                    defaultValue={selectedPurchaseOrder.status || 'draft'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="editTerms">Payment Terms</Label>
+                  <Input
+                    id="editTerms"
+                    name="editTerms"
+                    defaultValue={selectedPurchaseOrder.terms || ''}
+                    placeholder="NET30"
+                  />
+                </div>
+              </div>
+
+              {/* Line Items Section */}
+              <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold text-blue-800 flex items-center">
+                    <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
+                    Line Items
+                  </h4>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const newItem = {
+                        id: Date.now().toString(),
+                        skuId: '',
+                        sku: '',
+                        skuName: '',
+                        quantity: 1,
+                        unitCost: 0,
+                        lineTotal: 0
+                      };
+                      setEditLineItems([...editLineItems, newItem]);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                  >
+                    <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                {editLineItems.length === 0 ? (
+                  <div className="text-center py-8">
+                    <SemanticBDIIcon semantic="inventory" size={32} className="mx-auto mb-2 text-blue-400" />
+                    <p className="text-blue-600 text-sm">No line items. Click "Add Item" to start.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {editLineItems.map((item, index) => (
+                      <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                          <div>
+                            <Label className="text-xs">SKU *</Label>
+                            <select
+                              value={item.skuId}
+                              onChange={(e) => {
+                                const updatedItems = [...editLineItems];
+                                const selectedSku = skus?.find(sku => sku.id === e.target.value);
+                                if (selectedSku) {
+                                  updatedItems[index] = {
+                                    ...item,
+                                    skuId: selectedSku.id,
+                                    sku: selectedSku.sku,
+                                    skuName: selectedSku.name,
+                                    lineTotal: item.quantity * item.unitCost
+                                  };
+                                  setEditLineItems(updatedItems);
+                                }
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              required
+                            >
+                              <option value="">Select SKU</option>
+                              {skus?.map((sku) => (
+                                <option key={sku.id} value={sku.id}>
+                                  {sku.sku} - {sku.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Quantity *</Label>
+                            <Input
+                              type="number"
+                              value={item.quantity === 0 ? '' : item.quantity}
+                              onChange={(e) => {
+                                const updatedItems = [...editLineItems];
+                                const newQuantity = parseInt(e.target.value) || 0;
+                                updatedItems[index] = {
+                                  ...item,
+                                  quantity: newQuantity,
+                                  lineTotal: newQuantity * item.unitCost
+                                };
+                                setEditLineItems(updatedItems);
+                              }}
+                              min="1"
+                              placeholder="0"
+                              className="text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Unit Cost *</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={item.unitCost === 0 ? '' : item.unitCost}
+                              onChange={(e) => {
+                                const updatedItems = [...editLineItems];
+                                const newUnitCost = parseFloat(e.target.value) || 0;
+                                updatedItems[index] = {
+                                  ...item,
+                                  unitCost: newUnitCost,
+                                  lineTotal: item.quantity * newUnitCost
+                                };
+                                setEditLineItems(updatedItems);
+                              }}
+                              min="0"
+                              className="text-sm"
+                              placeholder="0.00"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Line Total</Label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
+                              ${item.lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setEditLineItems(editLineItems.filter((_, i) => i !== index));
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Updated Total Value Display */}
+                    <div className="bg-blue-100 p-4 rounded border border-blue-300">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-blue-800">Updated Purchase Order Total:</span>
+                        <span className="font-bold text-2xl text-blue-900">
+                          ${editLineItems.reduce((sum, item) => sum + item.lineTotal, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Document Management Section */}
+              <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-4 flex items-center">
+                  <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
+                  Documents & Attachments
+                </h4>
+                
+                {/* Existing Documents */}
+                {existingDocs.length > 0 && (
+                  <div className="mb-4">
+                    <h5 className="font-medium text-green-800 mb-2">Existing Documents:</h5>
+                    <div className="space-y-2">
+                      {existingDocs.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between bg-white p-3 rounded border border-green-200">
+                          <div className="flex items-center space-x-2">
+                            <SemanticBDIIcon semantic="upload" size={14} className="text-green-600" />
+                            <span className="text-sm font-medium text-green-800">{doc.fileName}</span>
+                            <span className="text-xs text-green-600">
+                              ({new Date(doc.uploadedAt).toLocaleDateString()})
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                            >
+                              <SemanticBDIIcon semantic="download" size={12} className="mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/cpfr/purchase-orders/${selectedPurchaseOrder.id}/documents?docId=${doc.id}`, {
+                                    method: 'DELETE',
+                                  });
+                                  if (response.ok) {
+                                    setExistingDocs(existingDocs.filter(d => d.id !== doc.id));
+                                  } else {
+                                    alert('Failed to delete document');
+                                  }
+                                } catch (error) {
+                                  console.error('Error deleting document:', error);
+                                  alert('Failed to delete document');
+                                }
+                              }}
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload New Documents */}
+                <div className="border-2 border-dashed border-green-300 rounded-lg p-6 bg-white">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const newFiles = Array.from(e.target.files);
+                        setEditUploadedDocs([...editUploadedDocs, ...newFiles]);
+                      }
+                    }}
+                    className="hidden"
+                    id="edit-file-upload"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                  />
+                  <label htmlFor="edit-file-upload" className="cursor-pointer">
+                    <div className="text-center">
+                      <SemanticBDIIcon semantic="upload" size={32} className="mx-auto mb-2 text-green-400" />
+                      <p className="text-green-700 font-medium">Click to upload additional documents</p>
+                      <p className="text-sm text-green-600">PDF, DOC, XLS, Images supported</p>
+                    </div>
+                  </label>
+                  
+                  {editUploadedDocs.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h5 className="font-medium text-green-800">New Files to Upload:</h5>
+                      {editUploadedDocs.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-green-100 p-3 rounded border border-green-200">
+                          <div className="flex items-center space-x-2">
+                            <SemanticBDIIcon semantic="upload" size={14} className="text-green-600" />
+                            <span className="text-sm font-medium text-green-800">{file.name}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditUploadedDocs(editUploadedDocs.filter((_, i) => i !== index));
+                            }}
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <Label htmlFor="editNotes">Notes & Special Instructions</Label>
+                <textarea
+                  id="editNotes"
+                  name="editNotes"
+                  rows={3}
+                  defaultValue={selectedPurchaseOrder.notes || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                  placeholder="Any special instructions, delivery notes, or additional information"
+                />
+              </div>
+
+              <div className="bg-blue-100 p-4 rounded">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-blue-800">Total Value:</span>
+                  <span className="font-bold text-2xl text-blue-900">${Number(selectedPurchaseOrder.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setSelectedPurchaseOrder(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                  Update Purchase Order
                 </Button>
               </div>
-            </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
