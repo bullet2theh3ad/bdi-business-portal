@@ -1207,8 +1207,8 @@ export default function SalesForecastsPage() {
                     <div className="p-3 bg-white">
                       {/* Week headers */}
                       <div className="grid grid-cols-7 gap-1 mb-2">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-                          <div key={day} className="text-center font-bold text-xs text-gray-600 py-1">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                          <div key={`day-${index}`} className="text-center font-bold text-xs text-gray-600 py-1">
                             {day}
                           </div>
                         ))}
