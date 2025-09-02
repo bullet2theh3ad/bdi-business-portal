@@ -288,8 +288,9 @@ export async function POST(request: NextRequest) {
       console.log('✅ Forecast created in database:', newForecast);
       
       // 🚀 TRIGGER CPFR EMAIL NOTIFICATIONS
+      // ⚠️ ONLY trigger emails when status is "Submitted" (not "Draft")
       if (body.status === 'submitted') {
-        console.log('📧 Triggering CPFR email notification for submitted forecast');
+        console.log('📧 Triggering CPFR email notification for SUBMITTED forecast (Draft forecasts do not trigger emails)');
         
         try {
           // Get MFG code and invoice data from related invoice
@@ -423,8 +424,9 @@ export async function PUT(request: NextRequest) {
       let emailTriggered = false;
       
       // Sales signal change (BDI → Factory)
+      // ⚠️ ONLY trigger emails when sales signal changes to "submitted" (not for Draft status)
       if (body.salesSignal === 'submitted') {
-        console.log('📧 Sales signal changed to submitted - triggering CPFR email notification');
+        console.log('📧 Sales signal changed to SUBMITTED - triggering CPFR email notification (Draft signals do not trigger emails)');
         
         try {
           // Get SKU data for email

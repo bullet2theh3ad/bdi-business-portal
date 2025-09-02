@@ -251,12 +251,22 @@ function ForecastMonthlyCharts() {
         return weekDate.getMonth() === monthDate.getMonth() && weekDate.getFullYear() === monthDate.getFullYear();
       }) || [];
       
-      const totalQuantity = monthForecasts.reduce((sum: number, f: any) => sum + (f.quantity || 0), 0);
+      // Separate Draft vs Submitted forecasts
+      const draftForecasts = monthForecasts.filter((f: any) => f.status === 'draft');
+      const submittedForecasts = monthForecasts.filter((f: any) => f.status === 'submitted');
+      
+      const draftQuantity = draftForecasts.reduce((sum: number, f: any) => sum + (f.quantity || 0), 0);
+      const submittedQuantity = submittedForecasts.reduce((sum: number, f: any) => sum + (f.quantity || 0), 0);
+      const totalQuantity = draftQuantity + submittedQuantity;
       
       months.push({
         month: monthName,
         forecasts: monthForecasts.length,
+        draftForecasts: draftForecasts.length,
+        submittedForecasts: submittedForecasts.length,
         quantity: totalQuantity,
+        draftQuantity,
+        submittedQuantity,
         status: monthForecasts.length > 0 ? 'active' : 'empty'
       });
     }
@@ -284,19 +294,35 @@ function ForecastMonthlyCharts() {
                 {month.month}
               </div>
               <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    month.status === 'active' 
-                      ? 'bg-gradient-to-r from-blue-400 to-blue-600' 
-                      : 'bg-gray-300'
-                  }`}
-                  style={{
-                    width: `${month.quantity > 0 ? Math.max(10, (month.quantity / maxQuantity) * 100) : 0}%`
-                  }}
-                />
+                {/* Submitted Forecasts Bar (Blue) */}
+                {month.submittedQuantity > 0 && (
+                  <div 
+                    className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-500"
+                    style={{
+                      width: `${Math.max(10, (month.submittedQuantity / maxQuantity) * 100)}%`
+                    }}
+                  />
+                )}
+                
+                {/* Draft Forecasts Bar (Orange) - Positioned after submitted */}
+                {month.draftQuantity > 0 && (
+                  <div 
+                    className="h-full rounded-full bg-gradient-to-r from-orange-300 to-orange-500 transition-all duration-500 absolute top-0"
+                    style={{
+                      left: `${month.submittedQuantity > 0 ? Math.max(10, (month.submittedQuantity / maxQuantity) * 100) : 0}%`,
+                      width: `${Math.max(10, (month.draftQuantity / maxQuantity) * 100)}%`
+                    }}
+                  />
+                )}
+                
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-xs font-medium text-gray-700">
                     {month.forecasts} forecasts • {month.quantity.toLocaleString()} units
+                    {month.draftQuantity > 0 && month.submittedQuantity > 0 && (
+                      <span className="ml-1 text-gray-500">
+                        ({month.submittedQuantity.toLocaleString()} submitted, {month.draftQuantity.toLocaleString()} draft)
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -319,15 +345,19 @@ function ForecastMonthlyCharts() {
           <div className="space-y-1 text-xs text-gray-600">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded"></div>
-              <span><strong>Bar Length</strong> = Total forecast quantity for the month</span>
+              <span><strong>Blue</strong> = Submitted forecasts (triggers emails)</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-2 bg-gradient-to-r from-orange-300 to-orange-500 rounded"></div>
+              <span><strong>Orange</strong> = Draft forecasts (no emails sent)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-2 bg-gray-300 rounded"></div>
               <span><strong>Gray</strong> = No forecasts planned</span>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="w-4 text-center">📊</span>
-              <span><strong>Active</strong> = Forecasts exist for this month</span>
+              <span className="w-4 text-center">📏</span>
+              <span><strong>Bar Length</strong> = Total forecast quantity</span>
             </div>
           </div>
         </div>
