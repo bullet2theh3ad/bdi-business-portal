@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           notes,
           created_by,
           created_at,
-          product_skus!inner (
+          product_skus (
             id,
             sku,
             name
@@ -166,6 +166,8 @@ export async function GET(request: NextRequest) {
         const allowedSkuIds = partnerSkuIds.map(item => item.skuId);
         
         console.log(`🔍 Found ${allowedSkuIds.length} SKU IDs for ${userOrgCode}:`, allowedSkuIds);
+        console.log(`📊 All forecasts count: ${allForecasts.length}`);
+        console.log(`📊 All forecasts SKU IDs:`, allForecasts.map(f => f.skuId));
         
         // Filter forecasts to only show those for partner's SKUs
         filteredForecasts = allForecasts.filter(forecast => 
@@ -174,9 +176,12 @@ export async function GET(request: NextRequest) {
         
         console.log(`🔒 Partner ${userOrgCode} can see ${filteredForecasts.length} of ${allForecasts.length} forecasts`);
         
-        // If no forecasts found, log debug info
+        // Enhanced debug info
         if (filteredForecasts.length === 0) {
-          console.log(`⚠️ No forecasts found for ${userOrgCode}. Check that invoices have customerName = '${userOrgCode}'`);
+          console.log(`⚠️ DEBUG INFO for ${userOrgCode}:`);
+          console.log(`   - Allowed SKU IDs: ${allowedSkuIds.join(', ')}`);
+          console.log(`   - Forecast SKU IDs: ${allForecasts.map(f => f.skuId).join(', ')}`);
+          console.log(`   - Invoices with customerName = '${userOrgCode}': ${allowedSkuIds.length > 0 ? 'YES' : 'NO'}`);
         }
       } else {
         console.log(`🔓 BDI user can see all ${allForecasts.length} forecasts`);
