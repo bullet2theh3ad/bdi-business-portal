@@ -75,6 +75,13 @@ const CPFR_TEMPLATES = {
                 <span>${data.shippingMethod}</span>
               </div>
               
+              ${data.invoiceNumber ? `
+              <div class="status-row">
+                <strong>Invoice Reference:</strong>
+                <span><strong>${data.invoiceNumber}</strong></span>
+              </div>
+              ` : ''}
+              
               ${data.notes ? `
               <div class="status-row">
                 <strong>Special Notes:</strong>
@@ -232,6 +239,7 @@ export interface CPFRNotificationData {
   notes?: string;
   portalLink: string;
   originalSentTime?: string;
+  invoiceNumber?: string;
 }
 
 // Main CPFR Notification Function

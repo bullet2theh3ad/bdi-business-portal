@@ -184,7 +184,11 @@ export async function POST(request: NextRequest) {
           status: body.status || 'draft',
           notes: body.notes || '',
           moq_override: body.moqOverride || false,
-          created_by: requestingUser.authId
+          created_by: requestingUser.authId,
+          // Set sales signal based on status
+          sales_signal: body.status === 'submitted' ? 'submitted' : 'unknown',
+          factory_signal: 'unknown',
+          shipping_signal: 'unknown'
         })
         .select()
         .single();
@@ -201,31 +205,32 @@ export async function POST(request: NextRequest) {
         console.log('📧 Triggering CPFR email notification for submitted forecast');
         
         try {
-          // Get MFG code from related invoice
-          const mfgCode = await getMfgCodeFromSku(body.skuId);
+          // Get MFG code and invoice data from related invoice
+          const invoiceData = await getInvoiceDataFromSku(body.skuId);
           
-          if (mfgCode) {
+          if (invoiceData) {
             // Generate portal link for factory response
             const portalLink = generateCPFRPortalLink(
               newForecast.id, 
-              mfgCode, 
+              invoiceData.mfgCode, 
               'factory_response'
             );
             
-            // Get forecast email data
+            // Get forecast email data with real invoice information
             const emailData: CPFRNotificationData = {
               forecastId: newForecast.id,
-              mfgCode: mfgCode,
+              mfgCode: invoiceData.mfgCode,
               sku: sku.sku,
               skuName: sku.name,
               quantity: parseInt(body.quantity),
-              unitCost: 0, // We'll get this from invoice
-              totalValue: 0, // We'll calculate this
+              unitCost: invoiceData.unitCost,
+              totalValue: invoiceData.unitCost * parseInt(body.quantity),
               deliveryWeek: body.deliveryWeek,
               deliveryDateRange: getWeekDateRange(body.deliveryWeek),
               shippingMethod: body.shippingPreference || 'TBD',
               notes: body.notes,
-              portalLink: portalLink
+              portalLink: portalLink,
+              invoiceNumber: invoiceData.invoiceNumber
             };
             
             // Send CPFR notification
@@ -235,12 +240,12 @@ export async function POST(request: NextRequest) {
             await logCPFRNotification(
               'FACTORY_RESPONSE_NEEDED',
               newForecast.id,
-              mfgCode,
+              invoiceData.mfgCode,
               ['TC1 CPFR Contacts'], // Will be detailed in sendCPFRNotification
               emailSent
             );
             
-            console.log(`📧 CPFR email notification ${emailSent ? 'sent' : 'failed'} for ${mfgCode}`);
+            console.log(`📧 CPFR email notification ${emailSent ? 'sent' : 'failed'} for ${invoiceData.mfgCode}`);
           } else {
             console.log('⚠️ No MFG code found for SKU - skipping email notification');
           }
@@ -429,15 +434,21 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// Helper function to get MFG code from SKU via invoices
-async function getMfgCodeFromSku(skuId: string): Promise<string | null> {
+// Helper function to get invoice data from SKU
+async function getInvoiceDataFromSku(skuId: string): Promise<{
+  mfgCode: string;
+  unitCost: number;
+  invoiceNumber: string;
+} | null> {
   try {
-    console.log(`🔍 Getting MFG code for SKU ID: ${skuId}`);
+    console.log(`🔍 Getting invoice data for SKU ID: ${skuId}`);
     
-    // Find invoice with this SKU to get the MFG (customerName)
+    // Find invoice with this SKU to get MFG, unit cost, and invoice number
     const [invoiceWithSku] = await db
       .select({
         customerName: invoices.customerName,
+        invoiceNumber: invoices.invoiceNumber,
+        unitCost: invoiceLineItems.unitCost,
         skuCode: productSkus.sku,
         skuName: productSkus.name
       })
@@ -448,14 +459,19 @@ async function getMfgCodeFromSku(skuId: string): Promise<string | null> {
       .limit(1);
     
     if (invoiceWithSku) {
-      console.log(`✅ Found MFG code: ${invoiceWithSku.customerName} for SKU: ${invoiceWithSku.skuCode}`);
-      return invoiceWithSku.customerName;
+      const unitCost = parseFloat(invoiceWithSku.unitCost) || 0;
+      console.log(`✅ Found invoice data: ${invoiceWithSku.customerName}, $${unitCost}, ${invoiceWithSku.invoiceNumber}`);
+      return {
+        mfgCode: invoiceWithSku.customerName,
+        unitCost: unitCost,
+        invoiceNumber: invoiceWithSku.invoiceNumber
+      };
     }
     
     console.log(`⚠️ No invoice found for SKU ID: ${skuId}`);
     return null;
   } catch (error) {
-    console.error('❌ Error getting MFG code from SKU:', error);
+    console.error('❌ Error getting invoice data from SKU:', error);
     return null;
   }
 }
