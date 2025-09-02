@@ -232,17 +232,15 @@ export default function PurchaseOrdersPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' },
-      sent: { color: 'bg-blue-100 text-blue-800', label: 'Sent' },
-      confirmed: { color: 'bg-green-100 text-green-800', label: 'Confirmed' },
-      shipped: { color: 'bg-purple-100 text-purple-800', label: 'Shipped' },
-      delivered: { color: 'bg-emerald-100 text-emerald-800', label: 'Delivered' }
+  const getStatusColor = (status: string) => {
+    const colors = {
+      'draft': 'bg-gray-100 text-gray-800',
+      'sent': 'bg-blue-100 text-blue-800',
+      'confirmed': 'bg-green-100 text-green-800',
+      'shipped': 'bg-purple-100 text-purple-800',
+      'delivered': 'bg-emerald-100 text-emerald-800',
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
-    return <Badge className={config.color}>{config.label}</Badge>;
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const calculateTotal = () => {
@@ -250,89 +248,128 @@ export default function PurchaseOrdersPage() {
   };
 
   return (
-    <section className="flex-1 p-4 lg:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-          <p className="text-gray-600">Manage procurement and supplier purchase orders</p>
+    <div className="flex-1 p-4 lg:p-8 space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <SemanticBDIIcon semantic="orders" size={32} />
+            <div>
+              <h1 className="text-3xl font-bold">Purchase Orders</h1>
+              <p className="text-muted-foreground">Manage procurement and supplier purchase orders</p>
+            </div>
+          </div>
+          <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
+            // Clear all form state for a fresh purchase order
+            setLineItems([]);
+            setUploadedDocs([]);
+            setCustomTerms('');
+            setShowCreateModal(true);
+          }}>
+            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+            Enter Purchase Order
+          </Button>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700">
-          <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
-          Create Purchase Order
-        </Button>
       </div>
 
       {/* Purchase Orders List */}
-      <div className="space-y-4">
-        {purchaseOrders && purchaseOrders.length > 0 ? (
-          purchaseOrders.map((po) => (
-            <Card key={po.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
-                      <h3 className="font-semibold text-lg">{po.purchaseOrderNumber}</h3>
-                      {getStatusBadge(po.status)}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <SemanticBDIIcon semantic="orders" size={20} />
+            <span>Purchase Orders ({purchaseOrders?.length || 0})</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!purchaseOrders || purchaseOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
+              <p className="text-muted-foreground mb-4">Enter your first Purchase Order to start managing supplier procurement</p>
+              <Button onClick={() => {
+                // Clear all form state for a fresh purchase order
+                setLineItems([]);
+                setUploadedDocs([]);
+                setCustomTerms('');
+                setShowCreateModal(true);
+              }}>
+                <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
+                Enter First Purchase Order
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {purchaseOrders.map((po) => (
+                <div key={po.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-semibold text-lg">Purchase Order #{po.purchaseOrderNumber}</h3>
+                        <Badge className={getStatusColor(po.status)}>
+                          {po.status}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                        <div>
+                          <span className="text-gray-500">Supplier:</span>
+                          <p className="font-medium">{po.supplierName}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">PO Date:</span>
+                          <p className="font-medium">{new Date(po.purchaseOrderDate).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Delivery Date:</span>
+                          <p className="font-medium">{new Date(po.requestedDeliveryDate).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Terms:</span>
+                          <p className="font-medium">{po.terms}</p>
+                        </div>
+                      </div>
+                      
+                      {/* SKU Summary */}
+                      <div className="bg-blue-50 p-3 rounded-md border border-blue-200 mb-3">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <SemanticBDIIcon semantic="inventory" size={14} className="text-blue-600" />
+                          <span className="text-blue-800 font-medium text-sm">Line Items Summary:</span>
+                        </div>
+                        <p className="text-sm text-blue-700 font-mono">
+                          {getSkuSummary(po.id)}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Total Value:</span>
+                          <span className="font-bold text-green-600">${Number(po.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                      {po.notes && (
+                        <p className="text-sm text-gray-600 mt-2">{po.notes}</p>
+                      )}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Supplier:</span>
-                        <div className="font-medium">{po.supplierName}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">PO Date:</span>
-                        <div className="font-medium">{new Date(po.purchaseOrderDate).toLocaleDateString()}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Total Value:</span>
-                        <div className="font-medium">${po.totalValue.toLocaleString()}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Delivery Date:</span>
-                        <div className="font-medium">{new Date(po.requestedDeliveryDate).toLocaleDateString()}</div>
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEditPurchaseOrder(po)}>
+                        <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeletePurchaseOrder(po.id)}
+                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                      >
+                        <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
+                        Delete
+                      </Button>
                     </div>
-                    <div className="mt-3">
-                      <span className="text-gray-500 text-sm">Items:</span>
-                      <div className="text-sm text-gray-700 mt-1">{getSkuSummary(po.id)}</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditPurchaseOrder(po)}
-                    >
-                      <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeletePurchaseOrder(po.id)}
-                      className="text-red-600 hover:text-red-700 hover:border-red-300"
-                    >
-                      <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
-                      Delete
-                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Purchase Orders</h3>
-              <p className="text-gray-600 mb-4">Create your first purchase order to get started with procurement management.</p>
-              <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700">
-                Create Purchase Order
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Create Purchase Order Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
@@ -665,6 +702,6 @@ export default function PurchaseOrdersPage() {
       </Dialog>
 
       {/* Edit Purchase Order Modal would go here - similar to create but with pre-filled data */}
-    </section>
+    </div>
   );
 }
