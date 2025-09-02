@@ -102,7 +102,7 @@ function QuickActions() {
 function CPFRMetrics() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
-  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher, {
+  const { data: forecasts, mutate: mutateForecasts } = useSWR('/api/cpfr/forecasts', fetcher, {
     refreshInterval: 30000, // Refresh every 30 seconds
     revalidateOnFocus: true, // Refresh when user focuses the tab
   });
@@ -235,7 +235,7 @@ function CPFRMetrics() {
 }
 
 function ForecastMonthlyCharts() {
-  const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher, {
+  const { data: forecasts, mutate } = useSWR('/api/cpfr/forecasts', fetcher, {
     refreshInterval: 30000, // Refresh every 30 seconds
     revalidateOnFocus: true, // Refresh when user focuses the tab
     revalidateOnReconnect: true // Refresh when internet reconnects
@@ -287,9 +287,18 @@ function ForecastMonthlyCharts() {
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Forecast Monthly Overview
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Forecast Monthly Overview
+          </div>
+          <button
+            onClick={() => mutate()}
+            className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
+            title="Refresh forecast data"
+          >
+            🔄 Refresh
+          </button>
         </CardTitle>
         <CardDescription>6-month CPFR forecast activity and quantities (bar length = total quantity)</CardDescription>
       </CardHeader>
