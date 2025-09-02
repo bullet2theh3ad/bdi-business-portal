@@ -1631,18 +1631,105 @@ export default function SalesForecastsPage() {
                         </div>
                       )}
 
-                      {/* Remaining Inventory After Forecast */}
+                      {/* Remaining Inventory After Forecast - Smart Color Logic */}
                       {forecastQuantity > 0 && getAvailableQuantity(selectedSku.id) > 0 && (
-                        <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                        <div className={`p-3 rounded-md border transition-all duration-300 ${(() => {
+                          const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                          const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                          
+                          // Smart color logic based on remaining inventory
+                          if (remaining < 2000) {
+                            return 'bg-red-50 border-red-200'; // 🔴 Critical low stock
+                          } else if (remaining < (totalFromInvoices * 0.5)) {
+                            return 'bg-amber-50 border-amber-200'; // 🟡 Below 50% warning
+                          } else {
+                            return 'bg-emerald-50 border-emerald-200'; // 🟢 Healthy stock
+                          }
+                        })()}`}>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-700">Remaining after forecast:</span>
-                            <span className={`font-medium ${
-                              getAvailableQuantity(selectedSku.id) - forecastQuantity >= 0 
-                                ? 'text-green-600' 
-                                : 'text-red-600'
-                            }`}>
-                              {(getAvailableQuantity(selectedSku.id) - forecastQuantity).toLocaleString()} units
+                            <span className={`font-medium ${(() => {
+                              const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                              const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                              
+                              if (remaining < 2000) {
+                                return 'text-red-700';
+                              } else if (remaining < (totalFromInvoices * 0.5)) {
+                                return 'text-amber-700';
+                              } else {
+                                return 'text-emerald-700';
+                              }
+                            })()}`}>
+                              {(() => {
+                                const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                                const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                                
+                                // Add status icons and labels based on inventory level
+                                if (remaining < 0) {
+                                  return '🚨 OVERSOLD - Exceeds Available:';
+                                } else if (remaining < 2000) {
+                                  return '⚠️ CRITICAL LOW - Remaining after forecast:';
+                                } else if (remaining < (totalFromInvoices * 0.5)) {
+                                  return '⚡ LOW STOCK - Remaining after forecast:';
+                                } else {
+                                  return '✅ HEALTHY STOCK - Remaining after forecast:';
+                                }
+                              })()}
                             </span>
+                            <span className={`font-bold text-lg px-2 py-1 rounded ${(() => {
+                              const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                              const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                              
+                              if (remaining < 0) {
+                                return 'text-red-900 bg-red-200';
+                              } else if (remaining < 2000) {
+                                return 'text-red-800 bg-red-100';
+                              } else if (remaining < (totalFromInvoices * 0.5)) {
+                                return 'text-amber-800 bg-amber-100';
+                              } else {
+                                return 'text-emerald-800 bg-emerald-100';
+                              }
+                            })()}`}>
+                              {Math.abs(getAvailableQuantity(selectedSku.id) - forecastQuantity).toLocaleString()} units
+                            </span>
+                          </div>
+                          
+                          {/* Stock Level Indicator Bar */}
+                          <div className="mt-2">
+                            <div className="flex items-center text-xs space-x-2">
+                              <span className="text-gray-600">Stock Level:</span>
+                              <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all duration-500 ${(() => {
+                                    const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                                    const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                                    const percentage = totalFromInvoices > 0 ? (remaining / totalFromInvoices) * 100 : 0;
+                                    
+                                    if (remaining < 2000) {
+                                      return 'bg-red-400';
+                                    } else if (remaining < (totalFromInvoices * 0.5)) {
+                                      return 'bg-amber-400';
+                                    } else {
+                                      return 'bg-emerald-400';
+                                    }
+                                  })()}`}
+                                  style={{
+                                    width: `${Math.min(100, Math.max(0, (() => {
+                                      const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                                      const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                                      return totalFromInvoices > 0 ? (remaining / totalFromInvoices) * 100 : 0;
+                                    })()))}%`
+                                  }}
+                                />
+                              </div>
+                              <span className="text-gray-600 min-w-[3rem] text-right">
+                                {(() => {
+                                  const totalFromInvoices = inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices || 0;
+                                  const remaining = getAvailableQuantity(selectedSku.id) - forecastQuantity;
+                                  const percentage = totalFromInvoices > 0 ? (remaining / totalFromInvoices) * 100 : 0;
+                                  return `${Math.round(percentage)}%`;
+                                })()}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
