@@ -66,6 +66,9 @@ export default function SalesForecastsPage() {
   const [selectedSku, setSelectedSku] = useState<ProductSku | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [calendarView, setCalendarView] = useState<'months' | 'weeks' | 'days'>('months');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>('');
   const [quantityError, setQuantityError] = useState<string>('');
@@ -182,6 +185,94 @@ export default function SalesForecastsPage() {
     } else {
       return 'bg-gray-50 border-gray-300';
     }
+  };
+
+  // Generate months for calendar view (6 months ahead)
+  const generateMonths = () => {
+    const months = [];
+    const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    
+    for (let i = 0; i < 6; i++) {
+      const monthDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Get forecast activity for this month
+      const monthForecasts = forecastsArray.filter(f => {
+        if (f.deliveryWeek.includes('W')) {
+          // ISO week format: 2025-W36
+          const year = parseInt(f.deliveryWeek.split('-')[0]);
+          const week = parseInt(f.deliveryWeek.split('W')[1]);
+          const weekDate = getDateFromISOWeek(year, week);
+          return weekDate.getFullYear() === monthDate.getFullYear() && 
+                 weekDate.getMonth() === monthDate.getMonth();
+        }
+        return false;
+      });
+
+      months.push({
+        date: monthDate,
+        name: monthName,
+        key: monthKey,
+        forecastCount: monthForecasts.length,
+        forecasts: monthForecasts
+      });
+    }
+    return months;
+  };
+
+  // Helper to convert ISO week to date
+  const getDateFromISOWeek = (year: number, week: number) => {
+    const date = new Date(year, 0, 1);
+    const dayOfWeek = date.getDay();
+    const daysToAdd = (week - 1) * 7 - dayOfWeek + 1;
+    date.setDate(date.getDate() + daysToAdd);
+    return date;
+  };
+
+  // Generate weeks for a specific month
+  const generateWeeksForMonth = (monthDate: Date) => {
+    const weeks = [];
+    const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    
+    // Find the first Monday of the month view
+    const firstDay = new Date(startOfMonth);
+    firstDay.setDate(firstDay.getDate() - firstDay.getDay() + 1);
+    
+    let currentWeek = new Date(firstDay);
+    
+    while (currentWeek <= endOfMonth || currentWeek.getMonth() === monthDate.getMonth()) {
+      const weekEnd = new Date(currentWeek);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      
+      const isoWeek = getISOWeek(currentWeek);
+      const weekForecasts = forecastsArray.filter(f => f.deliveryWeek === isoWeek);
+      
+      weeks.push({
+        start: new Date(currentWeek),
+        end: weekEnd,
+        isoWeek: isoWeek,
+        forecastCount: weekForecasts.length,
+        forecasts: weekForecasts
+      });
+      
+      currentWeek.setDate(currentWeek.getDate() + 7);
+      
+      // Prevent infinite loop
+      if (weeks.length > 6) break;
+    }
+    
+    return weeks;
+  };
+
+  // Helper to get ISO week
+  const getISOWeek = (date: Date) => {
+    const year = date.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    const weekNumber = Math.ceil(dayOfYear / 7);
+    return `${year}-W${String(weekNumber).padStart(2, '0')}`;
   };
 
   // Helper function to get effective lead time based on selected option
@@ -363,21 +454,53 @@ export default function SalesForecastsPage() {
         </div>
       </div>
 
-      {/* View Toggle */}
+      {/* View Toggle & Calendar Controls */}
       <div className="flex items-center justify-between">
-        <div className="flex border rounded-md">
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`px-4 py-2 text-sm transition-colors ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            📅 Calendar
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            📋 List
-          </button>
+        <div className="flex items-center space-x-4">
+          {/* View Mode Toggle */}
+          <div className="flex border rounded-md">
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-4 py-2 text-sm transition-colors ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              📅 Calendar
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              📋 List
+            </button>
+          </div>
+
+          {/* Calendar Zoom Controls */}
+          {viewMode === 'calendar' && (
+            <div className="flex border rounded-md">
+              <button
+                onClick={() => {
+                  setCalendarView('months');
+                  setSelectedMonth(null);
+                }}
+                className={`px-3 py-2 text-xs transition-colors ${calendarView === 'months' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                🗓️ Months
+              </button>
+              <button
+                onClick={() => setCalendarView('weeks')}
+                className={`px-3 py-2 text-xs transition-colors ${calendarView === 'weeks' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
+                disabled={!selectedMonth}
+              >
+                📊 Weeks
+              </button>
+              <button
+                onClick={() => setCalendarView('days')}
+                className={`px-3 py-2 text-xs transition-colors ${calendarView === 'days' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
+                disabled={!selectedMonth}
+              >
+                📋 Days
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-6">
           <div className="text-sm text-gray-600">
@@ -402,93 +525,199 @@ export default function SalesForecastsPage() {
         </div>
       </div>
 
-      {/* Calendar View - Weekly */}
+      {/* CPFR Calendar View - Multi-level */}
       {viewMode === 'calendar' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {weeks.map((week) => (
-            <Card key={week.isoWeek} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">
-                  Week {week.weekNumber} - {week.year}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  <div className="font-medium">{week.dateRange}</div>
-                  <div className="text-gray-500 mt-1">
-                    {forecastsArray.filter(f => f.deliveryWeek === week.isoWeek).length} forecasts
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  variant="outline" 
-                  className="w-full text-xs"
+        <div>
+          {/* Calendar Navigation Header */}
+          <div className="flex items-center justify-between mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newDate = new Date(currentDate);
+                  newDate.setMonth(newDate.getMonth() - 1);
+                  setCurrentDate(newDate);
+                }}
+              >
+                ← Previous
+              </Button>
+              <h2 className="text-xl font-semibold text-blue-800">
+                {calendarView === 'months' && `${currentDate.getFullYear()} - CPFR Planning Calendar`}
+                {calendarView === 'weeks' && selectedMonth && selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {calendarView === 'days' && selectedMonth && selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newDate = new Date(currentDate);
+                  newDate.setMonth(newDate.getMonth() + 1);
+                  setCurrentDate(newDate);
+                }}
+              >
+                Next →
+              </Button>
+            </div>
+            <div className="text-sm text-blue-700">
+              {calendarView === 'months' ? '6-Month CPFR View' : 
+               calendarView === 'weeks' ? 'Weekly Detail View' : 
+               'Daily Detail View'}
+            </div>
+          </div>
+
+          {/* Months View - Landing Page */}
+          {calendarView === 'months' && (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+              {generateMonths().map((month) => (
+                <Card 
+                  key={month.key} 
+                  className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-blue-300"
                   onClick={() => {
-                    setSelectedDate(week.isoWeek);
-                    setShowCreateModal(true);
+                    setSelectedMonth(month.date);
+                    setCalendarView('weeks');
                   }}
                 >
-                  <SemanticBDIIcon semantic="plus" size={12} className="mr-1" />
-                  Add Forecast
-                </Button>
-                
-                {/* Show existing forecasts for this week - CPFR Supply Chain Signals */}
-                <div className="mt-3 space-y-2">
-                  {forecastsArray
-                    .filter(f => f.deliveryWeek === week.isoWeek)
-                    .slice(0, 3)
-                    .map(forecast => {
-                      return (
-                        <div 
-                          key={forecast.id} 
-                          className={`text-xs p-3 rounded-md border-2 transition-all hover:shadow-sm cursor-pointer ${getForecastStatusColor(forecast)}`}
-                          onClick={() => {
-                            setSelectedWeekForDetail(week.isoWeek);
-                            setShowDetailModal(true);
-                          }}
-                          title="Click for detailed CPFR signals"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-mono text-xs font-bold">{forecast.sku.sku}</div>
-                            <div className="text-xs font-medium">{forecast.quantity.toLocaleString()} units</div>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold text-center">
+                      {month.name}
+                    </CardTitle>
+                    <CardDescription className="text-center">
+                      <div className="text-sm font-medium text-blue-600">
+                        {month.forecastCount} forecast{month.forecastCount !== 1 ? 's' : ''}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Activity Dots Preview */}
+                    <div className="grid grid-cols-7 gap-1 mb-4">
+                      {/* Generate mini calendar with dots */}
+                      {Array.from({ length: 35 }, (_, i) => {
+                        const dayNumber = i - 6; // Approximate day positioning
+                        const hasActivity = month.forecasts.length > 0 && i % 7 === (month.forecasts.length % 7);
+                        
+                        return (
+                          <div
+                            key={i}
+                            className={`w-6 h-6 flex items-center justify-center text-xs rounded ${
+                              dayNumber > 0 && dayNumber <= 31 
+                                ? hasActivity 
+                                  ? 'bg-blue-100 text-blue-800 font-bold' 
+                                  : 'text-gray-400 hover:bg-gray-50'
+                                : ''
+                            }`}
+                          >
+                            {dayNumber > 0 && dayNumber <= 31 ? (
+                              <div className="relative">
+                                {dayNumber}
+                                {hasActivity && (
+                                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full"></div>
+                                )}
+                              </div>
+                            ) : ''}
                           </div>
-                          
-                          {/* Simplified CPFR Signals */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2 text-xs">
-                              <span className="text-gray-600">S:</span>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="text-center text-xs text-gray-600">
+                      Click to view weekly details →
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Weeks View - Month Detail */}
+          {calendarView === 'weeks' && selectedMonth && (
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCalendarView('months');
+                    setSelectedMonth(null);
+                  }}
+                >
+                  ← Back to Months
+                </Button>
+                <h3 className="text-lg font-semibold">
+                  {selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - Weekly View
+                </h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {generateWeeksForMonth(selectedMonth).map((week) => (
+                  <Card key={week.isoWeek} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-semibold">
+                        Week {week.isoWeek.split('W')[1]}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        <div className="font-medium">{week.start.toLocaleDateString()} - {week.end.toLocaleDateString()}</div>
+                        <div className="text-gray-500 mt-1">
+                          {week.forecastCount} forecast{week.forecastCount !== 1 ? 's' : ''}
+                        </div>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button 
+                        variant="outline" 
+                        className="w-full text-xs mb-3"
+                        onClick={() => {
+                          setSelectedDate(week.isoWeek);
+                          setShowCreateModal(true);
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="plus" size={12} className="mr-1" />
+                        Add Forecast
+                      </Button>
+                      
+                      {/* Week Forecasts with Signals */}
+                      <div className="space-y-2">
+                        {week.forecasts.slice(0, 2).map(forecast => (
+                          <div 
+                            key={forecast.id} 
+                            className={`p-2 rounded border cursor-pointer hover:shadow-sm ${getForecastStatusColor(forecast)}`}
+                            onClick={() => {
+                              setSelectedWeekForDetail(week.isoWeek);
+                              setShowDetailModal(true);
+                            }}
+                          >
+                            <div className="font-mono text-xs font-bold">{forecast.sku.sku}</div>
+                            <div className="text-xs">{forecast.quantity.toLocaleString()} units</div>
+                            <div className="flex items-center space-x-1 mt-1">
                               <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
                                 {getSignalIcon(forecast.salesSignal || 'unknown')}
                               </span>
-                              <span className="text-gray-600">F:</span>
                               <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
                                 {getSignalIcon(forecast.factorySignal || 'unknown')}
                               </span>
-                              <span className="text-gray-600">Sh:</span>
                               <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
                                 {getSignalIcon(forecast.shippingSignal || 'unknown')}
                               </span>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  
-                  {/* Show more indicator if there are additional forecasts */}
-                  {forecastsArray.filter(f => f.deliveryWeek === week.isoWeek).length > 3 && (
-                    <div 
-                      className="text-xs text-blue-600 text-center py-1 cursor-pointer hover:underline"
-                      onClick={() => {
-                        setSelectedWeekForDetail(week.isoWeek);
-                        setShowDetailModal(true);
-                      }}
-                    >
-                      +{forecastsArray.filter(f => f.deliveryWeek === week.isoWeek).length - 3} more (click for details)
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                        ))}
+                        
+                        {week.forecasts.length > 2 && (
+                          <div className="text-xs text-center text-blue-600 cursor-pointer hover:underline"
+                               onClick={() => {
+                                 setSelectedWeekForDetail(week.isoWeek);
+                                 setShowDetailModal(true);
+                               }}>
+                            +{week.forecasts.length - 2} more
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* List View */
