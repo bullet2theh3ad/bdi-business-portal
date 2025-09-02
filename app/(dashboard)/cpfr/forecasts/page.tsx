@@ -1109,7 +1109,7 @@ export default function SalesForecastsPage() {
                       </div>
                       <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Total Delivery Time</span>
-                        <p className="font-bold text-3xl text-indigo-600 mb-2">
+                        <p className="font-bold text-xl text-indigo-600 mb-2">
                           {(() => {
                             if (!selectedShipping) return 'Select shipping';
                             const leadTime = getEffectiveLeadTime();
@@ -1144,7 +1144,7 @@ export default function SalesForecastsPage() {
                           })()} days
                         </p>
                         <p className="text-xs text-gray-500">
-                          Lead time + shipping time
+                          {selectedShipping ? 'Lead time + shipping time' : 'Select shipping for calculation'}
                         </p>
                       </div>
                     </div>
