@@ -73,16 +73,26 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found availability data for ${availabilityQuery.length} SKUs`);
 
-    // TODO: Calculate already allocated quantities from existing forecasts
-    // For now, we'll just use total invoice quantities
-    // Future enhancement: Subtract existing forecast allocations
+    // Calculate already allocated quantities from existing forecasts
+    const allocationQuery = await db.execute(sql`
+      SELECT 
+        sku_id,
+        SUM(quantity) as allocated_quantity
+      FROM sales_forecasts
+      GROUP BY sku_id
+    `);
+
+    const allocationsMap = allocationQuery.rows.reduce((acc: any, row: any) => {
+      acc[row.sku_id] = parseInt(row.allocated_quantity) || 0;
+      return acc;
+    }, {});
+
+    console.log('📊 Calculated forecast allocations:', allocationsMap);
 
     // Transform to a more usable format with net available calculation
     const availabilityMap = availabilityQuery.reduce((acc, item) => {
-      // For now: Available = Total from invoices
-      // Future: Available = Total from invoices - Already allocated in forecasts
       const totalFromInvoices = item.totalQuantity;
-      const alreadyAllocated = 0; // TODO: Calculate from existing forecasts
+      const alreadyAllocated = allocationsMap[item.skuId] || 0;
       const netAvailable = totalFromInvoices - alreadyAllocated;
 
       acc[item.skuId] = {

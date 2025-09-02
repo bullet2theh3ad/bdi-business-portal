@@ -1417,8 +1417,11 @@ export default function SalesForecastsPage() {
                         <div className="text-xs text-blue-600 mt-1 space-y-1">
                           <div>Total from {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} invoice(s): {inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices?.toLocaleString() || '0'}</div>
                           {inventoryData?.availability?.[selectedSku.id]?.alreadyAllocated > 0 && (
-                            <div>Already allocated: -{inventoryData.availability[selectedSku.id].alreadyAllocated.toLocaleString()}</div>
+                            <div className="text-orange-600">Already allocated: -{inventoryData.availability[selectedSku.id].alreadyAllocated.toLocaleString()}</div>
                           )}
+                          <div className="font-medium text-green-600">
+                            Net Available: {getAvailableQuantity(selectedSku.id).toLocaleString()} units
+                          </div>
                         </div>
                       </div>
 
