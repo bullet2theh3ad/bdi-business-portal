@@ -416,7 +416,7 @@ export default function UserGuidePage() {
                 <div className="mt-4 p-4 bg-white rounded border border-blue-200">
                   <p className="text-sm text-gray-600">
                     <strong>Portal Version:</strong> 2.0 (CPFR Intelligence) • 
-                    <strong> Last Updated:</strong> December 2024 • 
+                    <strong> Last Updated:</strong> January 2, 2025 • 
                     <strong> Status:</strong> <span className="text-green-600">Production Ready</span>
                   </p>
                 </div>
