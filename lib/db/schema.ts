@@ -750,12 +750,60 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type NewInvoiceLineItem = typeof invoiceLineItems.$inferInsert;
 export type InvoiceDocument = typeof invoiceDocuments.$inferSelect;
 export type NewInvoiceDocument = typeof invoiceDocuments.$inferInsert;
+// Warehouses (shipping and logistics locations)
+export const warehouses = pgTable('warehouses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  warehouseCode: varchar('warehouse_code', { length: 50 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  
+  // Location Information
+  address: text('address').notNull(),
+  city: varchar('city', { length: 100 }).notNull(),
+  state: varchar('state', { length: 100 }),
+  country: varchar('country', { length: 100 }).notNull(),
+  postalCode: varchar('postal_code', { length: 20 }),
+  timezone: varchar('timezone', { length: 50 }).default('UTC'),
+  
+  // Shipping Capabilities
+  capabilities: jsonb('capabilities').notNull().default({
+    airFreight: false,
+    seaFreight: false,
+    truckLoading: false,
+    railAccess: false,
+    coldStorage: false,
+    hazmatHandling: false
+  }),
+  
+  // Operational Details
+  operatingHours: varchar('operating_hours', { length: 100 }),
+  contactName: varchar('contact_name', { length: 255 }),
+  contactEmail: varchar('contact_email', { length: 255 }),
+  contactPhone: varchar('contact_phone', { length: 50 }),
+  
+  // Physical Specifications
+  maxPalletHeightCm: integer('max_pallet_height_cm').default(180),
+  maxPalletWeightKg: integer('max_pallet_weight_kg').default(1000),
+  loadingDockCount: integer('loading_dock_count').default(1),
+  storageCapacitySqm: integer('storage_capacity_sqm').default(1000),
+  
+  // Status and Metadata
+  isActive: boolean('is_active').default(true),
+  notes: text('notes'),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  organizationId: uuid('organization_id').references(() => organizations.id),
+});
+
 export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
 export type NewPurchaseOrder = typeof purchaseOrders.$inferInsert;
 export type PurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferSelect;
 export type NewPurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferInsert;
 export type PurchaseOrderDocument = typeof purchaseOrderDocuments.$inferSelect;
 export type NewPurchaseOrderDocument = typeof purchaseOrderDocuments.$inferInsert;
+export type Warehouse = typeof warehouses.$inferSelect;
+export type NewWarehouse = typeof warehouses.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;
