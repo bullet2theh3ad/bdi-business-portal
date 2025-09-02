@@ -37,7 +37,7 @@ export async function GET(
 
     const purchaseOrderId = params.id;
 
-    // Fetch line items from database
+    // Fetch line items from database with SKU details
     const { data: lineItemsData, error: lineItemsError } = await supabase
       .from('purchase_order_line_items')
       .select(`
@@ -48,7 +48,12 @@ export async function GET(
         description,
         quantity,
         unit_cost,
-        total_cost
+        total_cost,
+        product_skus (
+          id,
+          sku,
+          name
+        )
       `)
       .eq('purchase_order_id', purchaseOrderId);
 
@@ -61,8 +66,8 @@ export async function GET(
     const transformedLineItems = (lineItemsData || []).map((row: any) => ({
       id: row.id,
       skuId: row.sku_id,
-      skuCode: row.sku_code,
-      skuName: row.sku_name,
+      skuCode: row.sku_code || row.product_skus?.sku || 'UNKNOWN',
+      skuName: row.sku_name || row.product_skus?.name || 'SKU data not found',
       description: row.description,
       quantity: row.quantity,
       unitCost: parseFloat(row.unit_cost || '0'),
@@ -128,7 +133,7 @@ export async function PUT(
       const lineItems = body.lineItems.map((item: any) => ({
         purchase_order_id: purchaseOrderId,
         sku_id: item.skuId || null,
-        sku_code: item.sku || null,
+        sku_code: item.sku || item.skuCode || null,
         sku_name: item.skuName || null,
         quantity: parseInt(item.quantity) || 0,
         unit_cost: parseFloat(item.unitCost) || 0,

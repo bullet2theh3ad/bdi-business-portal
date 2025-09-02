@@ -234,9 +234,11 @@ export async function POST(request: NextRequest) {
       const lineItems = lineItemsData.map((item: any) => ({
         purchase_order_id: newPurchaseOrder.id,
         sku_id: item.skuId || null,
+        sku_code: item.sku || null,
+        sku_name: item.skuName || null,
         quantity: parseInt(item.quantity) || 0,
         unit_cost: parseFloat(item.unitCost) || 0,
-        total_cost: parseFloat(item.totalCost) || 0,
+        total_cost: parseFloat(item.lineTotal) || 0,
       }));
 
       const { error: lineItemsError } = await supabase
