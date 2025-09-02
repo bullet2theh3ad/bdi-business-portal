@@ -41,7 +41,12 @@ interface SalesForecast {
   purchaseOrder?: PurchaseOrder;
   deliveryWeek: string; // ISO week format: 2025-W12
   quantity: number;
-  confidence: 'low' | 'medium' | 'high';
+  
+  // CPFR Supply Chain Signals
+  salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted'; // Sales team status
+  factorySignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted'; // Factory/ODM status  
+  shippingSignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted'; // Shipping/logistics status
+  
   shippingPreference: string; // AIR_EXPRESS, SEA_STANDARD, etc.
   notes?: string;
   createdBy: string;
@@ -71,7 +76,9 @@ export default function SalesForecastsPage() {
   const [customDate, setCustomDate] = useState<string>('');
   const [confidenceLevel, setConfidenceLevel] = useState<'part_of_po' | 'pre_po' | 'planning'>('planning');
   const [forecastQuantity, setForecastQuantity] = useState<number>(0);
-  const [odmStatus, setOdmStatus] = useState<'draft' | 'submitted' | 'confirmed' | 'rejected'>('draft');
+  const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'accepted'>('draft');
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedWeekForDetail, setSelectedWeekForDetail] = useState<string>('');
 
   // Helper function to get available quantity for a SKU
   const getAvailableQuantity = (skuId: string) => {
@@ -123,51 +130,57 @@ export default function SalesForecastsPage() {
     }
   };
 
-  // CPFR Color-coding system for ODM collaboration signals
-  const getCpfrStatusColor = (status: string) => {
+  // CPFR Supply Chain Signal Icons
+  const getSignalIcon = (status: 'unknown' | 'submitted' | 'awaiting' | 'rejected' | 'accepted') => {
     switch (status) {
-      case 'draft':
-        return 'bg-gray-100 border-gray-300 text-gray-700'; // Draft - not yet submitted
+      case 'unknown':
+        return '❓'; // Question mark for unknown status
       case 'submitted':
-        return 'bg-yellow-100 border-yellow-400 text-yellow-800'; // Submitted - waiting for ODM confirmation
-      case 'confirmed':
-        return 'bg-green-100 border-green-400 text-green-800'; // Confirmed - ODM accepted
+        return '⏳'; // Sand clock for submitted/awaiting status
+      case 'awaiting':
+        return '⏳'; // Sand clock for awaiting status
       case 'rejected':
-        return 'bg-red-100 border-red-400 text-red-800'; // Rejected - ODM declined
+        return '❌'; // X for rejected status
+      case 'accepted':
+        return '✅'; // Green check for accepted status
       default:
-        return 'bg-gray-100 border-gray-300 text-gray-700';
+        return '❓';
     }
   };
 
-  // Get CPFR signal icon for status
-  const getCpfrStatusIcon = (status: string) => {
+  // Get signal color for status
+  const getSignalColor = (status: 'unknown' | 'submitted' | 'awaiting' | 'rejected' | 'accepted') => {
     switch (status) {
-      case 'draft':
-        return '📝'; // Draft
+      case 'unknown':
+        return 'text-gray-500'; // Gray for unknown
       case 'submitted':
-        return '⏳'; // Waiting
-      case 'confirmed':
-        return '✅'; // Confirmed
+        return 'text-blue-500'; // Blue for submitted
+      case 'awaiting':
+        return 'text-yellow-500'; // Yellow for awaiting
       case 'rejected':
-        return '❌'; // Rejected
+        return 'text-red-500'; // Red for rejected
+      case 'accepted':
+        return 'text-green-500'; // Green for accepted
       default:
-        return '📝';
+        return 'text-gray-500';
     }
   };
 
-  // Get CPFR status message
-  const getCpfrStatusMessage = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return 'Draft - Not submitted to ODM';
-      case 'submitted':
-        return 'Submitted - Awaiting ODM confirmation';
-      case 'confirmed':
-        return 'Confirmed - ODM accepted forecast';
-      case 'rejected':
-        return 'Rejected - ODM declined forecast';
-      default:
-        return 'Unknown status';
+  // Get overall forecast status color for calendar boxes
+  const getForecastStatusColor = (forecast: any) => {
+    const sales = forecast.salesSignal || 'unknown';
+    const factory = forecast.factorySignal || 'unknown';
+    const shipping = forecast.shippingSignal || 'unknown';
+    
+    // Priority: Any rejected = red, all accepted = green, any awaiting = yellow, otherwise gray
+    if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
+      return 'bg-red-50 border-red-300';
+    } else if (sales === 'accepted' && factory === 'accepted' && shipping === 'accepted') {
+      return 'bg-green-50 border-green-300';
+    } else if (sales === 'awaiting' || factory === 'awaiting' || shipping === 'awaiting') {
+      return 'bg-yellow-50 border-yellow-300';
+    } else {
+      return 'bg-gray-50 border-gray-300';
     }
   };
 
@@ -230,7 +243,7 @@ export default function SalesForecastsPage() {
           shippingPreference: formData.get('shippingPreference'),
           moqOverride: moqOverride,
           notes: formData.get('notes'),
-          status: odmStatus,
+          status: salesForecastStatus,
         }),
       });
 
@@ -241,7 +254,7 @@ export default function SalesForecastsPage() {
         setMoqOverride(false);
         setQuantityError('');
         setForecastQuantity(0);
-        setOdmStatus('draft');
+        setSalesForecastStatus('draft');
       } else {
         const errorData = await response.json();
         alert(`Failed to create forecast: ${errorData.error || 'Unknown error'}`);
@@ -371,23 +384,18 @@ export default function SalesForecastsPage() {
             {forecastsArray.length} forecasts • {skusArray.length} SKUs available
           </div>
           
-          {/* CPFR Status Legend */}
-          <div className="flex items-center space-x-4 text-xs">
-            <span className="text-gray-500">CPFR Status:</span>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded bg-gray-200 border border-gray-400"></div>
-              <span>📝 Draft</span>
+          {/* CPFR Supply Chain Signals Legend */}
+          <div className="flex items-center space-x-6 text-xs">
+            <span className="text-gray-500">CPFR Signals:</span>
+            <div className="flex items-center space-x-3">
+              <span className="font-medium">S: Sales</span>
+              <span className="font-medium">F: Factory</span>
+              <span className="font-medium">Sh: Shipping</span>
             </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></div>
-              <span>⏳ Submitted</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded bg-green-200 border border-green-400"></div>
-              <span>✅ Confirmed</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded bg-red-200 border border-red-400"></div>
+            <div className="flex items-center space-x-4">
+              <span>❓ Unknown</span>
+              <span>⏳ Awaiting</span>
+              <span>✅ Accepted</span>
               <span>❌ Rejected</span>
             </div>
           </div>
@@ -423,26 +431,43 @@ export default function SalesForecastsPage() {
                   Add Forecast
                 </Button>
                 
-                {/* Show existing forecasts for this week - Color-coded by ODM status */}
+                {/* Show existing forecasts for this week - CPFR Supply Chain Signals */}
                 <div className="mt-3 space-y-2">
                   {forecastsArray
                     .filter(f => f.deliveryWeek === week.isoWeek)
                     .slice(0, 3)
                     .map(forecast => {
-                      const status = (forecast as any).status || 'draft';
                       return (
                         <div 
                           key={forecast.id} 
-                          className={`text-xs p-3 rounded-md border-2 transition-all hover:shadow-sm ${getCpfrStatusColor(status)}`}
-                          title={getCpfrStatusMessage(status)}
+                          className={`text-xs p-3 rounded-md border-2 transition-all hover:shadow-sm cursor-pointer ${getForecastStatusColor(forecast)}`}
+                          onClick={() => {
+                            setSelectedWeekForDetail(week.isoWeek);
+                            setShowDetailModal(true);
+                          }}
+                          title="Click for detailed CPFR signals"
                         >
-                          <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="font-mono text-xs font-bold">{forecast.sku.sku}</div>
-                            <span className="text-sm">{getCpfrStatusIcon(status)}</span>
+                            <div className="text-xs font-medium">{forecast.quantity.toLocaleString()} units</div>
                           </div>
-                          <div className="font-medium">{forecast.quantity.toLocaleString()} units</div>
-                          <div className="text-xs opacity-75 mt-1">
-                            {getCpfrStatusMessage(status).split(' - ')[0]}
+                          
+                          {/* Simplified CPFR Signals */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2 text-xs">
+                              <span className="text-gray-600">S:</span>
+                              <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
+                                {getSignalIcon(forecast.salesSignal || 'unknown')}
+                              </span>
+                              <span className="text-gray-600">F:</span>
+                              <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
+                                {getSignalIcon(forecast.factorySignal || 'unknown')}
+                              </span>
+                              <span className="text-gray-600">Sh:</span>
+                              <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
+                                {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       );
@@ -450,8 +475,14 @@ export default function SalesForecastsPage() {
                   
                   {/* Show more indicator if there are additional forecasts */}
                   {forecastsArray.filter(f => f.deliveryWeek === week.isoWeek).length > 3 && (
-                    <div className="text-xs text-gray-500 text-center py-1">
-                      +{forecastsArray.filter(f => f.deliveryWeek === week.isoWeek).length - 3} more
+                    <div 
+                      className="text-xs text-blue-600 text-center py-1 cursor-pointer hover:underline"
+                      onClick={() => {
+                        setSelectedWeekForDetail(week.isoWeek);
+                        setShowDetailModal(true);
+                      }}
+                    >
+                      +{forecastsArray.filter(f => f.deliveryWeek === week.isoWeek).length - 3} more (click for details)
                     </div>
                   )}
                 </div>
@@ -490,13 +521,20 @@ export default function SalesForecastsPage() {
                           <Badge variant="outline" className="font-mono text-xs">
                             {forecast.sku.sku}
                           </Badge>
-                          <Badge variant={
-                            forecast.confidence === 'high' ? 'default' : 
-                            forecast.confidence === 'medium' ? 'secondary' : 
-                            'outline'
-                          }>
-                            {forecast.confidence} confidence
-                          </Badge>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-600">S:</span>
+                            <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
+                              {getSignalIcon(forecast.salesSignal || 'unknown')}
+                            </span>
+                            <span className="text-xs text-gray-600">F:</span>
+                            <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
+                              {getSignalIcon(forecast.factorySignal || 'unknown')}
+                            </span>
+                            <span className="text-xs text-gray-600">Sh:</span>
+                            <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
+                              {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                            </span>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
@@ -1158,12 +1196,12 @@ export default function SalesForecastsPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="odmStatus">ODM Collaboration Status</Label>
+                  <Label htmlFor="salesForecastStatus">Sales Forecast Status</Label>
                   <select
-                    id="odmStatus"
-                    name="odmStatus"
-                    value={odmStatus}
-                    onChange={(e) => setOdmStatus(e.target.value as any)}
+                    id="salesForecastStatus"
+                    name="salesForecastStatus"
+                    value={salesForecastStatus}
+                    onChange={(e) => setSalesForecastStatus(e.target.value as any)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                   >
                     <option value="draft">📝 Draft - Not submitted</option>
@@ -1172,7 +1210,7 @@ export default function SalesForecastsPage() {
                     <option value="rejected">❌ Rejected - ODM declined</option>
                   </select>
                   <div className="mt-1 text-xs text-gray-600">
-                    CPFR collaboration status with supplier/ODM
+                    Sales team forecast submission status
                   </div>
                 </div>
                 <div>
@@ -1254,7 +1292,7 @@ export default function SalesForecastsPage() {
         setQuantityError('');
         setSelectedShipping('');
         setForecastQuantity(0);
-        setOdmStatus('draft');
+        setSalesForecastStatus('draft');
                   }}
                   disabled={isLoading}
                 >
@@ -1279,6 +1317,106 @@ export default function SalesForecastsPage() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Detailed CPFR Signals Modal */}
+      {showDetailModal && (
+        <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+          <DialogContent className="w-[90vw] max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <SemanticBDIIcon semantic="analytics" size={20} className="mr-2" />
+                CPFR Supply Chain Signals - Week {selectedWeekForDetail}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6 p-6">
+              {/* Week Summary */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-2">Week Summary</h3>
+                <div className="text-sm text-blue-700">
+                  {forecastsArray.filter(f => f.deliveryWeek === selectedWeekForDetail).length} forecasts for delivery week {selectedWeekForDetail}
+                </div>
+              </div>
+
+              {/* Detailed Forecast List with Full CPFR Signals */}
+              <div className="space-y-4">
+                {forecastsArray
+                  .filter(f => f.deliveryWeek === selectedWeekForDetail)
+                  .map(forecast => (
+                    <div key={forecast.id} className="border rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="font-mono font-bold text-lg">{forecast.sku.sku}</h4>
+                          <p className="text-gray-600">{forecast.sku.name}</p>
+                          <p className="text-sm font-medium">{forecast.quantity.toLocaleString()} units</p>
+                        </div>
+                      </div>
+                      
+                      {/* Three Signal Types */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Sales Signal */}
+                        <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="font-medium text-blue-800">📊 Sales Signal</span>
+                            <span className={`text-lg ${getSignalColor(forecast.salesSignal || 'unknown')}`}>
+                              {getSignalIcon(forecast.salesSignal || 'unknown')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-blue-700">
+                            Status: {forecast.salesSignal || 'Unknown'}
+                          </p>
+                        </div>
+                        
+                        {/* Factory Signal */}
+                        <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="font-medium text-orange-800">🏭 Factory Signal</span>
+                            <span className={`text-lg ${getSignalColor(forecast.factorySignal || 'unknown')}`}>
+                              {getSignalIcon(forecast.factorySignal || 'unknown')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-orange-700">
+                            Status: {forecast.factorySignal || 'Unknown'}
+                          </p>
+                        </div>
+                        
+                        {/* Shipping Signal */}
+                        <div className="bg-green-50 p-3 rounded border border-green-200">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="font-medium text-green-800">🚢 Shipping Signal</span>
+                            <span className={`text-lg ${getSignalColor(forecast.shippingSignal || 'unknown')}`}>
+                              {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-green-700">
+                            Status: {forecast.shippingSignal || 'Unknown'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Additional Details */}
+                      {forecast.notes && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded">
+                          <p className="text-sm text-gray-700">{forecast.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDetailModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
