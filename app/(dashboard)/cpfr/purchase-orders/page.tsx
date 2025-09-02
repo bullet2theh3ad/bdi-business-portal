@@ -206,10 +206,10 @@ export default function PurchaseOrdersPage() {
       const createFormData = new FormData();
       
       // Add purchase order data
-      createFormData.append('purchaseOrderNumber', formData.get('purchaseOrderNumber') as string);
+      createFormData.append('purchaseOrderNumber', formData.get('poNumber') as string);
       createFormData.append('supplierName', formData.get('supplierName') as string);
       createFormData.append('customSupplierName', formData.get('customSupplierName') as string);
-      createFormData.append('orderDate', formData.get('orderDate') as string);
+      createFormData.append('purchaseOrderDate', formData.get('orderDate') as string);
       createFormData.append('requestedDeliveryDate', formData.get('requestedDeliveryDate') as string);
       createFormData.append('status', formData.get('status') as string);
       createFormData.append('terms', formData.get('terms') as string);
@@ -458,86 +458,72 @@ export default function PurchaseOrdersPage() {
           <DialogHeader>
             <DialogTitle>Create Purchase Order</DialogTitle>
           </DialogHeader>
-          <form onSubmit={(e) => {
+          <form className="space-y-12 p-8" onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            handleCreatePurchaseOrder(formData);
+            handleCreatePurchaseOrder(new FormData(e.currentTarget));
           }}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
               <div>
-                <Label htmlFor="purchaseOrderNumber">Purchase Order Number *</Label>
+                <Label htmlFor="poNumber">Purchase Order Number *</Label>
                 <Input
-                  id="purchaseOrderNumber"
-                  name="purchaseOrderNumber"
+                  id="poNumber"
+                  name="poNumber"
                   placeholder="e.g., PO-2025-001"
                   required
                   className="mt-1"
                 />
-                <div className="mt-1 text-xs text-gray-600">
-                  Unique identifier for this purchase order
-                </div>
               </div>
-
               <div>
                 <Label htmlFor="supplierName">Supplier Organization *</Label>
-                {organizations ? (
-                  <select
-                    id="supplierName"
-                    name="supplierName"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
-                  >
-                    <option value="">Select Supplier Organization</option>
-                    {organizations.map((org: any) => (
-                      <option key={org.id} value={org.code}>
-                        {org.name} ({org.code})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input id="supplierName" name="supplierName" required className="mt-1" />
-                )}
-                <div className="mt-1 text-xs text-gray-600">
-                  Select the supplier/vendor organization (Factory) for CPFR signaling
+                <select
+                  id="supplierName"
+                  name="supplierName"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                >
+                  <option value="">Select Supplier Organization</option>
+                  {organizations?.map((org: any) => (
+                    <option key={org.id} value={org.code}>
+                      {org.code} - {org.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-xs text-gray-600 mt-1">
+                  Select the Supplier/Vendor organization (Factory) for CPFR signaling
                 </div>
               </div>
-
               <div>
-                <Label htmlFor="customSupplierName">Custom Supplier Name (Optional)</Label>
-                <Input 
-                  id="customSupplierName" 
-                  name="customSupplierName" 
-                  placeholder="Optional: Additional supplier information beyond organization code"
+                <Label htmlFor="customSupplierName">Custom Supplier Name</Label>
+                <Input
+                  id="customSupplierName"
+                  name="customSupplierName"
+                  placeholder="Optional: Additional supplier details"
                   className="mt-1"
                 />
-                <div className="mt-1 text-xs text-gray-600">
+                <div className="text-xs text-gray-600 mt-1">
                   Optional: Additional supplier information beyond organization code
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
               <div>
                 <Label htmlFor="orderDate">Purchase Order Date *</Label>
-                <Input 
-                  id="orderDate" 
-                  name="orderDate" 
-                  type="date" 
-                  required 
+                <Input
+                  id="orderDate"
+                  name="orderDate"
+                  type="date"
+                  required
                   className="mt-1"
                 />
-                <div className="mt-1 text-xs text-gray-600">
-                  Date when this purchase order was created
-                </div>
               </div>
-
               <div>
                 <Label htmlFor="requestedDeliveryDate">Requested Delivery Date *</Label>
-                <Input 
-                  id="requestedDeliveryDate" 
-                  name="requestedDeliveryDate" 
+                <Input
+                  id="requestedDeliveryDate"
+                  name="requestedDeliveryDate"
                   type="date"
-                  required 
+                  required
                   className="mt-1"
                 />
                 <div className="mt-1 text-xs text-gray-600">
@@ -547,6 +533,21 @@ export default function PurchaseOrdersPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+              <div>
+                <Label htmlFor="status">Status *</Label>
+                <select
+                  id="status"
+                  name="status"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
+                </select>
+              </div>
               <div>
                 <Label htmlFor="terms">Payment Terms *</Label>
                 {!customTerms ? (
