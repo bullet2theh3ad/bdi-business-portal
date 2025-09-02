@@ -535,12 +535,20 @@ export default function SalesForecastsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const newDate = new Date(currentDate);
-                  newDate.setMonth(newDate.getMonth() - 1);
-                  setCurrentDate(newDate);
+                  if (calendarView === 'months') {
+                    // Navigate months view
+                    const newDate = new Date(currentDate);
+                    newDate.setMonth(newDate.getMonth() - 6); // Move back 6 months for 6-month view
+                    setCurrentDate(newDate);
+                  } else if (calendarView === 'weeks' && selectedMonth) {
+                    // Navigate to previous month in weeks view
+                    const newMonth = new Date(selectedMonth);
+                    newMonth.setMonth(newMonth.getMonth() - 1);
+                    setSelectedMonth(newMonth);
+                  }
                 }}
               >
-                ← Previous
+                ← Previous {calendarView === 'months' ? '6 Months' : 'Month'}
               </Button>
               <h2 className="text-xl font-semibold text-blue-800">
                 {calendarView === 'months' && `${currentDate.getFullYear()} - CPFR Planning Calendar`}
@@ -551,12 +559,35 @@ export default function SalesForecastsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const newDate = new Date(currentDate);
-                  newDate.setMonth(newDate.getMonth() + 1);
-                  setCurrentDate(newDate);
+                  if (calendarView === 'months') {
+                    // Navigate months view
+                    const newDate = new Date(currentDate);
+                    newDate.setMonth(newDate.getMonth() + 6); // Move forward 6 months for 6-month view
+                    setCurrentDate(newDate);
+                  } else if (calendarView === 'weeks' && selectedMonth) {
+                    // Navigate to next month in weeks view
+                    const newMonth = new Date(selectedMonth);
+                    newMonth.setMonth(newMonth.getMonth() + 1);
+                    setSelectedMonth(newMonth);
+                  }
                 }}
               >
-                Next →
+                Next {calendarView === 'months' ? '6 Months' : 'Month'} →
+              </Button>
+              
+              {/* Today/Current Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCurrentDate(new Date());
+                  if (calendarView === 'weeks') {
+                    setSelectedMonth(new Date());
+                  }
+                }}
+                className="bg-blue-100 text-blue-700 hover:bg-blue-200"
+              >
+                📍 Today
               </Button>
             </div>
             <div className="text-sm text-blue-700">
