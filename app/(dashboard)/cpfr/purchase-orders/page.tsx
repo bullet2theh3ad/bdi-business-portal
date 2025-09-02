@@ -749,19 +749,22 @@ export default function PurchaseOrdersPage() {
                             required
                           />
                         </div>
-                        <div>
-                          <Label className="text-xs">Unit Cost *</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.unitCost === 0 ? '' : item.unitCost}
-                            onChange={(e) => updateLineItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                            min="0"
-                            className="text-sm"
-                            placeholder="0.00"
-                            required
-                          />
-                        </div>
+                                                  <div>
+                            <Label className="text-xs">Unit Cost *</Label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={item.unitCost === 0 ? '' : item.unitCost.toFixed(2)}
+                                onChange={(e) => updateLineItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
+                                min="0"
+                                className="text-sm pl-6 font-mono"
+                                placeholder="0.00"
+                                required
+                              />
+                            </div>
+                          </div>
                         <div>
                           <Label className="text-xs">Line Total</Label>
                           <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
@@ -1058,25 +1061,28 @@ export default function PurchaseOrdersPage() {
                           </div>
                           <div>
                             <Label className="text-xs">Unit Cost *</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={item.unitCost === 0 ? '' : item.unitCost}
-                              onChange={(e) => {
-                                const updatedItems = [...editLineItems];
-                                const newUnitCost = parseFloat(e.target.value) || 0;
-                                updatedItems[index] = {
-                                  ...item,
-                                  unitCost: newUnitCost,
-                                  lineTotal: item.quantity * newUnitCost
-                                };
-                                setEditLineItems(updatedItems);
-                              }}
-                              min="0"
-                              className="text-sm"
-                              placeholder="0.00"
-                              required
-                            />
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={item.unitCost === 0 ? '' : item.unitCost.toFixed(2)}
+                                onChange={(e) => {
+                                  const updatedItems = [...editLineItems];
+                                  const newUnitCost = parseFloat(e.target.value) || 0;
+                                  updatedItems[index] = {
+                                    ...item,
+                                    unitCost: newUnitCost,
+                                    lineTotal: item.quantity * newUnitCost
+                                  };
+                                  setEditLineItems(updatedItems);
+                                }}
+                                min="0"
+                                className="text-sm pl-6 font-mono"
+                                placeholder="0.00"
+                                required
+                              />
+                            </div>
                           </div>
                           <div>
                             <Label className="text-xs">Line Total</Label>
