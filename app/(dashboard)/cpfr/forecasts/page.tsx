@@ -503,10 +503,6 @@ export default function SalesForecastsPage() {
           )}
         </div>
         <div className="flex items-center space-x-6">
-          <div className="text-sm text-gray-600">
-            {forecastsArray.length} forecasts • {skusArray.length} SKUs available
-          </div>
-          
           {/* CPFR Supply Chain Signals Legend */}
           <div className="flex items-center space-x-6 text-xs">
             <span className="text-gray-500">CPFR Signals:</span>
