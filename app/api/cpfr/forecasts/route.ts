@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           notes,
           created_by,
           created_at,
-          product_skus (
+          product_skus!inner (
             id,
             sku,
             name
@@ -140,8 +140,12 @@ export async function GET(request: NextRequest) {
         notes: row.notes,
         createdBy: row.created_by,
         createdAt: row.created_at,
-        sku: row.product_skus
-      }));
+        sku: row.product_skus || {
+          id: row.sku_id,
+          sku: 'UNKNOWN',
+          name: 'SKU data not found'
+        }
+      })).filter(forecast => forecast.sku !== null); // Filter out any with null SKU data
 
       // Filter forecasts based on user organization
       let filteredForecasts = allForecasts;
