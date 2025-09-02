@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
-import { createClient } from '@supabase/supabase-js';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -39,12 +38,6 @@ interface PurchaseOrder {
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
-// Initialize Supabase client for file downloads
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function PurchaseOrdersPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
@@ -1209,21 +1202,22 @@ export default function PurchaseOrdersPage() {
                               size="sm"
                               onClick={async () => {
                                 try {
-                                  // Create download link for the file
-                                  const { data } = await supabase.storage
-                                    .from('organization-documents')
-                                    .createSignedUrl(doc.filePath, 3600); // 1 hour expiry
+                                  // Get download URL from API
+                                  const response = await fetch(`/api/cpfr/purchase-orders/${selectedPurchaseOrder.id}/documents/${doc.id}`);
                                   
-                                  if (data?.signedUrl) {
+                                  if (response.ok) {
+                                    const { downloadUrl, fileName } = await response.json();
+                                    
                                     // Create temporary download link
                                     const link = document.createElement('a');
-                                    link.href = data.signedUrl;
-                                    link.download = doc.fileName;
+                                    link.href = downloadUrl;
+                                    link.download = fileName;
                                     document.body.appendChild(link);
                                     link.click();
                                     document.body.removeChild(link);
                                   } else {
-                                    alert('Failed to generate download link');
+                                    const errorData = await response.json();
+                                    alert(`Failed to download file: ${errorData.error || 'Unknown error'}`);
                                   }
                                 } catch (error) {
                                   console.error('Error downloading file:', error);
