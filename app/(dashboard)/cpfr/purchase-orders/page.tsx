@@ -25,7 +25,7 @@ interface PurchaseOrder {
   purchaseOrderNumber: string;
   supplierName: string;
   purchaseOrderDate: string;
-  requestedDeliveryWeek: string;
+  requestedDeliveryDate: string;
   status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
   terms: string; // NET30, NET60, etc.
   incoterms: string; // FOB, CIF, DDP, etc.
@@ -169,12 +169,12 @@ export default function PurchaseOrdersPage() {
       createFormData.append('purchaseOrderNumber', formData.get('purchaseOrderNumber') as string);
       createFormData.append('supplierName', formData.get('supplierName') as string);
       createFormData.append('purchaseOrderDate', formData.get('purchaseOrderDate') as string);
-      createFormData.append('requestedDeliveryWeek', formData.get('requestedDeliveryWeek') as string);
+      createFormData.append('requestedDeliveryDate', formData.get('requestedDeliveryDate') as string);
       createFormData.append('status', formData.get('status') as string);
       createFormData.append('terms', formData.get('terms') as string);
       createFormData.append('incoterms', formData.get('incoterms') as string);
       createFormData.append('incotermsLocation', formData.get('incotermsLocation') as string);
-      createFormData.append('totalValue', formData.get('totalValue') as string);
+      createFormData.append('totalValue', calculateTotal().toString());
       createFormData.append('notes', formData.get('notes') as string);
       createFormData.append('lineItems', JSON.stringify(lineItems));
 
@@ -245,7 +245,9 @@ export default function PurchaseOrdersPage() {
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
-  const totalValue = lineItems.reduce((sum, item) => sum + item.totalCost, 0);
+  const calculateTotal = () => {
+    return lineItems.reduce((sum, item) => sum + item.totalCost, 0);
+  };
 
   return (
     <section className="flex-1 p-4 lg:p-8">
@@ -286,8 +288,8 @@ export default function PurchaseOrdersPage() {
                         <div className="font-medium">${po.totalValue.toLocaleString()}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Delivery Week:</span>
-                        <div className="font-medium">{po.requestedDeliveryWeek}</div>
+                        <span className="text-gray-500">Delivery Date:</span>
+                        <div className="font-medium">{new Date(po.requestedDeliveryDate).toLocaleDateString()}</div>
                       </div>
                     </div>
                     <div className="mt-3">
@@ -394,12 +396,13 @@ export default function PurchaseOrdersPage() {
 
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="requestedDeliveryWeek">Requested Delivery Week *</Label>
+                  <Label htmlFor="requestedDeliveryDate">Expected Delivery Date *</Label>
                   <Input 
-                    id="requestedDeliveryWeek" 
-                    name="requestedDeliveryWeek" 
-                    placeholder="2025-W12" 
+                    id="requestedDeliveryDate" 
+                    name="requestedDeliveryDate" 
+                    type="date"
                     required 
+                    className="w-full"
                   />
                 </div>
                 
@@ -421,35 +424,86 @@ export default function PurchaseOrdersPage() {
                 
                 <div>
                   <Label htmlFor="terms">Payment Terms *</Label>
-                  <select
-                    id="terms"
-                    name="terms"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="NET30">NET30</option>
-                    <option value="NET60">NET60</option>
-                    <option value="NET90">NET90</option>
-                    <option value="COD">Cash on Delivery</option>
-                    <option value="PREPAID">Prepaid</option>
-                    <option value="CUSTOM">Custom</option>
-                  </select>
+                  {!customTerms ? (
+                    <div>
+                      <select
+                        id="terms"
+                        name="terms"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                        onChange={(e) => {
+                          if (e.target.value === 'CUSTOM') {
+                            setCustomTerms('custom');
+                          }
+                        }}
+                      >
+                        <option value="">Select Terms</option>
+                        <option value="NET15">NET 15 - Payment due in 15 days</option>
+                        <option value="NET30">NET 30 - Payment due in 30 days</option>
+                        <option value="NET60">NET 60 - Payment due in 60 days</option>
+                        <option value="NET90">NET 90 - Payment due in 90 days</option>
+                        <option value="COD">COD - Cash on Delivery</option>
+                        <option value="PREPAID">Prepaid - Payment in advance</option>
+                        <option value="CUSTOM">📝 Enter Custom Terms</option>
+                      </select>
+                      <div className="mt-1 text-xs text-gray-600">
+                        Standard payment terms or select custom
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="terms"
+                          name="terms"
+                          placeholder="e.g., NET45, 2/10 Net 30, Letter of Credit"
+                          required
+                          className="flex-1 mt-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setCustomTerms('')}
+                          className="mt-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        Enter your custom payment terms
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <Label htmlFor="incoterms">Incoterms *</Label>
+                  <Label htmlFor="incoterms">IncoTerms 2020 *</Label>
                   <select
                     id="incoterms"
                     name="incoterms"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                   >
-                    <option value="FOB">FOB (Free on Board)</option>
-                    <option value="CIF">CIF (Cost, Insurance, and Freight)</option>
-                    <option value="DDP">DDP (Delivered Duty Paid)</option>
-                    <option value="EXW">EXW (Ex Works)</option>
-                    <option value="FCA">FCA (Free Carrier)</option>
+                    <option value="">Select IncoTerms</option>
+                    <optgroup label="🌍 Any Mode of Transport">
+                      <option value="EXW">EXW - Ex Works (buyer arranges all transport)</option>
+                      <option value="FCA">FCA - Free Carrier (seller to carrier)</option>
+                      <option value="CPT">CPT - Carriage Paid To (seller pays freight)</option>
+                      <option value="CIP">CIP - Carriage & Insurance Paid To (seller pays freight + insurance)</option>
+                      <option value="DAP">DAP - Delivered at Place (seller delivers, buyer handles duties)</option>
+                      <option value="DPU">DPU - Delivered at Place Unloaded (seller delivers & unloads)</option>
+                      <option value="DDP">DDP - Delivered Duty Paid (seller handles everything)</option>
+                    </optgroup>
+                    <optgroup label="🚢 Sea & Inland Waterway Only">
+                      <option value="FAS">FAS - Free Alongside Ship (seller to ship's side)</option>
+                      <option value="FOB">FOB - Free on Board (seller loads ship)</option>
+                      <option value="CFR">CFR - Cost and Freight (seller pays freight)</option>
+                      <option value="CIF">CIF - Cost, Insurance & Freight (seller pays freight + insurance)</option>
+                    </optgroup>
                   </select>
+                  <div className="mt-1 text-xs text-gray-600">
+                    International Commercial Terms - defines responsibilities
+                  </div>
                 </div>
               </div>
             </div>
@@ -535,10 +589,11 @@ export default function PurchaseOrdersPage() {
               </div>
               
               {lineItems.length > 0 && (
-                <div className="text-right mt-4">
-                  <span className="text-lg font-semibold">
-                    Total: ${totalValue.toFixed(2)}
-                  </span>
+                <div className="bg-blue-100 p-4 rounded border border-blue-300">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-blue-800">Total Purchase Order Value:</span>
+                    <span className="font-bold text-2xl text-blue-900">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -584,18 +639,7 @@ export default function PurchaseOrdersPage() {
               </div>
             </div>
 
-            <div className="mb-6">
-              <Label htmlFor="totalValue">Total Value *</Label>
-              <Input 
-                id="totalValue" 
-                name="totalValue" 
-                type="number" 
-                step="0.01" 
-                value={totalValue.toFixed(2)}
-                readOnly
-                className="bg-gray-50"
-              />
-            </div>
+
 
             <div className="mb-6">
               <Label htmlFor="notes">Notes</Label>

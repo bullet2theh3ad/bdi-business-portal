@@ -5,7 +5,7 @@ CREATE TABLE purchase_orders (
   supplier_name VARCHAR(255) NOT NULL,
   custom_supplier_name VARCHAR(255),
   purchase_order_date DATE NOT NULL,
-  requested_delivery_week VARCHAR(50) NOT NULL,
+  requested_delivery_date DATE NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'confirmed', 'shipped', 'delivered')),
   terms VARCHAR(100) NOT NULL DEFAULT 'NET30',
   incoterms VARCHAR(50) NOT NULL DEFAULT 'FOB',

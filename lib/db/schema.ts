@@ -706,7 +706,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   supplierName: varchar('supplier_name', { length: 255 }).notNull(),
   customSupplierName: varchar('custom_supplier_name', { length: 255 }),
   purchaseOrderDate: date('purchase_order_date').notNull(),
-  requestedDeliveryWeek: varchar('requested_delivery_week', { length: 50 }).notNull(),
+  requestedDeliveryDate: date('requested_delivery_date').notNull(),
   status: varchar('status', { length: 50 }).notNull().default('draft'),
   terms: varchar('terms', { length: 100 }).notNull().default('NET30'),
   incoterms: varchar('incoterms', { length: 50 }).notNull().default('FOB'),
