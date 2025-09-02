@@ -918,6 +918,25 @@ export default function PurchaseOrdersPage() {
                     console.error('Failed to update line items');
                   }
 
+                  // Upload new documents if any
+                  if (editUploadedDocs.length > 0) {
+                    const docFormData = new FormData();
+                    editUploadedDocs.forEach((file, index) => {
+                      docFormData.append(`file-${index}`, file);
+                    });
+
+                    const docResponse = await fetch(`/api/cpfr/purchase-orders/${selectedPurchaseOrder.id}/documents`, {
+                      method: 'POST',
+                      body: docFormData,
+                    });
+
+                    if (docResponse.ok) {
+                      console.log('✅ Documents uploaded successfully');
+                    } else {
+                      console.error('Failed to upload documents');
+                    }
+                  }
+
                   mutatePurchaseOrders();
                   setSelectedPurchaseOrder(null);
                   setEditLineItems([]);
