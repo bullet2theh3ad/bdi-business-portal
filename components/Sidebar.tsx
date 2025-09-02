@@ -137,7 +137,7 @@ const navigationItems: NavItem[] = [
     ],
   },
   {
-    title: 'BDI Business Portal User Guide',
+    title: 'Portal User Guide',
     href: '/user-guide',
     icon: 'help',
   },
