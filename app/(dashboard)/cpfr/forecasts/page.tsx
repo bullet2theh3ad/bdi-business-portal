@@ -139,15 +139,31 @@ export default function SalesForecastsPage() {
     const factory = forecast.factorySignal || 'unknown';
     const shipping = forecast.shippingSignal || 'unknown';
     
-    // Priority: Any rejected = red, all accepted = green, any awaiting = yellow, otherwise gray
+    // CPFR Signal Priority Logic:
+    // 🔴 RED: Any rejected OR incomplete process (submitted but others unknown)
+    // 🟡 YELLOW: All submitted/awaiting (actively in process)  
+    // 🟢 GREEN: All three accepted (complete success)
+    // ⚪ GRAY: All unknown (no activity yet)
+    
     if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
-      return 'bg-red-50 border-red-300';
+      return 'bg-red-50 border-red-300'; // Any rejection = red
     } else if (sales === 'accepted' && factory === 'accepted' && shipping === 'accepted') {
-      return 'bg-green-50 border-green-300';
-    } else if (sales === 'awaiting' || factory === 'awaiting' || shipping === 'awaiting') {
-      return 'bg-yellow-50 border-yellow-300';
+      return 'bg-green-50 border-green-300'; // All accepted = green
+    } else if (
+      (sales === 'submitted' || sales === 'awaiting') && 
+      (factory === 'awaiting') && 
+      (shipping === 'awaiting')
+    ) {
+      return 'bg-yellow-50 border-yellow-300'; // All actively in process = yellow
+    } else if (
+      sales === 'submitted' && 
+      (factory === 'unknown' || shipping === 'unknown')
+    ) {
+      return 'bg-red-50 border-red-300'; // Submitted but incomplete = red (needs action)
+    } else if (sales === 'unknown' && factory === 'unknown' && shipping === 'unknown') {
+      return 'bg-gray-50 border-gray-300'; // All unknown = gray (no activity)
     } else {
-      return 'bg-gray-50 border-gray-300';
+      return 'bg-red-50 border-red-300'; // Any other incomplete state = red
     }
   };
 
@@ -604,16 +620,24 @@ export default function SalesForecastsPage() {
                               
                               let overallStatus = 'activity'; // Default red dot
                               
-                              // All three confirmed = green dot
+                              // CPFR Signal Priority Logic for Calendar Dots:
+                              // 🟢 GREEN: All three accepted (complete success)
                               if (sales === 'accepted' && factory === 'accepted' && shipping === 'accepted') {
                                 overallStatus = 'confirmed';
                               }
-                              // Any rejected = red dot (stays red)
+                              // 🔴 RED: Any rejected OR incomplete process (submitted but others unknown)
                               else if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
                                 overallStatus = 'rejected';
                               }
-                              // Any awaiting/submitted = yellow dot
-                              else if (sales === 'submitted' || factory === 'awaiting' || shipping === 'awaiting') {
+                              else if (sales === 'submitted' && (factory === 'unknown' || shipping === 'unknown')) {
+                                overallStatus = 'rejected'; // Red - submitted but incomplete
+                              }
+                              // 🟡 YELLOW: All actively in process (sales submitted, others awaiting)
+                              else if (
+                                sales === 'submitted' && 
+                                factory === 'awaiting' && 
+                                shipping === 'awaiting'
+                              ) {
                                 overallStatus = 'awaiting';
                               }
                               
@@ -1868,7 +1892,55 @@ export default function SalesForecastsPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="analytics" size={20} className="mr-2" />
-                CPFR Supply Chain Signals - Week {selectedWeekForDetail}
+                <span>CPFR Supply Chain Signals - Week {selectedWeekForDetail}</span>
+                {/* Week Status Dot */}
+                {(() => {
+                  const weekForecasts = forecastsArray.filter(f => f.deliveryWeek === selectedWeekForDetail);
+                  if (weekForecasts.length === 0) return null;
+                  
+                  // Calculate overall week status based on all forecasts
+                  let hasRejected = false;
+                  let hasIncomplete = false;
+                  let allAccepted = true;
+                  let allInProcess = true;
+                  
+                  weekForecasts.forEach(forecast => {
+                    const sales = forecast.salesSignal || 'unknown';
+                    const factory = forecast.factorySignal || 'unknown';
+                    const shipping = forecast.shippingSignal || 'unknown';
+                    
+                    if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
+                      hasRejected = true;
+                    }
+                    if (sales === 'submitted' && (factory === 'unknown' || shipping === 'unknown')) {
+                      hasIncomplete = true;
+                    }
+                    if (!(sales === 'accepted' && factory === 'accepted' && shipping === 'accepted')) {
+                      allAccepted = false;
+                    }
+                    if (!(
+                      sales === 'submitted' && 
+                      factory === 'awaiting' && 
+                      shipping === 'awaiting'
+                    )) {
+                      allInProcess = false;
+                    }
+                  });
+                  
+                  let dotColor = 'bg-gray-400'; // Default
+                  if (hasRejected || hasIncomplete) {
+                    dotColor = 'bg-red-400'; // Red for rejected or incomplete
+                  } else if (allAccepted) {
+                    dotColor = 'bg-green-400'; // Green for all accepted
+                  } else if (allInProcess) {
+                    dotColor = 'bg-yellow-400'; // Yellow for all in process
+                  }
+                  
+                  return (
+                    <div className={`ml-3 w-3 h-3 ${dotColor} rounded-full shadow-sm border border-white`} 
+                         title="Week CPFR Status"></div>
+                  );
+                })()}
               </DialogTitle>
             </DialogHeader>
             
