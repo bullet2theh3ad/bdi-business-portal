@@ -1400,27 +1400,39 @@ export default function SalesForecastsPage() {
                   {/* Real-time Inventory Availability & CPFR Signaling */}
                   {selectedSku && (
                     <div className="mt-3 space-y-3">
-                      {/* Available Quantity Display */}
+                      {/* CPFR Inventory Intelligence */}
                       <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
                             <SemanticBDIIcon semantic="inventory" size={14} className="text-blue-600" />
-                            <span className="text-blue-800 font-medium text-sm">Available Quantity ({selectedSku.sku}):</span>
+                            <span className="text-blue-800 font-medium text-sm">CPFR Inventory ({selectedSku.sku}):</span>
                           </div>
                           <div className="text-right">
                             <span className="text-blue-900 font-bold text-lg">
                               {getAvailableQuantity(selectedSku.id).toLocaleString()}
                             </span>
-                            <span className="text-blue-700 text-sm ml-1">units</span>
+                            <span className="text-blue-700 text-sm ml-1">units available</span>
                           </div>
                         </div>
-                        <div className="text-xs text-blue-600 mt-1 space-y-1">
-                          <div>Total from {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} invoice(s): {inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices?.toLocaleString() || '0'}</div>
+                        
+                        {/* CPFR Inventory Breakdown */}
+                        <div className="bg-white p-2 rounded border text-xs space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">📄 Total from Invoices:</span>
+                            <span className="font-medium">{inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices?.toLocaleString() || '0'}</span>
+                          </div>
                           {inventoryData?.availability?.[selectedSku.id]?.alreadyAllocated > 0 && (
-                            <div className="text-orange-600">Already allocated: -{inventoryData.availability[selectedSku.id].alreadyAllocated.toLocaleString()}</div>
+                            <div className="flex justify-between">
+                              <span className="text-orange-600">📊 Already in Forecasts:</span>
+                              <span className="font-medium text-orange-600">-{inventoryData.availability[selectedSku.id].alreadyAllocated.toLocaleString()}</span>
+                            </div>
                           )}
-                          <div className="font-medium text-green-600">
-                            Net Available: {getAvailableQuantity(selectedSku.id).toLocaleString()} units
+                          <div className="flex justify-between border-t pt-1">
+                            <span className="text-green-600 font-medium">📦 Net Available:</span>
+                            <span className="font-bold text-green-600">{getAvailableQuantity(selectedSku.id).toLocaleString()}</span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            From {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} invoice(s)
                           </div>
                         </div>
                       </div>
@@ -1462,19 +1474,34 @@ export default function SalesForecastsPage() {
                         </div>
                       )}
 
-                      {/* SKU Requirements Info - Moved Below for Better Alignment */}
+                      {/* SKU Requirements & Stock Status */}
                       <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           {(selectedSku as any)?.boxesPerCarton && (
                             <div className="text-xs text-blue-600">
                               💡 Must be multiple of {(selectedSku as any).boxesPerCarton} units (full cartons only)
                             </div>
                           )}
-                          {(selectedSku as any)?.moq && (
-                            <div className="text-xs text-green-600">
-                              📊 MOQ: {((selectedSku as any).moq || 1).toLocaleString()} units minimum
+                          
+                          {/* Enhanced MOQ with Stock Status */}
+                          <div className="bg-white p-2 rounded border">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600">MOQ & Stock Status:</span>
+                              <div className="text-right">
+                                <div className="text-xs font-medium text-green-600">
+                                  📊 MOQ: {((selectedSku as any).moq || 1).toLocaleString()} units
+                                </div>
+                                <div className="text-xs font-medium text-blue-600">
+                                  📦 Stock Available: {getAvailableQuantity(selectedSku.id).toLocaleString()} units
+                                </div>
+                                {inventoryData?.availability?.[selectedSku.id]?.alreadyAllocated > 0 && (
+                                  <div className="text-xs text-orange-600">
+                                    ⚠️ Reserved: {inventoryData.availability[selectedSku.id].alreadyAllocated.toLocaleString()} units
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
