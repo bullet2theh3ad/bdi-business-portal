@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
               'FACTORY_RESPONSE_NEEDED',
               newForecast.id,
               mfgCode,
-              [], // Recipients will be logged in sendCPFRNotification
+              ['TC1 CPFR Contacts'], // Will be detailed in sendCPFRNotification
               emailSent
             );
             

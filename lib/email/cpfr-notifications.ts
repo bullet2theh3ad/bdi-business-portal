@@ -311,9 +311,9 @@ export async function sendCPFRNotification(
       return false;
     }
 
-    // Send email
+    // Send email (using verified domain)
     const result = await resend.emails.send({
-      from: 'CPFR System <cpfr@boundlessdevices.com>',
+      from: 'CPFR System <cpfr@bdibusinessportal.com>',
       to: recipients,
       subject: template.subject(data.mfgCode),
       html: template.getHtml(data),
