@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
     // Handle file uploads
     const uploadedFiles = [];
     for (const [key, value] of formData.entries()) {
-      if (key.startsWith('file-') && value instanceof File) {
+      if (key.startsWith('file-') && value && typeof value === 'object' && 'name' in value) {
         try {
           const timestamp = Date.now();
           const fileName = `${timestamp}_${value.name}`;
