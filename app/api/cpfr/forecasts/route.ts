@@ -332,6 +332,70 @@ export async function PUT(request: NextRequest) {
 
       console.log('✅ Forecast updated:', updatedForecast);
       
+      // 🚀 TRIGGER CPFR EMAIL ON SALES SIGNAL CHANGE
+      if (body.salesSignal === 'submitted') {
+        console.log('📧 Sales signal changed to submitted - triggering CPFR email notification');
+        
+        try {
+          // Get SKU data for email
+          const [sku] = await db
+            .select()
+            .from(productSkus)
+            .where(eq(productSkus.id, updatedForecast.sku_id))
+            .limit(1);
+            
+          if (sku) {
+            // Get MFG code and invoice data from related invoice
+            const invoiceData = await getInvoiceDataFromSku(updatedForecast.sku_id);
+            
+            if (invoiceData) {
+              // Generate portal link for factory response
+              const portalLink = generateCPFRPortalLink(
+                updatedForecast.id, 
+                invoiceData.mfgCode, 
+                'factory_response'
+              );
+              
+              // Get forecast email data with real invoice information
+              const emailData: CPFRNotificationData = {
+                forecastId: updatedForecast.id,
+                mfgCode: invoiceData.mfgCode,
+                sku: sku.sku,
+                skuName: sku.name,
+                quantity: updatedForecast.quantity,
+                unitCost: invoiceData.unitCost,
+                totalValue: invoiceData.unitCost * updatedForecast.quantity,
+                deliveryWeek: updatedForecast.delivery_week,
+                deliveryDateRange: getWeekDateRange(updatedForecast.delivery_week),
+                shippingMethod: updatedForecast.shipping_preference || 'TBD',
+                notes: updatedForecast.notes,
+                portalLink: portalLink,
+                invoiceNumber: invoiceData.invoiceNumber
+              };
+              
+              // Send CPFR notification
+              const emailSent = await sendCPFRNotification('FACTORY_RESPONSE_NEEDED', emailData);
+              
+              // Log the notification
+              await logCPFRNotification(
+                'FACTORY_RESPONSE_NEEDED',
+                updatedForecast.id,
+                invoiceData.mfgCode,
+                ['TC1 CPFR Contacts'],
+                emailSent
+              );
+              
+              console.log(`📧 CPFR email notification ${emailSent ? 'sent' : 'failed'} for ${invoiceData.mfgCode} (EDIT)`);
+            } else {
+              console.log('⚠️ No invoice data found for SKU - skipping email notification');
+            }
+          }
+        } catch (emailError) {
+          console.error('❌ CPFR email notification failed on edit:', emailError);
+          // Don't fail the forecast update if email fails
+        }
+      }
+      
       return NextResponse.json({
         success: true,
         message: 'Forecast updated successfully!',
