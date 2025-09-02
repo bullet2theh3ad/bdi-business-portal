@@ -334,7 +334,7 @@ export default function PurchaseOrdersPage() {
 
       {/* Create Purchase Order Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
             <DialogTitle>Create New Purchase Order</DialogTitle>
           </DialogHeader>
