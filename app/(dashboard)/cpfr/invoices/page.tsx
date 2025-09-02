@@ -43,6 +43,7 @@ export default function InvoicesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: invoices, mutate: mutateInvoices } = useSWR<Invoice[]>('/api/cpfr/invoices', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
+  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
 
   // Fetch line items for all invoices when invoices are loaded
   useEffect(() => {
@@ -219,43 +220,13 @@ export default function InvoicesPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Invoice created:', result);
-        
-        // Upload documents if any were selected
-        if (uploadedDocs.length > 0) {
-          console.log(`🔄 Uploading ${uploadedDocs.length} documents for new invoice`);
-          try {
-            const uploadFormData = new FormData();
-            uploadedDocs.forEach(file => uploadFormData.append('files', file));
-            
-            const uploadResponse = await fetch(`/api/cpfr/invoices/${result.invoice.id}/documents`, {
-              method: 'POST',
-              body: uploadFormData
-            });
-            
-            if (uploadResponse.ok) {
-              const uploadResult = await uploadResponse.json();
-              console.log('✅ Documents uploaded:', uploadResult);
-              alert(`Invoice created successfully with ${uploadResult.uploaded} documents uploaded!`);
-            } else {
-              alert('Invoice created but document upload failed');
-            }
-          } catch (uploadError) {
-            console.error('Document upload error:', uploadError);
-            alert('Invoice created but document upload failed');
-          }
-        } else {
-          alert('Invoice created successfully!');
-        }
-        
         mutateInvoices();
         setShowCreateModal(false);
         // Clear form state after successful creation
         setLineItems([]);
         setUploadedDocs([]);
         setCustomTerms(false);
-      } else {
+      } else {e
         const errorData = await response.json();
         alert(`Failed to create PO: ${errorData.error || 'Unknown error'}`);
       }
@@ -534,14 +505,35 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="supplierName">Customer Name *</Label>
-                  <Input
+                  <Label htmlFor="supplierName">MFG/Customer Organization *</Label>
+                  <select
                     id="supplierName"
                     name="supplierName"
-                    placeholder="e.g., ABC Electronics Inc"
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                  >
+                    <option value="">Select MFG Organization</option>
+                    {organizations?.map((org: any) => (
+                      <option key={org.id} value={org.code}>
+                        {org.code} - {org.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Select the Manufacturing/ODM organization (Factory) for CPFR signaling
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="customCustomerName">Custom Customer Name</Label>
+                  <Input
+                    id="customCustomerName"
+                    name="customCustomerName"
+                    placeholder="Optional: Additional customer details"
                     className="mt-1"
                   />
+                  <div className="text-xs text-gray-600 mt-1">
+                    Optional: Additional customer information beyond MFG code
+                  </div>
                 </div>
               </div>
 
@@ -796,6 +788,8 @@ export default function InvoicesPage() {
                         const files = Array.from(e.target.files || []);
                         setUploadedDocs(prev => [...prev, ...files]);
                         
+                        // TODO: Implement real-time upload to Supabase
+                        // For now, just add to local state for preview
                         console.log('Files selected for upload:', files.map(f => f.name));
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
@@ -1010,13 +1004,24 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="editCustomerName">Customer Name *</Label>
-                  <Input
+                  <Label htmlFor="editCustomerName">MFG/Customer Organization *</Label>
+                  <select
                     id="editCustomerName"
                     name="editCustomerName"
                     defaultValue={selectedInvoice.customerName}
                     required
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select MFG Organization</option>
+                    {organizations?.map((org: any) => (
+                      <option key={org.id} value={org.code}>
+                        {org.code} - {org.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Manufacturing/ODM organization for CPFR signaling
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="editStatus">Status</Label>
