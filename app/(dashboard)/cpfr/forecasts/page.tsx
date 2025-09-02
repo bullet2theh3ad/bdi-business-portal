@@ -84,6 +84,10 @@ export default function SalesForecastsPage() {
   const [selectedWeekForDetail, setSelectedWeekForDetail] = useState<string>('');
   const [editingForecast, setEditingForecast] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<any>({});
+  
+  // Calendar picker state
+  const [calendarPickerDate, setCalendarPickerDate] = useState(new Date());
+  const [selectedDeliveryWeek, setSelectedDeliveryWeek] = useState<string>('');
 
   // Helper function to get available quantity for a SKU
   const getAvailableQuantity = (skuId: string) => {
@@ -1152,90 +1156,182 @@ export default function SalesForecastsPage() {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-20 mt-12">
                 <div>
                   <Label htmlFor="deliveryWeek">Final Delivery Week *</Label>
-                  <select
-                    id="deliveryWeek"
-                    name="deliveryWeek"
-                    required
-                    defaultValue={selectedDate}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
-                    onChange={(e) => {
-                      const selectedWeek = weeks.find(w => w.isoWeek === e.target.value);
-                      if (selectedWeek && selectedSku && selectedShipping) {
-                        const orderDate = new Date();
-                        const leadTime = getEffectiveLeadTime();
-                        const shippingDays: { [key: string]: number } = {
-                          'AIR_7_DAYS': 7,
-                          'AIR_14_DAYS': 14,
-                          'AIR_NLD': 14,
-                          'AIR_AUT': 14,
-                          'SEA_ASIA_US_WEST': 45,
-                          'SEA_ASIA_US_EAST': 52,
-                          'SEA_WEST_EXPEDITED': 35,
-                          'SEA_ASIA_NLD': 45,
-                          'SEA_ASIA_AUT': 45,
-                          'TRUCK_EXPRESS': 10.5,
-                          'TRUCK_STANDARD': 21,
-                          'RAIL': 28,
-                        };
-                        const shippingTime = shippingDays[selectedShipping] || 0;
-                        const totalDays = leadTime + shippingTime;
-                        const earliestDelivery = new Date(orderDate);
-                        earliestDelivery.setDate(orderDate.getDate() + totalDays);
-                        
-                        if (selectedWeek.startDate < earliestDelivery) {
-                          const earliestWeek = weeks.find(w => w.startDate >= earliestDelivery);
-                          if (earliestWeek) {
-                            alert(`⚠️ Total time is ${Math.round(totalDays)} days (${leadTime} lead + ${Math.round(shippingTime)} shipping). Earliest possible final delivery: ${earliestWeek.isoWeek} (${earliestWeek.dateRange})`);
-                          }
-                        }
-                      }
-                    }}
-                  >
-                    <option value="">Select Final Delivery Week</option>
-                    {weeks.map(week => {
-                      if (!selectedSku || !selectedShipping) {
-                        return (
-                          <option key={week.isoWeek} value={week.isoWeek}>
-                            {week.isoWeek} ({week.dateRange})
-                          </option>
-                        );
-                      }
-
-                      const leadTime = getEffectiveLeadTime();
-                      const shippingDays: { [key: string]: number } = {
-                        'AIR_7_DAYS': 7,
-                        'AIR_14_DAYS': 14,
-                        'AIR_NLD': 14,
-                        'AIR_AUT': 14,
-                        'SEA_ASIA_US_WEST': 45,
-                        'SEA_ASIA_US_EAST': 52,
-                        'SEA_WEST_EXPEDITED': 35,
-                        'SEA_ASIA_NLD': 45,
-                        'SEA_ASIA_AUT': 45,
-                        'TRUCK_EXPRESS': 10.5,
-                        'TRUCK_STANDARD': 21,
-                        'RAIL': 28,
-                      };
-                      const shippingTime = shippingDays[selectedShipping] || 0;
-                      const totalDays = leadTime + shippingTime;
-                      const orderDate = new Date();
-                      const earliestDelivery = new Date(orderDate);
-                      earliestDelivery.setDate(orderDate.getDate() + totalDays);
-                      
-                      const isTooEarly = week.startDate < earliestDelivery;
-                      
-                      return (
-                        <option 
-                          key={week.isoWeek} 
-                          value={week.isoWeek}
-                          style={isTooEarly ? { color: '#dc2626', fontStyle: 'italic' } : {}}
+                  
+                  {/* Compact Calendar Picker */}
+                  <div className="mt-1 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-xl shadow-sm overflow-hidden">
+                    
+                    {/* Selected Week Display */}
+                    <div className="bg-white border-b border-blue-200 p-3">
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-blue-800 mb-1">Selected Delivery Week</div>
+                        <div className="text-lg font-bold text-blue-900 bg-blue-100 rounded-lg py-2 px-4">
+                          {selectedDeliveryWeek || 'Click a week below'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Mini Month Navigation */}
+                    <div className="bg-white border-b border-blue-100 px-3 py-2">
+                      <div className="flex justify-between items-center">
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const newDate = new Date(calendarPickerDate);
+                            newDate.setMonth(newDate.getMonth() - 1);
+                            setCalendarPickerDate(newDate);
+                          }}
+                          className="p-2 hover:bg-blue-100 rounded-full text-blue-600 transition-colors"
                         >
-                          {week.isoWeek} ({week.dateRange})
-                          {isTooEarly ? ` ⚠️ Too Early (Need ${Math.round(totalDays)} days)` : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
+                          ← Prev
+                        </button>
+                        <div className="text-center">
+                          <div className="font-bold text-blue-900">
+                            {calendarPickerDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                          </div>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const newDate = new Date(calendarPickerDate);
+                            newDate.setMonth(newDate.getMonth() + 1);
+                            setCalendarPickerDate(newDate);
+                          }}
+                          className="p-2 hover:bg-blue-100 rounded-full text-blue-600 transition-colors"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Compact Calendar Grid */}
+                    <div className="p-3 bg-white">
+                      {/* Week headers */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                          <div key={day} className="text-center font-bold text-xs text-gray-600 py-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Calendar Days */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {(() => {
+                          const year = calendarPickerDate.getFullYear();
+                          const month = calendarPickerDate.getMonth();
+                          const firstDay = new Date(year, month, 1);
+                          const lastDay = new Date(year, month + 1, 0);
+                          const startDate = new Date(firstDay);
+                          startDate.setDate(startDate.getDate() - firstDay.getDay());
+                          
+                          const days = [];
+                          const currentDate = new Date(startDate);
+                          
+                          for (let i = 0; i < 42; i++) {
+                            const isCurrentMonth = currentDate.getMonth() === month;
+                            const dayNum = currentDate.getDate();
+                            
+                            // Calculate ISO week
+                            const getISOWeek = (date: Date) => {
+                              const target = new Date(date.valueOf());
+                              const dayNr = (date.getDay() + 6) % 7;
+                              target.setDate(target.getDate() - dayNr + 3);
+                              const firstThursday = target.valueOf();
+                              target.setMonth(0, 1);
+                              if (target.getDay() !== 4) {
+                                target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+                              }
+                              const weekNum = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+                              return `${target.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+                            };
+                            
+                            const isoWeek = getISOWeek(currentDate);
+                            const isSelected = selectedDeliveryWeek === isoWeek;
+                            const isToday = currentDate.toDateString() === new Date().toDateString();
+                            
+                            // Check if this week is too early based on lead time + shipping
+                            let isTooEarly = false;
+                            if (selectedSku && selectedShipping) {
+                              const leadTime = getEffectiveLeadTime();
+                              const shippingDays: { [key: string]: number } = {
+                                'AIR_7_DAYS': 7, 'AIR_14_DAYS': 14, 'AIR_NLD': 14, 'AIR_AUT': 14,
+                                'SEA_ASIA_US_WEST': 45, 'SEA_ASIA_US_EAST': 52, 'SEA_WEST_EXPEDITED': 35,
+                                'SEA_ASIA_NLD': 45, 'SEA_ASIA_AUT': 45, 'TRUCK_EXPRESS': 10.5,
+                                'TRUCK_STANDARD': 21, 'RAIL': 28,
+                              };
+                              const shippingTime = shippingDays[selectedShipping] || 0;
+                              const totalDays = leadTime + shippingTime;
+                              const earliestDelivery = new Date();
+                              earliestDelivery.setDate(earliestDelivery.getDate() + totalDays);
+                              isTooEarly = currentDate < earliestDelivery;
+                            }
+                            
+                            days.push(
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => {
+                                  if (isCurrentMonth) {
+                                    setSelectedDeliveryWeek(isoWeek);
+                                  }
+                                }}
+                                className={`
+                                  h-8 text-xs font-medium rounded-md transition-all duration-200 transform hover:scale-105
+                                  ${isCurrentMonth 
+                                    ? isSelected
+                                      ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg'
+                                      : isTooEarly
+                                        ? 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100'
+                                        : isToday
+                                          ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md'
+                                          : 'text-blue-800 hover:bg-blue-100 hover:text-blue-900'
+                                    : 'text-gray-300 cursor-not-allowed'
+                                  }
+                                  ${isCurrentMonth && !isTooEarly ? 'hover:shadow-md' : ''}
+                                `}
+                                disabled={!isCurrentMonth}
+                                title={isCurrentMonth ? `Week ${isoWeek}${isTooEarly ? ' - Too Early' : ''}` : ''}
+                              >
+                                {isCurrentMonth ? dayNum : ''}
+                                {isCurrentMonth && isToday && <div className="w-1 h-1 bg-white rounded-full mx-auto mt-0.5"></div>}
+                              </button>
+                            );
+                            
+                            currentDate.setDate(currentDate.getDate() + 1);
+                          }
+                          
+                          return days;
+                        })()}
+                      </div>
+                      
+                      {/* Legend */}
+                      <div className="mt-3 pt-3 border-t border-blue-100 text-xs text-gray-600">
+                        <div className="flex flex-wrap gap-3 justify-center">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded"></div>
+                            <span>Today</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded"></div>
+                            <span>Selected</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
+                            <span>Too Early</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Hidden input for form submission */}
+                    <input
+                      type="hidden"
+                      id="deliveryWeek"
+                      name="deliveryWeek"
+                      value={selectedDeliveryWeek}
+                      required
+                    />
+                  </div>
                   {selectedSku && selectedShipping && (
                     <div className="mt-1">
                       <div className="text-xs text-gray-600 mb-2">
@@ -1532,10 +1628,46 @@ export default function SalesForecastsPage() {
                       )}
                     </div>
                   ) : null}
+                  
+                  {/* Shipping Mode - Moved Below Delivery Week */}
+                  <div className="mt-8">
+                    <Label htmlFor="shippingPreference">Shipping Mode *</Label>
+                    <select
+                      id="shippingPreference"
+                      name="shippingPreference"
+                      required
+                      value={selectedShipping}
+                      onChange={(e) => setSelectedShipping(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="">Select Shipping Mode</option>
+                      <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
+                        <option value="AIR_7_DAYS">Air Express - 7 days door-to-door (urgent orders)</option>
+                        <option value="AIR_14_DAYS">Air Standard - 14 days door-to-door (standard air)</option>
+                        <option value="AIR_NLD">Air to Netherlands (NLD) - 14 days door-to-door</option>
+                        <option value="AIR_AUT">Air to Austria (AUT) - 14 days door-to-door</option>
+                      </optgroup>
+                      <optgroup label="🚢 Ocean Freight (Bulk, Cost Efficient)">
+                        <option value="SEA_ASIA_US_WEST">Sea Asia→US West - 45 days door-to-door (bulk)</option>
+                        <option value="SEA_ASIA_US_EAST">Sea Asia→US East - 52 days door-to-door (bulk)</option>
+                        <option value="SEA_WEST_EXPEDITED">Sea West Expedited - 35 days door-to-door (faster bulk)</option>
+                        <option value="SEA_ASIA_NLD">Sea Asia→Netherlands (NLD) - 45 days door-to-door</option>
+                        <option value="SEA_ASIA_AUT">Sea Asia→Austria (AUT) - 45 days door-to-door</option>
+                      </optgroup>
+                      <optgroup label="🚛 Ground Transport">
+                        <option value="TRUCK_EXPRESS">Truck Express - 1-2 weeks (regional)</option>
+                        <option value="TRUCK_STANDARD">Truck Standard - 2-4 weeks (domestic)</option>
+                        <option value="RAIL">Rail Freight - 3-5 weeks (cost efficient)</option>
+                      </optgroup>
+                    </select>
+                    <div className="mt-1 text-xs text-blue-600">
+                      💡 Air ≈ 5-10× sea cost but faster. Sea = bulk/planned orders.
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-10">
                 <div>
                   <Label htmlFor="purchaseOrderId">Link to Purchase Order</Label>
                   <select
@@ -1571,40 +1703,6 @@ export default function SalesForecastsPage() {
                   </select>
                   <div className="mt-1 text-xs text-gray-600">
                     Sales team forecast submission status
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="shippingPreference">Shipping Mode *</Label>
-                  <select
-                    id="shippingPreference"
-                    name="shippingPreference"
-                    required
-                    value={selectedShipping}
-                    onChange={(e) => setSelectedShipping(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
-                  >
-                    <option value="">Select Shipping Mode</option>
-                    <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
-                      <option value="AIR_7_DAYS">Air Express - 7 days door-to-door (urgent orders)</option>
-                      <option value="AIR_14_DAYS">Air Standard - 14 days door-to-door (standard air)</option>
-                      <option value="AIR_NLD">Air to Netherlands (NLD) - 14 days door-to-door</option>
-                      <option value="AIR_AUT">Air to Austria (AUT) - 14 days door-to-door</option>
-                    </optgroup>
-                    <optgroup label="🚢 Ocean Freight (Bulk, Cost Efficient)">
-                      <option value="SEA_ASIA_US_WEST">Sea Asia→US West - 45 days door-to-door (bulk)</option>
-                      <option value="SEA_ASIA_US_EAST">Sea Asia→US East - 52 days door-to-door (bulk)</option>
-                      <option value="SEA_WEST_EXPEDITED">Sea West Expedited - 35 days door-to-door (faster bulk)</option>
-                      <option value="SEA_ASIA_NLD">Sea Asia→Netherlands (NLD) - 45 days door-to-door</option>
-                      <option value="SEA_ASIA_AUT">Sea Asia→Austria (AUT) - 45 days door-to-door</option>
-                    </optgroup>
-                    <optgroup label="🚛 Ground Transport">
-                      <option value="TRUCK_EXPRESS">Truck Express - 1-2 weeks (regional)</option>
-                      <option value="TRUCK_STANDARD">Truck Standard - 2-4 weeks (domestic)</option>
-                      <option value="RAIL">Rail Freight - 3-5 weeks (cost efficient)</option>
-                    </optgroup>
-                  </select>
-                  <div className="mt-1 text-xs text-blue-600">
-                    💡 Air ≈ 5-10× sea cost but faster. Sea = bulk/planned orders.
                   </div>
                 </div>
               </div>
