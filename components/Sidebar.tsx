@@ -68,13 +68,8 @@ const navigationItems: NavItem[] = [
         requiresBDI: true,
       },
       {
-        title: 'Items',
-        href: '/inventory/items',
-        icon: 'inventory_items',
-      },
-      {
-        title: 'Sites',
-        href: '/inventory/sites',
+        title: 'Warehouses',
+        href: '/inventory/warehouses',
         icon: 'sites',
       },
     ],
