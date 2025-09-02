@@ -1251,6 +1251,8 @@ export default function SalesForecastsPage() {
                             
                             // Check if this week is too early based on lead time + shipping
                             let isTooEarly = false;
+                            let weekHasTooEarlyDays = false;
+                            
                             if (selectedSku && selectedShipping) {
                               const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
@@ -1264,6 +1266,19 @@ export default function SalesForecastsPage() {
                               const earliestDelivery = new Date();
                               earliestDelivery.setDate(earliestDelivery.getDate() + totalDays);
                               isTooEarly = currentDate < earliestDelivery;
+                              
+                              // Check if ANY day in this week is too early
+                              const weekStart = new Date(currentDate);
+                              weekStart.setDate(currentDate.getDate() - currentDate.getDay()); // Sunday
+                              
+                              for (let d = 0; d < 7; d++) {
+                                const dayInWeek = new Date(weekStart);
+                                dayInWeek.setDate(weekStart.getDate() + d);
+                                if (dayInWeek < earliestDelivery) {
+                                  weekHasTooEarlyDays = true;
+                                  break;
+                                }
+                              }
                             }
                             
                             days.push(
@@ -1272,7 +1287,58 @@ export default function SalesForecastsPage() {
                                 type="button"
                                 onClick={() => {
                                   if (isCurrentMonth) {
-                                    setSelectedDeliveryWeek(isoWeek);
+                                    // If this week has any "Too Early" days, find the next valid week
+                                    if (weekHasTooEarlyDays && selectedSku && selectedShipping) {
+                                      const leadTime = getEffectiveLeadTime();
+                                      const shippingDays: { [key: string]: number } = {
+                                        'AIR_7_DAYS': 7, 'AIR_14_DAYS': 14, 'AIR_NLD': 14, 'AIR_AUT': 14,
+                                        'SEA_ASIA_US_WEST': 45, 'SEA_ASIA_US_EAST': 52, 'SEA_WEST_EXPEDITED': 35,
+                                        'SEA_ASIA_NLD': 45, 'SEA_ASIA_AUT': 45, 'TRUCK_EXPRESS': 10.5,
+                                        'TRUCK_STANDARD': 21, 'RAIL': 28,
+                                      };
+                                      const shippingTime = shippingDays[selectedShipping] || 0;
+                                      const totalDays = leadTime + shippingTime;
+                                      const earliestDelivery = new Date();
+                                      earliestDelivery.setDate(earliestDelivery.getDate() + totalDays);
+                                      
+                                      // Find next full week that doesn't have any "Too Early" days
+                                      let nextWeekStart = new Date(currentDate);
+                                      nextWeekStart.setDate(currentDate.getDate() - currentDate.getDay() + 7); // Next Sunday
+                                      
+                                      let foundValidWeek = false;
+                                      let attempts = 0;
+                                      
+                                      while (!foundValidWeek && attempts < 10) {
+                                        let weekIsValid = true;
+                                        
+                                        // Check all 7 days of this week
+                                        for (let d = 0; d < 7; d++) {
+                                          const dayInWeek = new Date(nextWeekStart);
+                                          dayInWeek.setDate(nextWeekStart.getDate() + d);
+                                          if (dayInWeek < earliestDelivery) {
+                                            weekIsValid = false;
+                                            break;
+                                          }
+                                        }
+                                        
+                                        if (weekIsValid) {
+                                          foundValidWeek = true;
+                                          // Calculate ISO week for this valid week
+                                          const validWeekISO = getISOWeek(nextWeekStart);
+                                          setSelectedDeliveryWeek(validWeekISO);
+                                          
+                                          // Show helpful message
+                                          alert(`⚠️ Selected week had "Too Early" days. Advanced to next valid week: ${validWeekISO}\\n\\n📅 Total lead time: ${Math.round(totalDays)} days (${leadTime} production + ${Math.round(shippingTime)} shipping)`);
+                                        } else {
+                                          // Try next week
+                                          nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+                                          attempts++;
+                                        }
+                                      }
+                                    } else {
+                                      // Week is valid, select it normally
+                                      setSelectedDeliveryWeek(isoWeek);
+                                    }
                                   }
                                 }}
                                 className={`
@@ -1280,17 +1346,24 @@ export default function SalesForecastsPage() {
                                   ${isCurrentMonth 
                                     ? isSelected
                                       ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg'
-                                      : isTooEarly
-                                        ? 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100'
-                                        : isToday
-                                          ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md'
-                                          : 'text-blue-800 hover:bg-blue-100 hover:text-blue-900'
+                                      : weekHasTooEarlyDays
+                                        ? 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer'
+                                        : isTooEarly
+                                          ? 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100'
+                                          : isToday
+                                            ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md'
+                                            : 'text-blue-800 hover:bg-blue-100 hover:text-blue-900'
                                     : 'text-gray-300 cursor-not-allowed'
                                   }
                                   ${isCurrentMonth && !isTooEarly ? 'hover:shadow-md' : ''}
                                 `}
                                 disabled={!isCurrentMonth}
-                                title={isCurrentMonth ? `Week ${isoWeek}${isTooEarly ? ' - Too Early' : ''}` : ''}
+                                title={isCurrentMonth ? 
+                                  `Week ${isoWeek}${
+                                    weekHasTooEarlyDays ? ' - Will advance to next valid week' : 
+                                    isTooEarly ? ' - Too Early' : ''
+                                  }` : ''
+                                }
                               >
                                 {isCurrentMonth ? dayNum : ''}
                                 {isCurrentMonth && isToday && <div className="w-1 h-1 bg-white rounded-full mx-auto mt-0.5"></div>}
@@ -1314,6 +1387,10 @@ export default function SalesForecastsPage() {
                           <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded"></div>
                             <span>Selected</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-orange-100 border border-orange-300 rounded"></div>
+                            <span>Auto-Advance</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
