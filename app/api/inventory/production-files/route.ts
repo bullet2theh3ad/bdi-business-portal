@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/drizzle';
-import { productionFiles, users, organizations, organizationMembers } from '@/lib/db/schema';
+import { productionFiles, users, organizations, organizationMembers, organizationConnections } from '@/lib/db/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
 
 const supabase = createClient(
@@ -81,10 +81,43 @@ export async function GET(request: NextRequest) {
 
     const userData = userWithOrg[0];
 
+    // Check if this organization has Advanced Reporting permissions
+    let hasAdvancedReporting = false;
+    console.log(`🔍 Checking Advanced Reporting for ${userData.organizationCode} (type: ${userData.organizationType})`);
+    
+    if (userData.organizationCode !== 'BDI' && userData.organizationType === 'rd_partner') {
+      // Check if this R&D Partner organization has Advanced Reporting capability
+      const [connection] = await db
+        .select({
+          permissions: organizationConnections.permissions
+        })
+        .from(organizationConnections)
+        .where(
+          and(
+            eq(organizationConnections.sourceOrganizationId, userData.organizationId!),
+            eq(organizationConnections.status, 'active')
+          )
+        )
+        .limit(1);
+
+      console.log(`🔍 Found connection permissions:`, connection?.permissions);
+
+      if (connection?.permissions) {
+        const permissions = connection.permissions as any;
+        hasAdvancedReporting = permissions.canViewReports === true || 
+                             permissions.reporting === true ||
+                             permissions.advancedReporting === true;
+        console.log(`📊 Advanced Reporting access: ${hasAdvancedReporting}`);
+      }
+    }
+    
+    console.log(`🔐 File access level: ${userData.organizationCode === 'BDI' ? 'BDI (all files)' : hasAdvancedReporting ? 'Advanced Reporting (all files)' : 'Organization only'}`);
+    
+
     // Fetch production files based on organization access
     let files;
     
-    if (userData.organizationCode === 'BDI' || userData.userRole === 'super_admin') {
+    if (userData.organizationCode === 'BDI' || userData.userRole === 'super_admin' || hasAdvancedReporting) {
       // BDI users can see all files with organization info
       files = await db
         .select({
