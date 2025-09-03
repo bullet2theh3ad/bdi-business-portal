@@ -101,7 +101,11 @@ function QuickActions() {
 
 function CPFRMetrics() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
+  // Only call admin organizations API for super_admin/admin roles
+  const { data: organizations } = useSWR(
+    user && ['super_admin', 'admin'].includes(user.role) ? '/api/admin/organizations?includeInternal=true' : null, 
+    fetcher
+  );
   const { data: forecasts, mutate: mutateForecasts } = useSWR('/api/cpfr/forecasts', fetcher, {
     refreshInterval: 30000, // Refresh every 30 seconds
     revalidateOnFocus: true, // Refresh when user focuses the tab

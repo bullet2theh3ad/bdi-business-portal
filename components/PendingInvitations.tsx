@@ -106,7 +106,11 @@ function RevokeInvitationButton({ invitationId, email, mutate }: { invitationId:
 
 export function PendingInvitations() {
   const { data: user } = useSWR('/api/user', fetcher);
-  const { data: invitations, error, mutate } = useSWR<Invitation[]>('/api/admin/pending-invitations', fetcher);
+  // Only call admin API for super_admin/admin roles
+  const { data: invitations, error, mutate } = useSWR<Invitation[]>(
+    user && ['super_admin', 'admin'].includes(user.role) ? '/api/admin/pending-invitations' : null,
+    fetcher
+  );
 
   // Only show for Super Admin and Admin users
   if (!user || !['super_admin', 'admin'].includes(user.role)) {

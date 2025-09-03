@@ -122,49 +122,28 @@ export async function GET(request: NextRequest) {
 
       console.log(`📊 Raw forecast data from Supabase (first 2):`, forecastsData?.slice(0, 2));
 
-      // Get all SKU data using Drizzle for reliable joins
-      const skuIds = (forecastsData || []).map(row => row.sku_id).filter(Boolean);
-      let skuData: any[] = [];
-      
-      if (skuIds.length > 0) {
-        skuData = await db
-          .select({
-            id: productSkus.id,
-            sku: productSkus.sku,
-            name: productSkus.name
-          })
-          .from(productSkus)
-          .where(inArray(productSkus.id, skuIds));
-      }
-
-      // Create SKU lookup map
-      const skuMap = new Map(skuData.map(sku => [sku.id, sku]));
-
-      // Transform data to match frontend interface
-      const allForecasts = (forecastsData || []).map((row: any) => {
-        const skuInfo = skuMap.get(row.sku_id);
-        return {
-          id: row.id,
-          skuId: row.sku_id,
-          deliveryWeek: row.delivery_week,
-          quantity: row.quantity,
-          confidence: row.confidence,
-          shippingPreference: row.shipping_preference,
-          forecastType: row.forecast_type,
-          status: row.status, // 🔧 FIX: Map status field for Draft/Submitted logic
-          salesSignal: row.sales_signal,
-          factorySignal: row.factory_signal,
-          shippingSignal: row.shipping_signal,
-          notes: row.notes,
-          createdBy: row.created_by,
-          createdAt: row.created_at,
-          sku: skuInfo || {
-            id: row.sku_id,
-            sku: 'UNKNOWN',
-            name: 'SKU data not found'
-          }
-        };
-      }).filter(forecast => forecast.sku !== null); // Filter out any with null SKU data
+      // Simple transformation without SKU lookup for testing
+      const allForecasts = (forecastsData || []).map((row: any) => ({
+        id: row.id,
+        skuId: row.sku_id,
+        deliveryWeek: row.delivery_week,
+        quantity: row.quantity,
+        confidence: row.confidence,
+        shippingPreference: row.shipping_preference,
+        forecastType: row.forecast_type,
+        status: row.status,
+        salesSignal: row.sales_signal,
+        factorySignal: row.factory_signal,
+        shippingSignal: row.shipping_signal,
+        notes: row.notes,
+        createdBy: row.created_by,
+        createdAt: row.created_at,
+        sku: {
+          id: row.sku_id,
+          sku: 'TEST-SKU',
+          name: 'Test SKU Name'
+        }
+      }));
 
       console.log(`📊 Transformed forecasts (first 2):`, allForecasts.slice(0, 2));
 
