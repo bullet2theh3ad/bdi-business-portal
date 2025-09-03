@@ -802,8 +802,55 @@ export type PurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferSelect;
 export type NewPurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferInsert;
 export type PurchaseOrderDocument = typeof purchaseOrderDocuments.$inferSelect;
 export type NewPurchaseOrderDocument = typeof purchaseOrderDocuments.$inferInsert;
+// Production Files (device manufacturing files associated with shipments)
+export const productionFiles = pgTable('production_files', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  // File Information
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  filePath: varchar('file_path', { length: 500 }).notNull(),
+  fileSize: bigint('file_size', { mode: 'number' }).notNull(),
+  contentType: varchar('content_type', { length: 100 }).notNull(),
+  
+  // Association with Shipments/Forecasts
+  shipmentId: uuid('shipment_id'),
+  forecastId: uuid('forecast_id').references(() => forecasts.id, { onDelete: 'cascade' }),
+  bdiShipmentNumber: varchar('bdi_shipment_number', { length: 100 }),
+  
+  // Device Information
+  deviceMetadata: jsonb('device_metadata').notNull().default({
+    cmMacAddresses: [],
+    macAddresses: [],
+    serialNumbers: [],
+    deviceCount: 0,
+    productionBatch: null,
+    manufacturingDate: null
+  }),
+  
+  // File Type and Category
+  fileType: varchar('file_type', { length: 50 }).notNull(),
+  
+  // Organization and Access Control
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  uploadedBy: uuid('uploaded_by').notNull(),
+  
+  // Access Control Flags
+  isPublicToBdi: boolean('is_public_to_bdi').default(false),
+  allowedOrganizations: uuid('allowed_organizations').array(),
+  
+  // Metadata
+  description: text('description'),
+  tags: varchar('tags', { length: 50 }).array(),
+  
+  // Audit Fields
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export type Warehouse = typeof warehouses.$inferSelect;
 export type NewWarehouse = typeof warehouses.$inferInsert;
+export type ProductionFile = typeof productionFiles.$inferSelect;
+export type NewProductionFile = typeof productionFiles.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;
