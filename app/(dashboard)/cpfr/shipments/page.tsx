@@ -69,10 +69,39 @@ export default function ShipmentsPage() {
     pickupLocation: '',
     deliveryLocation: '',
     estimatedShipDate: '',
-    requestedDeliveryDate: ''
+    requestedDeliveryDate: '',
+    overrideDefaults: false
   });
+  const [uploadedCostDocs, setUploadedCostDocs] = useState<File[]>([]);
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
+
+  // Helper function to get default dates from forecast
+  const getDefaultDatesFromForecast = (forecast: SalesForecast) => {
+    const deliveryWeek = forecast.deliveryWeek; // e.g., "2025-W47"
+    const [year, week] = deliveryWeek.split('-W');
+    
+    // Calculate delivery date from ISO week
+    const deliveryDate = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+    const requestedDeliveryDate = deliveryDate.toISOString().split('T')[0];
+    
+    // Calculate estimated ship date based on shipping preference
+    const shippingDays = parseInt(forecast.shippingPreference.split('_').pop() || '14');
+    const estimatedShipDate = new Date(deliveryDate.getTime() - shippingDays * 24 * 60 * 60 * 1000);
+    const estimatedShipDateStr = estimatedShipDate.toISOString().split('T')[0];
+    
+    return {
+      estimatedShipDate: estimatedShipDateStr,
+      requestedDeliveryDate: requestedDeliveryDate
+    };
+  };
+
+  // Helper function to get default incoterms from forecast shipping preference
+  const getDefaultIncoterms = (shippingPreference: string) => {
+    if (shippingPreference.includes('SEA')) return 'FOB';
+    if (shippingPreference.includes('AIR')) return 'EXW';
+    return 'EXW';
+  };
 
   // Helper function to calculate shipping data from SKU
   const calculateShippingData = (sku: ProductSku, requestedQuantity: number, unitsPerCarton: number) => {
@@ -813,6 +842,7 @@ export default function ShipmentsPage() {
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          {/* Basic Configuration */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor="requestedQuantity">Requested Quantity</Label>
@@ -824,6 +854,7 @@ export default function ShipmentsPage() {
                                 placeholder={selectedShipment.quantity.toString()}
                                 className="mt-1"
                               />
+                              <div className="text-xs text-blue-600 mt-1">Default: {selectedShipment.quantity.toLocaleString()} units (from forecast)</div>
                             </div>
                             <div>
                               <Label htmlFor="unitsPerCarton">Units per Carton</Label>
@@ -837,57 +868,91 @@ export default function ShipmentsPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="priority">Priority</Label>
-                              <select
-                                id="priority"
-                                value={shipmentForm.priority}
-                                onChange={(e) => setShipmentForm(prev => ({ ...prev, priority: e.target.value }))}
-                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="standard">Standard</option>
-                                <option value="expedited">Expedited</option>
-                                <option value="urgent">Urgent</option>
-                              </select>
-                            </div>
-                            <div>
-                              <Label htmlFor="incoterms">Incoterms</Label>
-                              <select
-                                id="incoterms"
-                                value={shipmentForm.incoterms}
-                                onChange={(e) => setShipmentForm(prev => ({ ...prev, incoterms: e.target.value }))}
-                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="EXW">EXW - Ex Works</option>
-                                <option value="FOB">FOB - Free on Board</option>
-                                <option value="CIF">CIF - Cost, Insurance & Freight</option>
-                                <option value="DDP">DDP - Delivered Duty Paid</option>
-                              </select>
-                            </div>
+                          <div>
+                            <Label htmlFor="priority">Shipment Priority</Label>
+                            <select
+                              id="priority"
+                              value={shipmentForm.priority}
+                              onChange={(e) => setShipmentForm(prev => ({ ...prev, priority: e.target.value }))}
+                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="standard">Standard</option>
+                              <option value="expedited">Expedited</option>
+                              <option value="urgent">Urgent</option>
+                            </select>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="estimatedShipDate">Estimated Ship Date</Label>
-                              <Input
-                                id="estimatedShipDate"
-                                type="date"
-                                value={shipmentForm.estimatedShipDate}
-                                onChange={(e) => setShipmentForm(prev => ({ ...prev, estimatedShipDate: e.target.value }))}
-                                className="mt-1"
+                          {/* Override Section */}
+                          <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <div className="flex items-center space-x-2 mb-3">
+                              <input
+                                type="checkbox"
+                                id="overrideDefaults"
+                                checked={shipmentForm.overrideDefaults}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, overrideDefaults: e.target.checked }))}
+                                className="rounded border-orange-300"
                               />
+                              <Label htmlFor="overrideDefaults" className="text-orange-800 font-medium">
+                                Override Forecast Defaults
+                              </Label>
                             </div>
-                            <div>
-                              <Label htmlFor="requestedDeliveryDate">Requested Delivery Date</Label>
-                              <Input
-                                id="requestedDeliveryDate"
-                                type="date"
-                                value={shipmentForm.requestedDeliveryDate}
-                                onChange={(e) => setShipmentForm(prev => ({ ...prev, requestedDeliveryDate: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
+                            
+                            {(() => {
+                              const defaults = getDefaultDatesFromForecast(selectedShipment);
+                              const defaultIncoterms = getDefaultIncoterms(selectedShipment.shippingPreference);
+                              
+                              return (
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="incoterms">Incoterms</Label>
+                                    <select
+                                      id="incoterms"
+                                      value={shipmentForm.overrideDefaults ? shipmentForm.incoterms : defaultIncoterms}
+                                      onChange={(e) => setShipmentForm(prev => ({ ...prev, incoterms: e.target.value }))}
+                                      disabled={!shipmentForm.overrideDefaults}
+                                      className={`w-full mt-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                        !shipmentForm.overrideDefaults ? 'bg-gray-100 text-gray-600' : 'border-gray-300'
+                                      }`}
+                                    >
+                                      <option value="EXW">EXW - Ex Works</option>
+                                      <option value="FOB">FOB - Free on Board</option>
+                                      <option value="CIF">CIF - Cost, Insurance & Freight</option>
+                                      <option value="DDP">DDP - Delivered Duty Paid</option>
+                                    </select>
+                                    <div className="text-xs text-orange-600 mt-1">
+                                      Default: {defaultIncoterms} (based on {selectedShipment.shippingPreference})
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label htmlFor="estimatedShipDate">Estimated Ship Date</Label>
+                                      <Input
+                                        id="estimatedShipDate"
+                                        type="date"
+                                        value={shipmentForm.overrideDefaults ? shipmentForm.estimatedShipDate : defaults.estimatedShipDate}
+                                        onChange={(e) => setShipmentForm(prev => ({ ...prev, estimatedShipDate: e.target.value }))}
+                                        disabled={!shipmentForm.overrideDefaults}
+                                        className={`mt-1 ${!shipmentForm.overrideDefaults ? 'bg-gray-100' : ''}`}
+                                      />
+                                      <div className="text-xs text-orange-600 mt-1">Default from forecast shipping timeline</div>
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="requestedDeliveryDate">Requested Delivery Date</Label>
+                                      <Input
+                                        id="requestedDeliveryDate"
+                                        type="date"
+                                        value={shipmentForm.overrideDefaults ? shipmentForm.requestedDeliveryDate : defaults.requestedDeliveryDate}
+                                        onChange={(e) => setShipmentForm(prev => ({ ...prev, requestedDeliveryDate: e.target.value }))}
+                                        disabled={!shipmentForm.overrideDefaults}
+                                        className={`mt-1 ${!shipmentForm.overrideDefaults ? 'bg-gray-100' : ''}`}
+                                      />
+                                      <div className="text-xs text-orange-600 mt-1">Default: {selectedShipment.deliveryWeek}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           <div>
@@ -900,6 +965,53 @@ export default function ShipmentsPage() {
                               rows={3}
                               placeholder="Any special handling instructions or notes for the shipper..."
                             />
+                          </div>
+
+                          {/* Cost Estimate Documents */}
+                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 className="font-medium text-gray-800 mb-3 flex items-center">
+                              <SemanticBDIIcon semantic="document" size={16} className="mr-2 text-gray-600" />
+                              Cost Estimate Documents
+                            </h4>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                                  multiple
+                                  onChange={(e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    setUploadedCostDocs(prev => [...prev, ...files]);
+                                  }}
+                                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                />
+                                <div className="text-xs text-gray-600 mt-1">
+                                  Upload cost estimates, quotes, or shipping documentation
+                                </div>
+                              </div>
+                              
+                              {uploadedCostDocs.length > 0 && (
+                                <div className="space-y-2">
+                                  <h5 className="text-sm font-medium text-gray-700">Files to Upload:</h5>
+                                  {uploadedCostDocs.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                                      <div className="flex items-center space-x-2">
+                                        <SemanticBDIIcon semantic="document" size={14} className="text-blue-600" />
+                                        <span className="text-sm">{file.name}</span>
+                                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                                      </div>
+                                      <button
+                                        onClick={() => setUploadedCostDocs(prev => prev.filter((_, i) => i !== index))}
+                                        className="text-red-500 hover:text-red-700"
+                                      >
+                                        <SemanticBDIIcon semantic="close" size={14} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}

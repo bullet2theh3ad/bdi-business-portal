@@ -159,7 +159,6 @@ export async function POST(request: NextRequest) {
         estimated_ship_date: body.estimatedShipDate || null,
         requested_delivery_date: body.requestedDeliveryDate || null,
         notes: body.notes || null,
-        calculated_data: body.calculatedData || {},
         status: 'pending_shipper_confirmation',
         created_by: dbUser.id
       })
