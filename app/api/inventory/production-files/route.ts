@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     // Get user from cookies (session-based auth)
     const cookieStore = request.headers.get('cookie');
     if (!cookieStore) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('No cookie store found, returning empty array');
+      return NextResponse.json([]);
     }
 
     // Create Supabase client with cookies
@@ -32,7 +33,8 @@ export async function GET(request: NextRequest) {
 
     const { data: { user }, error } = await supabaseClient.auth.getUser();
     if (error || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.error('Auth error in production files API:', error);
+      return NextResponse.json([]);
     }
 
     // Get user's organization
@@ -51,7 +53,8 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (!userWithOrg.length) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      console.log('User not found in organization, returning empty array');
+      return NextResponse.json([]);
     }
 
     const userData = userWithOrg[0];
@@ -120,7 +123,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(files);
   } catch (error) {
     console.error('Error fetching production files:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Return empty array instead of error object to prevent frontend crashes
+    return NextResponse.json([]);
   }
 }
 
