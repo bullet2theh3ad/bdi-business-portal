@@ -110,6 +110,7 @@ export async function POST(
               file_path: filePath,
               file_size: value.size,
               content_type: value.type,
+              document_type: 'cost_estimate', // Required field - default to cost estimate
               uploaded_by: userData.authId
             })
             .select()
