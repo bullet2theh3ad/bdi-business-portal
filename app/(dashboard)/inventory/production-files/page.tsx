@@ -186,8 +186,13 @@ export default function ProductionFilesPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to upload file');
+          const errorData = await response.text();
+          console.error('Upload response error:', errorData);
+          throw new Error(`Failed to upload ${file.name}: ${response.status} ${response.statusText}`);
         }
+
+        const result = await response.json();
+        console.log('File uploaded successfully:', result);
       }
 
       // Reset form and close modal
@@ -206,9 +211,10 @@ export default function ProductionFilesPage() {
       });
       setShowUploadModal(false);
       mutateFiles(); // Refresh the files list
+      alert(`Successfully uploaded ${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'}!`);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload files. Please try again.');
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Please try again'}`);
     } finally {
       setUploading(false);
     }
@@ -670,12 +676,50 @@ export default function ProductionFilesPage() {
               {selectedFiles.length > 0 && (
                 <div className="space-y-2">
                   <Label>Selected Files ({selectedFiles.length})</Label>
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <span className="text-sm">{file.name}</span>
-                      <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedFiles.map((file, index) => {
+                      const getFileIcon = (fileName: string) => {
+                        const ext = fileName.toLowerCase().split('.').pop();
+                        switch (ext) {
+                          case 'csv': return { icon: 'analytics', color: 'text-green-600' };
+                          case 'xlsx':
+                          case 'xls': return { icon: 'reports', color: 'text-blue-600' };
+                          case 'pdf': return { icon: 'orders', color: 'text-red-600' };
+                          case 'txt': return { icon: 'inventory_items', color: 'text-gray-600' };
+                          case 'json': return { icon: 'settings', color: 'text-purple-600' };
+                          default: return { icon: 'analytics', color: 'text-gray-600' };
+                        }
+                      };
+                      
+                      const fileIconInfo = getFileIcon(file.name);
+                      
+                      return (
+                        <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border">
+                          <SemanticBDIIcon 
+                            semantic={fileIconInfo.icon as any} 
+                            size={20} 
+                            className={fileIconInfo.color} 
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(file.size / 1024).toFixed(1)} KB • {file.type || 'Unknown type'}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <SemanticBDIIcon semantic="delete" size={16} />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
