@@ -125,12 +125,26 @@ export async function GET(request: NextRequest) {
       // Get unique SKU IDs from forecasts
       const skuIds = [...new Set((forecastsData || []).map((row: any) => row.sku_id))];
       
-      // Fetch SKU details for all forecasts
+      // Fetch SKU details for all forecasts (including dimensional data for shipment calculations)
       const skuData = skuIds.length > 0 ? await db
         .select({
           id: productSkus.id,
           sku: productSkus.sku,
-          name: productSkus.name
+          name: productSkus.name,
+          htsCode: productSkus.htsCode,
+          boxLengthCm: productSkus.boxLengthCm,
+          boxWidthCm: productSkus.boxWidthCm,
+          boxHeightCm: productSkus.boxHeightCm,
+          boxWeightKg: productSkus.boxWeightKg,
+          cartonLengthCm: productSkus.cartonLengthCm,
+          cartonWidthCm: productSkus.cartonWidthCm,
+          cartonHeightCm: productSkus.cartonHeightCm,
+          cartonWeightKg: productSkus.cartonWeightKg,
+          boxesPerCarton: productSkus.boxesPerCarton,
+          palletLengthCm: productSkus.palletLengthCm,
+          palletWidthCm: productSkus.palletWidthCm,
+          palletHeightCm: productSkus.palletHeightCm,
+          palletWeightKg: productSkus.palletWeightKg
         })
         .from(productSkus)
         .where(inArray(productSkus.id, skuIds)) : [];
