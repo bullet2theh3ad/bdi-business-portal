@@ -37,7 +37,7 @@ export default function ProductionFileTemplatesPage() {
       if (fileType === 'PRODUCTION_FILE') {
         // Download the actual Excel template
         const link = document.createElement('a');
-        link.href = '/production-files/companyName_shipmentNumber_YYYY.MM.DD - Production File Template.xlsx';
+        link.href = '/Production File Template.xlsx';
         link.download = 'Production File Template.xlsx';
         document.body.appendChild(link);
         link.click();
