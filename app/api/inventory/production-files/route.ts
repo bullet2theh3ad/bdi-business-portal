@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     let files;
     
     if (userData.organizationCode === 'BDI' || userData.userRole === 'super_admin') {
-      // BDI users can see all files
+      // BDI users can see all files with organization info
       files = await db
         .select({
           id: productionFiles.id,
@@ -106,11 +106,15 @@ export async function GET(request: NextRequest) {
           tags: productionFiles.tags,
           createdAt: productionFiles.createdAt,
           updatedAt: productionFiles.updatedAt,
+          // Include organization info
+          organizationCode: organizations.code,
+          organizationName: organizations.name,
         })
         .from(productionFiles)
+        .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
         .orderBy(productionFiles.createdAt);
     } else {
-      // Non-BDI users can only see their own organization's files
+      // Non-BDI users can only see their own organization's files with organization info
       files = await db
         .select({
           id: productionFiles.id,
@@ -131,8 +135,12 @@ export async function GET(request: NextRequest) {
           tags: productionFiles.tags,
           createdAt: productionFiles.createdAt,
           updatedAt: productionFiles.updatedAt,
+          // Include organization info
+          organizationCode: organizations.code,
+          organizationName: organizations.name,
         })
         .from(productionFiles)
+        .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
         .where(
           or(
             eq(productionFiles.organizationId, userData.organizationId!),

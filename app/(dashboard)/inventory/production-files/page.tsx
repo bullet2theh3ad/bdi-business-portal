@@ -452,13 +452,17 @@ export default function ProductionFilesPage() {
                           <p className="text-gray-600 mb-2">{file.description}</p>
                         )}
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Organization:</span>
+                            <p className="font-medium">{(file as any).organizationCode || 'Unknown'}</p>
+                          </div>
                           <div>
                             <span className="text-gray-600">File Size:</span>
                             <p className="font-medium">{(file.fileSize / 1024).toFixed(1)} KB</p>
                           </div>
                           <div>
-                            <span className="text-gray-600">Device Count:</span>
+                            <span className="text-gray-600">Devices in File:</span>
                             <p className="font-medium">{deviceMetadata?.deviceCount || 0} devices</p>
                           </div>
                           <div>
