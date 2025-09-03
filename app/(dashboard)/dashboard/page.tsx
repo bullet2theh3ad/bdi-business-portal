@@ -394,8 +394,8 @@ function ForecastMonthlyCharts() {
 function RecentActivity() {
   const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
   
-  // Get recent forecast activities
-  const recentActivities = forecasts?.slice(0, 5).map((forecast: any) => ({
+  // Get recent forecast activities - ensure forecasts is an array
+  const recentActivities = (Array.isArray(forecasts) ? forecasts : []).slice(0, 5).map((forecast: any) => ({
     id: forecast.id,
     type: 'forecast' as const,
     message: `Forecast created for ${forecast.sku?.sku || 'Unknown SKU'} - ${forecast.quantity?.toLocaleString() || 0} units`,
