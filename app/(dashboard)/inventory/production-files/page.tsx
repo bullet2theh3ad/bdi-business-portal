@@ -23,19 +23,7 @@ interface UserWithOrganization extends User {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-const getFileTypeDescription = (fileType: string): string => {
-  const descriptions = {
-    'MAC_ADDRESS_LIST': 'CSV file with device MAC addresses, one per line',
-    'SERIAL_NUMBER_LIST': 'List of device serial numbers for tracking and warranty',
-    'PRODUCTION_REPORT': 'Manufacturing summary with quantities, dates, and batch info',
-    'TEST_RESULTS': 'Quality assurance test results and performance metrics',
-    'CALIBRATION_DATA': 'Device calibration settings and measurement data',
-    'FIRMWARE_VERSION': 'Firmware versions and update information per device',
-    'QUALITY_CONTROL': 'QC inspection results and compliance certifications',
-    'PACKAGING_LIST': 'Packaging details, box counts, and shipping preparation'
-  };
-  return descriptions[fileType as keyof typeof descriptions] || 'Production file template';
-};
+
 
 const FILE_TYPES = [
   { value: 'MAC_ADDRESS_LIST', label: 'MAC Address List', icon: 'connect' },
@@ -257,89 +245,7 @@ export default function ProductionFilesPage() {
     }
   };
 
-  const handleDownloadSample = async (fileType: string) => {
-    try {
-      // For now, we'll create a simple CSV template based on the file type
-      let csvContent = '';
-      let fileName = '';
 
-      switch (fileType) {
-        case 'MAC_ADDRESS_LIST':
-          csvContent = 'Device_ID,MAC_Address,Device_Type,Production_Date\n' +
-                      'DEV001,00:1A:2B:3C:4D:5E,Router,2025-01-15\n' +
-                      'DEV002,00:1A:2B:3C:4D:5F,Router,2025-01-15\n' +
-                      'DEV003,00:1A:2B:3C:4D:60,Router,2025-01-15';
-          fileName = 'sample_mac_addresses.csv';
-          break;
-        case 'SERIAL_NUMBER_LIST':
-          csvContent = 'Serial_Number,Device_Model,Production_Batch,Manufacture_Date\n' +
-                      'MNQ1525001,MNQ1525-30W-U,BATCH-2025-001,2025-01-15\n' +
-                      'MNQ1525002,MNQ1525-30W-U,BATCH-2025-001,2025-01-15\n' +
-                      'MNQ1525003,MNQ1525-30W-U,BATCH-2025-001,2025-01-15';
-          fileName = 'sample_serial_numbers.csv';
-          break;
-        case 'PRODUCTION_REPORT':
-          csvContent = 'Production_Date,Batch_Number,Units_Produced,Defects,Pass_Rate,Operator\n' +
-                      '2025-01-15,BATCH-2025-001,1000,5,99.5%,John Smith\n' +
-                      '2025-01-16,BATCH-2025-002,950,3,99.7%,Jane Doe\n' +
-                      '2025-01-17,BATCH-2025-003,1100,8,99.3%,Mike Johnson';
-          fileName = 'sample_production_report.csv';
-          break;
-        case 'TEST_RESULTS':
-          csvContent = 'Device_ID,Test_Type,Result,Value,Unit,Pass_Fail,Test_Date\n' +
-                      'DEV001,Signal Strength,-45,dBm,PASS,2025-01-15\n' +
-                      'DEV001,Power Consumption,12.5,Watts,PASS,2025-01-15\n' +
-                      'DEV002,Signal Strength,-42,dBm,PASS,2025-01-15';
-          fileName = 'sample_test_results.csv';
-          break;
-        case 'CALIBRATION_DATA':
-          csvContent = 'Device_ID,Calibration_Type,Setting_Name,Value,Unit,Calibrated_By,Date\n' +
-                      'DEV001,RF Calibration,TX Power,20,dBm,Tech1,2025-01-15\n' +
-                      'DEV001,RF Calibration,RX Sensitivity,-85,dBm,Tech1,2025-01-15\n' +
-                      'DEV002,RF Calibration,TX Power,19.8,dBm,Tech2,2025-01-15';
-          fileName = 'sample_calibration_data.csv';
-          break;
-        case 'FIRMWARE_VERSION':
-          csvContent = 'Device_ID,Firmware_Version,Boot_Version,Update_Date,Status\n' +
-                      'DEV001,v2.1.5,v1.0.3,2025-01-15,Current\n' +
-                      'DEV002,v2.1.5,v1.0.3,2025-01-15,Current\n' +
-                      'DEV003,v2.1.4,v1.0.3,2025-01-10,Needs Update';
-          fileName = 'sample_firmware_versions.csv';
-          break;
-        case 'QUALITY_CONTROL':
-          csvContent = 'Device_ID,Inspection_Type,Inspector,Result,Issues,Certification,Date\n' +
-                      'DEV001,Final QC,QC-Team-A,PASS,None,FCC-ID-12345,2025-01-15\n' +
-                      'DEV002,Final QC,QC-Team-A,PASS,None,FCC-ID-12346,2025-01-15\n' +
-                      'DEV003,Final QC,QC-Team-B,FAIL,Label Missing,Pending,2025-01-15';
-          fileName = 'sample_quality_control.csv';
-          break;
-        case 'PACKAGING_LIST':
-          csvContent = 'Box_ID,Device_Count,Device_Models,Package_Type,Pallet_ID,Ship_Date\n' +
-                      'BOX001,10,MNQ1525-30W-U,Retail Box,PLT001,2025-01-20\n' +
-                      'BOX002,10,MNQ1525-30W-U,Retail Box,PLT001,2025-01-20\n' +
-                      'BOX003,10,MNQ1525-30W-U,Retail Box,PLT002,2025-01-20';
-          fileName = 'sample_packaging_list.csv';
-          break;
-        default:
-          csvContent = 'Column1,Column2,Column3\nSample,Data,Here';
-          fileName = 'sample_template.csv';
-      }
-
-      // Create and download the file
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Sample download error:', error);
-      alert('Failed to download sample file');
-    }
-  };
 
   // Filter files - ensure productionFiles is an array
   const filteredFiles = (Array.isArray(productionFiles) ? productionFiles : []).filter(file => {
@@ -473,60 +379,24 @@ export default function ProductionFilesPage() {
         </div>
       </div>
 
-      {/* Production File Templates */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <SemanticBDIIcon semantic="help" size={20} className="text-green-600" />
-            <span>Production File Templates</span>
-          </CardTitle>
-          <CardDescription>
-            Download sample files to understand the format and structure for each production file type
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FILE_TYPES.slice(0, -1).map((fileType) => (
-              <div key={fileType.value} className="border rounded-lg p-4 hover:bg-green-50 transition-colors">
-                <div className="flex items-start space-x-3">
-                  <SemanticBDIIcon 
-                    semantic={fileType.icon as any} 
-                    size={24} 
-                    className="text-green-600 mt-1" 
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-sm mb-1">{fileType.label}</h4>
-                    <p className="text-xs text-gray-600 mb-3">
-                      {getFileTypeDescription(fileType.value)}
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={() => handleDownloadSample(fileType.value)}
-                    >
-                      <SemanticBDIIcon semantic="download" size={14} className="mr-2" />
-                      Download Sample
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <SemanticBDIIcon semantic="help" size={20} className="text-blue-600 mt-1" />
+      {/* Quick Link to Templates */}
+      <Card className="bg-gradient-to-r from-green-50 to-emerald-50">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <SemanticBDIIcon semantic="help" size={20} className="text-green-600" />
               <div>
-                <h4 className="font-semibold text-blue-800 mb-2">How to Use Sample Files</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Download the sample that matches your production file type</li>
-                  <li>• Use the same format and column headers in your actual files</li>
-                  <li>• Replace the sample data with your real production data</li>
-                  <li>• Upload your completed files using the "Upload Files" button above</li>
-                </ul>
+                <p className="font-semibold text-green-800">Need help with file formats?</p>
+                <p className="text-sm text-green-700">Download sample templates to see the expected format for each file type</p>
               </div>
             </div>
+            <Button 
+              onClick={() => window.location.href = '/inventory/production-files/templates'} 
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <SemanticBDIIcon semantic="help" size={14} className="mr-2" />
+              View Templates
+            </Button>
           </div>
         </CardContent>
       </Card>

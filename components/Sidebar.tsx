@@ -74,9 +74,20 @@ const navigationItems: NavItem[] = [
       },
       {
         title: 'Production Files',
-        href: '/inventory/production-files',
         icon: 'analytics',
         requiresRole: ['super_admin', 'admin', 'operations', 'sales', 'member'],
+        children: [
+          {
+            title: 'Files',
+            href: '/inventory/production-files',
+            icon: 'analytics',
+          },
+          {
+            title: 'Templates',
+            href: '/inventory/production-files/templates',
+            icon: 'help',
+          },
+        ],
       },
     ],
   },
