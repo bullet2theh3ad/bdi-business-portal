@@ -72,7 +72,10 @@ export async function POST(
     
     // Process each uploaded file (Node.js compatible check)
     for (const [key, value] of formData.entries()) {
+      console.log(`🔍 Processing entry: ${key}, startsWith('file'): ${key.startsWith('file')}, isObject: ${value && typeof value === 'object'}, hasName: ${'name' in value}`);
+      
       if (key.startsWith('file') && value && typeof value === 'object' && 'name' in value) {
+        console.log(`✅ File entry matched for processing: ${key}`);
         try {
           // Upload to Supabase Storage - use organization-based path like other working uploads
           const fileName = `${Date.now()}_${value.name}`;
@@ -83,9 +86,11 @@ export async function POST(
             .upload(filePath, value);
 
           if (uploadError) {
-            console.error('Storage upload error:', uploadError);
+            console.error('❌ Storage upload error:', uploadError);
             continue;
           }
+
+          console.log('✅ File uploaded to storage successfully:', filePath);
 
           // Save document record to shipment_documents table
           const { data: docData, error: docError } = await supabase
