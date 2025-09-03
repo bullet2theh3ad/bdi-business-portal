@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           notes,
           created_by,
           created_at,
-          product_skus!inner (
+          product_skus (
             id,
             sku,
             name
@@ -124,6 +124,8 @@ export async function GET(request: NextRequest) {
         console.log('📊 Database table access error, returning empty array');
         return NextResponse.json([]);
       }
+
+      console.log(`📊 Raw forecast data from Supabase (first 2):`, forecastsData?.slice(0, 2));
 
       // Transform data to match frontend interface
       const allForecasts = (forecastsData || []).map((row: any) => ({
@@ -151,6 +153,8 @@ export async function GET(request: NextRequest) {
           name: 'SKU data not found'
         }
       })).filter(forecast => forecast.sku !== null); // Filter out any with null SKU data
+
+      console.log(`📊 Transformed forecasts (first 2):`, allForecasts.slice(0, 2));
 
       // Filter forecasts based on user organization
       let filteredForecasts = allForecasts;
