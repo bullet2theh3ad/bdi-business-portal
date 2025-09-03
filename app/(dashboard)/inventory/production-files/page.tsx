@@ -40,14 +40,6 @@ export default function ProductionFilesPage() {
   const { data: productionFiles, error: filesError, mutate: mutateFiles } = useSWR<ProductionFile[]>('/api/inventory/production-files', fetcher);
   const { data: forecasts } = useSWR<any[]>('/api/cpfr/forecasts', fetcher);
 
-  // Debug logging
-  if (filesError) {
-    console.error('Production files API error:', filesError);
-  }
-  if (productionFiles && !Array.isArray(productionFiles)) {
-    console.error('Production files is not an array:', productionFiles);
-  }
-
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadFormData, setUploadFormData] = useState({
@@ -66,6 +58,31 @@ export default function ProductionFilesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterShipment, setFilterShipment] = useState('all');
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setSelectedFiles(acceptedFiles);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'text/csv': ['.csv'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'text/plain': ['.txt'],
+      'application/pdf': ['.pdf'],
+      'application/json': ['.json']
+    },
+    multiple: true
+  });
+
+  // Debug logging
+  if (filesError) {
+    console.error('Production files API error:', filesError);
+  }
+  if (productionFiles && !Array.isArray(productionFiles)) {
+    console.error('Production files is not an array:', productionFiles);
+  }
 
   // Loading state
   if (!user) {
@@ -115,23 +132,6 @@ export default function ProductionFilesPage() {
       </div>
     );
   }
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    setSelectedFiles(acceptedFiles);
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'text/csv': ['.csv'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'text/plain': ['.txt'],
-      'application/pdf': ['.pdf'],
-      'application/json': ['.json']
-    },
-    multiple: true
-  });
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
