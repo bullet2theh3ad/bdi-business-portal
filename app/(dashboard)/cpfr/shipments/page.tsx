@@ -273,7 +273,7 @@ export default function ShipmentsPage() {
     ? organizations.filter((org: any) => org.type === 'shipping_logistics')
     : (user?.organization?.type === 'shipping_logistics' ? [user.organization] : []);
 
-  // Handle shipment form submission
+  // Handle shipment form submission (Create OR Update)
   const handleCreateShipment = async () => {
     if (!selectedShipment || !shipmentForm.shippingOrganization) {
       alert('Please select a shipping organization');
@@ -282,20 +282,33 @@ export default function ShipmentsPage() {
 
     setIsCreatingShipment(true);
     try {
-      const response = await fetch('/api/cpfr/shipments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          forecastId: selectedShipment.id,
-          shippingOrganizationCode: shipmentForm.shippingOrganization,
-          ...shipmentForm,
-          calculatedData: calculateShippingData(
-            selectedShipment.sku, 
-            shipmentForm.requestedQuantity || selectedShipment.quantity, 
-            shipmentForm.unitsPerCarton
-          )
-        }),
-      });
+      // Check if shipment already exists for this forecast
+      const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
+      const localShipment = createdShipments.get(selectedShipment.id);
+      
+      const isUpdate = existingShipment || localShipment;
+      const shipmentId = existingShipment?.id || localShipment?.id;
+      
+      console.log('🔧 Shipment operation:', isUpdate ? 'UPDATE' : 'CREATE');
+      console.log('🔧 Existing shipment ID:', shipmentId);
+      
+      const response = await fetch(
+        isUpdate ? `/api/cpfr/shipments/${shipmentId}` : '/api/cpfr/shipments',
+        {
+          method: isUpdate ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            forecastId: selectedShipment.id,
+            shippingOrganizationCode: shipmentForm.shippingOrganization,
+            ...shipmentForm,
+            calculatedData: calculateShippingData(
+              selectedShipment.sku, 
+              shipmentForm.requestedQuantity || selectedShipment.quantity, 
+              shipmentForm.unitsPerCarton
+            )
+          }),
+        }
+      );
 
       const result = await response.json();
       if (result.success) {
@@ -332,7 +345,7 @@ export default function ShipmentsPage() {
             alert('Shipment created but document upload failed');
           }
         } else {
-          alert('Shipment created successfully and logged for shipper processing!');
+          alert(isUpdate ? 'Shipment updated successfully!' : 'Shipment created successfully and logged for shipper processing!');
         }
         
         // Refresh the forecasts data to update timeline status
