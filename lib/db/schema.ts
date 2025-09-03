@@ -849,6 +849,7 @@ export const shipments = pgTable('shipments', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+
 // Production Files (device manufacturing files associated with shipments)
 export const productionFiles = pgTable('production_files', {
   id: uuid('id').defaultRandom().primaryKey(),
