@@ -78,22 +78,42 @@ export default function ShipmentsPage() {
 
   // Helper function to get default dates from forecast
   const getDefaultDatesFromForecast = (forecast: SalesForecast) => {
-    const deliveryWeek = forecast.deliveryWeek; // e.g., "2025-W47"
-    const [year, week] = deliveryWeek.split('-W');
-    
-    // Calculate delivery date from ISO week
-    const deliveryDate = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-    const requestedDeliveryDate = deliveryDate.toISOString().split('T')[0];
-    
-    // Calculate estimated ship date based on shipping preference
-    const shippingDays = parseInt(forecast.shippingPreference.split('_').pop() || '14');
-    const estimatedShipDate = new Date(deliveryDate.getTime() - shippingDays * 24 * 60 * 60 * 1000);
-    const estimatedShipDateStr = estimatedShipDate.toISOString().split('T')[0];
-    
-    return {
-      estimatedShipDate: estimatedShipDateStr,
-      requestedDeliveryDate: requestedDeliveryDate
-    };
+    try {
+      const deliveryWeek = forecast.deliveryWeek; // e.g., "2025-W47"
+      const [year, weekStr] = deliveryWeek.split('-W');
+      const week = parseInt(weekStr);
+      
+      // More accurate ISO week to date conversion
+      const jan1 = new Date(parseInt(year), 0, 1);
+      const daysToAdd = (week - 1) * 7;
+      const deliveryDate = new Date(jan1.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      
+      // Ensure valid date
+      if (isNaN(deliveryDate.getTime())) {
+        throw new Error('Invalid delivery date calculation');
+      }
+      
+      const requestedDeliveryDate = deliveryDate.toISOString().split('T')[0];
+      
+      // Calculate estimated ship date based on shipping preference
+      const shippingDays = parseInt(forecast.shippingPreference.split('_').pop() || '14');
+      const estimatedShipDate = new Date(deliveryDate.getTime() - shippingDays * 24 * 60 * 60 * 1000);
+      const estimatedShipDateStr = estimatedShipDate.toISOString().split('T')[0];
+      
+      return {
+        estimatedShipDate: estimatedShipDateStr,
+        requestedDeliveryDate: requestedDeliveryDate
+      };
+    } catch (error) {
+      console.error('Error calculating default dates:', error);
+      // Fallback to reasonable defaults
+      const today = new Date();
+      const futureDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      return {
+        estimatedShipDate: today.toISOString().split('T')[0],
+        requestedDeliveryDate: futureDate.toISOString().split('T')[0]
+      };
+    }
   };
 
   // Helper function to get default incoterms from forecast shipping preference
@@ -655,7 +675,7 @@ export default function ShipmentsPage() {
                             <Badge className={
                               progress >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
                             }>
-                              {createdShipments.has(forecast.id) && progress >= 3 ? 'awaiting' : (progress >= 3 ? 'shipping' : 'unknown')}
+                              {createdShipments.has(forecast.id) && progress >= 3 ? 'quote requested' : (progress >= 3 ? 'shipping' : 'unknown')}
                             </Badge>
                           </div>
                         </div>
