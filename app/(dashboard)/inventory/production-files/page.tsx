@@ -138,6 +138,22 @@ export default function ProductionFilesPage() {
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
+    // Validation: Check required fields
+    if (!uploadFormData.manufacturingDate) {
+      alert('Manufacturing Date is required');
+      return;
+    }
+
+    // Validation: At least one device identifier is required
+    const hasDeviceData = uploadFormData.cmMacAddresses.trim() || 
+                         uploadFormData.macAddresses.trim() || 
+                         uploadFormData.serialNumbers.trim();
+    
+    if (!hasDeviceData) {
+      alert('At least one device identifier (CM-MAC, MAC Address, or Serial Number) is required');
+      return;
+    }
+
     setUploading(true);
     try {
       for (const file of selectedFiles) {
@@ -664,9 +680,10 @@ export default function ProductionFilesPage() {
               />
             </div>
 
-            {/* Device Information */}
+            {/* Device Information - Required */}
             <div className="space-y-4">
-              <Label className="text-lg font-semibold">Device Information (Optional)</Label>
+              <Label className="text-lg font-semibold">Device Information <span className="text-red-500">*</span></Label>
+              <p className="text-sm text-gray-600">At least one device identifier field is required to determine device count</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cmMacAddresses">CM-MAC Addresses</Label>
@@ -705,12 +722,13 @@ export default function ProductionFilesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="manufacturingDate">Manufacturing Date</Label>
+                  <Label htmlFor="manufacturingDate">Manufacturing Date <span className="text-red-500">*</span></Label>
                   <Input
                     id="manufacturingDate"
                     type="date"
                     value={uploadFormData.manufacturingDate}
                     onChange={(e) => setUploadFormData(prev => ({ ...prev, manufacturingDate: e.target.value }))}
+                    required
                   />
                 </div>
               </div>
@@ -733,8 +751,13 @@ export default function ProductionFilesPage() {
               </Button>
               <Button 
                 onClick={handleUpload} 
-                disabled={selectedFiles.length === 0 || uploading}
-                className="bg-purple-600 hover:bg-purple-700"
+                disabled={
+                  selectedFiles.length === 0 || 
+                  uploading || 
+                  !uploadFormData.manufacturingDate ||
+                  (!uploadFormData.cmMacAddresses.trim() && !uploadFormData.macAddresses.trim() && !uploadFormData.serialNumbers.trim())
+                }
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400"
               >
                 {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} File${selectedFiles.length === 1 ? '' : 's'}`}
               </Button>
