@@ -818,13 +818,20 @@ export default function ShipmentsPage() {
                       
                       return (
                         <div className="space-y-4">
-                          <div className="bg-blue-50 p-4 rounded-lg">
+                                                      <div className="bg-blue-50 p-4 rounded-lg">
                             <h4 className="font-semibold text-blue-800 mb-3">📦 Package Summary</h4>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div><span className="font-medium">Total Units:</span> {quantity.toLocaleString()}</div>
                               <div><span className="font-medium">Total Cartons:</span> {shippingData.cartonCount}</div>
                               <div><span className="font-medium">Total Pallets:</span> {shippingData.palletCount}</div>
                               <div><span className="font-medium">Units/Carton:</span> {shippingData.unitsPerCarton}</div>
+                            </div>
+                            {/* Debug info to see SKU data */}
+                            <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded">
+                              <div><strong>Debug - SKU Raw Data:</strong></div>
+                              <div>Box: {selectedShipment.sku.boxLengthCm || 'null'}×{selectedShipment.sku.boxWidthCm || 'null'}×{selectedShipment.sku.boxHeightCm || 'null'} cm, {selectedShipment.sku.boxWeightKg || 'null'}kg</div>
+                              <div>Carton: {selectedShipment.sku.cartonLengthCm || 'null'}×{selectedShipment.sku.cartonWidthCm || 'null'}×{selectedShipment.sku.cartonHeightCm || 'null'} cm, {selectedShipment.sku.cartonWeightKg || 'null'}kg</div>
+                              <div>Pallet: {selectedShipment.sku.palletLengthCm || 'null'}×{selectedShipment.sku.palletWidthCm || 'null'}×{selectedShipment.sku.palletHeightCm || 'null'} cm, {selectedShipment.sku.palletWeightKg || 'null'}kg</div>
                             </div>
                           </div>
 
