@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, productSkus, invoices, invoiceLineItems, organizations, organizationMembers } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, inArray } from 'drizzle-orm';
 import { sendCPFRNotification, generateCPFRPortalLink, logCPFRNotification, CPFRNotificationData } from '@/lib/email/cpfr-notifications';
 
 // For now, we'll store forecasts in a simple structure
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
             name: productSkus.name
           })
           .from(productSkus)
-          .where(sql`${productSkus.id} = ANY(ARRAY[${skuIds.map(id => `'${id}'`).join(',')}]::uuid[])`);
+          .where(inArray(productSkus.id, skuIds));
       }
 
       // Create SKU lookup map
