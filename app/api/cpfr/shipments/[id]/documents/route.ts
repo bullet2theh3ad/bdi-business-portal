@@ -38,9 +38,9 @@ export async function POST(
     const formData = await request.formData();
     const uploadedFiles = [];
     
-    // Process each uploaded file
+    // Process each uploaded file (Node.js compatible check)
     for (const [key, value] of formData.entries()) {
-      if (key.startsWith('file') && value instanceof File) {
+      if (key.startsWith('file') && value && typeof value === 'object' && 'name' in value) {
         try {
           // Upload to Supabase Storage
           const fileName = `${shipmentId}_${Date.now()}_${value.name}`;

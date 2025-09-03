@@ -1045,33 +1045,45 @@ export default function ShipmentsPage() {
                             </h4>
                             
                             <div className="space-y-3">
-                              {/* Drag & Drop Zone */}
+                              {/* Drag & Drop Zone with File Count */}
                               <div
                                 {...getRootProps()}
-                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 ${
                                   isDragActive 
-                                    ? 'border-blue-500 bg-blue-50' 
+                                    ? 'border-blue-500 bg-blue-50 scale-105' 
+                                    : currentShipmentDocs.length > 0
+                                    ? 'border-green-400 bg-green-50 hover:border-green-500'
                                     : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'
                                 }`}
                               >
                                 <input {...getInputProps()} />
-                                <SemanticBDIIcon 
-                                  semantic="upload" 
-                                  size={24} 
-                                  className={`mx-auto mb-2 ${isDragActive ? 'text-blue-500' : 'text-gray-400'}`} 
-                                />
-                                {isDragActive ? (
-                                  <p className="text-blue-600 font-medium">Drop cost estimate files here...</p>
-                                ) : (
-                                  <div>
-                                    <p className="text-gray-600 font-medium mb-1">
-                                      Drag & drop cost estimates here, or click to browse
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      Supports: PDF, DOC, XLS, Images • Multiple files allowed
-                                    </p>
-                                  </div>
-                                )}
+                                <div className="flex flex-col items-center">
+                                  <SemanticBDIIcon 
+                                    semantic="upload" 
+                                    size={24} 
+                                    className={`mb-2 ${
+                                      isDragActive ? 'text-blue-500' : 
+                                      currentShipmentDocs.length > 0 ? 'text-green-500' : 'text-gray-400'
+                                    }`} 
+                                  />
+                                  {currentShipmentDocs.length > 0 && (
+                                    <div className="mb-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                      {currentShipmentDocs.length} files ready
+                                    </div>
+                                  )}
+                                  {isDragActive ? (
+                                    <p className="text-blue-600 font-medium">Drop cost estimate files here...</p>
+                                  ) : (
+                                    <div>
+                                      <p className="text-gray-600 font-medium mb-1">
+                                        {currentShipmentDocs.length > 0 ? 'Add more files or click to browse' : 'Drag & drop cost estimates here, or click to browse'}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        Supports: PDF, DOC, XLS, Images • Multiple files allowed
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               
                               {/* File Preview Cards - Shipment Specific */}
