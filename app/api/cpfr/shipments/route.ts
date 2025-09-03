@@ -139,27 +139,25 @@ export async function POST(request: NextRequest) {
     // Generate shipment number
     const shipmentNumber = `BDI-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
-    // Create shipment in database using Supabase client (simpler than Drizzle schema mismatch)
+    // Create shipment in database using correct column names from create-shipments-table.sql
+    const estimatedDeparture = body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
     const { data: newShipment, error: shipmentError } = await supabase
       .from('shipments')
       .insert({
         shipment_number: shipmentNumber,
         forecast_id: body.forecastId,
-        shipping_organization_code: body.shippingOrganizationCode,
-        shipper_reference: body.shipperReference || null,
-        requested_quantity: body.requestedQuantity || 0,
-        units_per_carton: body.unitsPerCarton || 5,
-        priority: body.priority || 'standard',
-        incoterms: body.incoterms || 'EXW',
-        destination_custom_location: 'TBD', // Required field
+        destination_custom_location: 'Customer Warehouse', // Required field
         destination_country: 'USA', // Default
         shipping_method: 'SEA_FCL', // Default
         container_type: '40ft', // Default
+        incoterms: body.incoterms || 'EXW',
         incoterms_location: 'Factory', // Default
-        estimated_ship_date: body.estimatedShipDate || null,
-        requested_delivery_date: body.requestedDeliveryDate || null,
+        estimated_departure: estimatedDeparture,
+        estimated_arrival: estimatedArrival,
         notes: body.notes || null,
-        status: 'pending_shipper_confirmation',
+        status: 'planning',
         created_by: dbUser.id
       })
       .select()
