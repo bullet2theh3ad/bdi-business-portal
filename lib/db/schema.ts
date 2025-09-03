@@ -802,6 +802,53 @@ export type PurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferSelect;
 export type NewPurchaseOrderLineItem = typeof purchaseOrderLineItems.$inferInsert;
 export type PurchaseOrderDocument = typeof purchaseOrderDocuments.$inferSelect;
 export type NewPurchaseOrderDocument = typeof purchaseOrderDocuments.$inferInsert;
+// ===== SHIPMENTS MANAGEMENT =====
+
+export const shipments = pgTable('shipments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  // Link to forecast that initiated this shipment (optional since sales_forecasts table may not exist yet)
+  forecastId: varchar('forecast_id', { length: 100 }),
+  
+  // Shipping Organization (OLM, etc.)
+  shippingOrganizationCode: varchar('shipping_organization_code', { length: 10 }).notNull(),
+  
+  // Shipment Details
+  requestedQuantity: integer('requested_quantity').notNull(),
+  unitsPerCarton: integer('units_per_carton').default(5),
+  priority: varchar('priority', { length: 20 }).default('standard'), // standard, expedited, urgent
+  incoterms: varchar('incoterms', { length: 10 }).default('EXW'), // EXW, FOB, CIF, DDP
+  
+  // Reference Numbers
+  shipperReference: varchar('shipper_reference', { length: 100 }),
+  bdiReference: varchar('bdi_reference', { length: 100 }),
+  
+  // Dates
+  estimatedShipDate: date('estimated_ship_date'),
+  requestedDeliveryDate: date('requested_delivery_date'),
+  actualShipDate: date('actual_ship_date'),
+  actualDeliveryDate: date('actual_delivery_date'),
+  
+  // Status
+  status: varchar('status', { length: 20 }).default('pending'), // pending, confirmed, shipped, delivered, cancelled
+  
+  // Locations
+  pickupLocation: text('pickup_location'),
+  deliveryLocation: text('delivery_location'),
+  
+  // Notes and Instructions
+  notes: text('notes'),
+  specialInstructions: text('special_instructions'),
+  
+  // Calculated shipping data (from SKU dimensions/weights)
+  calculatedData: jsonb('calculated_data').default({}),
+  
+  // Audit Fields
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // Production Files (device manufacturing files associated with shipments)
 export const productionFiles = pgTable('production_files', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -849,6 +896,8 @@ export const productionFiles = pgTable('production_files', {
 
 export type Warehouse = typeof warehouses.$inferSelect;
 export type NewWarehouse = typeof warehouses.$inferInsert;
+export type Shipment = typeof shipments.$inferSelect;
+export type NewShipment = typeof shipments.$inferInsert;
 export type ProductionFile = typeof productionFiles.$inferSelect;
 export type NewProductionFile = typeof productionFiles.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;

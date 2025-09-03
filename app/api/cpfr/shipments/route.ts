@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
         }
       })
       .from(users)
-      .leftJoin(organizationMembers, eq(organizationMembers.userId, users.id))
-      .leftJoin(organizations, eq(organizations.id, organizationMembers.organizationId))
+      .leftJoin(organizationMembers, eq(organizationMembers.userAuthId, users.authId))
+      .leftJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
       .where(eq(users.authId, authUser.id))
       .limit(1);
 
@@ -64,14 +64,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch shipments based on user organization
-    let shipmentsQuery = db.select().from(shipments);
+    let shipmentsData;
     
     // If user is from a shipping organization, only show their shipments
-    if (dbUser.organization?.type === 'shipping_logistics') {
-      shipmentsQuery = shipmentsQuery.where(eq(shipments.shippingOrganizationCode, dbUser.organization.code));
+    if (dbUser.organization?.type === 'shipping_logistics' && dbUser.organization.code) {
+      shipmentsData = await db
+        .select()
+        .from(shipments)
+        .where(eq(shipments.shippingOrganizationCode, dbUser.organization.code));
+    } else {
+      shipmentsData = await db.select().from(shipments);
     }
-
-    const shipmentsData = await shipmentsQuery;
     
     console.log(`🚢 Fetching shipments - returning ${shipmentsData.length} shipments`);
     return NextResponse.json(shipmentsData);

@@ -78,16 +78,16 @@ export default function ShipmentsPage() {
     const cartonCount = Math.ceil(requestedQuantity / unitsPerCarton);
     const palletCount = Math.ceil(cartonCount / (sku.boxesPerCarton || 1));
     
-    // Dimensions (from your image format)
-    const ctnL = sku.cartonLengthCm || 48.5;
-    const ctnW = sku.cartonWidthCm || 22.5;
-    const ctnH = sku.cartonHeightCm || 31.5;
+    // Dimensions - use actual SKU data (no placeholders)
+    const ctnL = Number(sku.cartonLengthCm) || 0;
+    const ctnW = Number(sku.cartonWidthCm) || 0;
+    const ctnH = Number(sku.cartonHeightCm) || 0;
     
-    // Weights (matching your image)
-    const unitNW = sku.boxWeightKg || 1.316; // Net Product Weight
-    const ctnGW = sku.cartonWeightKg || 7.136; // CTN GW
+    // Weights - use actual SKU data (no placeholders)
+    const unitNW = Number(sku.boxWeightKg) || 0; // Net Product Weight
+    const ctnGW = Number(sku.cartonWeightKg) || 0; // CTN GW
     const unitCtnWeight = unitNW; // Unit/CTN weight
-    const palletGW = sku.palletWeightKg || 285.44; // Gross Pallet Weight
+    const palletGW = Number(sku.palletWeightKg) || 0; // Gross Pallet Weight
     
     // Calculate totals (matching your format exactly)
     const totalUnitsWeight = requestedQuantity * unitNW; // Total Weight (kg) - Units
@@ -98,7 +98,7 @@ export default function ShipmentsPage() {
     // Volume calculations (matching your precision)
     const cbmPerCarton = (ctnL * ctnW * ctnH) / 1000000; // CBM per Carton
     const totalCartonVolume = cartonCount * cbmPerCarton; // Total Volume (cbm) - Cartons
-    const palletVolumeCbm = ((sku.palletLengthCm || 120) * (sku.palletWidthCm || 100) * (sku.palletHeightCm || 150)) / 1000000;
+    const palletVolumeCbm = ((Number(sku.palletLengthCm) || 0) * (Number(sku.palletWidthCm) || 0) * (Number(sku.palletHeightCm) || 0)) / 1000000;
     const totalPalletVolume = palletCount * palletVolumeCbm; // Total Volume (cbm) - Pallet(s)
     
     return {
@@ -135,7 +135,7 @@ export default function ShipmentsPage() {
       totalNumberOfCartons: cartonCount,
       totalNumberOfPallets: palletCount,
       costPerUnitSEA: '$ - USD',
-      htsCode: sku.htsCode || '8517.62.00.10'
+      htsCode: sku.htsCode || 'Not specified'
     };
   };
 
@@ -175,6 +175,7 @@ export default function ShipmentsPage() {
         // Reset form
         setShipmentForm({
           shippingOrganization: '',
+          shipperReference: '',
           unitsPerCarton: 5,
           requestedQuantity: 0,
           notes: '',
