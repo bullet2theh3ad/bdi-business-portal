@@ -47,7 +47,7 @@ export async function POST(
           const filePath = `shipments/${shipmentId}/${fileName}`;
           
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('shipment-documents')
+            .from('organization-documents')
             .upload(filePath, value);
 
           if (uploadError) {

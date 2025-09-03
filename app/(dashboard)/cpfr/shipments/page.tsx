@@ -1390,12 +1390,20 @@ export default function ShipmentsPage() {
                     {isCreatingShipment ? (
                       <>
                         <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin" />
-                        Creating Shipment...
+                        {(() => {
+                          const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
+                          const localShipment = createdShipments.get(selectedShipment?.id || '');
+                          return (existingShipment || localShipment) ? 'Updating Shipment...' : 'Creating Shipment...';
+                        })()}
                       </>
                     ) : (
                       <>
                         <SemanticBDIIcon semantic="shipping" size={16} className="mr-2" />
-                        Create Shipment
+                        {(() => {
+                          const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
+                          const localShipment = createdShipments.get(selectedShipment?.id || '');
+                          return (existingShipment || localShipment) ? 'Update Shipment' : 'Create Shipment';
+                        })()}
                       </>
                     )}
                   </Button>
