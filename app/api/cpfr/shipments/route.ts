@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
         notes: body.notes || null,
         status: 'planning',
         organization_id: dbUser.organization?.id || null, // Required for RLS
-        created_by: dbUser.id
+        created_by: dbUser.authId // Use authId, not id (foreign key to users.auth_id)
       })
       .select()
       .single();
