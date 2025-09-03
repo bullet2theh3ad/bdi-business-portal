@@ -28,8 +28,8 @@ interface SalesForecast {
   quantity: number;
   status: 'draft' | 'submitted';
   salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
-  factorySignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted';
-  shippingSignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted';
+  factorySignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
+  shippingSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
   shippingPreference: string;
   notes?: string;
   createdAt: string;
@@ -65,10 +65,8 @@ export default function ShipmentsPage() {
   }
 
   // Get shipment data from forecasts (Forecasts ARE Shipments!)
-  // Only show forecasts that have been actually submitted (not draft)
-  const shipmentForecasts = forecasts?.filter(f => 
-    f.status === 'submitted' && (f.salesSignal === 'submitted' || f.salesSignal === 'accepted')
-  ) || [];
+  // Show ALL forecasts - drafts will show 0/4 milestones, submitted will show progress
+  const shipmentForecasts = forecasts || [];
 
   // Helper functions for timeline calculations
   const getShippingIcon = (shippingMethod: string) => {
@@ -131,7 +129,7 @@ export default function ShipmentsPage() {
     
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'planning' && forecast.shippingSignal === 'unknown') ||
-      (statusFilter === 'in_transit' && forecast.shippingSignal === 'awaiting') ||
+      (statusFilter === 'in_transit' && forecast.shippingSignal === 'submitted') ||
       (statusFilter === 'delivered' && forecast.shippingSignal === 'accepted');
     
     const matchesMethod = methodFilter === 'all' || 
@@ -197,7 +195,7 @@ export default function ShipmentsPage() {
               <div>
                 <p className="text-sm text-gray-600">In Transit</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {shipmentForecasts.filter(f => f.shippingSignal === 'awaiting').length}
+                  {shipmentForecasts.filter(f => f.shippingSignal === 'submitted').length}
                 </p>
               </div>
             </div>
@@ -399,14 +397,14 @@ export default function ShipmentsPage() {
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
                             forecast.factorySignal === 'accepted' ? 'bg-green-500 border-green-500' :
-                            forecast.factorySignal === 'awaiting' ? 'bg-orange-500 border-orange-500' :
+                            forecast.factorySignal === 'submitted' ? 'bg-orange-500 border-orange-500' :
                             'bg-gray-300 border-gray-300'
                           }`}>
                             <SemanticBDIIcon 
                               semantic="collaboration" 
                               size={20} 
                               className={
-                                forecast.factorySignal === 'accepted' || forecast.factorySignal === 'awaiting' 
+                                forecast.factorySignal === 'accepted' || forecast.factorySignal === 'submitted' 
                                   ? 'text-white' 
                                   : 'text-gray-600'
                               } 
@@ -419,7 +417,7 @@ export default function ShipmentsPage() {
                             </p>
                             <Badge className={
                               forecast.factorySignal === 'accepted' ? 'bg-green-100 text-green-800' :
-                              forecast.factorySignal === 'awaiting' ? 'bg-orange-100 text-orange-800' :
+                              forecast.factorySignal === 'submitted' ? 'bg-orange-100 text-orange-800' :
                               'bg-gray-100 text-gray-600'
                             }>
                               {forecast.factorySignal}
@@ -443,7 +441,7 @@ export default function ShipmentsPage() {
                             <Badge className={
                               progress.completed >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
                             }>
-                              {progress.completed >= 3 ? 'shipping' : 'pending'}
+                              {progress.completed >= 3 ? 'shipping' : 'unknown'}
                             </Badge>
                           </div>
                         </div>
@@ -452,14 +450,14 @@ export default function ShipmentsPage() {
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
                             forecast.shippingSignal === 'accepted' ? 'bg-green-500 border-green-500' :
-                            forecast.shippingSignal === 'awaiting' ? 'bg-orange-500 border-orange-500' :
+                            forecast.shippingSignal === 'submitted' ? 'bg-orange-500 border-orange-500' :
                             'bg-gray-300 border-gray-300'
                           }`}>
                             <SemanticBDIIcon 
                               semantic="sites" 
                               size={20} 
                               className={
-                                forecast.shippingSignal === 'accepted' || forecast.shippingSignal === 'awaiting' 
+                                forecast.shippingSignal === 'accepted' || forecast.shippingSignal === 'submitted' 
                                   ? 'text-white' 
                                   : 'text-gray-600'
                               } 
@@ -472,7 +470,7 @@ export default function ShipmentsPage() {
                             </p>
                             <Badge className={
                               forecast.shippingSignal === 'accepted' ? 'bg-green-100 text-green-800' :
-                              forecast.shippingSignal === 'awaiting' ? 'bg-orange-100 text-orange-800' :
+                              forecast.shippingSignal === 'submitted' ? 'bg-orange-100 text-orange-800' :
                               'bg-gray-100 text-gray-600'
                             }>
                               {forecast.shippingSignal}
