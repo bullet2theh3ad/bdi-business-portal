@@ -110,7 +110,7 @@ export async function POST(
               file_path: filePath,
               file_size: value.size,
               content_type: value.type,
-              document_type: 'cost_estimate', // Required field - default to cost estimate
+              document_type: 'OTHER', // Required field - use 'OTHER' for cost estimates (allowed by check constraint)
               uploaded_by: userData.authId
             })
             .select()
