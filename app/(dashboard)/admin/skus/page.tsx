@@ -31,6 +31,8 @@ export default function SKUsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [customMfg, setCustomMfg] = useState(false);
   const [editCustomMfg, setEditCustomMfg] = useState(false);
+  const [customCarrier, setCustomCarrier] = useState(false);
+  const [customCarrierCode, setCustomCarrierCode] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [useSkuBuilder, setUseSkuBuilder] = useState(true);
@@ -280,6 +282,10 @@ export default function SKUsPage() {
       { code: 'V', name: 'Verizon' },
       { code: 'E', name: 'Europe' },
       { code: 'A', name: 'AT&T' },
+      { code: 'HSN', name: 'HSN' },
+      { code: 'WMT', name: 'WMT' },
+      { code: 'SPC', name: 'SPC' },
+      { code: 'CUSTOM', name: '📝 Custom Carrier Code' },
       { code: '', name: 'None (Leave Empty)' },
     ],
   };
@@ -297,18 +303,16 @@ export default function SKUsPage() {
     // Third part: Charger (e.g., U)
     const thirdPart = charger;
     
-    // Fourth part: Carrier (can be empty)
-    const fourthPart = carrier;
+    // Fourth part: Carrier (with dash prefix, can be empty)
+    const fourthPart = carrier ? `-${carrier}` : '';
     
-    // Combine with proper formatting: MNQ1525-D30W-U or MNQ1525-30W-U
+    // Combine with proper formatting: MNQ1525-D30W-U or MNQ1525-30W-U-HSN
     if (!brand || !productType || !modelNumber || !modelYear || !region || !color || !charger) {
       return '';
     }
     
-    let sku = `${firstPart}-${secondPart}-${thirdPart}`;
-    if (fourthPart) {
-      sku += `-${fourthPart}`;
-    }
+    let sku = `${firstPart}-${secondPart}-${thirdPart}${fourthPart}`;
+    
     
     return sku;
   };
@@ -715,18 +719,59 @@ export default function SKUsPage() {
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Carrier
                       </label>
-                      <select
-                        value={skuBuilder.carrier}
-                        onChange={(e) => updateGeneratedSku('carrier', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="">None</option>
-                        {skuConfig.carriers.filter(c => c.code !== '').map(carrier => (
-                          <option key={carrier.code} value={carrier.code}>
-                            {carrier.code} - {carrier.name}
-                          </option>
-                        ))}
-                      </select>
+                      {!customCarrier ? (
+                        <select
+                          value={skuBuilder.carrier}
+                          onChange={(e) => {
+                            if (e.target.value === 'CUSTOM') {
+                              setCustomCarrier(true);
+                              setCustomCarrierCode('');
+                            } else {
+                              updateGeneratedSku('carrier', e.target.value);
+                            }
+                          }}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">None</option>
+                          {skuConfig.carriers.map(carrier => (
+                            <option key={carrier.code} value={carrier.code}>
+                              {carrier.code === '' ? carrier.name : 
+                               carrier.code === 'CUSTOM' ? carrier.name :
+                               `${carrier.code} - ${carrier.name}`}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="flex space-x-1">
+                          <div className="flex items-center">
+                            <span className="px-2 py-1.5 text-sm bg-gray-100 border border-r-0 border-gray-300 rounded-l">-</span>
+                          </div>
+                          <Input
+                            value={customCarrierCode}
+                            onChange={(e) => {
+                              const value = e.target.value.toUpperCase().slice(0, 3);
+                              setCustomCarrierCode(value);
+                              updateGeneratedSku('carrier', value);
+                            }}
+                            placeholder="ABC"
+                            maxLength={3}
+                            className="w-16 text-sm text-center font-mono"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCustomCarrier(false);
+                              setCustomCarrierCode('');
+                              updateGeneratedSku('carrier', '');
+                            }}
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 

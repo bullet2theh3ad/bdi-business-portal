@@ -354,7 +354,15 @@ export default function ShipmentsPage() {
                             forecast.salesSignal === 'submitted' ? 'bg-blue-500 border-blue-500' :
                             'bg-gray-300 border-gray-300'
                           }`}>
-                            <SemanticBDIIcon semantic="profile" size={20} className="text-white" />
+                            <SemanticBDIIcon 
+                              semantic="profile" 
+                              size={20} 
+                              className={
+                                forecast.salesSignal === 'accepted' || forecast.salesSignal === 'submitted' 
+                                  ? 'text-white' 
+                                  : 'text-gray-600'
+                              } 
+                            />
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Sales</p>
@@ -378,7 +386,15 @@ export default function ShipmentsPage() {
                             forecast.factorySignal === 'awaiting' ? 'bg-orange-500 border-orange-500' :
                             'bg-gray-300 border-gray-300'
                           }`}>
-                            <SemanticBDIIcon semantic="collaboration" size={20} className="text-white" />
+                            <SemanticBDIIcon 
+                              semantic="collaboration" 
+                              size={20} 
+                              className={
+                                forecast.factorySignal === 'accepted' || forecast.factorySignal === 'awaiting' 
+                                  ? 'text-white' 
+                                  : 'text-gray-600'
+                              } 
+                            />
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Factory EXW</p>
@@ -423,7 +439,15 @@ export default function ShipmentsPage() {
                             forecast.shippingSignal === 'awaiting' ? 'bg-orange-500 border-orange-500' :
                             'bg-gray-300 border-gray-300'
                           }`}>
-                            <SemanticBDIIcon semantic="sites" size={20} className="text-white" />
+                            <SemanticBDIIcon 
+                              semantic="sites" 
+                              size={20} 
+                              className={
+                                forecast.shippingSignal === 'accepted' || forecast.shippingSignal === 'awaiting' 
+                                  ? 'text-white' 
+                                  : 'text-gray-600'
+                              } 
+                            />
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Warehouse</p>
