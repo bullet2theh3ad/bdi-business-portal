@@ -25,7 +25,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const getFileTypeDescription = (fileType: string): string => {
   const descriptions = {
-    'MAC_ADDRESS_LIST': 'CSV file with device MAC addresses, one per line or in columns',
+    'MAC_ADDRESS_LIST': 'CSV file with device MAC addresses, one per line',
     'SERIAL_NUMBER_LIST': 'List of device serial numbers for tracking and warranty',
     'PRODUCTION_REPORT': 'Manufacturing summary with quantities, dates, and batch info',
     'TEST_RESULTS': 'Quality assurance test results and performance metrics',
