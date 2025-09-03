@@ -82,15 +82,24 @@ export default function ShipmentsPage() {
   // Load existing shipment data when opening Details modal
   useEffect(() => {
     if (selectedShipment) {
+      console.log('🔍 Loading shipment data for forecast:', selectedShipment.id);
+      console.log('🔍 Available shipments from DB:', actualShipments);
+      console.log('🔍 Local shipments:', Array.from(createdShipments.entries()));
+      
       // Check if this forecast already has a shipment created
       const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
       const localShipment = createdShipments.get(selectedShipment.id);
       
+      console.log('🔍 Found existing shipment:', existingShipment);
+      console.log('🔍 Found local shipment:', localShipment);
+      
       if (existingShipment || localShipment) {
         // Populate form with existing shipment data
         const shipmentData = existingShipment || localShipment;
-        setShipmentForm({
-          shippingOrganization: shipmentData.shipping_organization_code || shipmentData.shippingOrganizationCode || '',
+        console.log('🔍 Using shipment data:', shipmentData);
+        
+        const formData = {
+          shippingOrganization: shipmentData.shipping_organization_code || shipmentData.shippingOrganizationCode || 'OLM',
           shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
           unitsPerCarton: shipmentData.units_per_carton || shipmentData.unitsPerCarton || 5,
           requestedQuantity: shipmentData.requested_quantity || shipmentData.requestedQuantity || selectedShipment.quantity,
@@ -102,18 +111,25 @@ export default function ShipmentsPage() {
           estimatedShipDate: shipmentData.estimated_departure ? new Date(shipmentData.estimated_departure).toISOString().split('T')[0] : '',
           requestedDeliveryDate: shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toISOString().split('T')[0] : '',
           overrideDefaults: true // If shipment exists, assume they want to see/edit the overrides
-        });
+        };
+        
+        console.log('🔍 Setting form data:', formData);
+        setShipmentForm(formData);
 
         // Load existing documents if available
-        if (existingShipment?.id) {
-          fetch(`/api/cpfr/shipments/${existingShipment.id}/documents`)
+        const shipmentId = existingShipment?.id || localShipment?.id;
+        if (shipmentId) {
+          console.log('🔍 Loading documents for shipment:', shipmentId);
+          fetch(`/api/cpfr/shipments/${shipmentId}/documents`)
             .then(res => res.json())
             .then(docs => {
+              console.log('🔍 Loaded documents:', docs);
               setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs)));
             })
             .catch(err => console.error('Error loading existing documents:', err));
         }
       } else {
+        console.log('🔍 No existing shipment found - creating new');
         // Reset form for new shipment
         setShipmentForm({
           shippingOrganization: '',
