@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import { useDropzone } from 'react-dropzone';
 import useSWR from 'swr';
 import { User, ProductSku, Warehouse } from '@/lib/db/schema';
 
@@ -76,54 +77,40 @@ export default function ShipmentsPage() {
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
 
-  // Helper function to get default dates from forecast
+  // Drag and drop for cost documents
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setUploadedCostDocs(prev => [...prev, ...acceptedFiles]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'image/*': ['.png', '.jpg', '.jpeg']
+    },
+    multiple: true
+  });
+
+  // Helper function to get default dates from forecast (simplified to avoid crashes)
   const getDefaultDatesFromForecast = (forecast: SalesForecast) => {
-    // Always use safe fallback dates to avoid crashes
+    // Always start with safe fallback dates
     const today = new Date();
-    const futureDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+    const defaultShipDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+    const defaultDeliveryDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
     
-    try {
-      if (!forecast?.deliveryWeek || !forecast.deliveryWeek.includes('-W')) {
-        throw new Error('Invalid delivery week format');
-      }
-      
-      const deliveryWeek = forecast.deliveryWeek; // e.g., "2025-W47"
-      const [yearStr, weekStr] = deliveryWeek.split('-W');
-      const year = parseInt(yearStr);
-      const week = parseInt(weekStr);
-      
-      // Validate inputs
-      if (isNaN(year) || isNaN(week) || year < 2020 || year > 2030 || week < 1 || week > 53) {
-        throw new Error('Invalid year or week values');
-      }
-      
-      // Simple week calculation - use Monday of the specified week
-      const jan1 = new Date(year, 0, 1);
-      const jan1Day = jan1.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const mondayOfWeek1 = new Date(year, 0, 1 + (1 - jan1Day + 7) % 7);
-      const deliveryDate = new Date(mondayOfWeek1.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
-      
-      // Validate result
-      if (isNaN(deliveryDate.getTime())) {
-        throw new Error('Invalid delivery date result');
-      }
-      
-      // Calculate estimated ship date
-      const shippingDays = parseInt(forecast.shippingPreference?.split('_')?.pop() || '14');
-      const estimatedShipDate = new Date(deliveryDate.getTime() - shippingDays * 24 * 60 * 60 * 1000);
-      
-      return {
-        estimatedShipDate: estimatedShipDate.toISOString().split('T')[0],
-        requestedDeliveryDate: deliveryDate.toISOString().split('T')[0]
-      };
-    } catch (error) {
-      console.error('Error calculating default dates from forecast:', forecast?.deliveryWeek, error);
-      // Always return safe fallback dates
-      return {
-        estimatedShipDate: today.toISOString().split('T')[0],
-        requestedDeliveryDate: futureDate.toISOString().split('T')[0]
-      };
-    }
+    // For now, just use simple defaults based on shipping preference
+    // We'll enhance this later once the core functionality is working
+    const shippingDays = forecast?.shippingPreference?.includes('AIR') ? 7 : 21;
+    const calculatedShipDate = new Date(defaultDeliveryDate.getTime() - shippingDays * 24 * 60 * 60 * 1000);
+    
+    return {
+      estimatedShipDate: calculatedShipDate.toISOString().split('T')[0],
+      requestedDeliveryDate: defaultDeliveryDate.toISOString().split('T')[0]
+    };
   };
 
   // Helper function to get default incoterms from forecast shipping preference
@@ -997,7 +984,7 @@ export default function ShipmentsPage() {
                             />
                           </div>
 
-                          {/* Cost Estimate Documents */}
+                          {/* Cost Estimate Documents - Drag & Drop */}
                           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 className="font-medium text-gray-800 mb-3 flex items-center">
                               <SemanticBDIIcon semantic="document" size={16} className="mr-2 text-gray-600" />
@@ -1005,37 +992,72 @@ export default function ShipmentsPage() {
                             </h4>
                             
                             <div className="space-y-3">
-                              <div>
-                                <input
-                                  type="file"
-                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                                  multiple
-                                  onChange={(e) => {
-                                    const files = Array.from(e.target.files || []);
-                                    setUploadedCostDocs(prev => [...prev, ...files]);
-                                  }}
-                                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              {/* Drag & Drop Zone */}
+                              <div
+                                {...getRootProps()}
+                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                                  isDragActive 
+                                    ? 'border-blue-500 bg-blue-50' 
+                                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'
+                                }`}
+                              >
+                                <input {...getInputProps()} />
+                                <SemanticBDIIcon 
+                                  semantic="upload" 
+                                  size={24} 
+                                  className={`mx-auto mb-2 ${isDragActive ? 'text-blue-500' : 'text-gray-400'}`} 
                                 />
-                                <div className="text-xs text-gray-600 mt-1">
-                                  Upload cost estimates, quotes, or shipping documentation
-                                </div>
+                                {isDragActive ? (
+                                  <p className="text-blue-600 font-medium">Drop cost estimate files here...</p>
+                                ) : (
+                                  <div>
+                                    <p className="text-gray-600 font-medium mb-1">
+                                      Drag & drop cost estimates here, or click to browse
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Supports: PDF, DOC, XLS, Images • Multiple files allowed
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                               
+                              {/* File Preview Cards */}
                               {uploadedCostDocs.length > 0 && (
                                 <div className="space-y-2">
-                                  <h5 className="text-sm font-medium text-gray-700">Files to Upload:</h5>
+                                  <h5 className="text-sm font-medium text-gray-700 flex items-center">
+                                    <SemanticBDIIcon semantic="document" size={14} className="mr-1" />
+                                    Files Ready for Upload ({uploadedCostDocs.length})
+                                  </h5>
                                   {uploadedCostDocs.map((file, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                                      <div className="flex items-center space-x-2">
-                                        <SemanticBDIIcon semantic="document" size={14} className="text-blue-600" />
-                                        <span className="text-sm">{file.name}</span>
-                                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                      <div className="flex items-center space-x-3">
+                                        <div className={`w-8 h-8 rounded flex items-center justify-center ${
+                                          file.type.includes('pdf') ? 'bg-red-100' :
+                                          file.type.includes('excel') || file.type.includes('sheet') ? 'bg-green-100' :
+                                          file.type.includes('word') ? 'bg-blue-100' :
+                                          file.type.includes('image') ? 'bg-purple-100' : 'bg-gray-100'
+                                        }`}>
+                                          <SemanticBDIIcon 
+                                            semantic="document" 
+                                            size={14} 
+                                            className={
+                                              file.type.includes('pdf') ? 'text-red-600' :
+                                              file.type.includes('excel') || file.type.includes('sheet') ? 'text-green-600' :
+                                              file.type.includes('word') ? 'text-blue-600' :
+                                              file.type.includes('image') ? 'text-purple-600' : 'text-gray-600'
+                                            }
+                                          />
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-medium text-gray-900">{file.name}</div>
+                                          <div className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</div>
+                                        </div>
                                       </div>
                                       <button
                                         onClick={() => setUploadedCostDocs(prev => prev.filter((_, i) => i !== index))}
-                                        className="text-red-500 hover:text-red-700"
+                                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
                                       >
-                                        <SemanticBDIIcon semantic="close" size={14} />
+                                        <SemanticBDIIcon semantic="close" size={16} />
                                       </button>
                                     </div>
                                   ))}
