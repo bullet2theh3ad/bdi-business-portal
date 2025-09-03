@@ -93,6 +93,15 @@ export async function POST(
           console.log('✅ File uploaded to storage successfully:', filePath);
 
           // Save document record to shipment_documents table
+          console.log('💾 Inserting document record:', {
+            shipment_id: shipmentId,
+            file_name: value.name,
+            file_path: filePath,
+            file_size: value.size,
+            content_type: value.type,
+            uploaded_by: userData.authId
+          });
+
           const { data: docData, error: docError } = await supabase
             .from('shipment_documents')
             .insert({
@@ -105,6 +114,13 @@ export async function POST(
             })
             .select()
             .single();
+
+          if (docError) {
+            console.error('❌ Database insertion error:', docError);
+            continue;
+          }
+
+          console.log('✅ Document record saved to database:', docData);
 
           if (!docError) {
             uploadedFiles.push({
