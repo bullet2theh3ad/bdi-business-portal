@@ -50,9 +50,6 @@ export default function ProductionFilesPage() {
     description: '',
     forecastId: '',
     bdiShipmentNumber: '',
-    cmMacAddresses: '',
-    macAddresses: '',
-    serialNumbers: '',
     productionBatch: '',
     manufacturingDate: '',
     tags: ''
@@ -145,16 +142,6 @@ export default function ProductionFilesPage() {
       return;
     }
 
-    // Validation: At least one device identifier is required
-    const hasDeviceData = uploadFormData.cmMacAddresses.trim() || 
-                         uploadFormData.macAddresses.trim() || 
-                         uploadFormData.serialNumbers.trim();
-    
-    if (!hasDeviceData) {
-      alert('At least one device identifier (CM-MAC, MAC Address, or Serial Number) is required');
-      return;
-    }
-
     setUploading(true);
     try {
       for (const file of selectedFiles) {
@@ -166,22 +153,27 @@ export default function ProductionFilesPage() {
         formData.append('bdiShipmentNumber', uploadFormData.bdiShipmentNumber);
         formData.append('tags', uploadFormData.tags);
 
-        // Device metadata
+        // Parse file to count devices automatically
+        let deviceCount = 0;
+        try {
+          const fileText = await file.text();
+          const lines = fileText.split('\n').filter(line => line.trim() !== '');
+          // Count data rows (total lines minus header)
+          deviceCount = Math.max(0, lines.length - 1);
+        } catch (parseError) {
+          console.warn('Could not parse file for device count:', parseError);
+          deviceCount = 0;
+        }
+
+        // Device metadata with auto-calculated count
         const deviceMetadata = {
-          cmMacAddresses: uploadFormData.cmMacAddresses ? uploadFormData.cmMacAddresses.split(',').map(s => s.trim()) : [],
-          macAddresses: uploadFormData.macAddresses ? uploadFormData.macAddresses.split(',').map(s => s.trim()) : [],
-          serialNumbers: uploadFormData.serialNumbers ? uploadFormData.serialNumbers.split(',').map(s => s.trim()) : [],
-          deviceCount: 0,
+          cmMacAddresses: [],
+          macAddresses: [],
+          serialNumbers: [],
+          deviceCount: deviceCount,
           productionBatch: uploadFormData.productionBatch || null,
           manufacturingDate: uploadFormData.manufacturingDate || null
         };
-        
-        // Calculate device count from the metadata
-        deviceMetadata.deviceCount = Math.max(
-          deviceMetadata.cmMacAddresses.length,
-          deviceMetadata.macAddresses.length,
-          deviceMetadata.serialNumbers.length
-        );
 
         formData.append('deviceMetadata', JSON.stringify(deviceMetadata));
 
@@ -203,13 +195,10 @@ export default function ProductionFilesPage() {
       // Reset form and close modal
       setSelectedFiles([]);
       setUploadFormData({
-        fileType: 'MAC_ADDRESS_LIST',
+        fileType: 'PRODUCTION_FILE',
         description: '',
         forecastId: '',
         bdiShipmentNumber: '',
-        cmMacAddresses: '',
-        macAddresses: '',
-        serialNumbers: '',
         productionBatch: '',
         manufacturingDate: '',
         tags: ''
@@ -688,47 +677,23 @@ export default function ProductionFilesPage() {
               />
             </div>
 
-            {/* Device Information - Required */}
+            {/* Device Information - Auto-calculated */}
             <div className="space-y-4">
-              <Label className="text-lg font-semibold">Device Information <span className="text-red-500">*</span></Label>
-              <p className="text-sm text-gray-600">At least one device identifier field is required to determine device count</p>
+              <Label className="text-lg font-semibold">Device Information</Label>
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <SemanticBDIIcon semantic="analytics" size={20} className="text-blue-600 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-blue-800 mb-2">Automatic Device Counting</h4>
+                    <p className="text-sm text-blue-700">
+                      Device count will be automatically calculated by reading your uploaded file and counting the number of data rows (excluding the header row). 
+                      This ensures accurate device counts without manual entry errors.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cmMacAddresses">CM-MAC Addresses</Label>
-                  <textarea
-                    id="cmMacAddresses"
-                    value={uploadFormData.cmMacAddresses}
-                    onChange={(e) => setUploadFormData(prev => ({ ...prev, cmMacAddresses: e.target.value }))}
-                    placeholder="Enter MAC addresses separated by commas"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="macAddresses">MAC Addresses</Label>
-                  <textarea
-                    id="macAddresses"
-                    value={uploadFormData.macAddresses}
-                    onChange={(e) => setUploadFormData(prev => ({ ...prev, macAddresses: e.target.value }))}
-                    placeholder="Enter MAC addresses separated by commas"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="serialNumbers">Serial Numbers</Label>
-                  <textarea
-                    id="serialNumbers"
-                    value={uploadFormData.serialNumbers}
-                    onChange={(e) => setUploadFormData(prev => ({ ...prev, serialNumbers: e.target.value }))}
-                    placeholder="Enter serial numbers separated by commas"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    rows={3}
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="manufacturingDate">Manufacturing Date <span className="text-red-500">*</span></Label>
                   <Input
@@ -737,6 +702,16 @@ export default function ProductionFilesPage() {
                     value={uploadFormData.manufacturingDate}
                     onChange={(e) => setUploadFormData(prev => ({ ...prev, manufacturingDate: e.target.value }))}
                     required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="productionBatch">Production Batch (Optional)</Label>
+                  <Input
+                    id="productionBatch"
+                    value={uploadFormData.productionBatch}
+                    onChange={(e) => setUploadFormData(prev => ({ ...prev, productionBatch: e.target.value }))}
+                    placeholder="e.g., BATCH-2025-001"
                   />
                 </div>
               </div>
@@ -762,8 +737,7 @@ export default function ProductionFilesPage() {
                 disabled={
                   selectedFiles.length === 0 || 
                   uploading || 
-                  !uploadFormData.manufacturingDate ||
-                  (!uploadFormData.cmMacAddresses.trim() && !uploadFormData.macAddresses.trim() && !uploadFormData.serialNumbers.trim())
+                  !uploadFormData.manufacturingDate
                 }
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400"
               >
