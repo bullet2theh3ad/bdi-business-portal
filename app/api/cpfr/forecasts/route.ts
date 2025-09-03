@@ -124,14 +124,18 @@ export async function GET(request: NextRequest) {
 
       // Get all SKU data using Drizzle for reliable joins
       const skuIds = (forecastsData || []).map(row => row.sku_id).filter(Boolean);
-      const skuData = await db
-        .select({
-          id: productSkus.id,
-          sku: productSkus.sku,
-          name: productSkus.name
-        })
-        .from(productSkus)
-        .where(sql`${productSkus.id} = ANY(${skuIds})`);
+      let skuData: any[] = [];
+      
+      if (skuIds.length > 0) {
+        skuData = await db
+          .select({
+            id: productSkus.id,
+            sku: productSkus.sku,
+            name: productSkus.name
+          })
+          .from(productSkus)
+          .where(sql`${productSkus.id} = ANY(ARRAY[${skuIds.map(id => `'${id}'`).join(',')}]::uuid[])`);
+      }
 
       // Create SKU lookup map
       const skuMap = new Map(skuData.map(sku => [sku.id, sku]));
