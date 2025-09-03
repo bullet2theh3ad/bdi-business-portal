@@ -350,11 +350,11 @@ export default function ShipmentsPage() {
                         {/* Milestone 1: Sales */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            forecast.salesSignal === 'accepted' ? 'bg-green-500 border-green-500 text-white' :
-                            forecast.salesSignal === 'submitted' ? 'bg-blue-500 border-blue-500 text-white' :
-                            'bg-gray-300 border-gray-300 text-gray-600'
+                            forecast.salesSignal === 'accepted' ? 'bg-green-500 border-green-500' :
+                            forecast.salesSignal === 'submitted' ? 'bg-blue-500 border-blue-500' :
+                            'bg-gray-300 border-gray-300'
                           }`}>
-                            <SemanticBDIIcon semantic="profile" size={20} />
+                            <SemanticBDIIcon semantic="profile" size={20} className="text-white" />
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Sales</p>
@@ -374,11 +374,11 @@ export default function ShipmentsPage() {
                         {/* Milestone 2: Factory EXW */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            forecast.factorySignal === 'accepted' ? 'bg-green-500 border-green-500 text-white' :
-                            forecast.factorySignal === 'awaiting' ? 'bg-orange-500 border-orange-500 text-white' :
-                            'bg-gray-300 border-gray-300 text-gray-600'
+                            forecast.factorySignal === 'accepted' ? 'bg-green-500 border-green-500' :
+                            forecast.factorySignal === 'awaiting' ? 'bg-orange-500 border-orange-500' :
+                            'bg-gray-300 border-gray-300'
                           }`}>
-                            <SemanticBDIIcon semantic="collaboration" size={20} />
+                            <SemanticBDIIcon semantic="collaboration" size={20} className="text-white" />
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Factory EXW</p>
@@ -419,11 +419,11 @@ export default function ShipmentsPage() {
                         {/* Milestone 4: Warehouse Arrival */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            forecast.shippingSignal === 'accepted' ? 'bg-green-500 border-green-500 text-white' :
-                            forecast.shippingSignal === 'awaiting' ? 'bg-orange-500 border-orange-500 text-white' :
-                            'bg-gray-300 border-gray-300 text-gray-600'
+                            forecast.shippingSignal === 'accepted' ? 'bg-green-500 border-green-500' :
+                            forecast.shippingSignal === 'awaiting' ? 'bg-orange-500 border-orange-500' :
+                            'bg-gray-300 border-gray-300'
                           }`}>
-                            <SemanticBDIIcon semantic="sites" size={20} />
+                            <SemanticBDIIcon semantic="sites" size={20} className="text-white" />
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Warehouse</p>
