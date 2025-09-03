@@ -37,8 +37,16 @@ const FILE_TYPES = [
 
 export default function ProductionFilesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: productionFiles, mutate: mutateFiles } = useSWR<ProductionFile[]>('/api/inventory/production-files', fetcher);
+  const { data: productionFiles, error: filesError, mutate: mutateFiles } = useSWR<ProductionFile[]>('/api/inventory/production-files', fetcher);
   const { data: forecasts } = useSWR<any[]>('/api/cpfr/forecasts', fetcher);
+
+  // Debug logging
+  if (filesError) {
+    console.error('Production files API error:', filesError);
+  }
+  if (productionFiles && !Array.isArray(productionFiles)) {
+    console.error('Production files is not an array:', productionFiles);
+  }
 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -59,8 +67,42 @@ export default function ProductionFilesPage() {
   const [filterType, setFilterType] = useState('all');
   const [filterShipment, setFilterShipment] = useState('all');
 
+  // Loading state
+  if (!user) {
+    return (
+      <div className="flex-1 p-4 lg:p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (filesError) {
+    return (
+      <div className="flex-1 p-4 lg:p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <SemanticBDIIcon semantic="analytics" size={48} className="mx-auto mb-4 text-red-500" />
+            <h2 className="text-xl font-semibold mb-2 text-red-600">Error Loading Production Files</h2>
+            <p className="text-muted-foreground mb-4">
+              {filesError.message || 'Failed to load production files. The database table may need to be created.'}
+            </p>
+            <Button onClick={() => mutateFiles()} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Access control
-  if (!user || !['super_admin', 'admin', 'operations', 'sales', 'member'].includes(user.role)) {
+  if (!['super_admin', 'admin', 'operations', 'sales', 'member'].includes(user.role)) {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
@@ -195,8 +237,8 @@ export default function ProductionFilesPage() {
     }
   };
 
-  // Filter files
-  const filteredFiles = productionFiles?.filter(file => {
+  // Filter files - ensure productionFiles is an array
+  const filteredFiles = (Array.isArray(productionFiles) ? productionFiles : []).filter(file => {
     const matchesSearch = file.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          file.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          file.bdiShipmentNumber?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -208,13 +250,14 @@ export default function ProductionFilesPage() {
                            (filterShipment === 'no_shipment' && !file.bdiShipmentNumber);
 
     return matchesSearch && matchesType && matchesShipment;
-  }) || [];
+  });
 
-  // Get unique BDI shipment numbers for stats
-  const uniqueShipments = new Set(productionFiles?.map(f => f.bdiShipmentNumber).filter(Boolean)).size;
-  const totalDevices = productionFiles?.reduce((sum, file) => {
+  // Get unique BDI shipment numbers for stats - ensure productionFiles is an array
+  const productionFilesArray = Array.isArray(productionFiles) ? productionFiles : [];
+  const uniqueShipments = new Set(productionFilesArray.map(f => f.bdiShipmentNumber).filter(Boolean)).size;
+  const totalDevices = productionFilesArray.reduce((sum, file) => {
     return sum + ((file.deviceMetadata as any)?.deviceCount || 0);
-  }, 0) || 0;
+  }, 0);
 
   return (
     <div className="flex-1 p-4 lg:p-8 space-y-6">
