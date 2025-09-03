@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/drizzle';
 import { productionFiles, users, organizations, organizationMembers } from '@/lib/db/schema';
@@ -9,33 +11,54 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
+  
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+}
+
+async function getCurrentUser() {
+  const supabaseClient = await createSupabaseServerClient();
+  const { data: { user: authUser }, error } = await supabaseClient.auth.getUser();
+  
+  if (error || !authUser) {
+    return null;
+  }
+
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, authUser.email!))
+    .limit(1);
+
+  return dbUser;
+}
+
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
-    // Get user from cookies (session-based auth)
-    const cookieStore = request.headers.get('cookie');
-    if (!cookieStore) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Create Supabase client with cookies
-    const supabaseClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Cookie: cookieStore,
-          },
-        },
-      }
-    );
-
-    const { data: { user }, error } = await supabaseClient.auth.getUser();
-    if (error || !user) {
+    // Get current user using the same pattern as other working APIs
+    const dbUser = await getCurrentUser();
+    if (!dbUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -50,7 +73,7 @@ export async function DELETE(
       .from(users)
       .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
       .leftJoin(organizations, eq(organizationMembers.organizationUuid, organizations.id))
-      .where(eq(users.authId, user.id))
+      .where(eq(users.authId, dbUser.authId))
       .limit(1);
 
     if (!userWithOrg.length) {
