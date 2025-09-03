@@ -531,12 +531,12 @@ export default function PurchaseOrdersPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
                 >
                   <option value="">Select Supplier Organization</option>
-                  {organizations?.map((org: any) => (
+                  {Array.isArray(organizations) && organizations.map((org: any) => (
                     <option key={org.id} value={org.code}>
                       {org.code} - {org.name}
                     </option>
                   ))}
-                  {!organizations && user?.organization && (
+                  {(!Array.isArray(organizations) || organizations.length === 0) && user?.organization && (
                     <option key={user.organization.id} value={user.organization.code}>
                       {user.organization.code} - {user.organization.name}
                     </option>
