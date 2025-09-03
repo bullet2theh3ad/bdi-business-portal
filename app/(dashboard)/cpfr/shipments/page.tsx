@@ -26,6 +26,7 @@ interface SalesForecast {
   sku: ProductSku;
   deliveryWeek: string;
   quantity: number;
+  status: 'draft' | 'submitted';
   salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
   factorySignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted';
   shippingSignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted';
@@ -64,8 +65,9 @@ export default function ShipmentsPage() {
   }
 
   // Get shipment data from forecasts (Forecasts ARE Shipments!)
+  // Only show forecasts that have been actually submitted (not draft)
   const shipmentForecasts = forecasts?.filter(f => 
-    f.salesSignal === 'submitted' || f.salesSignal === 'accepted'
+    f.status === 'submitted' && (f.salesSignal === 'submitted' || f.salesSignal === 'accepted')
   ) || [];
 
   // Helper functions for timeline calculations
@@ -77,11 +79,22 @@ export default function ShipmentsPage() {
   };
 
   const calculateMilestoneDates = (forecast: SalesForecast) => {
-    const deliveryDate = new Date(forecast.deliveryWeek.replace('W', '-W') + '-1'); // Convert week to date
+    // Parse delivery week (e.g., "2025-W47" to actual date)
+    const [year, week] = forecast.deliveryWeek.split('-W').map(Number);
+    const deliveryDate = new Date(year, 0, 1 + (week - 1) * 7);
     
-    // Calculate backwards from delivery date
-    const shippingDays = forecast.shippingPreference.includes('SEA') ? 21 : 
-                        forecast.shippingPreference.includes('AIR') ? 3 : 7;
+    // Extract shipping days from shipping preference (e.g., "SEA_ASIA_US_WEST" or "AIR_14_DAYS")
+    let shippingDays = 7; // Default
+    
+    if (forecast.shippingPreference.includes('SEA')) {
+      shippingDays = 21; // Sea freight default
+    } else if (forecast.shippingPreference.includes('AIR')) {
+      // Extract days from AIR_X_DAYS format
+      const airMatch = forecast.shippingPreference.match(/AIR_(\d+)_DAYS/);
+      shippingDays = airMatch ? parseInt(airMatch[1]) : 3;
+    } else if (forecast.shippingPreference.includes('TRUCK')) {
+      shippingDays = 7; // Truck default
+    }
     
     const exwDate = new Date(deliveryDate.getTime() - (shippingDays * 24 * 60 * 60 * 1000));
     const departureDate = new Date(exwDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days after EXW
@@ -90,7 +103,8 @@ export default function ShipmentsPage() {
       salesDate: new Date(forecast.createdAt),
       exwDate,
       departureDate,
-      arrivalDate: deliveryDate
+      arrivalDate: deliveryDate,
+      transitDays: shippingDays
     };
   };
 
@@ -99,9 +113,11 @@ export default function ShipmentsPage() {
     const now = new Date();
     
     let completedMilestones = 0;
-    if (forecast.salesSignal === 'accepted') completedMilestones = 1;
+    
+    // Only count as completed if forecast status is 'submitted' (not draft)
+    if (forecast.status === 'submitted' && forecast.salesSignal === 'submitted') completedMilestones = 1;
     if (forecast.factorySignal === 'accepted') completedMilestones = 2;
-    if (now >= milestones.departureDate) completedMilestones = 3;
+    if (forecast.factorySignal === 'accepted' && now >= milestones.departureDate) completedMilestones = 3;
     if (forecast.shippingSignal === 'accepted') completedMilestones = 4;
     
     return { completed: completedMilestones, total: 4 };
@@ -471,7 +487,7 @@ export default function ShipmentsPage() {
                           <div>
                             <span className="text-gray-600">Estimated Transit:</span>
                             <p className="font-medium">
-                              {Math.ceil((milestones.arrivalDate.getTime() - milestones.departureDate.getTime()) / (1000 * 60 * 60 * 24))} days
+                              {milestones.transitDays} days
                             </p>
                           </div>
                           <div>
