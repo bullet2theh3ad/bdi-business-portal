@@ -113,14 +113,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user info for audit trail
+    // Get user info with organization for RLS compliance
     const [dbUser] = await db
       .select({
         id: users.id,
         authId: users.authId,
-        role: users.role
+        role: users.role,
+        organization: {
+          id: organizations.id,
+          code: organizations.code,
+          type: organizations.type
+        }
       })
       .from(users)
+      .leftJoin(organizationMembers, eq(organizationMembers.userAuthId, users.authId))
+      .leftJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
       .where(eq(users.authId, authUser.id))
       .limit(1);
 
@@ -158,6 +165,7 @@ export async function POST(request: NextRequest) {
         estimated_arrival: estimatedArrival,
         notes: body.notes || null,
         status: 'planning',
+        organization_id: dbUser.organization?.id || null, // Required for RLS
         created_by: dbUser.id
       })
       .select()
