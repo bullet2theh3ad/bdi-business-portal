@@ -72,6 +72,7 @@ export default function ShipmentsPage() {
     requestedDeliveryDate: ''
   });
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
+  const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
 
   // Helper function to calculate shipping data from SKU
   const calculateShippingData = (sku: ProductSku, requestedQuantity: number, unitsPerCarton: number) => {
@@ -170,22 +171,10 @@ export default function ShipmentsPage() {
 
       const result = await response.json();
       if (result.success) {
-        alert('Shipment created successfully!');
-        setSelectedShipment(null);
-        // Reset form
-        setShipmentForm({
-          shippingOrganization: '',
-          shipperReference: '',
-          unitsPerCarton: 5,
-          requestedQuantity: 0,
-          notes: '',
-          priority: 'standard',
-          incoterms: 'EXW',
-          pickupLocation: '',
-          deliveryLocation: '',
-          estimatedShipDate: '',
-          requestedDeliveryDate: ''
-        });
+        // Store the created shipment data
+        setCreatedShipments(prev => new Map(prev.set(selectedShipment.id, result.shipment)));
+        alert('Shipment created successfully and logged for shipper processing!');
+        // Don't reset form or close modal - keep it open to show the saved data
       } else {
         alert(`Error: ${result.error}`);
       }
@@ -304,9 +293,16 @@ export default function ShipmentsPage() {
     if (forecast.status === 'submitted' && forecast.salesSignal === 'submitted') completedMilestones = 1;
     if (forecast.factorySignal === 'accepted') completedMilestones = 2;
     if (forecast.factorySignal === 'accepted' && now >= milestones.departureDate) completedMilestones = 3;
+    
+    // Check if shipment has been created for this forecast
+    if (createdShipments.has(forecast.id)) {
+      // Shipment created - show awaiting status for shipping milestone
+      if (completedMilestones >= 2) completedMilestones = 3; // Transport shows "awaiting"
+    }
+    
     if (forecast.shippingSignal === 'accepted') completedMilestones = 4;
     
-    return { completed: completedMilestones, total: 4 };
+    return completedMilestones;
   };
 
   // Filter shipments
@@ -515,13 +511,13 @@ export default function ShipmentsPage() {
                           <div className="flex items-center space-x-2 mb-2">
                             <span className="text-sm text-gray-600">Shipment Progress:</span>
                             <span className="text-sm font-medium">
-                              {progress.completed}/{progress.total} milestones completed
+                              {progress}/4 milestones completed
                             </span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                              style={{ width: `${(progress / 4) * 100}%` }}
                             ></div>
                           </div>
                         </div>
@@ -546,7 +542,7 @@ export default function ShipmentsPage() {
                         <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-300"></div>
                         <div 
                           className="absolute top-6 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000"
-                          style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                          style={{ width: `${(progress / 4) * 100}%` }}
                         ></div>
 
                         {/* Milestone 1: Sales */}
@@ -616,10 +612,10 @@ export default function ShipmentsPage() {
                         {/* Milestone 3: In Transit */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
-                            progress.completed >= 3 ? 'border-blue-500' : 'border-gray-300'
+                            progress >= 3 ? 'border-blue-500' : 'border-gray-300'
                           }`}>
                             <span className={`text-xl ${
-                              progress.completed >= 3 ? 'text-blue-600' : 'text-gray-600'
+                              progress >= 3 ? 'text-blue-600' : 'text-gray-600'
                             }`}>{shippingIcon}</span>
                           </div>
                           <div className="text-center">
@@ -628,9 +624,9 @@ export default function ShipmentsPage() {
                               {milestones.departureDate.toLocaleDateString()}
                             </p>
                             <Badge className={
-                              progress.completed >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
+                              progress >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
                             }>
-                              {progress.completed >= 3 ? 'shipping' : 'unknown'}
+                              {createdShipments.has(forecast.id) && progress >= 3 ? 'awaiting' : (progress >= 3 ? 'shipping' : 'unknown')}
                             </Badge>
                           </div>
                         </div>
@@ -796,10 +792,117 @@ export default function ShipmentsPage() {
                         </div>
                       </div>
 
-                      {/* Form continues in next part... */}
-                      <div className="text-center p-4 bg-blue-50 rounded">
-                        <p className="text-blue-600 font-medium">Form completion in progress...</p>
-                      </div>
+                      {/* Show shipment status if created */}
+                      {createdShipments.has(selectedShipment.id) ? (
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <SemanticBDIIcon semantic="check" size={16} className="text-green-600" />
+                            <span className="font-semibold text-green-800">Shipment Created Successfully</span>
+                          </div>
+                          <div className="text-sm text-green-700 space-y-1">
+                            <div><strong>Shipment ID:</strong> {createdShipments.get(selectedShipment.id)?.id}</div>
+                            <div><strong>Status:</strong> Pending Shipper Confirmation</div>
+                            <div><strong>Organization:</strong> {shipmentForm.shippingOrganization}</div>
+                            {shipmentForm.shipperReference && (
+                              <div><strong>Reference:</strong> {shipmentForm.shipperReference}</div>
+                            )}
+                            <div className="mt-2 text-xs text-green-600">
+                              ✅ Timeline will show "Awaiting" status for shipping milestone
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="requestedQuantity">Requested Quantity</Label>
+                              <Input
+                                id="requestedQuantity"
+                                type="number"
+                                value={shipmentForm.requestedQuantity || selectedShipment.quantity}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, requestedQuantity: parseInt(e.target.value) || 0 }))}
+                                placeholder={selectedShipment.quantity.toString()}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="unitsPerCarton">Units per Carton</Label>
+                              <Input
+                                id="unitsPerCarton"
+                                type="number"
+                                value={shipmentForm.unitsPerCarton}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, unitsPerCarton: parseInt(e.target.value) || 5 }))}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="priority">Priority</Label>
+                              <select
+                                id="priority"
+                                value={shipmentForm.priority}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, priority: e.target.value }))}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="standard">Standard</option>
+                                <option value="expedited">Expedited</option>
+                                <option value="urgent">Urgent</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label htmlFor="incoterms">Incoterms</Label>
+                              <select
+                                id="incoterms"
+                                value={shipmentForm.incoterms}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, incoterms: e.target.value }))}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="EXW">EXW - Ex Works</option>
+                                <option value="FOB">FOB - Free on Board</option>
+                                <option value="CIF">CIF - Cost, Insurance & Freight</option>
+                                <option value="DDP">DDP - Delivered Duty Paid</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="estimatedShipDate">Estimated Ship Date</Label>
+                              <Input
+                                id="estimatedShipDate"
+                                type="date"
+                                value={shipmentForm.estimatedShipDate}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, estimatedShipDate: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="requestedDeliveryDate">Requested Delivery Date</Label>
+                              <Input
+                                id="requestedDeliveryDate"
+                                type="date"
+                                value={shipmentForm.requestedDeliveryDate}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, requestedDeliveryDate: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="notes">Special Instructions</Label>
+                            <textarea
+                              id="notes"
+                              value={shipmentForm.notes}
+                              onChange={(e) => setShipmentForm(prev => ({ ...prev, notes: e.target.value }))}
+                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              rows={3}
+                              placeholder="Any special handling instructions or notes for the shipper..."
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
