@@ -63,7 +63,11 @@ export async function POST(
     // Debug: Log all form data entries
     console.log('📎 FormData entries received:');
     for (const [key, value] of formData.entries()) {
-      console.log(`  ${key}:`, typeof value, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
+      if (value && typeof value === 'object' && 'name' in value && 'size' in value) {
+        console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+      } else {
+        console.log(`  ${key}:`, typeof value, value);
+      }
     }
     
     // Process each uploaded file (Node.js compatible check)
