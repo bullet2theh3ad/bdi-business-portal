@@ -40,7 +40,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ShipmentsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: forecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
+  const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
   const { data: warehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher, {
@@ -229,8 +229,36 @@ export default function ShipmentsPage() {
       if (result.success) {
         // Store the created shipment data
         setCreatedShipments(prev => new Map(prev.set(selectedShipment.id, result.shipment)));
-        alert('Shipment created successfully and logged for shipper processing!');
-        // Don't reset form or close modal - keep it open to show the saved data
+        
+        // Upload documents if any were attached
+        const currentDocs = currentShipmentDocs;
+        if (currentDocs.length > 0) {
+          try {
+            const formData = new FormData();
+            currentDocs.forEach((file, index) => {
+              formData.append(`file${index}`, file);
+            });
+            
+            const docsResponse = await fetch(`/api/cpfr/shipments/${result.shipment.id}/documents`, {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (docsResponse.ok) {
+              alert(`Shipment created successfully with ${currentDocs.length} documents uploaded!`);
+            } else {
+              alert('Shipment created but document upload failed');
+            }
+          } catch (docError) {
+            console.error('Error uploading documents:', docError);
+            alert('Shipment created but document upload failed');
+          }
+        } else {
+          alert('Shipment created successfully and logged for shipper processing!');
+        }
+        
+        // Refresh the forecasts data to update timeline status
+        mutateForecasts();
       } else {
         alert(`Error: ${result.error}`);
       }
@@ -868,13 +896,17 @@ export default function ShipmentsPage() {
                           </div>
                           <div className="text-sm text-green-700 space-y-1">
                             <div><strong>Shipment ID:</strong> {createdShipments.get(selectedShipment.id)?.id}</div>
+                            <div><strong>Shipment Number:</strong> {createdShipments.get(selectedShipment.id)?.shipment_number}</div>
                             <div><strong>Status:</strong> Pending Shipper Confirmation</div>
                             <div><strong>Organization:</strong> {shipmentForm.shippingOrganization}</div>
                             {shipmentForm.shipperReference && (
                               <div><strong>Reference:</strong> {shipmentForm.shipperReference}</div>
                             )}
+                            {currentShipmentDocs.length > 0 && (
+                              <div><strong>Documents:</strong> {currentShipmentDocs.length} files attached</div>
+                            )}
                             <div className="mt-2 text-xs text-green-600">
-                              ✅ Timeline will show "Awaiting" status for shipping milestone
+                              ✅ Timeline shows "Awaiting Quote" status • Documents saved to database
                             </div>
                           </div>
                         </div>
