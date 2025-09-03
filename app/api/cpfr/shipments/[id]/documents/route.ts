@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { db } from '@/lib/db/drizzle';
+import { users, organizations, organizationMembers } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST(
   request: NextRequest,
@@ -35,6 +38,25 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user with organization info
+    const dbUser = await db
+      .select({
+        id: users.id,
+        authId: users.authId,
+        email: users.email,
+        organizationId: organizationMembers.organizationUuid,
+      })
+      .from(users)
+      .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!dbUser.length) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const userData = dbUser[0];
+
     const formData = await request.formData();
     const uploadedFiles = [];
     
@@ -44,7 +66,7 @@ export async function POST(
         try {
           // Upload to Supabase Storage - use organization-based path like other working uploads
           const fileName = `${Date.now()}_${value.name}`;
-          const filePath = `${dbUser.organization?.id || 'unknown'}/shipments/${shipmentId}/${fileName}`;
+          const filePath = `${userData.organizationId || 'unknown'}/shipments/${shipmentId}/${fileName}`;
           
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('organization-documents')
@@ -64,7 +86,7 @@ export async function POST(
               file_path: filePath,
               file_size: value.size,
               content_type: value.type,
-              uploaded_by: authUser.id
+              uploaded_by: userData.authId
             })
             .select()
             .single();
