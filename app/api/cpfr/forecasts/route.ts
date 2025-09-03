@@ -122,7 +122,23 @@ export async function GET(request: NextRequest) {
 
       console.log(`📊 Raw forecast data from Supabase (first 2):`, forecastsData?.slice(0, 2));
 
-      // Simple transformation without SKU lookup for testing
+      // Get unique SKU IDs from forecasts
+      const skuIds = [...new Set((forecastsData || []).map((row: any) => row.sku_id))];
+      
+      // Fetch SKU details for all forecasts
+      const skuData = skuIds.length > 0 ? await db
+        .select({
+          id: productSkus.id,
+          sku: productSkus.sku,
+          name: productSkus.name
+        })
+        .from(productSkus)
+        .where(inArray(productSkus.id, skuIds)) : [];
+      
+      // Create SKU lookup map
+      const skuMap = new Map(skuData.map(sku => [sku.id, sku]));
+
+      // Transform forecasts with proper SKU lookup
       const allForecasts = (forecastsData || []).map((row: any) => ({
         id: row.id,
         skuId: row.sku_id,
@@ -138,10 +154,10 @@ export async function GET(request: NextRequest) {
         notes: row.notes,
         createdBy: row.created_by,
         createdAt: row.created_at,
-        sku: {
+        sku: skuMap.get(row.sku_id) || {
           id: row.sku_id,
-          sku: 'TEST-SKU',
-          name: 'Test SKU Name'
+          sku: 'UNKNOWN-SKU',
+          name: 'Unknown SKU'
         }
       }));
 
