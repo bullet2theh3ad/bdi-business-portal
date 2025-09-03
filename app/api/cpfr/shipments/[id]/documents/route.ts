@@ -42,9 +42,9 @@ export async function POST(
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('file') && value && typeof value === 'object' && 'name' in value) {
         try {
-          // Upload to Supabase Storage
-          const fileName = `${shipmentId}_${Date.now()}_${value.name}`;
-          const filePath = `shipments/${shipmentId}/${fileName}`;
+          // Upload to Supabase Storage - use organization-based path like other working uploads
+          const fileName = `${Date.now()}_${value.name}`;
+          const filePath = `${dbUser.organization?.id || 'unknown'}/shipments/${shipmentId}/${fileName}`;
           
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('organization-documents')
