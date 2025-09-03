@@ -26,107 +26,29 @@ interface SalesForecast {
   sku: ProductSku;
   deliveryWeek: string;
   quantity: number;
-  salesSignal: 'submitted' | 'accepted';
-  factorySignal: 'awaiting' | 'accepted';
-  shippingSignal: 'unknown' | 'awaiting' | 'accepted' | 'rejected';
+  salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
+  factorySignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted';
+  shippingSignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted';
   shippingPreference: string;
   notes?: string;
-}
-
-interface Shipment {
-  id: string;
-  shipmentNumber: string;
-  forecastId?: string; // Link to originating forecast
-  
-  // Shipping Details
-  origin: {
-    warehouseId: string;
-    warehouse?: Warehouse;
-    customLocation?: string;
-  };
-  destination: {
-    warehouseId?: string;
-    warehouse?: Warehouse;
-    customLocation: string;
-    country: string;
-    port?: string;
-  };
-  
-  // Logistics
-  shippingMethod: 'AIR_EXPRESS' | 'AIR_STANDARD' | 'SEA_FCL' | 'SEA_LCL' | 'TRUCK' | 'RAIL' | 'INTERMODAL';
-  containerType: '20ft' | '40ft' | '40ft_HC' | '45ft' | 'AIR_ULD' | 'TRUCK_TRAILER';
-  incoterms: string;
-  incotermsLocation: string;
-  
-  // Container Details
-  containerDetails: {
-    containerNumber?: string;
-    sealNumber?: string;
-    weight: number; // kg
-    volume: number; // m³
-    palletCount: number;
-    utilization: number; // percentage
-  };
-  
-  // Customs & Compliance
-  customsInfo: {
-    htsCode: string;
-    commercialValue: number;
-    customsBroker?: string;
-    importLicense?: string;
-    specialPermits?: string[];
-    cbpFiling?: string; // For USA imports
-    euEori?: string; // For EU imports
-  };
-  
-  // Timeline
-  estimatedDeparture: string;
-  estimatedArrival: string;
-  actualDeparture?: string;
-  actualArrival?: string;
-  
-  // Status
-  status: 'planning' | 'booked' | 'in_transit' | 'customs_clearance' | 'delivered' | 'delayed' | 'cancelled';
-  trackingNumber?: string;
-  
-  // Line Items (from forecasts)
-  lineItems: Array<{
-    skuId: string;
-    sku: ProductSku;
-    quantity: number;
-    palletCount: number;
-    weight: number; // kg
-    volume: number; // m³
-    htsCode: string;
-    unitValue: number;
-    totalValue: number;
-  }>;
-  
-  notes?: string;
-  createdBy: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ShipmentsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: shipments, mutate: mutateShipments } = useSWR<Shipment[]>('/api/cpfr/shipments', fetcher);
   const { data: forecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
   const { data: warehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showForecastConversion, setShowForecastConversion] = useState(false);
-  const [selectedForecast, setSelectedForecast] = useState<SalesForecast | null>(null);
-  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
+  const [selectedShipment, setSelectedShipment] = useState<SalesForecast | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
 
-  // Access control - Operations and admin can manage Shipments
+  // Access control
   if (!user || !['super_admin', 'admin', 'operations', 'sales', 'member'].includes(user.role)) {
     return (
       <div className="flex-1 p-4 lg:p-8">
@@ -141,105 +63,66 @@ export default function ShipmentsPage() {
     );
   }
 
-  // Get ready-to-ship forecasts (factory accepted, shipping awaiting)
-  const readyToShipForecasts = forecasts?.filter(f => 
-    f.salesSignal === 'accepted' && 
-    f.factorySignal === 'accepted' && 
-    f.shippingSignal === 'awaiting'
+  // Get shipment data from forecasts (Forecasts ARE Shipments!)
+  const shipmentForecasts = forecasts?.filter(f => 
+    f.salesSignal === 'submitted' || f.salesSignal === 'accepted'
   ) || [];
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      'planning': 'bg-gray-100 text-gray-800',
-      'booked': 'bg-blue-100 text-blue-800',
-      'in_transit': 'bg-purple-100 text-purple-800',
-      'customs_clearance': 'bg-yellow-100 text-yellow-800',
-      'delivered': 'bg-green-100 text-green-800',
-      'delayed': 'bg-orange-100 text-orange-800',
-      'cancelled': 'bg-red-100 text-red-800',
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  // Helper functions for timeline calculations
+  const getShippingIcon = (shippingMethod: string) => {
+    if (shippingMethod.includes('SEA')) return '🚢';
+    if (shippingMethod.includes('AIR')) return '✈️';
+    if (shippingMethod.includes('TRUCK')) return '🚛';
+    return '📦';
   };
 
-  const getMethodIcon = (method: string) => {
-    const icons = {
-      'AIR_EXPRESS': '✈️',
-      'AIR_STANDARD': '🛩️',
-      'SEA_FCL': '🚢',
-      'SEA_LCL': '⛵',
-      'TRUCK': '🚛',
-      'RAIL': '🚂',
-      'INTERMODAL': '🔄'
-    };
-    return icons[method as keyof typeof icons] || '📦';
-  };
-
-  const getDestinationFlag = (country: string) => {
-    const flags = {
-      'USA': '🇺🇸',
-      'Austria': '🇦🇹',
-      'Germany': '🇩🇪',
-      'China': '🇨🇳',
-      'Japan': '🇯🇵',
-      'UK': '🇬🇧',
-      'France': '🇫🇷',
-      'Canada': '🇨🇦'
-    };
-    return flags[country as keyof typeof flags] || '🌍';
-  };
-
-  // Calculate container utilization from SKU pallet data
-  const calculateContainerOptimization = (lineItems: any[], containerType: string) => {
-    if (!lineItems.length) return { palletCount: 0, utilization: 0, weight: 0, volume: 0 };
-
-    let totalPallets = 0;
-    let totalWeight = 0;
-    let totalVolume = 0;
-
-    lineItems.forEach(item => {
-      const sku = skus?.find(s => s.id === item.skuId);
-      if (sku) {
-        // Calculate pallets needed based on boxes per carton and cartons per pallet
-        const cartonsNeeded = Math.ceil(item.quantity / (sku.boxesPerCarton || 1));
-        const palletsNeeded = Math.ceil(cartonsNeeded / 40); // Assume 40 cartons per pallet
-        
-        totalPallets += palletsNeeded;
-        totalWeight += palletsNeeded * (Number(sku.palletWeightKg) || 500);
-        totalVolume += palletsNeeded * 1.44; // Standard pallet volume m³
-      }
-    });
-
-    // Container capacity limits
-    const containerLimits = {
-      '20ft': { maxPallets: 10, maxWeight: 28000, maxVolume: 33 },
-      '40ft': { maxPallets: 20, maxWeight: 28000, maxVolume: 67 },
-      '40ft_HC': { maxPallets: 24, maxWeight: 28000, maxVolume: 76 },
-      '45ft': { maxPallets: 26, maxWeight: 28000, maxVolume: 86 }
-    };
-
-    const limits = containerLimits[containerType as keyof typeof containerLimits] || containerLimits['40ft'];
-    const utilization = Math.max(
-      (totalPallets / limits.maxPallets) * 100,
-      (totalWeight / limits.maxWeight) * 100,
-      (totalVolume / limits.maxVolume) * 100
-    );
-
+  const calculateMilestoneDates = (forecast: SalesForecast) => {
+    const deliveryDate = new Date(forecast.deliveryWeek.replace('W', '-W') + '-1'); // Convert week to date
+    
+    // Calculate backwards from delivery date
+    const shippingDays = forecast.shippingPreference.includes('SEA') ? 21 : 
+                        forecast.shippingPreference.includes('AIR') ? 3 : 7;
+    
+    const exwDate = new Date(deliveryDate.getTime() - (shippingDays * 24 * 60 * 60 * 1000));
+    const departureDate = new Date(exwDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days after EXW
+    
     return {
-      palletCount: totalPallets,
-      utilization: Math.min(utilization, 100),
-      weight: totalWeight,
-      volume: totalVolume
+      salesDate: new Date(forecast.createdAt),
+      exwDate,
+      departureDate,
+      arrivalDate: deliveryDate
     };
+  };
+
+  const getTimelineProgress = (forecast: SalesForecast) => {
+    const milestones = calculateMilestoneDates(forecast);
+    const now = new Date();
+    
+    let completedMilestones = 0;
+    if (forecast.salesSignal === 'accepted') completedMilestones = 1;
+    if (forecast.factorySignal === 'accepted') completedMilestones = 2;
+    if (now >= milestones.departureDate) completedMilestones = 3;
+    if (forecast.shippingSignal === 'accepted') completedMilestones = 4;
+    
+    return { completed: completedMilestones, total: 4 };
   };
 
   // Filter shipments
-  const filteredShipments = shipments?.filter(shipment => {
-    const matchesSearch = shipment.shipmentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         shipment.destination.country.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || shipment.status === statusFilter;
-    const matchesMethod = methodFilter === 'all' || shipment.shippingMethod === methodFilter;
+  const filteredShipments = shipmentForecasts.filter(forecast => {
+    const sku = skus?.find(s => s.id === forecast.skuId);
+    const matchesSearch = forecast.sku?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         forecast.sku?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'planning' && forecast.shippingSignal === 'unknown') ||
+      (statusFilter === 'in_transit' && forecast.shippingSignal === 'awaiting') ||
+      (statusFilter === 'delivered' && forecast.shippingSignal === 'accepted');
+    
+    const matchesMethod = methodFilter === 'all' || 
+      forecast.shippingPreference.includes(methodFilter);
+    
     return matchesSearch && matchesStatus && matchesMethod;
-  }) || [];
+  });
 
   return (
     <div className="flex-1 p-4 lg:p-8 space-y-6">
@@ -250,23 +133,30 @@ export default function ShipmentsPage() {
             <SemanticBDIIcon semantic="shipping" size={32} />
             <div>
               <h1 className="text-3xl font-bold">Shipments</h1>
-              <p className="text-muted-foreground">Global logistics and container management</p>
+              <p className="text-muted-foreground">Global logistics tracking from forecasts to delivery</p>
             </div>
           </div>
           <div className="flex space-x-3">
-            <Button 
-              variant="outline" 
-              className="bg-green-100 hover:bg-green-200 text-green-700 border-green-300"
-              onClick={() => setShowForecastConversion(true)}
-              disabled={readyToShipForecasts.length === 0}
-            >
-              <SemanticBDIIcon semantic="forecasts" size={16} className="mr-2" />
-              Convert Forecasts ({readyToShipForecasts.length})
-            </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowCreateModal(true)}>
-              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-              Create Shipment
-            </Button>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="px-3"
+              >
+                <SemanticBDIIcon semantic="analytics" size={14} className="mr-2" />
+                Timeline
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="px-3"
+              >
+                <SemanticBDIIcon semantic="calendar" size={14} className="mr-2" />
+                Calendar
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -276,10 +166,10 @@ export default function ShipmentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="forecasts" size={20} className="text-green-600" />
+              <SemanticBDIIcon semantic="forecasts" size={20} className="text-blue-600" />
               <div>
-                <p className="text-sm text-gray-600">Ready to Ship</p>
-                <p className="text-2xl font-bold text-green-600">{readyToShipForecasts.length}</p>
+                <p className="text-sm text-gray-600">Total Shipments</p>
+                <p className="text-2xl font-bold text-blue-600">{shipmentForecasts.length}</p>
               </div>
             </div>
           </CardContent>
@@ -287,10 +177,25 @@ export default function ShipmentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="shipping" size={20} className="text-blue-600" />
+              <SemanticBDIIcon semantic="shipping" size={20} className="text-orange-600" />
               <div>
-                <p className="text-sm text-gray-600">Active Shipments</p>
-                <p className="text-2xl font-bold text-blue-600">{shipments?.filter(s => ['booked', 'in_transit', 'customs_clearance'].includes(s.status)).length || 0}</p>
+                <p className="text-sm text-gray-600">In Transit</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {shipmentForecasts.filter(f => f.shippingSignal === 'awaiting').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <SemanticBDIIcon semantic="sites" size={20} className="text-green-600" />
+              <div>
+                <p className="text-sm text-gray-600">Delivered</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {shipmentForecasts.filter(f => f.shippingSignal === 'accepted').length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -300,19 +205,10 @@ export default function ShipmentsPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="analytics" size={20} className="text-purple-600" />
               <div>
-                <p className="text-sm text-gray-600">In Customs</p>
-                <p className="text-2xl font-bold text-yellow-600">{shipments?.filter(s => s.status === 'customs_clearance').length || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="collaboration" size={20} className="text-emerald-600" />
-              <div>
-                <p className="text-sm text-gray-600">Delivered</p>
-                <p className="text-2xl font-bold text-emerald-600">{shipments?.filter(s => s.status === 'delivered').length || 0}</p>
+                <p className="text-sm text-gray-600">Total Units</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {shipmentForecasts.reduce((sum, f) => sum + f.quantity, 0).toLocaleString()}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -323,7 +219,7 @@ export default function ShipmentsPage() {
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search by shipment number, destination country, or tracking..."
+            placeholder="Search by SKU, product name, or delivery week..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -340,11 +236,8 @@ export default function ShipmentsPage() {
             >
               <option value="all">All Statuses</option>
               <option value="planning">Planning</option>
-              <option value="booked">Booked</option>
               <option value="in_transit">In Transit</option>
-              <option value="customs_clearance">Customs</option>
               <option value="delivered">Delivered</option>
-              <option value="delayed">Delayed</option>
             </select>
           </div>
           <div className="flex items-center space-x-2">
@@ -356,24 +249,24 @@ export default function ShipmentsPage() {
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Methods</option>
-              <option value="AIR_EXPRESS">✈️ Air Express</option>
-              <option value="AIR_STANDARD">🛩️ Air Standard</option>
-              <option value="SEA_FCL">🚢 Sea FCL</option>
-              <option value="SEA_LCL">⛵ Sea LCL</option>
-              <option value="TRUCK">🚛 Truck</option>
-              <option value="INTERMODAL">🔄 Intermodal</option>
+              <option value="SEA">🚢 Sea Freight</option>
+              <option value="AIR">✈️ Air Freight</option>
+              <option value="TRUCK">🚛 Ground</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Shipments List */}
+      {/* Shipments List/Calendar */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="shipping" size={20} />
-            <span>Shipments ({filteredShipments.length})</span>
+            <span>Shipments Timeline ({filteredShipments.length})</span>
           </CardTitle>
+          <CardDescription>
+            Shipment tracking from sales forecast through delivery milestones
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {filteredShipments.length === 0 ? (
@@ -381,248 +274,217 @@ export default function ShipmentsPage() {
               <SemanticBDIIcon semantic="shipping" size={48} className="mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No Shipments</h3>
               <p className="text-muted-foreground mb-4">
-                {readyToShipForecasts.length > 0 
-                  ? `Convert ${readyToShipForecasts.length} ready forecasts into shipments`
-                  : 'Create your first shipment or convert forecasts into shipments'
-                }
+                Shipments are created from submitted forecasts. Create forecasts to see shipments here.
               </p>
-              <div className="flex justify-center space-x-3">
-                {readyToShipForecasts.length > 0 && (
-                  <Button 
-                    onClick={() => setShowForecastConversion(true)}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <SemanticBDIIcon semantic="forecasts" size={16} className="mr-2" />
-                    Convert {readyToShipForecasts.length} Forecasts
-                  </Button>
-                )}
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
-                  Create Manual Shipment
-                </Button>
-              </div>
+              <Button onClick={() => window.location.href = '/cpfr/forecasts'}>
+                <SemanticBDIIcon semantic="forecasts" size={16} className="mr-2" />
+                Go to Forecasts
+              </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredShipments.map((shipment) => (
-                <div key={shipment.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">Shipment #{shipment.shipmentNumber}</h3>
-                        <Badge className={getStatusColor(shipment.status)}>
-                          {shipment.status.replace('_', ' ')}
-                        </Badge>
-                        <Badge className="bg-blue-100 text-blue-800">
-                          {getMethodIcon(shipment.shippingMethod)} {shipment.shippingMethod.replace('_', ' ')}
-                        </Badge>
+            <div className="space-y-6">
+              {filteredShipments.map((forecast) => {
+                const milestones = calculateMilestoneDates(forecast);
+                const progress = getTimelineProgress(forecast);
+                const shippingIcon = getShippingIcon(forecast.shippingPreference);
+                
+                return (
+                  <div key={forecast.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors">
+                    {/* Shipment Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-semibold text-lg">
+                            {forecast.sku.sku} - {forecast.sku.name}
+                          </h3>
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {forecast.quantity.toLocaleString()} units
+                          </Badge>
+                          <Badge className="bg-purple-100 text-purple-800">
+                            {forecast.deliveryWeek}
+                          </Badge>
+                          <Badge className="bg-cyan-100 text-cyan-800">
+                            {shippingIcon} {forecast.shippingPreference}
+                          </Badge>
+                        </div>
+                        
+                        {/* Timeline Progress Bar */}
+                        <div className="mb-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-sm text-gray-600">Shipment Progress:</span>
+                            <span className="text-sm font-medium">
+                              {progress.completed}/{progress.total} milestones completed
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-3">
-                        <div>
-                          <span className="text-gray-500">Route:</span>
-                          <p className="font-medium">
-                            {shipment.origin.warehouse?.city || 'Origin'} → {getDestinationFlag(shipment.destination.country)} {shipment.destination.customLocation}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Container:</span>
-                          <p className="font-medium">{shipment.containerType} ({shipment.containerDetails.palletCount} pallets)</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Departure:</span>
-                          <p className="font-medium">{new Date(shipment.estimatedDeparture).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Arrival:</span>
-                          <p className="font-medium">{new Date(shipment.estimatedArrival).toLocaleDateString()}</p>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setSelectedShipment(forecast)}
+                        >
+                          <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
+                          Details
+                        </Button>
                       </div>
-                      
-                      {/* Container Details */}
-                      <div className="bg-blue-50 p-3 rounded-md border border-blue-200 mb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                              <SemanticBDIIcon semantic="inventory" size={14} className="text-blue-600" />
-                              <span className="text-blue-800 font-medium text-sm">Container:</span>
-                              <span className="text-blue-700 text-sm">{shipment.containerDetails.weight.toLocaleString()} kg</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-blue-800 font-medium text-sm">Utilization:</span>
-                              <span className="text-blue-700 text-sm">{shipment.containerDetails.utilization.toFixed(1)}%</span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-blue-600">
-                            {shipment.incoterms} {shipment.incotermsLocation}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Customs Info */}
-                      {shipment.customsInfo.htsCode && (
-                        <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 mb-3">
-                          <div className="flex items-center space-x-4 text-sm">
-                            <div>
-                              <span className="text-yellow-800 font-medium">HTS:</span>
-                              <span className="text-yellow-700 ml-1">{shipment.customsInfo.htsCode}</span>
-                            </div>
-                            <div>
-                              <span className="text-yellow-800 font-medium">Value:</span>
-                              <span className="text-yellow-700 ml-1">${shipment.customsInfo.commercialValue.toLocaleString()}</span>
-                            </div>
-                            {shipment.customsInfo.cbpFiling && (
-                              <div>
-                                <span className="text-yellow-800 font-medium">CBP:</span>
-                                <span className="text-yellow-700 ml-1">{shipment.customsInfo.cbpFiling}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {shipment.trackingNumber && (
-                        <div className="text-sm">
-                          <span className="text-gray-500">Tracking:</span>
-                          <span className="font-mono text-blue-600 ml-1">{shipment.trackingNumber}</span>
-                        </div>
-                      )}
                     </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedShipment(shipment)}>
-                        <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
-                        Track
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedShipment(shipment)}>
-                        <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                        Edit
-                      </Button>
+
+                    {/* AWESOME MILESTONE TIMELINE */}
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border">
+                      <div className="flex items-center justify-between relative">
+                        {/* Progress Line */}
+                        <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-300"></div>
+                        <div 
+                          className="absolute top-6 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000"
+                          style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                        ></div>
+
+                        {/* Milestone 1: Sales */}
+                        <div className="flex flex-col items-center space-y-2 relative z-10">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                            forecast.salesSignal === 'accepted' ? 'bg-green-500 border-green-500 text-white' :
+                            forecast.salesSignal === 'submitted' ? 'bg-blue-500 border-blue-500 text-white' :
+                            'bg-gray-300 border-gray-300 text-gray-600'
+                          }`}>
+                            <SemanticBDIIcon semantic="profile" size={20} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-800">Sales</p>
+                            <p className="text-xs text-gray-600">
+                              {milestones.salesDate.toLocaleDateString()}
+                            </p>
+                            <Badge className={
+                              forecast.salesSignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-600'
+                            }>
+                              {forecast.salesSignal}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Milestone 2: Factory EXW */}
+                        <div className="flex flex-col items-center space-y-2 relative z-10">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                            forecast.factorySignal === 'accepted' ? 'bg-green-500 border-green-500 text-white' :
+                            forecast.factorySignal === 'awaiting' ? 'bg-orange-500 border-orange-500 text-white' :
+                            'bg-gray-300 border-gray-300 text-gray-600'
+                          }`}>
+                            <SemanticBDIIcon semantic="collaboration" size={20} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-800">Factory EXW</p>
+                            <p className="text-xs text-gray-600">
+                              {milestones.exwDate.toLocaleDateString()}
+                            </p>
+                            <Badge className={
+                              forecast.factorySignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.factorySignal === 'awaiting' ? 'bg-orange-100 text-orange-800' :
+                              'bg-gray-100 text-gray-600'
+                            }>
+                              {forecast.factorySignal}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Milestone 3: In Transit */}
+                        <div className="flex flex-col items-center space-y-2 relative z-10">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                            progress.completed >= 3 ? 'bg-blue-500 border-blue-500 text-white' :
+                            'bg-gray-300 border-gray-300 text-gray-600'
+                          }`}>
+                            <span className="text-xl">{shippingIcon}</span>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-800">In Transit</p>
+                            <p className="text-xs text-gray-600">
+                              {milestones.departureDate.toLocaleDateString()}
+                            </p>
+                            <Badge className={
+                              progress.completed >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
+                            }>
+                              {progress.completed >= 3 ? 'shipping' : 'pending'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Milestone 4: Warehouse Arrival */}
+                        <div className="flex flex-col items-center space-y-2 relative z-10">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                            forecast.shippingSignal === 'accepted' ? 'bg-green-500 border-green-500 text-white' :
+                            forecast.shippingSignal === 'awaiting' ? 'bg-orange-500 border-orange-500 text-white' :
+                            'bg-gray-300 border-gray-300 text-gray-600'
+                          }`}>
+                            <SemanticBDIIcon semantic="sites" size={20} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-800">Warehouse</p>
+                            <p className="text-xs text-gray-600">
+                              {milestones.arrivalDate.toLocaleDateString()}
+                            </p>
+                            <Badge className={
+                              forecast.shippingSignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.shippingSignal === 'awaiting' ? 'bg-orange-100 text-orange-800' :
+                              'bg-gray-100 text-gray-600'
+                            }>
+                              {forecast.shippingSignal}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Shipment Details */}
+                      <div className="mt-4 pt-4 border-t border-blue-200">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Estimated Transit:</span>
+                            <p className="font-medium">
+                              {Math.ceil((milestones.arrivalDate.getTime() - milestones.departureDate.getTime()) / (1000 * 60 * 60 * 24))} days
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Estimated Pallets:</span>
+                            <p className="font-medium">
+                              {Math.ceil(forecast.quantity / ((forecast.sku.boxesPerCarton || 1) * 40))} pallets
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Estimated Weight:</span>
+                            <p className="font-medium">
+                              {(Math.ceil(forecast.quantity / ((forecast.sku.boxesPerCarton || 1) * 40)) * (Number(forecast.sku.palletWeightKg) || 500)).toLocaleString()} kg
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Forecast Conversion Modal */}
-      <Dialog open={showForecastConversion} onOpenChange={setShowForecastConversion}>
-        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
-              Convert Forecasts to Shipments
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="p-8 space-y-6">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">🚢 Forecast-to-Shipment Conversion</h3>
-              <p className="text-gray-700 mb-4">
-                Convert approved forecasts into optimized shipping containers with flexible line item splitting.
-              </p>
-              
-              {readyToShipForecasts.length === 0 ? (
-                <div className="text-center py-8">
-                  <SemanticBDIIcon semantic="forecasts" size={48} className="mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-600">No forecasts ready for shipping conversion.</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Forecasts need: Sales ✅ → Factory ✅ → Shipping ⏳ status
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {readyToShipForecasts.map((forecast) => (
-                    <div key={forecast.id} className="bg-white p-4 rounded border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="font-semibold">{forecast.sku.sku} - {forecast.sku.name}</h4>
-                            <Badge className="bg-green-100 text-green-800">
-                              {forecast.quantity.toLocaleString()} units
-                            </Badge>
-                            <Badge className="bg-blue-100 text-blue-800">
-                              {forecast.deliveryWeek}
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500">Shipping:</span>
-                              <span className="font-medium ml-1">{forecast.shippingPreference}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Pallets Needed:</span>
-                              <span className="font-medium ml-1">
-                                {Math.ceil(forecast.quantity / ((forecast.sku.boxesPerCarton || 1) * 40))} pallets
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Est. Weight:</span>
-                              <span className="font-medium ml-1">
-                                {(Math.ceil(forecast.quantity / ((forecast.sku.boxesPerCarton || 1) * 40)) * (Number(forecast.sku.palletWeightKg) || 500)).toLocaleString()} kg
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedForecast(forecast);
-                            // This would open the shipment creation modal with pre-filled data
-                          }}
-                          className="bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300"
-                        >
-                          <SemanticBDIIcon semantic="shipping" size={14} className="mr-1" />
-                          Create Shipment
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3 p-8 pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowForecastConversion(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Shipment Modal - Placeholder */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
-          <DialogHeader>
-            <DialogTitle>Create Manual Shipment</DialogTitle>
-          </DialogHeader>
-          <div className="p-8">
-            <p className="text-center text-lg font-semibold text-blue-600 mb-4">
-              Manual shipment creation will be implemented next.
-            </p>
-            <div className="flex justify-center">
-              <Button onClick={() => setShowCreateModal(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Shipment Details Modal - Placeholder */}
+      {/* Shipment Details Modal */}
       <Dialog open={!!selectedShipment} onOpenChange={() => setSelectedShipment(null)}>
         <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
-            <DialogTitle>Shipment Details: {selectedShipment?.shipmentNumber}</DialogTitle>
+            <DialogTitle>
+              Shipment Details: {selectedShipment?.sku.sku}
+            </DialogTitle>
           </DialogHeader>
           {selectedShipment && (
             <div className="p-8">
               <p className="text-center text-lg font-semibold text-blue-600 mb-4">
-                Detailed shipment tracking and editing will be implemented next.
+                Detailed shipment management coming next!
               </p>
               <div className="flex justify-center">
                 <Button onClick={() => setSelectedShipment(null)}>
