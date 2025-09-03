@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     
-    if (!currentUser || !['admin'].includes(currentUser.role)) {
-      return NextResponse.json({ error: 'Unauthorized - Organization Admin required' }, { status: 401 });
+    if (!currentUser || !['super_admin', 'admin', 'sales', 'member'].includes(currentUser.role)) {
+      return NextResponse.json({ error: 'Unauthorized - Organization access required' }, { status: 401 });
     }
 
     // Get the user's organization
@@ -74,10 +74,8 @@ export async function GET(request: NextRequest) {
 
     const userOrganization = userOrgMembership.organization;
 
-    // Prevent BDI users from accessing this endpoint (they should use /api/admin/users)
-    if (userOrganization.code === 'BDI' || userOrganization.type === 'internal') {
-      return NextResponse.json({ error: 'BDI users should use admin endpoints' }, { status: 403 });
-    }
+    // For BDI users, return BDI organization users (not external partner users)
+    // For partner users, return their own organization users
 
     console.log('Fetching users for organization:', userOrganization.name, userOrganization.code);
 

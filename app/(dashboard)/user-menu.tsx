@@ -23,7 +23,6 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: user, error } = useSWR<User>('/api/user', fetcher);
-  const { data: team } = useSWR<any>('/api/team', fetcher);
   const router = useRouter();
 
   // Debug logging
