@@ -43,7 +43,14 @@ export default function PurchaseOrdersPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: purchaseOrders, mutate: mutatePurchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
-  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
+  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher, {
+    onError: (error) => {
+      // Silently handle 403 errors for non-admin users
+      if (error?.status !== 403) {
+        console.error('Error fetching organizations:', error);
+      }
+    }
+  });
 
   // Fetch line items for all purchase orders when purchase orders are loaded
   useEffect(() => {
@@ -529,6 +536,11 @@ export default function PurchaseOrdersPage() {
                       {org.code} - {org.name}
                     </option>
                   ))}
+                  {!organizations && user?.organization && (
+                    <option key={user.organization.id} value={user.organization.code}>
+                      {user.organization.code} - {user.organization.name}
+                    </option>
+                  )}
                 </select>
                 <div className="text-xs text-gray-600 mt-1">
                   Select the Supplier/Vendor organization (Factory) for CPFR signaling
