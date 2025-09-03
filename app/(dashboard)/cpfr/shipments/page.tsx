@@ -78,37 +78,47 @@ export default function ShipmentsPage() {
 
   // Helper function to get default dates from forecast
   const getDefaultDatesFromForecast = (forecast: SalesForecast) => {
+    // Always use safe fallback dates to avoid crashes
+    const today = new Date();
+    const futureDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+    
     try {
-      const deliveryWeek = forecast.deliveryWeek; // e.g., "2025-W47"
-      const [year, weekStr] = deliveryWeek.split('-W');
-      const week = parseInt(weekStr);
-      
-      // More accurate ISO week to date conversion
-      const jan1 = new Date(parseInt(year), 0, 1);
-      const daysToAdd = (week - 1) * 7;
-      const deliveryDate = new Date(jan1.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-      
-      // Ensure valid date
-      if (isNaN(deliveryDate.getTime())) {
-        throw new Error('Invalid delivery date calculation');
+      if (!forecast?.deliveryWeek || !forecast.deliveryWeek.includes('-W')) {
+        throw new Error('Invalid delivery week format');
       }
       
-      const requestedDeliveryDate = deliveryDate.toISOString().split('T')[0];
+      const deliveryWeek = forecast.deliveryWeek; // e.g., "2025-W47"
+      const [yearStr, weekStr] = deliveryWeek.split('-W');
+      const year = parseInt(yearStr);
+      const week = parseInt(weekStr);
       
-      // Calculate estimated ship date based on shipping preference
-      const shippingDays = parseInt(forecast.shippingPreference.split('_').pop() || '14');
+      // Validate inputs
+      if (isNaN(year) || isNaN(week) || year < 2020 || year > 2030 || week < 1 || week > 53) {
+        throw new Error('Invalid year or week values');
+      }
+      
+      // Simple week calculation - use Monday of the specified week
+      const jan1 = new Date(year, 0, 1);
+      const jan1Day = jan1.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const mondayOfWeek1 = new Date(year, 0, 1 + (1 - jan1Day + 7) % 7);
+      const deliveryDate = new Date(mondayOfWeek1.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
+      
+      // Validate result
+      if (isNaN(deliveryDate.getTime())) {
+        throw new Error('Invalid delivery date result');
+      }
+      
+      // Calculate estimated ship date
+      const shippingDays = parseInt(forecast.shippingPreference?.split('_')?.pop() || '14');
       const estimatedShipDate = new Date(deliveryDate.getTime() - shippingDays * 24 * 60 * 60 * 1000);
-      const estimatedShipDateStr = estimatedShipDate.toISOString().split('T')[0];
       
       return {
-        estimatedShipDate: estimatedShipDateStr,
-        requestedDeliveryDate: requestedDeliveryDate
+        estimatedShipDate: estimatedShipDate.toISOString().split('T')[0],
+        requestedDeliveryDate: deliveryDate.toISOString().split('T')[0]
       };
     } catch (error) {
-      console.error('Error calculating default dates:', error);
-      // Fallback to reasonable defaults
-      const today = new Date();
-      const futureDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      console.error('Error calculating default dates from forecast:', forecast?.deliveryWeek, error);
+      // Always return safe fallback dates
       return {
         estimatedShipDate: today.toISOString().split('T')[0],
         requestedDeliveryDate: futureDate.toISOString().split('T')[0]
