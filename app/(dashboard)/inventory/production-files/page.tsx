@@ -26,15 +26,16 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 
 const FILE_TYPES = [
-  { value: 'MAC_ADDRESS_LIST', label: 'MAC Address List', icon: 'connect' },
-  { value: 'SERIAL_NUMBER_LIST', label: 'Serial Number List', icon: 'inventory_items' },
-  { value: 'PRODUCTION_REPORT', label: 'Production Report', icon: 'analytics' },
-  { value: 'TEST_RESULTS', label: 'Test Results', icon: 'analytics' },
-  { value: 'CALIBRATION_DATA', label: 'Calibration Data', icon: 'settings' },
-  { value: 'FIRMWARE_VERSION', label: 'Firmware Version', icon: 'settings' },
-  { value: 'QUALITY_CONTROL', label: 'Quality Control', icon: 'check' },
-  { value: 'PACKAGING_LIST', label: 'Packaging List', icon: 'orders' },
-  { value: 'OTHER', label: 'Other', icon: 'files' }
+  { value: 'PRODUCTION_FILE', label: 'Production File', icon: 'analytics', active: true },
+  { value: 'MAC_ADDRESS_LIST', label: 'MAC Address List', icon: 'connect', active: false },
+  { value: 'SERIAL_NUMBER_LIST', label: 'Serial Number List', icon: 'inventory_items', active: false },
+  { value: 'PRODUCTION_REPORT', label: 'Production Report', icon: 'analytics', active: false },
+  { value: 'TEST_RESULTS', label: 'Test Results', icon: 'analytics', active: false },
+  { value: 'CALIBRATION_DATA', label: 'Calibration Data', icon: 'settings', active: false },
+  { value: 'FIRMWARE_VERSION', label: 'Firmware Version', icon: 'settings', active: false },
+  { value: 'QUALITY_CONTROL', label: 'Quality Control', icon: 'check', active: false },
+  { value: 'PACKAGING_LIST', label: 'Packaging List', icon: 'orders', active: false },
+  { value: 'OTHER', label: 'Other', icon: 'files', active: false }
 ];
 
 export default function ProductionFilesPage() {
@@ -45,7 +46,7 @@ export default function ProductionFilesPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadFormData, setUploadFormData] = useState({
-    fileType: 'MAC_ADDRESS_LIST',
+    fileType: 'PRODUCTION_FILE',
     description: '',
     forecastId: '',
     bdiShipmentNumber: '',
@@ -625,7 +626,14 @@ export default function ProductionFilesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   {FILE_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
+                    <option 
+                      key={type.value} 
+                      value={type.value}
+                      disabled={!type.active}
+                      className={!type.active ? 'text-gray-400' : ''}
+                    >
+                      {type.label}{!type.active ? ' (Coming Soon)' : ''}
+                    </option>
                   ))}
                 </select>
               </div>

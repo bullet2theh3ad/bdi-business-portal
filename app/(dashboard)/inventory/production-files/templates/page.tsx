@@ -5,18 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 
 const FILE_TYPES = [
-  { value: 'MAC_ADDRESS_LIST', label: 'MAC Address List', icon: 'connect' },
-  { value: 'SERIAL_NUMBER_LIST', label: 'Serial Number List', icon: 'inventory_items' },
-  { value: 'PRODUCTION_REPORT', label: 'Production Report', icon: 'analytics' },
-  { value: 'TEST_RESULTS', label: 'Test Results', icon: 'analytics' },
-  { value: 'CALIBRATION_DATA', label: 'Calibration Data', icon: 'settings' },
-  { value: 'FIRMWARE_VERSION', label: 'Firmware Version', icon: 'settings' },
-  { value: 'QUALITY_CONTROL', label: 'Quality Control', icon: 'check' },
-  { value: 'PACKAGING_LIST', label: 'Packaging List', icon: 'orders' }
+  { value: 'PRODUCTION_FILE', label: 'Production File', icon: 'analytics', active: true },
+  { value: 'MAC_ADDRESS_LIST', label: 'MAC Address List', icon: 'connect', active: false },
+  { value: 'SERIAL_NUMBER_LIST', label: 'Serial Number List', icon: 'inventory_items', active: false },
+  { value: 'PRODUCTION_REPORT', label: 'Production Report', icon: 'analytics', active: false },
+  { value: 'TEST_RESULTS', label: 'Test Results', icon: 'analytics', active: false },
+  { value: 'CALIBRATION_DATA', label: 'Calibration Data', icon: 'settings', active: false },
+  { value: 'FIRMWARE_VERSION', label: 'Firmware Version', icon: 'settings', active: false },
+  { value: 'QUALITY_CONTROL', label: 'Quality Control', icon: 'check', active: false },
+  { value: 'PACKAGING_LIST', label: 'Packaging List', icon: 'orders', active: false }
 ];
 
 const getFileTypeDescription = (fileType: string): string => {
   const descriptions = {
+    'PRODUCTION_FILE': 'Comprehensive Excel template for all production data including MAC addresses, serial numbers, and manufacturing details',
     'MAC_ADDRESS_LIST': 'CSV file with device MAC addresses, one per line',
     'SERIAL_NUMBER_LIST': 'List of device serial numbers for tracking and warranty',
     'PRODUCTION_REPORT': 'Manufacturing summary with quantities, dates, and batch info',
@@ -32,7 +34,18 @@ const getFileTypeDescription = (fileType: string): string => {
 export default function ProductionFileTemplatesPage() {
   const handleDownloadSample = async (fileType: string) => {
     try {
-      // Create sample CSV content based on file type
+      if (fileType === 'PRODUCTION_FILE') {
+        // Download the actual Excel template
+        const link = document.createElement('a');
+        link.href = '/production-files/companyName_shipmentNumber_YYYY.MM.DD - Production File Template.xlsx';
+        link.download = 'Production File Template.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // For other file types, create sample CSV content
       let csvContent = '';
       let fileName = '';
 
@@ -206,26 +219,40 @@ export default function ProductionFileTemplatesPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {FILE_TYPES.map((fileType) => (
-              <div key={fileType.value} className="border rounded-lg p-4 hover:bg-green-50 transition-colors">
+              <div 
+                key={fileType.value} 
+                className={`border rounded-lg p-4 transition-colors ${
+                  fileType.active 
+                    ? 'hover:bg-green-50 border-green-200' 
+                    : 'bg-gray-50 border-gray-200 opacity-60'
+                }`}
+              >
                 <div className="flex items-start space-x-3">
                   <SemanticBDIIcon 
                     semantic={fileType.icon as any} 
                     size={24} 
-                    className="text-green-600 mt-1" 
+                    className={`mt-1 ${fileType.active ? 'text-green-600' : 'text-gray-400'}`}
                   />
                   <div className="flex-1">
-                    <h4 className="font-semibold text-sm mb-1">{fileType.label}</h4>
+                    <h4 className={`font-semibold text-sm mb-1 ${fileType.active ? 'text-gray-900' : 'text-gray-500'}`}>
+                      {fileType.label}{!fileType.active ? ' (Coming Soon)' : ''}
+                    </h4>
                     <p className="text-xs text-gray-600 mb-3">
                       {getFileTypeDescription(fileType.value)}
                     </p>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="w-full text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={() => handleDownloadSample(fileType.value)}
+                      className={`w-full ${
+                        fileType.active 
+                          ? 'text-green-600 border-green-200 hover:bg-green-50' 
+                          : 'text-gray-400 border-gray-200 cursor-not-allowed'
+                      }`}
+                      onClick={() => fileType.active && handleDownloadSample(fileType.value)}
+                      disabled={!fileType.active}
                     >
                       <SemanticBDIIcon semantic="download" size={14} className="mr-2" />
-                      Download Template
+                      {fileType.active ? 'Download Template' : 'Coming Soon'}
                     </Button>
                   </div>
                 </div>
