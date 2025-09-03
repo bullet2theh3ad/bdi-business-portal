@@ -73,14 +73,21 @@ export default function ShipmentsPage() {
     requestedDeliveryDate: '',
     overrideDefaults: false
   });
-  const [uploadedCostDocs, setUploadedCostDocs] = useState<File[]>([]);
+  const [shipmentDocuments, setShipmentDocuments] = useState<Map<string, File[]>>(new Map());
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
 
-  // Drag and drop for cost documents
+  // Drag and drop for cost documents (shipment-specific)
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setUploadedCostDocs(prev => [...prev, ...acceptedFiles]);
-  }, []);
+    if (selectedShipment) {
+      setShipmentDocuments(prev => {
+        const newMap = new Map(prev);
+        const existingDocs = newMap.get(selectedShipment.id) || [];
+        newMap.set(selectedShipment.id, [...existingDocs, ...acceptedFiles]);
+        return newMap;
+      });
+    }
+  }, [selectedShipment]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -94,6 +101,9 @@ export default function ShipmentsPage() {
     },
     multiple: true
   });
+
+  // Get documents for current shipment
+  const currentShipmentDocs = selectedShipment ? (shipmentDocuments.get(selectedShipment.id) || []) : [];
 
   // Helper function to get default dates from forecast (simplified to avoid crashes)
   const getDefaultDatesFromForecast = (forecast: SalesForecast) => {
@@ -665,7 +675,9 @@ export default function ShipmentsPage() {
                             }`}>{shippingIcon}</span>
                           </div>
                           <div className="text-center">
-                            <p className="text-xs font-medium text-gray-800">In Transit</p>
+                            <p className="text-xs font-medium text-gray-800">
+                              {createdShipments.has(forecast.id) ? 'Awaiting Quote' : 'In Transit'}
+                            </p>
                             <p className="text-xs text-gray-600">
                               {milestones.departureDate.toLocaleDateString()}
                             </p>
@@ -713,24 +725,33 @@ export default function ShipmentsPage() {
                       {/* Shipment Details */}
                       <div className="mt-4 pt-4 border-t border-blue-200">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Estimated Transit:</span>
-                            <p className="font-medium">
-                              {milestones.transitDays} days
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Estimated Pallets:</span>
-                            <p className="font-medium">
-                              {Math.ceil(forecast.quantity / ((forecast.sku.boxesPerCarton || 1) * 40))} pallets
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Estimated Weight:</span>
-                            <p className="font-medium">
-                              {(Math.ceil(forecast.quantity / ((forecast.sku.boxesPerCarton || 1) * 40)) * (Number(forecast.sku.palletWeightKg) || 500)).toLocaleString()} kg
-                            </p>
-                          </div>
+                          {(() => {
+                            // Use the same calculation function as the Details modal
+                            const timelineShippingData = calculateShippingData(forecast.sku, forecast.quantity, 5);
+                            
+                            return (
+                              <>
+                                <div>
+                                  <span className="text-gray-600">Estimated Transit:</span>
+                                  <p className="font-medium">
+                                    {milestones.transitDays} days
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Estimated Pallets:</span>
+                                  <p className="font-medium">
+                                    {timelineShippingData.palletCount} pallets
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Estimated Weight:</span>
+                                  <p className="font-medium">
+                                    {parseFloat(timelineShippingData.totalShippingWeight).toLocaleString()} kg
+                                  </p>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1021,14 +1042,14 @@ export default function ShipmentsPage() {
                                 )}
                               </div>
                               
-                              {/* File Preview Cards */}
-                              {uploadedCostDocs.length > 0 && (
+                              {/* File Preview Cards - Shipment Specific */}
+                              {currentShipmentDocs.length > 0 && (
                                 <div className="space-y-2">
                                   <h5 className="text-sm font-medium text-gray-700 flex items-center">
                                     <SemanticBDIIcon semantic="document" size={14} className="mr-1" />
-                                    Files Ready for Upload ({uploadedCostDocs.length})
+                                    Files for {selectedShipment.sku.sku} Shipment ({currentShipmentDocs.length})
                                   </h5>
-                                  {uploadedCostDocs.map((file, index) => (
+                                  {currentShipmentDocs.map((file, index) => (
                                     <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                                       <div className="flex items-center space-x-3">
                                         <div className={`w-8 h-8 rounded flex items-center justify-center ${
@@ -1054,7 +1075,16 @@ export default function ShipmentsPage() {
                                         </div>
                                       </div>
                                       <button
-                                        onClick={() => setUploadedCostDocs(prev => prev.filter((_, i) => i !== index))}
+                                        onClick={() => {
+                                          if (selectedShipment) {
+                                            setShipmentDocuments(prev => {
+                                              const newMap = new Map(prev);
+                                              const existingDocs = newMap.get(selectedShipment.id) || [];
+                                              newMap.set(selectedShipment.id, existingDocs.filter((_, i) => i !== index));
+                                              return newMap;
+                                            });
+                                          }
+                                        }}
                                         className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
                                       >
                                         <SemanticBDIIcon semantic="close" size={16} />
