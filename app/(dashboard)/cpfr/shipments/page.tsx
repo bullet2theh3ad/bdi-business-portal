@@ -334,7 +334,12 @@ export default function ShipmentsPage() {
               const fetchDocsResponse = await fetch(`/api/cpfr/shipments/${result.shipment.id}/documents`);
               if (fetchDocsResponse.ok) {
                 const uploadedDocs = await fetchDocsResponse.json();
+                console.log('📎 Fetched documents after upload:', uploadedDocs);
+                // Use selectedShipment.id (forecast ID) as key since that's what we check in display
                 setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, uploadedDocs)));
+                console.log('📎 Set documents in state for forecast ID:', selectedShipment.id);
+              } else {
+                console.error('📎 Failed to fetch documents after upload:', fetchDocsResponse.status);
               }
               alert(`Shipment created successfully with ${currentDocs.length} documents uploaded!`);
             } else {
@@ -1020,7 +1025,12 @@ export default function ShipmentsPage() {
                             </div>
                             
                             {/* Show uploaded documents from database */}
-                            {uploadedDocumentsFromDB.has(selectedShipment.id) && (
+                            {(() => {
+                              console.log('📎 Display check - forecast ID:', selectedShipment.id);
+                              console.log('📎 Display check - has documents:', uploadedDocumentsFromDB.has(selectedShipment.id));
+                              console.log('📎 Display check - documents:', uploadedDocumentsFromDB.get(selectedShipment.id));
+                              return uploadedDocumentsFromDB.has(selectedShipment.id);
+                            })() && (
                               <div className="mt-3 pt-3 border-t border-green-200">
                                 <h5 className="text-sm font-medium text-green-800 mb-2">Uploaded Documents:</h5>
                                 <div className="space-y-1">
