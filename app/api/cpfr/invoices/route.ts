@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, invoices, invoiceLineItems } from '@/lib/db/schema';
+import { users, invoices, invoiceLineItems, organizations, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -42,26 +42,76 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden - Sales access required' }, { status: 403 });
     }
 
-    // Query invoices from database
-    const invoicesList = await db
+    // Get user's organization to determine access level
+    const userOrgMembership = await db
       .select({
-        id: invoices.id,
-        invoiceNumber: invoices.invoiceNumber,
-        customerName: invoices.customerName,
-        invoiceDate: invoices.invoiceDate,
-        requestedDeliveryWeek: invoices.requestedDeliveryWeek,
-        status: invoices.status,
-        terms: invoices.terms,
-        incoterms: invoices.incoterms,
-        incotermsLocation: invoices.incotermsLocation,
-        totalValue: invoices.totalValue,
-        documents: invoices.documents,
-        notes: invoices.notes,
-        createdAt: invoices.createdAt,
-        createdBy: invoices.createdBy,
+        organization: {
+          id: organizations.id,
+          code: organizations.code,
+          type: organizations.type,
+        }
       })
-      .from(invoices)
-      .orderBy(invoices.createdAt);
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
+      .limit(1);
+
+    const isBDIUser = userOrgMembership.length > 0 && 
+      userOrgMembership[0].organization.code === 'BDI' && 
+      userOrgMembership[0].organization.type === 'internal';
+
+    // Query invoices from database with organization-based filtering
+    let invoicesList;
+    
+    if (isBDIUser) {
+      // BDI users can see ALL invoices
+      invoicesList = await db
+        .select({
+          id: invoices.id,
+          invoiceNumber: invoices.invoiceNumber,
+          customerName: invoices.customerName,
+          invoiceDate: invoices.invoiceDate,
+          requestedDeliveryWeek: invoices.requestedDeliveryWeek,
+          status: invoices.status,
+          terms: invoices.terms,
+          incoterms: invoices.incoterms,
+          incotermsLocation: invoices.incotermsLocation,
+          totalValue: invoices.totalValue,
+          documents: invoices.documents,
+          notes: invoices.notes,
+          createdAt: invoices.createdAt,
+          createdBy: invoices.createdBy,
+        })
+        .from(invoices)
+        .orderBy(invoices.createdAt);
+    } else {
+      // Partner organizations only see invoices where they are the customer
+      const orgCode = userOrgMembership[0]?.organization.code;
+      if (!orgCode) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      }
+      
+      invoicesList = await db
+        .select({
+          id: invoices.id,
+          invoiceNumber: invoices.invoiceNumber,
+          customerName: invoices.customerName,
+          invoiceDate: invoices.invoiceDate,
+          requestedDeliveryWeek: invoices.requestedDeliveryWeek,
+          status: invoices.status,
+          terms: invoices.terms,
+          incoterms: invoices.incoterms,
+          incotermsLocation: invoices.incotermsLocation,
+          totalValue: invoices.totalValue,
+          documents: invoices.documents,
+          notes: invoices.notes,
+          createdAt: invoices.createdAt,
+          createdBy: invoices.createdBy,
+        })
+        .from(invoices)
+        .where(eq(invoices.customerName, orgCode))
+        .orderBy(invoices.createdAt);
+    }
 
     console.log('Fetched invoices:', invoicesList.length);
     return NextResponse.json(invoicesList);
