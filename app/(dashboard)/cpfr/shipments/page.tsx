@@ -79,6 +79,60 @@ export default function ShipmentsPage() {
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
   const [uploadedDocumentsFromDB, setUploadedDocumentsFromDB] = useState<Map<string, any[]>>(new Map());
 
+  // Load existing shipment data when opening Details modal
+  useEffect(() => {
+    if (selectedShipment) {
+      // Check if this forecast already has a shipment created
+      const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
+      const localShipment = createdShipments.get(selectedShipment.id);
+      
+      if (existingShipment || localShipment) {
+        // Populate form with existing shipment data
+        const shipmentData = existingShipment || localShipment;
+        setShipmentForm({
+          shippingOrganization: shipmentData.shipping_organization_code || shipmentData.shippingOrganizationCode || '',
+          shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
+          unitsPerCarton: shipmentData.units_per_carton || shipmentData.unitsPerCarton || 5,
+          requestedQuantity: shipmentData.requested_quantity || shipmentData.requestedQuantity || selectedShipment.quantity,
+          notes: shipmentData.notes || '',
+          priority: shipmentData.priority || 'standard',
+          incoterms: shipmentData.incoterms || 'EXW',
+          pickupLocation: shipmentData.pickup_location || shipmentData.pickupLocation || '',
+          deliveryLocation: shipmentData.delivery_location || shipmentData.deliveryLocation || '',
+          estimatedShipDate: shipmentData.estimated_departure ? new Date(shipmentData.estimated_departure).toISOString().split('T')[0] : '',
+          requestedDeliveryDate: shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toISOString().split('T')[0] : '',
+          overrideDefaults: true // If shipment exists, assume they want to see/edit the overrides
+        });
+
+        // Load existing documents if available
+        if (existingShipment?.id) {
+          fetch(`/api/cpfr/shipments/${existingShipment.id}/documents`)
+            .then(res => res.json())
+            .then(docs => {
+              setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs)));
+            })
+            .catch(err => console.error('Error loading existing documents:', err));
+        }
+      } else {
+        // Reset form for new shipment
+        setShipmentForm({
+          shippingOrganization: '',
+          shipperReference: '',
+          unitsPerCarton: 5,
+          requestedQuantity: 0,
+          notes: '',
+          priority: 'standard',
+          incoterms: 'EXW',
+          pickupLocation: '',
+          deliveryLocation: '',
+          estimatedShipDate: '',
+          requestedDeliveryDate: '',
+          overrideDefaults: false
+        });
+      }
+    }
+  }, [selectedShipment, actualShipments, createdShipments]);
+
   // Drag and drop for cost documents (shipment-specific)
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (selectedShipment) {
@@ -816,7 +870,15 @@ export default function ShipmentsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-3">
               <SemanticBDIIcon semantic="shipping" size={24} className="text-blue-600" />
-              <span>Create Shipment: {selectedShipment?.sku.sku}</span>
+              <span>
+                {(() => {
+                  const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
+                  const localShipment = createdShipments.get(selectedShipment?.id || '');
+                  return (existingShipment || localShipment) 
+                    ? `Edit Shipment: ${selectedShipment?.sku.sku}` 
+                    : `Create Shipment: ${selectedShipment?.sku.sku}`;
+                })()}
+              </span>
             </DialogTitle>
           </DialogHeader>
           {selectedShipment && (
