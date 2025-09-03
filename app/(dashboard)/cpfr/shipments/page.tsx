@@ -42,12 +42,173 @@ export default function ShipmentsPage() {
   const { data: forecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
   const { data: warehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
+  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher, {
+    onError: (error) => {
+      // Silently handle 403 errors for non-admin users
+      if (error?.status !== 403) {
+        console.error('Error fetching organizations:', error);
+      }
+    }
+  });
 
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const [selectedShipment, setSelectedShipment] = useState<SalesForecast | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
+  
+  // Shipment form state
+  const [shipmentForm, setShipmentForm] = useState({
+    shippingOrganization: '',
+    unitsPerCarton: 5,
+    requestedQuantity: 0,
+    notes: '',
+    priority: 'standard',
+    incoterms: 'EXW',
+    pickupLocation: '',
+    deliveryLocation: '',
+    estimatedShipDate: '',
+    requestedDeliveryDate: ''
+  });
+  const [isCreatingShipment, setIsCreatingShipment] = useState(false);
+
+  // Helper function to calculate shipping data from SKU
+  const calculateShippingData = (sku: ProductSku, requestedQuantity: number, unitsPerCarton: number) => {
+    const cartonCount = Math.ceil(requestedQuantity / unitsPerCarton);
+    const palletCount = Math.ceil(cartonCount / (sku.boxesPerCarton || 1));
+    
+    // Unit weights and dimensions
+    const unitWeight = sku.boxWeightKg || 0;
+    const cartonWeight = sku.cartonWeightKg || 0;
+    const palletWeight = sku.palletWeightKg || 0;
+    
+    // Calculate totals
+    const totalUnitWeight = requestedQuantity * unitWeight;
+    const totalCartonWeight = cartonCount * cartonWeight;
+    const totalPalletWeight = palletCount * palletWeight;
+    const totalShippingWeight = totalUnitWeight + totalCartonWeight + totalPalletWeight;
+    
+    // Volume calculations (convert cm³ to cbm)
+    const cartonVolumeCbm = ((sku.cartonLengthCm || 0) * (sku.cartonWidthCm || 0) * (sku.cartonHeightCm || 0)) / 1000000;
+    const palletVolumeCbm = ((sku.palletLengthCm || 0) * (sku.palletWidthCm || 0) * (sku.palletHeightCm || 0)) / 1000000;
+    const totalCartonVolume = cartonCount * cartonVolumeCbm;
+    const totalPalletVolume = palletCount * palletVolumeCbm;
+    
+    return {
+      requestedQuantity,
+      unitsPerCarton,
+      cartonCount,
+      palletCount,
+      unitWeight: unitWeight.toFixed(3),
+      cartonWeight: cartonWeight.toFixed(3),
+      palletWeight: palletWeight.toFixed(3),
+      totalUnitWeight: totalUnitWeight.toFixed(2),
+      totalCartonWeight: totalCartonWeight.toFixed(2),
+      totalPalletWeight: totalPalletWeight.toFixed(2),
+      totalShippingWeight: totalShippingWeight.toFixed(2),
+      cartonVolumeCbm: cartonVolumeCbm.toFixed(6),
+      palletVolumeCbm: palletVolumeCbm.toFixed(6),
+      totalCartonVolume: totalCartonVolume.toFixed(4),
+      totalPalletVolume: totalPalletVolume.toFixed(4),
+      htsCode: sku.htsCode || '8517.62.00.10'
+    };
+  };
+
+  // Get shipping/logistics organizations
+  const shippingOrganizations = Array.isArray(organizations) 
+    ? organizations.filter((org: any) => org.type === 'shipping_logistics')
+    : (user?.organization?.type === 'shipping_logistics' ? [user.organization] : []);
+
+  // Handle shipment form submission
+  const handleCreateShipment = async () => {
+    if (!selectedShipment || !shipmentForm.shippingOrganization) {
+      alert('Please select a shipping organization');
+      return;
+    }
+
+    setIsCreatingShipment(true);
+    try {
+      const response = await fetch('/api/cpfr/shipments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          forecastId: selectedShipment.id,
+          shippingOrganizationCode: shipmentForm.shippingOrganization,
+          ...shipmentForm,
+          calculatedData: calculateShippingData(
+            selectedShipment.sku, 
+            shipmentForm.requestedQuantity || selectedShipment.quantity, 
+            shipmentForm.unitsPerCarton
+          )
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('Shipment created successfully!');
+        setSelectedShipment(null);
+        // Reset form
+        setShipmentForm({
+          shippingOrganization: '',
+          unitsPerCarton: 5,
+          requestedQuantity: 0,
+          notes: '',
+          priority: 'standard',
+          incoterms: 'EXW',
+          pickupLocation: '',
+          deliveryLocation: '',
+          estimatedShipDate: '',
+          requestedDeliveryDate: ''
+        });
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating shipment:', error);
+      alert('Failed to create shipment');
+    } finally {
+      setIsCreatingShipment(false);
+    }
+  };
+
+  // Export shipment data as CSV
+  const exportShipmentData = () => {
+    if (!selectedShipment) return;
+    
+    const quantity = shipmentForm.requestedQuantity || selectedShipment.quantity;
+    const shippingData = calculateShippingData(selectedShipment.sku, quantity, shipmentForm.unitsPerCarton);
+    
+    const csvData = [
+      ['Field', 'Value'],
+      ['SKU', selectedShipment.sku.sku],
+      ['HTS Code', shippingData.htsCode],
+      ['Enter Units', quantity],
+      ['Enter Cartons', shippingData.cartonCount],
+      ['Units per Carton', shippingData.unitsPerCarton],
+      ['Unit NW (kg)', shippingData.unitWeight],
+      ['CTN GW (kg)', shippingData.cartonWeight],
+      ['Unit/CTN (kg)', shippingData.palletWeight],
+      ['Pallet GW (kg)', shippingData.totalPalletWeight],
+      ['Total Weight (kg) - Units', shippingData.totalUnitWeight],
+      ['Total Weight (kg) - Cartons', shippingData.totalCartonWeight],
+      ['Total Weight (kg) - Pallet(s)', shippingData.totalPalletWeight],
+      ['Total Volume (cbm) - Cartons', shippingData.totalCartonVolume],
+      ['Total Volume (cbm) - Pallet(s)', shippingData.totalPalletVolume],
+      ['Total Units in Carton', quantity],
+      ['Total Number of Cartons', shippingData.cartonCount],
+      ['Total Number of Pallets', shippingData.palletCount],
+      ['Cost per Unit (SEA)', '$ - USD']
+    ];
+    
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shipment_${selectedShipment.sku.sku}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
 
   // Access control
   if (!user || !['super_admin', 'admin', 'operations', 'sales', 'member'].includes(user.role)) {
@@ -516,19 +677,90 @@ export default function ShipmentsPage() {
       <Dialog open={!!selectedShipment} onOpenChange={() => setSelectedShipment(null)}>
         <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
-            <DialogTitle>
-              Shipment Details: {selectedShipment?.sku.sku}
+            <DialogTitle className="flex items-center space-x-3">
+              <SemanticBDIIcon semantic="shipping" size={24} className="text-blue-600" />
+              <span>Create Shipment: {selectedShipment?.sku.sku}</span>
             </DialogTitle>
           </DialogHeader>
           {selectedShipment && (
-            <div className="p-8">
-              <p className="text-center text-lg font-semibold text-blue-600 mb-4">
-                Detailed shipment management coming next!
-              </p>
-              <div className="flex justify-center">
-                <Button onClick={() => setSelectedShipment(null)}>
-                  Close
-                </Button>
+            <div className="p-6 space-y-8">
+              {/* Header Info */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-semibold text-blue-800">Forecast Details</Label>
+                    <div className="mt-2 space-y-1">
+                      <div className="text-sm"><span className="font-medium">SKU:</span> {selectedShipment.sku.sku}</div>
+                      <div className="text-sm"><span className="font-medium">Product:</span> {selectedShipment.sku.name}</div>
+                      <div className="text-sm"><span className="font-medium">Delivery Week:</span> {selectedShipment.deliveryWeek}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold text-blue-800">Original Forecast</Label>
+                    <div className="mt-2 space-y-1">
+                      <div className="text-sm"><span className="font-medium">Quantity:</span> {selectedShipment.quantity.toLocaleString()} units</div>
+                      <div className="text-sm"><span className="font-medium">Shipping:</span> {selectedShipment.shippingPreference}</div>
+                      <div className="text-sm"><span className="font-medium">Status:</span> 
+                        <Badge variant={selectedShipment.status === 'submitted' ? 'default' : 'secondary'} className="ml-1">
+                          {selectedShipment.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold text-blue-800">SKU Specifications</Label>
+                    <div className="mt-2 space-y-1">
+                      <div className="text-sm"><span className="font-medium">HTS Code:</span> {selectedShipment.sku.htsCode || '8517.62.00.10'}</div>
+                      <div className="text-sm"><span className="font-medium">Unit Weight:</span> {selectedShipment.sku.boxWeightKg || 0}kg</div>
+                      <div className="text-sm"><span className="font-medium">Carton Weight:</span> {selectedShipment.sku.cartonWeightKg || 0}kg</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Placeholder for form content - will add in next edit */}
+              <div className="text-center p-8">
+                <p className="text-lg font-semibold text-blue-600">Enhanced shipment form coming in next update...</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={exportShipmentData}
+                    className="flex items-center space-x-2"
+                  >
+                    <SemanticBDIIcon semantic="download" size={16} />
+                    <span>Export CSV</span>
+                  </Button>
+                </div>
+                
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedShipment(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateShipment}
+                    disabled={isCreatingShipment || !shipmentForm.shippingOrganization}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isCreatingShipment ? (
+                      <>
+                        <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin" />
+                        Creating Shipment...
+                      </>
+                    ) : (
+                      <>
+                        <SemanticBDIIcon semantic="shipping" size={16} className="mr-2" />
+                        Create Shipment
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
