@@ -68,6 +68,42 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleSaveUser = async () => {
+    if (!selectedUser || !editForm.name || !editForm.role) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser.authId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          role: editForm.role,
+          title: editForm.title,
+          department: editForm.department,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSelectedUser(null);
+        mutateBdiUsers();
+        alert('User updated successfully!');
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Failed to update user');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleDeactivateUser = async (userId: string, userName: string) => {
     if (!confirm(`Are you sure you want to deactivate ${userName}?`)) {
       return;
@@ -503,7 +539,11 @@ export default function AdminUsersPage() {
                   <Button variant="outline" onClick={() => setSelectedUser(null)}>
                     Cancel
                   </Button>
-                  <Button className="bg-bdi-green-1 hover:bg-bdi-green-2" disabled={isUpdating}>
+                  <Button 
+                    onClick={handleSaveUser}
+                    className="bg-bdi-green-1 hover:bg-bdi-green-2" 
+                    disabled={isUpdating}
+                  >
                     {isUpdating ? 'Saving...' : 'Save Changes'}
                   </Button>
                   {selectedUser.authId !== user.authId && (
