@@ -118,11 +118,11 @@ function CPFRMetrics() {
     ? { label: 'Active Organizations', value: organizations?.length || 0, description: 'Connected partner organizations' }
     : { label: 'Active Users', value: orgUsers?.length || 0, description: `Users in ${userOrgCode} organization` };
     
-  const activeForecastsCount = forecasts?.length || 0;
+  const activeForecastsCount = (Array.isArray(forecasts) ? forecasts : []).length;
   
   // Calculate shipment status/alarms based on proper CPFR logic
   const shipmentStatus = (() => {
-    if (!forecasts || forecasts.length === 0) return { status: 'green', count: 0, message: 'No active forecasts' };
+    if (!forecasts || !Array.isArray(forecasts) || forecasts.length === 0) return { status: 'green', count: 0, message: 'No active forecasts' };
     
     const activeForecasts = forecasts.filter((f: any) => 
       f.salesSignal === 'submitted' || f.factorySignal === 'awaiting' || f.factorySignal === 'accepted'
@@ -250,13 +250,13 @@ function ForecastMonthlyCharts() {
       const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const monthName = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       
-      // Count forecasts for this month
-      const monthForecasts = forecasts?.filter((f: any) => {
+      // Count forecasts for this month - ensure forecasts is an array
+      const monthForecasts = (Array.isArray(forecasts) ? forecasts : []).filter((f: any) => {
         if (!f.deliveryWeek?.includes('W')) return false;
         const [year, week] = f.deliveryWeek.split('-W').map(Number);
         const weekDate = new Date(year, 0, 1 + (week - 1) * 7);
         return weekDate.getMonth() === monthDate.getMonth() && weekDate.getFullYear() === monthDate.getFullYear();
-      }) || [];
+      });
       
       // Separate Draft vs Submitted forecasts
       const draftForecasts = monthForecasts.filter((f: any) => f.status === 'draft');
