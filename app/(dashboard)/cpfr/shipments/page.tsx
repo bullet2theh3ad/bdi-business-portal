@@ -363,18 +363,18 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 1: Sales */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            forecast.salesSignal === 'accepted' ? 'bg-green-500 border-green-500' :
-                            forecast.salesSignal === 'submitted' ? 'bg-blue-500 border-blue-500' :
-                            'bg-gray-300 border-gray-300'
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
+                            forecast.salesSignal === 'accepted' ? 'border-green-500' :
+                            forecast.salesSignal === 'submitted' ? 'border-blue-500' :
+                            'border-gray-300'
                           }`}>
                             <SemanticBDIIcon 
                               semantic="profile" 
                               size={20} 
                               className={
-                                forecast.salesSignal === 'accepted' || forecast.salesSignal === 'submitted' 
-                                  ? 'text-white' 
-                                  : 'text-gray-600'
+                                forecast.salesSignal === 'accepted' ? 'text-green-600' :
+                                forecast.salesSignal === 'submitted' ? 'text-blue-600' :
+                                'text-gray-600'
                               } 
                             />
                           </div>
@@ -395,18 +395,18 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 2: Factory EXW */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            forecast.factorySignal === 'accepted' ? 'bg-green-500 border-green-500' :
-                            forecast.factorySignal === 'submitted' ? 'bg-orange-500 border-orange-500' :
-                            'bg-gray-300 border-gray-300'
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
+                            forecast.factorySignal === 'accepted' ? 'border-green-500' :
+                            forecast.factorySignal === 'submitted' ? 'border-orange-500' :
+                            'border-gray-300'
                           }`}>
                             <SemanticBDIIcon 
                               semantic="collaboration" 
                               size={20} 
                               className={
-                                forecast.factorySignal === 'accepted' || forecast.factorySignal === 'submitted' 
-                                  ? 'text-white' 
-                                  : 'text-gray-600'
+                                forecast.factorySignal === 'accepted' ? 'text-green-600' :
+                                forecast.factorySignal === 'submitted' ? 'text-orange-600' :
+                                'text-gray-600'
                               } 
                             />
                           </div>
@@ -427,11 +427,12 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 3: In Transit */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            progress.completed >= 3 ? 'bg-blue-500 border-blue-500 text-white' :
-                            'bg-gray-300 border-gray-300 text-gray-600'
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
+                            progress.completed >= 3 ? 'border-blue-500' : 'border-gray-300'
                           }`}>
-                            <span className="text-xl">{shippingIcon}</span>
+                            <span className={`text-xl ${
+                              progress.completed >= 3 ? 'text-blue-600' : 'text-gray-600'
+                            }`}>{shippingIcon}</span>
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">In Transit</p>

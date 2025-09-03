@@ -65,7 +65,7 @@ export default function ProductionFilesPage() {
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <SemanticBDIIcon semantic="files" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <SemanticBDIIcon semantic="analytics" size={48} className="mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
             <p className="text-muted-foreground">Production file access requires appropriate permissions.</p>
           </div>
@@ -222,7 +222,7 @@ export default function ProductionFilesPage() {
       <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="files" size={32} />
+            <SemanticBDIIcon semantic="analytics" size={32} />
             <div>
               <h1 className="text-3xl font-bold">Production Files</h1>
               <p className="text-muted-foreground">
@@ -242,7 +242,7 @@ export default function ProductionFilesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="files" size={20} className="text-purple-600" />
+              <SemanticBDIIcon semantic="analytics" size={20} className="text-purple-600" />
               <div>
                 <p className="text-sm text-gray-600">Total Files</p>
                 <p className="text-2xl font-bold text-purple-600">{filteredFiles.length}</p>
@@ -330,7 +330,7 @@ export default function ProductionFilesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <SemanticBDIIcon semantic="files" size={20} />
+            <SemanticBDIIcon semantic="analytics" size={20} />
             <span>Production Files ({filteredFiles.length})</span>
           </CardTitle>
           <CardDescription>
@@ -340,7 +340,7 @@ export default function ProductionFilesPage() {
         <CardContent>
           {filteredFiles.length === 0 ? (
             <div className="text-center py-12">
-              <SemanticBDIIcon semantic="files" size={48} className="mx-auto mb-4 text-muted-foreground" />
+              <SemanticBDIIcon semantic="analytics" size={48} className="mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No Production Files</h3>
               <p className="text-muted-foreground mb-4">
                 Upload production files to track device manufacturing data
