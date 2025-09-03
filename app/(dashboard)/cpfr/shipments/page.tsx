@@ -51,6 +51,7 @@ export default function ShipmentsPage() {
       }
     }
   });
+  const { data: actualShipments } = useSWR('/api/cpfr/shipments', fetcher);
 
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const [selectedShipment, setSelectedShipment] = useState<SalesForecast | null>(null);
@@ -76,6 +77,7 @@ export default function ShipmentsPage() {
   const [shipmentDocuments, setShipmentDocuments] = useState<Map<string, File[]>>(new Map());
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
+  const [uploadedDocumentsFromDB, setUploadedDocumentsFromDB] = useState<Map<string, any[]>>(new Map());
 
   // Drag and drop for cost documents (shipment-specific)
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -245,6 +247,12 @@ export default function ShipmentsPage() {
             });
             
             if (docsResponse.ok) {
+              // Fetch the uploaded documents from database
+              const fetchDocsResponse = await fetch(`/api/cpfr/shipments/${result.shipment.id}/documents`);
+              if (fetchDocsResponse.ok) {
+                const uploadedDocs = await fetchDocsResponse.json();
+                setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, uploadedDocs)));
+              }
               alert(`Shipment created successfully with ${currentDocs.length} documents uploaded!`);
             } else {
               alert('Shipment created but document upload failed');
@@ -378,8 +386,11 @@ export default function ShipmentsPage() {
     if (forecast.factorySignal === 'accepted') completedMilestones = 2;
     if (forecast.factorySignal === 'accepted' && now >= milestones.departureDate) completedMilestones = 3;
     
-    // Check if shipment has been created for this forecast
-    if (createdShipments.has(forecast.id)) {
+    // Check if shipment has been created for this forecast (from database or local state)
+    const hasShipmentInDB = actualShipments?.some((shipment: any) => shipment.forecast_id === forecast.id);
+    const hasShipmentLocal = createdShipments.has(forecast.id);
+    
+    if (hasShipmentInDB || hasShipmentLocal) {
       // Shipment created - show awaiting status for shipping milestone
       if (completedMilestones >= 2) completedMilestones = 3; // Transport shows "awaiting"
     }
@@ -704,7 +715,11 @@ export default function ShipmentsPage() {
                           </div>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">
-                              {createdShipments.has(forecast.id) ? 'Awaiting Quote' : 'In Transit'}
+                              {(() => {
+                                const hasShipmentInDB = actualShipments?.some((shipment: any) => shipment.forecast_id === forecast.id);
+                                const hasShipmentLocal = createdShipments.has(forecast.id);
+                                return (hasShipmentInDB || hasShipmentLocal) ? 'Awaiting Quote' : 'In Transit';
+                              })()}
                             </p>
                             <p className="text-xs text-gray-600">
                               {milestones.departureDate.toLocaleDateString()}
@@ -712,7 +727,11 @@ export default function ShipmentsPage() {
                             <Badge className={
                               progress >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
                             }>
-                              {createdShipments.has(forecast.id) && progress >= 3 ? 'quote requested' : (progress >= 3 ? 'shipping' : 'unknown')}
+                              {(() => {
+                                const hasShipmentInDB = actualShipments?.some((shipment: any) => shipment.forecast_id === forecast.id);
+                                const hasShipmentLocal = createdShipments.has(forecast.id);
+                                return (hasShipmentInDB || hasShipmentLocal) && progress >= 3 ? 'quote requested' : (progress >= 3 ? 'shipping' : 'unknown');
+                              })()}
                             </Badge>
                           </div>
                         </div>
@@ -908,6 +927,30 @@ export default function ShipmentsPage() {
                             <div className="mt-2 text-xs text-green-600">
                               ✅ Timeline shows "Awaiting Quote" status • Documents saved to database
                             </div>
+                            
+                            {/* Show uploaded documents from database */}
+                            {uploadedDocumentsFromDB.has(selectedShipment.id) && (
+                              <div className="mt-3 pt-3 border-t border-green-200">
+                                <h5 className="text-sm font-medium text-green-800 mb-2">Uploaded Documents:</h5>
+                                <div className="space-y-1">
+                                  {uploadedDocumentsFromDB.get(selectedShipment.id)?.map((doc: any) => (
+                                    <div key={doc.id} className="flex items-center justify-between bg-green-100 p-2 rounded">
+                                      <div className="flex items-center space-x-2">
+                                        <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
+                                        <span className="text-xs text-green-800">{doc.file_name}</span>
+                                        <span className="text-xs text-green-600">({(doc.file_size / 1024).toFixed(1)} KB)</span>
+                                      </div>
+                                      <button
+                                        onClick={() => window.open(`/api/cpfr/shipments/${createdShipments.get(selectedShipment.id)?.id}/documents/${doc.id}`, '_blank')}
+                                        className="text-green-600 hover:text-green-800 text-xs underline"
+                                      >
+                                        Download
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (
