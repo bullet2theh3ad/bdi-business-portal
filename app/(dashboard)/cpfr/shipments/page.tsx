@@ -31,8 +31,8 @@ interface SalesForecast {
   salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
   factorySignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
   shippingSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted'; // Legacy - keeping for compatibility
-  transitSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
-  warehouseSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
+  transitSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'accepted';
+  warehouseSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'accepted';
   shippingPreference: string;
   notes?: string;
   createdAt: string;
@@ -848,11 +848,13 @@ export default function ShipmentsPage() {
                               forecast.transitSignal === 'accepted' ? 'bg-green-100 text-green-800' :
                               forecast.transitSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
                               forecast.transitSignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                              forecast.transitSignal === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-600'
                             }>
                               {forecast.transitSignal === 'accepted' ? 'delivered' :
                                forecast.transitSignal === 'submitted' ? 'in transit' :
                                forecast.transitSignal === 'rejected' ? 'delayed' :
+                               forecast.transitSignal === 'pending' ? 'pending' :
                                'unknown'}
                             </Badge>
                           </div>
@@ -1521,7 +1523,7 @@ export default function ShipmentsPage() {
                 )}
                 {statusChangeModal.milestone === 'transit' && (
                   <>
-                    <option value="unknown">Pending</option>
+                    <option value="pending">Pending</option>
                     <option value="submitted">In Transit</option>
                     <option value="accepted">Delivered</option>
                     <option value="rejected">Delayed/Issues</option>
