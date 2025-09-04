@@ -108,6 +108,8 @@ export async function GET(request: NextRequest) {
           sales_signal,
           factory_signal,
           shipping_signal,
+          transit_signal,
+          warehouse_signal,
           notes,
           created_by,
           created_at
@@ -164,7 +166,9 @@ export async function GET(request: NextRequest) {
         status: row.status,
         salesSignal: row.sales_signal,
         factorySignal: row.factory_signal,
-        shippingSignal: row.shipping_signal,
+        shippingSignal: row.shipping_signal, // Legacy field
+        transitSignal: row.transit_signal || row.shipping_signal, // Fallback to shipping_signal for existing data
+        warehouseSignal: row.warehouse_signal || row.shipping_signal, // Fallback to shipping_signal for existing data
         notes: row.notes,
         createdBy: row.created_by,
         createdAt: row.created_at,

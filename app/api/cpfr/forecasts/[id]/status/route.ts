@@ -32,8 +32,9 @@ export async function PUT(
     // Map milestone to database column
     const signalColumn = milestone === 'sales' ? 'sales_signal' :
                         milestone === 'factory' ? 'factory_signal' :
-                        milestone === 'transit' ? 'shipping_signal' : // Transit uses shipping_signal
-                        'shipping_signal'; // Warehouse also uses shipping_signal for now
+                        milestone === 'transit' ? 'transit_signal' :
+                        milestone === 'warehouse' ? 'warehouse_signal' :
+                        'shipping_signal'; // fallback
 
     // Prepare update data
     const updateData: any = {
