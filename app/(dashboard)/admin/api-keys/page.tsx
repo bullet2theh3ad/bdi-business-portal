@@ -17,12 +17,14 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 const API_PERMISSIONS = [
   { id: 'production_files_read', name: 'Production Files - Read', description: 'View and list production files' },
   { id: 'production_files_download', name: 'Production Files - Download', description: 'Download production files' },
+  { id: 'production_files_upload', name: 'Production Files - Upload', description: 'Upload production files from factory systems' },
   { id: 'forecasts_read', name: 'Sales Forecasts - Read', description: 'View sales forecasts and CPFR data' },
   { id: 'invoices_read', name: 'Invoices - Read', description: 'View invoice data' },
   { id: 'purchase_orders_read', name: 'Purchase Orders - Read', description: 'View purchase order data' },
   { id: 'shipments_read', name: 'Shipments - Read', description: 'View shipment tracking data' },
   { id: 'skus_read', name: 'Product SKUs - Read', description: 'View product SKU information' },
   { id: 'warehouses_read', name: 'Warehouses - Read', description: 'View warehouse information' },
+  { id: 'advanced_reporting', name: 'Advanced Reporting', description: 'Full system access to all data (BDI-level)' },
 ] as const;
 
 type ApiPermissionId = typeof API_PERMISSIONS[number]['id'];

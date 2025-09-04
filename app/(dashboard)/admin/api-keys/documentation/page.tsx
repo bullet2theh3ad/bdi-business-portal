@@ -144,6 +144,74 @@ export default function ApiDocumentationPage() {
 
             <Separator />
 
+            {/* Upload Production File */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Badge className="bg-orange-600">POST</Badge>
+                <code className="text-sm">/production-files</code>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">Upload a production file from your factory systems</p>
+              
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-medium text-sm">Request Format (multipart/form-data):</h4>
+                  <div className="bg-gray-50 p-3 rounded text-xs space-y-1">
+                    <div><code>file</code> - The production file (Excel, CSV, TXT, JSON)</div>
+                    <div><code>shipmentNumber</code> - BDI shipment number (optional, auto-generated if not provided)</div>
+                    <div><code>description</code> - File description (optional)</div>
+                    <div><code>tags</code> - JSON array of tags or comma-separated string (optional)</div>
+                    <div><code>manufacturingDate</code> - Manufacturing date in ISO format (optional)</div>
+                    <div><code>deviceType</code> - Type of devices in this production run (optional)</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-sm">Example Request:</h4>
+                  <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
+                    {`curl -X POST \\
+     -H "Authorization: Bearer bdi_mtn_abc123..." \\
+     -F "file=@production_data_Q1_2025.xlsx" \\
+     -F "description=Q1 2025 production run - Routers" \\
+     -F "deviceType=Router" \\
+     -F "manufacturingDate=2025-01-15T00:00:00Z" \\
+     -F "tags=[\\"Q1\\",\\"2025\\",\\"routers\\"]" \\
+     "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1/production-files"`}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-sm">Example Response:</h4>
+                  <div className="bg-gray-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
+                    {`{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "fileName": "production_data_Q1_2025.xlsx",
+    "fileSize": 2048000,
+    "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "shipmentNumber": "BDI-2025-574919",
+    "deviceCount": 5000,
+    "organizationCode": "MTN",
+    "organizationName": "Mountain Networks",
+    "description": "Q1 2025 production run - Routers",
+    "tags": ["Q1", "2025", "routers"],
+    "createdAt": "2025-01-15T10:30:00Z",
+    "uploadUrl": "/api/v1/production-files/550e8400-e29b-41d4-a716-446655440000"
+  },
+  "meta": {
+    "organization": "MTN",
+    "uploadedBy": "admin@mtn.com",
+    "uploadedAt": "2025-01-15T10:30:00Z",
+    "apiKeyUsed": "MTN Factory Integration"
+  }
+}`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Download Production File */}
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -260,6 +328,33 @@ headers = {
     "Content-Type": "application/json"
 }
 
+# Upload a production file (for ODM partners like MTN)
+def upload_production_file(file_path, description=None):
+    files = {'file': open(file_path, 'rb')}
+    data = {
+        'description': description or f"Production file from {file_path}",
+        'deviceType': 'Router',
+        'manufacturingDate': '2025-01-15T00:00:00Z',
+        'tags': '["Q1", "2025", "production"]'
+    }
+    
+    response = requests.post(f"{BASE_URL}/production-files", 
+                           headers=headers, files=files, data=data)
+    
+    if response.status_code == 200:
+        result = response.json()
+        print(f"✅ Uploaded: {result['data']['fileName']}")
+        print(f"   Shipment: {result['data']['shipmentNumber']}")
+        print(f"   Devices: {result['data']['deviceCount']}")
+        return result['data']['id']
+    else:
+        print(f"❌ Upload failed: {response.json()['error']}")
+        return None
+
+# Upload production files
+file_id = upload_production_file("production_data_Q1_2025.xlsx", 
+                                "Q1 2025 Router Production Run")
+
 # Get production files
 response = requests.get(f"{BASE_URL}/production-files", headers=headers)
 data = response.json()
@@ -280,7 +375,7 @@ if data["success"]:
             file_url = download_data["data"]["downloadUrl"]
             # Download the actual file
             file_response = requests.get(file_url)
-            with open(file["fileName"], "wb") as f:
+            with open(f"downloaded_{file['fileName']}", "wb") as f:
                 f.write(file_response.content)
             print(f"Downloaded: {file['fileName']}")
 else:
@@ -411,6 +506,12 @@ getProductionFiles();
                       <td className="border border-gray-300 px-3 py-2 font-mono text-xs">/production-files</td>
                       <td className="border border-gray-300 px-3 py-2">production_files_read</td>
                       <td className="border border-gray-300 px-3 py-2">List production files</td>
+                    </tr>
+                    <tr className="bg-gray-50">
+                      <td className="border border-gray-300 px-3 py-2"><Badge className="bg-orange-600">POST</Badge></td>
+                      <td className="border border-gray-300 px-3 py-2 font-mono text-xs">/production-files</td>
+                      <td className="border border-gray-300 px-3 py-2">production_files_upload</td>
+                      <td className="border border-gray-300 px-3 py-2">Upload production files</td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-3 py-2"><Badge className="bg-green-600">GET</Badge></td>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/drizzle';
 import { productionFiles, organizations, organizationConnections } from '@/lib/db/schema';
 import { eq, and, or, inArray, gte, lte, desc, count } from 'drizzle-orm';
@@ -227,6 +228,212 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Error in production files API:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR'
+    }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/v1/production-files
+ * 
+ * Upload production files via API (for ODM partners like MTN)
+ * Requires valid API key with production_files_upload permission
+ * 
+ * Request Format (multipart/form-data):
+ * - file: The production file to upload
+ * - shipmentNumber: BDI shipment number (optional, will be auto-generated)
+ * - description: File description (optional)
+ * - tags: JSON array of tags (optional)
+ * - manufacturingDate: Manufacturing date (ISO format)
+ * - deviceType: Type of devices in this production run
+ * 
+ * Response Format:
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "id": "uuid",
+ *     "fileName": "MTN_Production_Q1_2025.xlsx",
+ *     "fileSize": 2048000,
+ *     "shipmentNumber": "BDI-2025-001234",
+ *     "deviceCount": 5000,
+ *     "organizationCode": "MTN",
+ *     "uploadUrl": "/api/v1/production-files/uuid"
+ *   },
+ *   "meta": {
+ *     "organization": "MTN",
+ *     "uploadedBy": "api_user",
+ *     "uploadedAt": "2025-01-15T10:30:00Z"
+ *   }
+ * }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Authenticate the API request
+    const authResult = await authenticateApiRequest(request);
+    
+    if (!authResult.success) {
+      return NextResponse.json({
+        success: false,
+        error: authResult.error,
+        code: 'AUTHENTICATION_FAILED'
+      }, { status: 401 });
+    }
+
+    // Check for production files upload permission
+    if (!hasApiPermission(authResult, 'production_files_upload')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Insufficient permissions. Requires production_files_upload permission.',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      }, { status: 403 });
+    }
+
+    console.log(`📤 API Upload request from ${authResult.organization?.code}`);
+
+    // Parse multipart form data
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const shipmentNumber = formData.get('shipmentNumber') as string;
+    const description = formData.get('description') as string;
+    const tags = formData.get('tags') as string;
+    const manufacturingDate = formData.get('manufacturingDate') as string;
+    const deviceType = formData.get('deviceType') as string;
+
+    if (!file) {
+      return NextResponse.json({
+        success: false,
+        error: 'No file provided',
+        code: 'MISSING_FILE'
+      }, { status: 400 });
+    }
+
+    // Validate file type (production files should be spreadsheets or text files)
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'text/plain', // .txt
+      'application/json', // .json
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({
+        success: false,
+        error: `Invalid file type. Allowed types: Excel (.xlsx, .xls), CSV (.csv), Text (.txt), JSON (.json)`,
+        code: 'INVALID_FILE_TYPE'
+      }, { status: 400 });
+    }
+
+    // Generate BDI shipment number if not provided
+    const finalShipmentNumber = shipmentNumber || `BDI-${new Date().getFullYear()}-${Math.floor(Math.random() * 900000) + 100000}`;
+
+    // Parse tags if provided
+    let parsedTags: string[] = [];
+    if (tags) {
+      try {
+        parsedTags = JSON.parse(tags);
+      } catch {
+        parsedTags = tags.split(',').map(tag => tag.trim());
+      }
+    }
+
+    // Parse device count from file content (for CSV/TXT files)
+    let deviceCount = 0;
+    if (file.type === 'text/csv' || file.type === 'text/plain') {
+      try {
+        const fileContent = await file.text();
+        const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+        deviceCount = Math.max(0, lines.length - 1); // Subtract header line
+      } catch (error) {
+        console.warn('Could not parse device count from file:', error);
+      }
+    }
+
+    // Create file path for Supabase storage
+    const fileExtension = file.name.split('.').pop() || 'txt';
+    const fileName = `${authResult.organization?.code}_${Date.now()}_${finalShipmentNumber}.${fileExtension}`;
+    const filePath = `${authResult.organization?.id}/production-files/${fileName}`;
+
+    // Upload to Supabase Storage
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const fileBuffer = await file.arrayBuffer();
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('organization-documents')
+      .upload(filePath, fileBuffer, {
+        contentType: file.type,
+        duplex: 'half'
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      return NextResponse.json({
+        success: false,
+        error: 'File upload failed',
+        code: 'UPLOAD_ERROR'
+      }, { status: 500 });
+    }
+
+    // Create database record
+    const [newFile] = await db
+      .insert(productionFiles)
+      .values({
+        fileName: file.name,
+        filePath: filePath,
+        fileSize: file.size,
+        contentType: file.type,
+        bdiShipmentNumber: finalShipmentNumber,
+        deviceMetadata: JSON.stringify({
+          deviceCount: deviceCount,
+          deviceType: deviceType || 'Unknown',
+          manufacturingDate: manufacturingDate || new Date().toISOString(),
+          uploadedViaApi: true,
+          apiKeyId: authResult.apiKey?.id,
+        }),
+        fileType: 'production',
+        organizationId: authResult.organization!.id,
+        uploadedBy: authResult.user!.authId,
+        description: description || `Production file uploaded via API by ${authResult.organization?.code}`,
+        tags: parsedTags,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    console.log(`✅ API Upload successful: ${file.name} by ${authResult.organization?.code}`);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: newFile.id,
+        fileName: newFile.fileName,
+        fileSize: newFile.fileSize,
+        contentType: newFile.contentType,
+        shipmentNumber: newFile.bdiShipmentNumber,
+        deviceCount: deviceCount,
+        organizationCode: authResult.organization?.code,
+        organizationName: authResult.organization?.name,
+        description: newFile.description,
+        tags: newFile.tags || [],
+        createdAt: newFile.createdAt,
+        uploadUrl: `/api/v1/production-files/${newFile.id}`
+      },
+      meta: {
+        organization: authResult.organization?.code,
+        uploadedBy: authResult.user?.email,
+        uploadedAt: new Date().toISOString(),
+        apiKeyUsed: authResult.apiKey?.keyName
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in production files upload API:', error);
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
