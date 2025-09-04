@@ -74,6 +74,11 @@ export default function AdminOrganizationsPage() {
     phone: '',
     role: 'member'
   });
+  
+  // API Settings state
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [selectedOrgApiKeys, setSelectedOrgApiKeys] = useState<any>(null);
+  const [isLoadingApiKeys, setIsLoadingApiKeys] = useState(false);
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
@@ -351,6 +356,40 @@ ${result.email?.sent
     } catch (error) {
       console.error('Error deleting user:', error);
       alert(`Failed to delete user: ${error}`);
+    }
+  };
+
+  const handleApiSettings = async (org: any) => {
+    setIsLoadingApiKeys(true);
+    setShowApiSettings(true);
+    
+    try {
+      // Fetch API keys for this specific organization
+      const response = await fetch('/api/admin/api-keys');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch API keys');
+      }
+      
+      const allApiKeys = await response.json();
+      
+      // Filter to only this organization's API keys
+      const orgApiKeys = allApiKeys.filter((key: any) => key.organizationId === org.id);
+      
+      setSelectedOrgApiKeys({
+        organization: org,
+        apiKeys: orgApiKeys,
+        totalKeys: orgApiKeys.length,
+        activeKeys: orgApiKeys.filter((key: any) => key.isActive).length,
+      });
+      
+      console.log(`Loaded ${orgApiKeys.length} API keys for ${org.code}`);
+    } catch (error) {
+      console.error('Error loading API keys:', error);
+      alert('Failed to load API keys. Please try again.');
+      setShowApiSettings(false);
+    } finally {
+      setIsLoadingApiKeys(false);
     }
   };
 
@@ -989,7 +1028,11 @@ ${result.email?.sent
                       <SemanticBDIIcon semantic="users" size={20} />
                       <span className="text-sm">Manage Users</span>
                     </Button>
-                    <Button variant="outline" className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10"
+                      onClick={() => handleApiSettings(selectedOrg)}
+                    >
                       <SemanticBDIIcon semantic="connect" size={20} />
                       <span className="text-sm">API Settings</span>
                     </Button>
@@ -2251,6 +2294,237 @@ ${result.email?.sent
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* API Settings Modal */}
+      {showApiSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <SemanticBDIIcon semantic="connect" size={24} className="mr-2" />
+                  API Settings
+                  {selectedOrgApiKeys && (
+                    <span className="ml-2 text-lg font-normal text-gray-600">
+                      - {selectedOrgApiKeys.organization?.name} ({selectedOrgApiKeys.organization?.code})
+                    </span>
+                  )}
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setShowApiSettings(false);
+                    setSelectedOrgApiKeys(null);
+                  }}
+                >
+                  ×
+                </Button>
+              </div>
+              <CardDescription>
+                Manage API keys and programmatic access for this organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingApiKeys ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <SemanticBDIIcon semantic="sync" size={32} className="mx-auto mb-4 text-muted-foreground animate-spin" />
+                    <p className="text-muted-foreground">Loading API keys...</p>
+                  </div>
+                </div>
+              ) : selectedOrgApiKeys ? (
+                <div className="space-y-6">
+                  {/* API Keys Summary */}
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-purple-600">{selectedOrgApiKeys.totalKeys}</div>
+                        <div className="text-sm text-purple-800">Total API Keys</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{selectedOrgApiKeys.activeKeys}</div>
+                        <div className="text-sm text-green-800">Active Keys</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {selectedOrgApiKeys.totalKeys - selectedOrgApiKeys.activeKeys}
+                        </div>
+                        <div className="text-sm text-orange-800">Inactive Keys</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current API Keys List */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">API Keys for {selectedOrgApiKeys.organization?.name}</h3>
+                      <Button 
+                        className="bg-purple-600 hover:bg-purple-700"
+                        onClick={() => {
+                          // Redirect to global API Keys page with organization pre-selected
+                          window.location.href = `/admin/api-keys?org=${selectedOrgApiKeys.organization?.id}`;
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="plus" size={14} className="mr-1 brightness-0 invert" />
+                        Generate New Key
+                      </Button>
+                    </div>
+                    
+                    {selectedOrgApiKeys.apiKeys && selectedOrgApiKeys.apiKeys.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedOrgApiKeys.apiKeys.map((apiKey: any) => (
+                          <div key={apiKey.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <SemanticBDIIcon semantic="connect" size={16} className="text-purple-600" />
+                                  <span className="font-medium">{apiKey.keyName}</span>
+                                  <Badge variant={apiKey.isActive ? 'default' : 'secondary'}
+                                         className={apiKey.isActive ? 'bg-green-600 text-white' : 'bg-orange-500 text-white'}>
+                                    {apiKey.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                  </Badge>
+                                  {apiKey.expiresAt && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Expires {new Date(apiKey.expiresAt).toLocaleDateString()}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-500 space-y-1">
+                                  <div>🔑 <code className="bg-gray-100 px-2 py-1 rounded text-xs">{apiKey.keyPrefix}</code></div>
+                                  <div>⚡ {apiKey.rateLimitPerHour}/hour rate limit</div>
+                                  <div>📅 Created {new Date(apiKey.createdAt).toLocaleDateString()}</div>
+                                  <div>🕒 Last used: {apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString() : 'Never'}</div>
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {Object.entries(apiKey.permissions || {})
+                                      .filter(([perm, enabled]) => enabled)
+                                      .map(([perm, enabled]) => (
+                                        <Badge key={perm} variant="outline" className="text-xs">
+                                          {perm.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                        </Badge>
+                                      ))
+                                    }
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-300 hover:bg-blue-50">
+                                  <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                  Edit
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className={apiKey.isActive 
+                                    ? "text-orange-600 border-orange-300 hover:bg-orange-50"
+                                    : "text-green-600 border-green-300 hover:bg-green-50"
+                                  }
+                                >
+                                  <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                  {apiKey.isActive ? 'Deactivate' : 'Activate'}
+                                </Button>
+                                <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+                                  <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                        <SemanticBDIIcon semantic="connect" size={32} className="mx-auto mb-2 text-gray-400" />
+                        <p>No API keys found for this organization</p>
+                        <p className="text-xs mb-4">Generate API keys to enable programmatic access</p>
+                        <Button 
+                          className="bg-purple-600 hover:bg-purple-700"
+                          onClick={() => {
+                            // Redirect to global API Keys page with organization pre-selected
+                            window.location.href = `/admin/api-keys?org=${selectedOrgApiKeys.organization?.id}`;
+                          }}
+                        >
+                          <SemanticBDIIcon semantic="plus" size={14} className="mr-1 brightness-0 invert" />
+                          Generate First API Key
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Actions */}
+                  <Separator />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex flex-col gap-2 hover:border-purple-600 hover:bg-purple-50 text-purple-600"
+                        onClick={() => {
+                          window.location.href = `/admin/api-keys?org=${selectedOrgApiKeys.organization?.id}`;
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="plus" size={20} />
+                        <span className="text-sm">Generate New Key</span>
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex flex-col gap-2 hover:border-blue-600 hover:bg-blue-50 text-blue-600"
+                        onClick={() => {
+                          window.location.href = `/admin/api-keys/documentation`;
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="reports" size={20} />
+                        <span className="text-sm">View Documentation</span>
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex flex-col gap-2 hover:border-green-600 hover:bg-green-50 text-green-600"
+                        onClick={() => {
+                          window.location.href = `/admin/api-keys`;
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="analytics" size={20} />
+                        <span className="text-sm">Global API Keys</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* API Usage Instructions */}
+                  <Separator />
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-800 mb-2">🚀 Integration Ready</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      {selectedOrgApiKeys.organization?.name} can now integrate with BDI systems programmatically
+                    </p>
+                    <div className="text-xs text-blue-600 space-y-1">
+                      <div><strong>Base URL:</strong> <code>https://www.bdibusinessportal.com/api/v1</code></div>
+                      <div><strong>Authentication:</strong> <code>Authorization: Bearer API_KEY</code></div>
+                      <div><strong>Documentation:</strong> <a href="/admin/api-keys/documentation" className="underline">Complete API Reference</a></div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <SemanticBDIIcon semantic="connect" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Failed to load API settings</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4" 
+                      onClick={() => {
+                        setShowApiSettings(false);
+                        setSelectedOrgApiKeys(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

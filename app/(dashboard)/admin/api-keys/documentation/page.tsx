@@ -41,7 +41,7 @@ export default function ApiDocumentationPage() {
             <div>
               <h3 className="font-semibold mb-2">2. Base URL</h3>
               <div className="bg-gray-100 p-3 rounded-md font-mono text-sm">
-                {process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1
+                https://www.bdibusinessportal.com/api/v1
               </div>
             </div>
             
@@ -98,7 +98,7 @@ export default function ApiDocumentationPage() {
                   <h4 className="font-medium text-sm">Example Request:</h4>
                   <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
                     {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
-     "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1/production-files?limit=50&organization=MTN"`}
+     "https://www.bdibusinessportal.com/api/v1/production-files?limit=50&organization=MTN"`}
                   </div>
                 </div>
                 
@@ -175,7 +175,7 @@ export default function ApiDocumentationPage() {
      -F "deviceType=Router" \\
      -F "manufacturingDate=2025-01-15T00:00:00Z" \\
      -F "tags=[\\"Q1\\",\\"2025\\",\\"routers\\"]" \\
-     "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1/production-files"`}
+     "https://www.bdibusinessportal.com/api/v1/production-files"`}
                   </div>
                 </div>
                 
@@ -225,7 +225,7 @@ export default function ApiDocumentationPage() {
                   <h4 className="font-medium text-sm">Example Request:</h4>
                   <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
                     {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
-     "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1/production-files/550e8400-e29b-41d4-a716-446655440000/download"`}
+     "https://www.bdibusinessportal.com/api/v1/production-files/550e8400-e29b-41d4-a716-446655440000/download"`}
                   </div>
                 </div>
                 
@@ -321,7 +321,7 @@ import json
 
 # Configuration
 API_KEY = "bdi_gpn_1234567890abcdef..."
-BASE_URL = "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1"
+BASE_URL = "https://www.bdibusinessportal.com/api/v1"
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
@@ -397,7 +397,7 @@ const fs = require('fs');
 
 // Configuration
 const API_KEY = 'bdi_gpn_1234567890abcdef...';
-const BASE_URL = '${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1';
+const BASE_URL = 'https://www.bdibusinessportal.com/api/v1';
 
 const headers = {
     'Authorization': \`Bearer \${API_KEY}\`,
@@ -460,7 +460,7 @@ getProductionFiles();
                   <h4 className="font-medium text-sm">List Production Files:</h4>
                   <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
                     {`curl -H "Authorization: Bearer bdi_gpn_1234567890abcdef..." \\
-     "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1/production-files?limit=10&organization=MTN"`}
+     "https://www.bdibusinessportal.com/api/v1/production-files?limit=10&organization=MTN"`}
                   </div>
                 </div>
                 
@@ -468,7 +468,7 @@ getProductionFiles();
                   <h4 className="font-medium text-sm">Download File:</h4>
                   <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
                     {`curl -H "Authorization: Bearer bdi_gpn_1234567890abcdef..." \\
-     "${process.env.NEXT_PUBLIC_APP_URL || 'https://portal.boundlessdevices.com'}/api/v1/production-files/FILE_ID/download"`}
+     "https://www.bdibusinessportal.com/api/v1/production-files/FILE_ID/download"`}
                   </div>
                 </div>
               </div>

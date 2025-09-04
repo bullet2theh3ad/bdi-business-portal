@@ -108,9 +108,15 @@ const navigationItems: NavItem[] = [
         icon: 'collaboration',
       },
       {
+        title: 'API Keys',
+        href: '/admin/api-keys',
+        icon: 'connect',
+        requiresRole: ['super_admin'], // Super Admin only
+      },
+      {
         title: 'Connections',
         href: '/admin/connections',
-        icon: 'connect',
+        icon: 'network-5',
       },
       {
         title: 'Users',
