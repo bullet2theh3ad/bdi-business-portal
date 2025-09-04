@@ -838,24 +838,20 @@ export default function ShipmentsPage() {
                             }`}>{shippingIcon}</span>
                           </button>
                           <div className="text-center">
-                            <p className="text-xs font-medium text-gray-800">
-                              {(() => {
-                                const hasShipmentInDB = actualShipments?.some((shipment: any) => shipment.forecast_id === forecast.id);
-                                const hasShipmentLocal = createdShipments.has(forecast.id);
-                                return (hasShipmentInDB || hasShipmentLocal) ? 'Awaiting Quote' : 'In Transit';
-                              })()}
-                            </p>
+                            <p className="text-xs font-medium text-gray-800">In Transit</p>
                             <p className="text-xs text-gray-600">
                               {milestones.departureDate.toLocaleDateString()}
                             </p>
                             <Badge className={
-                              progress >= 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
+                              forecast.shippingSignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.shippingSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                              forecast.shippingSignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-600'
                             }>
-                              {(() => {
-                                const hasShipmentInDB = actualShipments?.some((shipment: any) => shipment.forecast_id === forecast.id);
-                                const hasShipmentLocal = createdShipments.has(forecast.id);
-                                return (hasShipmentInDB || hasShipmentLocal) && progress >= 3 ? 'quote requested' : (progress >= 3 ? 'shipping' : 'unknown');
-                              })()}
+                              {forecast.shippingSignal === 'accepted' ? 'delivered' :
+                               forecast.shippingSignal === 'submitted' ? 'in transit' :
+                               forecast.shippingSignal === 'rejected' ? 'delayed' :
+                               'unknown'}
                             </Badge>
                           </div>
                         </div>
@@ -1522,10 +1518,10 @@ export default function ShipmentsPage() {
                 )}
                 {statusChangeModal.milestone === 'transit' && (
                   <>
-                    <option value="pending">Quote Requested</option>
-                    <option value="in_transit">In Transit</option>
-                    <option value="delayed">Delayed</option>
-                    <option value="delivered">Delivered</option>
+                    <option value="unknown">Pending</option>
+                    <option value="submitted">In Transit</option>
+                    <option value="accepted">Delivered</option>
+                    <option value="rejected">Delayed/Issues</option>
                   </>
                 )}
                 {statusChangeModal.milestone === 'warehouse' && (
