@@ -239,3 +239,111 @@ export async function POST(
     );
   }
 }
+
+// PUT - Update user details (Super Admin only)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ orgId: string }> }
+) {
+  try {
+    const currentUser = await getCurrentUser();
+    
+    if (!currentUser || currentUser.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized - Super Admin required' }, { status: 401 });
+    }
+
+    const { orgId } = await params;
+    const body = await request.json();
+    const { userId, name, email, role, title, department, phone, isActive } = body;
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+    }
+
+    // Get the target organization
+    const [targetOrganization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+
+    if (!targetOrganization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    // Get the user to update
+    const [userToUpdate] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!userToUpdate) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Verify user belongs to the target organization
+    const [userMembership] = await db
+      .select()
+      .from(organizationMembers)
+      .where(and(
+        eq(organizationMembers.userAuthId, userToUpdate.authId),
+        eq(organizationMembers.organizationUuid, targetOrganization.id)
+      ))
+      .limit(1);
+
+    if (!userMembership) {
+      return NextResponse.json({ error: 'User does not belong to this organization' }, { status: 403 });
+    }
+
+    // Update user details
+    const updateData: any = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name.trim();
+    if (email !== undefined) updateData.email = email.trim().toLowerCase();
+    if (title !== undefined) updateData.title = title?.trim();
+    if (department !== undefined) updateData.department = department?.trim();
+    if (phone !== undefined) updateData.phone = phone?.trim();
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    // Update organization membership role if provided
+    if (role !== undefined) {
+      await db
+        .update(organizationMembers)
+        .set({ role: role })
+        .where(and(
+          eq(organizationMembers.userAuthId, userToUpdate.authId),
+          eq(organizationMembers.organizationUuid, targetOrganization.id)
+        ));
+    }
+
+    console.log(`Super Admin updated user ${updatedUser.email} in organization ${targetOrganization.code}`);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: role || userMembership.role,
+        title: updatedUser.title,
+        department: updatedUser.department,
+        phone: updatedUser.phone,
+        isActive: updatedUser.isActive,
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

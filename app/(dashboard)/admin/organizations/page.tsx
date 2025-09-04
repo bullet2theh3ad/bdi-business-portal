@@ -65,6 +65,15 @@ export default function AdminOrganizationsPage() {
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [selectedOrgUsers, setSelectedOrgUsers] = useState<any>(null);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [userEditForm, setUserEditForm] = useState({
+    name: '',
+    email: '',
+    title: '',
+    department: '',
+    phone: '',
+    role: 'member'
+  });
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
@@ -235,6 +244,113 @@ ${result.email?.sent
       setShowUserManagement(false);
     } finally {
       setIsLoadingUsers(false);
+    }
+  };
+
+  const handleEditUser = (user: any) => {
+    setEditingUser(user);
+    setUserEditForm({
+      name: user.name || '',
+      email: user.email || '',
+      title: user.title || '',
+      department: user.department || '',
+      phone: user.phone || '',
+      role: user.membershipRole || 'member'
+    });
+  };
+
+  const handleSaveUserEdit = async () => {
+    if (!editingUser || !selectedOrgUsers) return;
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: editingUser.id,
+          name: userEditForm.name,
+          email: userEditForm.email,
+          title: userEditForm.title,
+          department: userEditForm.department,
+          phone: userEditForm.phone,
+          role: userEditForm.role,
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      alert(`User ${result.user.name} updated successfully!`);
+      
+      // Refresh user list and close edit form
+      handleManageUsers(selectedOrgUsers.organization);
+      setEditingUser(null);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert(`Failed to update user: ${error}`);
+    }
+  };
+
+  const handleToggleUserStatus = async (user: any, action: 'activate' | 'deactivate') => {
+    if (!selectedOrgUsers) return;
+
+    const confirmMessage = action === 'activate' 
+      ? `Are you sure you want to activate ${user.name}? They will be able to access the portal.`
+      : `Are you sure you want to deactivate ${user.name}? They will lose access to the portal.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      alert(`User ${result.user.name} ${action}d successfully!`);
+      
+      // Refresh user list
+      handleManageUsers(selectedOrgUsers.organization);
+    } catch (error) {
+      console.error(`Error ${action}ing user:`, error);
+      alert(`Failed to ${action} user: ${error}`);
+    }
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    if (!selectedOrgUsers) return;
+
+    const confirmMessage = `Are you sure you want to permanently delete ${user.name} (${user.email})? This will remove them from ${selectedOrgUsers.organization.name} and cannot be undone.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users/${user.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      alert(`User ${result.deletedUser.name} removed from ${result.organization.name} successfully!`);
+      
+      // Refresh user list
+      handleManageUsers(selectedOrgUsers.organization);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert(`Failed to delete user: ${error}`);
     }
   };
 
@@ -1794,22 +1910,42 @@ ${result.email?.sent
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-300 hover:bg-blue-50">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                  onClick={() => handleEditUser(user)}
+                                >
                                   <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                                   Edit
                                 </Button>
                                 {!user.isActive ? (
-                                  <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-green-600 border-green-300 hover:bg-green-50"
+                                    onClick={() => handleToggleUserStatus(user, 'activate')}
+                                  >
                                     <SemanticBDIIcon semantic="check" size={14} className="mr-1" />
                                     Activate
                                   </Button>
                                 ) : (
-                                  <Button variant="outline" size="sm" className="text-orange-600 border-orange-300 hover:bg-orange-50">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                                    onClick={() => handleToggleUserStatus(user, 'deactivate')}
+                                  >
                                     <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                                     Deactivate
                                   </Button>
                                 )}
-                                <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                  onClick={() => handleDeleteUser(user)}
+                                >
                                   <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                                   Delete
                                 </Button>
@@ -1983,6 +2119,138 @@ ${result.email?.sent
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <SemanticBDIIcon semantic="settings" size={24} className="mr-2" />
+                  Edit User - {editingUser.name}
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setEditingUser(null)}
+                >
+                  ×
+                </Button>
+              </div>
+              <CardDescription>
+                Update user details and permissions for {selectedOrgUsers?.organization?.name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Personal Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="editName">Full Name *</Label>
+                      <Input 
+                        id="editName"
+                        value={userEditForm.name}
+                        onChange={(e) => setUserEditForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editEmail">Email Address *</Label>
+                      <Input 
+                        id="editEmail"
+                        type="email"
+                        value={userEditForm.email}
+                        onChange={(e) => setUserEditForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editTitle">Job Title</Label>
+                      <Input 
+                        id="editTitle"
+                        value={userEditForm.title}
+                        onChange={(e) => setUserEditForm(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="e.g., Manager, Engineer"
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editDepartment">Department</Label>
+                      <Input 
+                        id="editDepartment"
+                        value={userEditForm.department}
+                        onChange={(e) => setUserEditForm(prev => ({ ...prev, department: e.target.value }))}
+                        placeholder="e.g., Engineering, Sales"
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editPhone">Phone Number</Label>
+                      <Input 
+                        id="editPhone"
+                        value={userEditForm.phone}
+                        onChange={(e) => setUserEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="e.g., +1 (555) 123-4567"
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editRole">Organization Role *</Label>
+                      <select 
+                        id="editRole"
+                        value={userEditForm.role}
+                        onChange={(e) => setUserEditForm(prev => ({ ...prev, role: e.target.value }))}
+                        className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 text-sm"
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Status */}
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">User Status</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">Current Status</div>
+                        <div className="text-sm text-gray-500">User access to the portal</div>
+                      </div>
+                      <Badge variant={editingUser.isActive ? 'default' : 'secondary'}
+                             className={editingUser.isActive ? 'bg-green-600 text-white' : 'bg-orange-500 text-white'}>
+                        {editingUser.isActive ? 'ACTIVE' : 'PENDING'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setEditingUser(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700" 
+                    onClick={handleSaveUserEdit}
+                  >
+                    <SemanticBDIIcon semantic="check" size={16} className="mr-2 brightness-0 invert" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
