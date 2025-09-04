@@ -81,33 +81,55 @@ export async function GET(request: NextRequest) {
 
     const userData = userWithOrg[0];
 
-    // Check if this organization has Advanced Reporting permissions
+    // Check organization connections for file access permissions
     let hasAdvancedReporting = false;
-    console.log(`🔍 Checking Advanced Reporting for ${userData.organizationCode} (type: ${userData.organizationType})`);
+    let connectedOrganizationIds: string[] = [];
     
-    if (userData.organizationCode !== 'BDI' && userData.organizationType === 'rd_partner') {
-      // Check if this R&D Partner organization has Advanced Reporting capability
-      const [connection] = await db
+    console.log(`🔍 Checking file access permissions for ${userData.organizationCode} (type: ${userData.organizationType})`);
+    
+    if (userData.organizationCode !== 'BDI') {
+      // Get all active connections where this organization is the source (can access other org's files)
+      const connections = await db
         .select({
-          permissions: organizationConnections.permissions
+          targetOrganizationId: organizationConnections.targetOrganizationId,
+          permissions: organizationConnections.permissions,
+          targetOrgCode: organizations.code,
+          targetOrgName: organizations.name,
         })
         .from(organizationConnections)
+        .leftJoin(organizations, eq(organizationConnections.targetOrganizationId, organizations.id))
         .where(
           and(
             eq(organizationConnections.sourceOrganizationId, userData.organizationId!),
             eq(organizationConnections.status, 'active')
           )
-        )
-        .limit(1);
+        );
 
-      console.log(`🔍 Found connection permissions:`, connection?.permissions);
+      console.log(`🔍 Found ${connections.length} active connections for ${userData.organizationCode}:`, connections);
 
-      if (connection?.permissions) {
+      // Process each connection to determine file access
+      for (const connection of connections) {
         const permissions = connection.permissions as any;
-        hasAdvancedReporting = permissions.canViewReports === true || 
-                             permissions.reporting === true ||
-                             permissions.advancedReporting === true;
-        console.log(`📊 Advanced Reporting access: ${hasAdvancedReporting}`);
+        
+        // Check for file access permissions
+        const hasFileAccess = permissions?.canViewFiles === true || 
+                             permissions?.canDownloadFiles === true ||
+                             permissions?.canShareFiles === true;
+        
+        // Check for advanced reporting (can see all files)
+        const hasReportingAccess = permissions?.advancedReporting === true ||
+                                  permissions?.reporting === true ||
+                                  permissions?.canViewReports === true;
+        
+        if (hasFileAccess || hasReportingAccess) {
+          connectedOrganizationIds.push(connection.targetOrganizationId);
+          console.log(`📁 File access granted to ${connection.targetOrgCode} (${connection.targetOrgName})`);
+          
+          if (hasReportingAccess) {
+            hasAdvancedReporting = true;
+            console.log(`📊 Advanced Reporting access granted via connection to ${connection.targetOrgCode}`);
+          }
+        }
       }
     }
     
@@ -118,7 +140,7 @@ export async function GET(request: NextRequest) {
     let files;
     
     if (userData.organizationCode === 'BDI' || userData.userRole === 'super_admin' || hasAdvancedReporting) {
-      // BDI users can see all files with organization info
+      // BDI users or users with Advanced Reporting can see all files
       files = await db
         .select({
           id: productionFiles.id,
@@ -146,8 +168,45 @@ export async function GET(request: NextRequest) {
         .from(productionFiles)
         .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
         .orderBy(productionFiles.createdAt);
+    } else if (connectedOrganizationIds.length > 0) {
+      // Users with file access connections can see their own files + connected org files
+      console.log(`📂 Fetching files for ${userData.organizationCode} + connected orgs: [${connectedOrganizationIds.join(', ')}]`);
+      files = await db
+        .select({
+          id: productionFiles.id,
+          fileName: productionFiles.fileName,
+          filePath: productionFiles.filePath,
+          fileSize: productionFiles.fileSize,
+          contentType: productionFiles.contentType,
+          shipmentId: productionFiles.shipmentId,
+          forecastId: productionFiles.forecastId,
+          bdiShipmentNumber: productionFiles.bdiShipmentNumber,
+          deviceMetadata: productionFiles.deviceMetadata,
+          fileType: productionFiles.fileType,
+          organizationId: productionFiles.organizationId,
+          uploadedBy: productionFiles.uploadedBy,
+          isPublicToBdi: productionFiles.isPublicToBdi,
+          allowedOrganizations: productionFiles.allowedOrganizations,
+          description: productionFiles.description,
+          tags: productionFiles.tags,
+          createdAt: productionFiles.createdAt,
+          updatedAt: productionFiles.updatedAt,
+          // Include organization info
+          organizationCode: organizations.code,
+          organizationName: organizations.name,
+        })
+        .from(productionFiles)
+        .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
+        .where(
+          or(
+            eq(productionFiles.organizationId, userData.organizationId!), // Own files
+            inArray(productionFiles.organizationId, connectedOrganizationIds), // Connected org files
+            eq(productionFiles.isPublicToBdi, true) // Public files
+          )
+        )
+        .orderBy(productionFiles.createdAt);
     } else {
-      // Non-BDI users can only see their own organization's files with organization info
+      // Users without connections can only see their own organization's files
       files = await db
         .select({
           id: productionFiles.id,

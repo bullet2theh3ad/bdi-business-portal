@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/drizzle';
-import { productionFiles, users, organizations, organizationMembers } from '@/lib/db/schema';
+import { productionFiles, users, organizations, organizationMembers, organizationConnections } from '@/lib/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 
 const supabase = createClient(
@@ -93,12 +93,43 @@ export async function GET(
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    // Check permissions - user must have access to the file
-    const canAccess = file.organizationId === userData.organizationId || 
-                     userData.organizationCode === 'BDI' || 
-                     userData.userRole === 'super_admin' ||
-                     file.isPublicToBdi ||
-                     (file.allowedOrganizations && file.allowedOrganizations.includes(userData.organizationId!));
+    // Check permissions - user must have access to the file via organization ownership or connections
+    let canAccess = file.organizationId === userData.organizationId || // Own file
+                   userData.organizationCode === 'BDI' || // BDI access
+                   userData.userRole === 'super_admin' || // Super admin access
+                   file.isPublicToBdi; // Public file
+
+    // If not already granted access, check organization connections
+    if (!canAccess && userData.organizationCode !== 'BDI') {
+      const connections = await db
+        .select({
+          targetOrganizationId: organizationConnections.targetOrganizationId,
+          permissions: organizationConnections.permissions,
+        })
+        .from(organizationConnections)
+        .where(
+          and(
+            eq(organizationConnections.sourceOrganizationId, userData.organizationId!),
+            eq(organizationConnections.status, 'active')
+          )
+        );
+
+      // Check if user has connection-based access to the file's organization
+      for (const connection of connections) {
+        if (connection.targetOrganizationId === file.organizationId) {
+          const permissions = connection.permissions as any;
+          const hasFileAccess = permissions?.canViewFiles === true || 
+                               permissions?.canDownloadFiles === true ||
+                               permissions?.advancedReporting === true;
+          
+          if (hasFileAccess) {
+            canAccess = true;
+            console.log(`📁 Download access granted via connection permissions`);
+            break;
+          }
+        }
+      }
+    }
 
     if (!canAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
