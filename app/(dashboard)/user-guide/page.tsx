@@ -735,7 +735,6 @@ curl -H "Authorization: Bearer bdi_gpn_xyz..." \\
                     <p><strong>General Contact:</strong></p>
                     <p>Phone: <a href="tel:949-994-7791" className="text-blue-600 hover:underline">949-994-7791</a></p>
                     <p>Email: <a href="mailto:info@boundlessdevices.com" className="text-blue-600 hover:underline">info@boundlessdevices.com</a></p>
-                    <p>Portal: <a href="https://www.bdibusinessportal.com" className="text-blue-600 hover:underline">www.bdibusinessportal.com</a></p>
                   </div>
                 </div>
               </div>
