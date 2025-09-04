@@ -125,7 +125,14 @@ export async function GET(request: NextRequest) {
       })(),
       contacts: (() => {
         try {
-          return row.contacts && row.contacts !== '' ? JSON.parse(row.contacts) : [];
+          // Check if contacts is already an object/array or a string
+          if (typeof row.contacts === 'string') {
+            return row.contacts && row.contacts !== '' ? JSON.parse(row.contacts) : [];
+          } else if (Array.isArray(row.contacts)) {
+            return row.contacts;
+          } else {
+            return [];
+          }
         } catch (e) {
           console.warn('Invalid contacts JSON:', row.contacts);
           return [];
