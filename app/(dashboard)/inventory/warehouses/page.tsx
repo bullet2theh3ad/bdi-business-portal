@@ -188,22 +188,19 @@ export default function WarehousesPage() {
                       contacts: (() => {
               const contacts = [];
               
-              // Always include existing contacts from the database first
-              if (selectedWarehouse?.contacts) {
-                contacts.push(...selectedWarehouse.contacts);
-              }
-              
-              // Then check for new contact from the form (contactName3, contactEmail3)
-              const newContactName = formData.get('contactName3');
-              const newContactEmail = formData.get('contactEmail3');
-              if (newContactName && newContactEmail) {
-                contacts.push({
-                  name: newContactName,
-                  email: newContactEmail,
-                  phone: formData.get('contactPhone3') || '',
-                  extension: formData.get('contactExt3') || '',
-                  isPrimary: false
-                });
+              // Read updated contact values from form (for existing contacts)
+              for (let i = 1; i <= 10; i++) {
+                const name = formData.get(`contactName${i}`);
+                const email = formData.get(`contactEmail${i}`);
+                if (name && email) {
+                  contacts.push({
+                    name: name,
+                    email: email,
+                    phone: formData.get(`contactPhone${i}`) || '',
+                    extension: formData.get(`contactExt${i}`) || '',
+                    isPrimary: i === 1
+                  });
+                }
               }
               
               return contacts;
