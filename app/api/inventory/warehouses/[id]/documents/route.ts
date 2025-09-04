@@ -152,10 +152,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user organization ID first
+    const orgId = await getUserOrgId(authUser.id);
+    
     // List files in the warehouse directory from storage
     const { data: files, error } = await supabase.storage
       .from('organization-documents')
-      .list(`${await getUserOrgId(authUser.id)}/warehouses/${warehouseId}`);
+      .list(`${orgId}/warehouses/${warehouseId}`);
 
     if (error) {
       console.error('Error fetching warehouse documents:', error);
@@ -168,7 +171,7 @@ export async function GET(
       .map(file => ({
         fileName: file.name,
         fileSize: file.metadata?.size || 0,
-        filePath: `${await getUserOrgId(authUser.id)}/warehouses/${warehouseId}/${file.name}`
+        filePath: `${orgId}/warehouses/${warehouseId}/${file.name}`
       }));
 
     return NextResponse.json(documents);

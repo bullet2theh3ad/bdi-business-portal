@@ -162,15 +162,24 @@ export default function WarehousesPage() {
           timezone: formData.get('timezone'),
           capabilities: shippingCapabilities,
           mainCapabilities: mainCapabilities,
-          contacts: [
-            {
-              name: formData.get('contactName1'),
-              email: formData.get('contactEmail1'),
-              phone: formData.get('contactPhone1'),
-              extension: formData.get('contactExt1'),
-              isPrimary: true
+          contacts: (() => {
+            const contacts = [];
+            // Collect all contact entries dynamically
+            for (let i = 1; i <= 10; i++) { // Check up to 10 possible contacts
+              const name = formData.get(`contactName${i}`);
+              const email = formData.get(`contactEmail${i}`);
+              if (name && email) {
+                contacts.push({
+                  name: name,
+                  email: email,
+                  phone: formData.get(`contactPhone${i}`) || '',
+                  extension: formData.get(`contactExt${i}`) || '',
+                  isPrimary: i === 1
+                });
+              }
             }
-          ].filter(contact => contact.name && contact.email),
+            return contacts;
+          })(),
         }),
       });
 
