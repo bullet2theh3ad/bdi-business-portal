@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { User } from '@/lib/db/schema';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -45,6 +45,19 @@ export default function AdminOrganizationsPage() {
   const [isInviting, setIsInviting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingContacts, setIsSavingContacts] = useState(false);
+  
+  // Enhanced organization management state
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
+  const [orgEditForm, setOrgEditForm] = useState({
+    code: '',
+    name: '',
+    legalName: ''
+  });
+  const [orgUserInvites, setOrgUserInvites] = useState<Array<{
+    name: string;
+    email: string;
+    role: 'admin' | 'member';
+  }>>([{ name: '', email: '', role: 'member' }]);
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
@@ -422,15 +435,96 @@ export default function AdminOrganizationsPage() {
               <div className="space-y-6">
                 {/* Organization Details */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Organization Details</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Organization Details</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (isEditingOrg) {
+                          // Save changes
+                          try {
+                            const response = await fetch('/api/admin/organizations', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                organizationId: selectedOrg.id,
+                                oldCode: selectedOrg.code,
+                                newCode: orgEditForm.code,
+                                name: orgEditForm.name,
+                                legalName: orgEditForm.legalName
+                              })
+                            });
+
+                            if (response.ok) {
+                              const updatedOrg = await response.json();
+                              // Update the selected organization in state
+                              setSelectedOrg(updatedOrg);
+                              // Refresh the organizations list
+                              mutate('/api/admin/organizations');
+                              setIsEditingOrg(false);
+                              alert(`Organization updated successfully! ${selectedOrg.code !== orgEditForm.code ? `Code changed from ${selectedOrg.code} to ${orgEditForm.code}` : ''}`);
+                            } else {
+                              const error = await response.json();
+                              alert(`Error updating organization: ${error.message}`);
+                            }
+                          } catch (error) {
+                            console.error('Error updating organization:', error);
+                            alert('Failed to update organization. Please try again.');
+                          }
+                        } else {
+                          // Enter edit mode
+                          setOrgEditForm({
+                            code: selectedOrg.code || '',
+                            name: selectedOrg.name || '',
+                            legalName: selectedOrg.legalName || ''
+                          });
+                          setIsEditingOrg(true);
+                        }
+                      }}
+                      className={isEditingOrg ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                    >
+                      <SemanticBDIIcon semantic={isEditingOrg ? "check" : "settings"} size={14} className="mr-1" />
+                      {isEditingOrg ? 'Save Changes' : 'Edit Organization'}
+                    </Button>
+                  </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Company Name</Label>
-                      <Input value={selectedOrg.name || ''} disabled className="mt-1" />
+                      <Label>Organization Code *</Label>
+                      <Input 
+                        value={isEditingOrg ? orgEditForm.code : selectedOrg.code || ''} 
+                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                        disabled={!isEditingOrg}
+                        className={`mt-1 ${isEditingOrg ? 'border-orange-300 bg-orange-50' : ''}`}
+                        placeholder="e.g., MTN, TC1, OLM"
+                        maxLength={10}
+                      />
+                      {isEditingOrg && (
+                        <div className="text-xs text-orange-600 mt-1">
+                          ⚠️ Changing this will update all references across the system
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label>Company Name *</Label>
+                      <Input 
+                        value={isEditingOrg ? orgEditForm.name : selectedOrg.name || ''} 
+                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, name: e.target.value }))}
+                        disabled={!isEditingOrg}
+                        className={`mt-1 ${isEditingOrg ? 'border-orange-300 bg-orange-50' : ''}`}
+                        placeholder="e.g., Mountain Networks"
+                      />
                     </div>
                     <div>
                       <Label>Legal Business Name</Label>
-                      <Input value={selectedOrg.legalName || ''} disabled className="mt-1" />
+                      <Input 
+                        value={isEditingOrg ? orgEditForm.legalName : selectedOrg.legalName || ''} 
+                        onChange={(e) => setOrgEditForm(prev => ({ ...prev, legalName: e.target.value }))}
+                        disabled={!isEditingOrg}
+                        className={`mt-1 ${isEditingOrg ? 'border-orange-300 bg-orange-50' : ''}`}
+                        placeholder="Full legal entity name"
+                      />
                     </div>
                     <div>
                       <Label>DUNS Number</Label>
@@ -439,6 +533,10 @@ export default function AdminOrganizationsPage() {
                     <div>
                       <Label>Tax ID / EIN</Label>
                       <Input value={selectedOrg.taxId || ''} disabled className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Organization Type</Label>
+                      <Input value={selectedOrg.type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || ''} disabled className="mt-1" />
                     </div>
                   </div>
                 </div>
@@ -487,6 +585,139 @@ export default function AdminOrganizationsPage() {
                         <div className="text-sm font-medium font-mono">
                           {selectedOrg.code}
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Invitation Management */}
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Invite Users to {selectedOrg.name}</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <SemanticBDIIcon semantic="notifications" size={16} className="text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">
+                        Send invitations on behalf of {selectedOrg.code}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {orgUserInvites.map((invite, index) => (
+                        <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-white rounded border">
+                          <div>
+                            <Label className="text-xs">Full Name *</Label>
+                            <Input
+                              value={invite.name}
+                              onChange={(e) => {
+                                const updated = [...orgUserInvites];
+                                updated[index].name = e.target.value;
+                                setOrgUserInvites(updated);
+                              }}
+                              placeholder="John Smith"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Email Address *</Label>
+                            <Input
+                              type="email"
+                              value={invite.email}
+                              onChange={(e) => {
+                                const updated = [...orgUserInvites];
+                                updated[index].email = e.target.value;
+                                setOrgUserInvites(updated);
+                              }}
+                              placeholder="john@company.com"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Role</Label>
+                            <select
+                              value={invite.role}
+                              onChange={(e) => {
+                                const updated = [...orgUserInvites];
+                                updated[index].role = e.target.value as 'admin' | 'member';
+                                setOrgUserInvites(updated);
+                              }}
+                              className="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm"
+                            >
+                              <option value="member">Member</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </div>
+                          <div className="flex items-end">
+                            {orgUserInvites.length > 1 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setOrgUserInvites(orgUserInvites.filter((_, i) => i !== index));
+                                }}
+                                className="text-red-600 border-red-300 hover:bg-red-50"
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="flex justify-between">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setOrgUserInvites([...orgUserInvites, { name: '', email: '', role: 'member' }]);
+                          }}
+                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        >
+                          <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                          Add Another User
+                        </Button>
+                        
+                        <Button
+                          onClick={async () => {
+                            const validInvites = orgUserInvites.filter(inv => inv.name && inv.email);
+                            
+                            if (validInvites.length === 0) {
+                              alert('Please add at least one valid invitation (name and email required)');
+                              return;
+                            }
+
+                            try {
+                              const response = await fetch('/api/admin/organizations/invitations', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  organizationId: selectedOrg.id,
+                                  organizationCode: selectedOrg.code,
+                                  organizationName: selectedOrg.name,
+                                  invitations: validInvites
+                                })
+                              });
+
+                              if (response.ok) {
+                                const result = await response.json();
+                                alert(`Successfully sent ${result.sentCount} invitations for ${selectedOrg.code}!`);
+                                // Clear the invitation form
+                                setOrgUserInvites([{ name: '', email: '', role: 'member' }]);
+                              } else {
+                                const error = await response.json();
+                                alert(`Error sending invitations: ${error.message}`);
+                              }
+                            } catch (error) {
+                              console.error('Error sending invitations:', error);
+                              alert('Failed to send invitations. Please try again.');
+                            }
+                          }}
+                          disabled={!orgUserInvites.some(inv => inv.name && inv.email)}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <SemanticBDIIcon semantic="notifications" size={14} className="mr-1" />
+                          Send Invitations ({orgUserInvites.filter(inv => inv.name && inv.email).length})
+                        </Button>
                       </div>
                     </div>
                   </div>
