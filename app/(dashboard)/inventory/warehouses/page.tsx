@@ -1463,14 +1463,19 @@ export default function WarehousesPage() {
                           size="sm"
                           onClick={async () => {
                             try {
-                              const fileName = file.fileName;
-                              // Simple download using direct storage URL approach
-                              const response = await fetch(`/api/inventory/warehouses/${selectedWarehouse.id}/documents`);
+                              const fileName = encodeURIComponent(file.fileName);
+                              const response = await fetch(`/api/inventory/warehouses/${selectedWarehouse.id}/documents/${fileName}`);
                               if (response.ok) {
-                                alert(`Download functionality working! File: ${fileName}`);
-                                // We'll implement actual download after confirming this works
+                                const result = await response.json();
+                                // Create a temporary link and trigger download
+                                const link = document.createElement('a');
+                                link.href = result.downloadUrl;
+                                link.download = file.fileName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
                               } else {
-                                alert('Failed to access file');
+                                alert('Failed to generate download link');
                               }
                             } catch (error) {
                               console.error('Download error:', error);
