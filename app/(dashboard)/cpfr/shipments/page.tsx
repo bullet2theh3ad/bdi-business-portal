@@ -141,8 +141,10 @@ export default function ShipmentsPage() {
               console.log('🔍 Loaded documents from API:', docs);
               console.log('🔍 Setting documents for forecast ID:', selectedShipment.id);
               console.log('🔍 Documents array length:', docs?.length || 0);
-              setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs || [])));
-              console.log('🔍 Documents state updated');
+              
+              // Force state update with new Map to trigger re-render
+              setUploadedDocumentsFromDB(new Map([[selectedShipment.id, docs || []]]));
+              console.log('🔍 Documents state updated - forced re-render');
               setLoadingDocuments(false);
             })
             .catch(err => {
@@ -371,7 +373,8 @@ export default function ShipmentsPage() {
               } else {
                 console.error('📎 Failed to fetch documents after upload:', fetchDocsResponse.status);
               }
-              alert(`Shipment created successfully with ${currentDocs.length} documents uploaded!`);
+              const isUpdate = existingShipment || localShipment;
+          alert(`Shipment ${isUpdate ? 'updated' : 'created'} successfully with ${currentDocs.length} documents uploaded!`);
             } else {
               alert('Shipment created but document upload failed');
             }
