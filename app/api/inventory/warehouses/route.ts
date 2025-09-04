@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
         postal_code,
         timezone,
         capabilities,
+        main_capabilities,
+        contacts,
         operating_hours,
         contact_name,
         contact_email,
@@ -113,6 +115,8 @@ export async function GET(request: NextRequest) {
       postalCode: row.postal_code,
       timezone: row.timezone,
       capabilities: row.capabilities,
+      mainCapabilities: row.main_capabilities ? JSON.parse(row.main_capabilities) : [],
+      contacts: row.contacts ? JSON.parse(row.contacts) : [],
       operatingHours: row.operating_hours,
       contactName: row.contact_name,
       contactEmail: row.contact_email,
@@ -215,10 +219,12 @@ export async function POST(request: NextRequest) {
         postal_code: body.postalCode || null,
         timezone: body.timezone || 'UTC',
         capabilities: body.capabilities || {},
+        main_capabilities: JSON.stringify(body.mainCapabilities || []), // Store main capabilities array
+        contacts: JSON.stringify(body.contacts || []), // Store contacts array
         operating_hours: body.operatingHours || null,
-        contact_name: body.contactName || null,
-        contact_email: body.contactEmail || null,
-        contact_phone: body.contactPhone || null,
+        contact_name: body.contacts?.[0]?.name || body.contactName || null, // Legacy compatibility
+        contact_email: body.contacts?.[0]?.email || body.contactEmail || null, // Legacy compatibility
+        contact_phone: body.contacts?.[0]?.phone || body.contactPhone || null, // Legacy compatibility
         max_pallet_height_cm: body.maxPalletHeight || 180,
         max_pallet_weight_kg: body.maxPalletWeight || 1000,
         loading_dock_count: body.loadingDockCount || 1,

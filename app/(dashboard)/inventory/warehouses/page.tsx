@@ -57,6 +57,9 @@ interface Warehouse {
     isPrimary: boolean;
   }>;
   
+  // Main capabilities (warehouse operations)
+  mainCapabilities?: string[];
+  
   // Physical Specifications
   maxPalletHeight: number; // cm
   maxPalletWeight: number; // kg
@@ -1053,7 +1056,7 @@ export default function WarehousesPage() {
                             id={`edit-${capability.value}`}
                             name="mainCapabilities"
                             value={capability.value}
-                            defaultChecked={selectedWarehouse.type === capability.value}
+                            defaultChecked={selectedWarehouse.mainCapabilities?.includes(capability.value) || selectedWarehouse.type === capability.value}
                             className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                           />
                           <label 
