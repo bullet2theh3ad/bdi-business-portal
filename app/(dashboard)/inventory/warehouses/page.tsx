@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -83,6 +84,32 @@ export default function WarehousesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [warehouseFiles, setWarehouseFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+
+  // Dropzone for warehouse documents
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setWarehouseFiles(prev => [...prev, ...acceptedFiles]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg']
+    },
+    maxSize: 5 * 1024 * 1024 // 5MB limit
+  });
+
+  // Remove file from list
+  const removeFile = (index: number) => {
+    setWarehouseFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Access control - Admin and operations can manage Warehouses
   if (!user || !['super_admin', 'admin', 'operations', 'member'].includes(user.role)) {
@@ -148,7 +175,36 @@ export default function WarehousesPage() {
       });
 
       if (response.ok) {
-        alert('Warehouse updated successfully!');
+        const result = await response.json();
+        
+        // Upload documents if any were attached
+        if (warehouseFiles.length > 0) {
+          try {
+            const formData = new FormData();
+            warehouseFiles.forEach((file, index) => {
+              formData.append(`file${index}`, file);
+            });
+            
+            const docsResponse = await fetch(`/api/inventory/warehouses/${result.warehouse.id}/documents`, {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (docsResponse.ok) {
+              const uploadResult = await docsResponse.json();
+              alert(`Warehouse updated successfully with ${uploadResult.documents.length} documents uploaded!`);
+              setWarehouseFiles([]); // Clear uploaded files
+            } else {
+              alert('Warehouse updated but document upload failed');
+            }
+          } catch (docError) {
+            console.error('Error uploading documents:', docError);
+            alert('Warehouse updated but document upload failed');
+          }
+        } else {
+          alert('Warehouse updated successfully!');
+        }
+        
         setSelectedWarehouse(null);
         mutateWarehouses(); // Refresh the list
       } else {
@@ -1191,57 +1247,202 @@ export default function WarehousesPage() {
                 </div>
               </div>
 
-              {/* Contact Information */}
+              {/* Contact Information - Dynamic Contacts */}
               <div className="space-y-6">
-                <div>
-                  <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
-                  <p className="text-sm text-gray-600 mt-1">Update contact details for this warehouse</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
+                    <p className="text-sm text-gray-600 mt-1">Manage all contacts for this warehouse</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Add a new contact (we'll implement this with React state)
+                      console.log('Add contact clicked');
+                    }}
+                    className="text-green-600 border-green-300 hover:bg-green-50"
+                  >
+                    <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                    Add Contact
+                  </Button>
                 </div>
                 
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <Label htmlFor="editContactName1">Contact Name *</Label>
-                      <Input
-                        id="editContactName1"
-                        name="contactName1"
-                        defaultValue={selectedWarehouse.contacts?.[0]?.name || selectedWarehouse.contactName}
-                        required
-                        className="mt-1"
-                      />
+                {/* Display all existing contacts */}
+                {selectedWarehouse.contacts && selectedWarehouse.contacts.length > 0 ? (
+                  selectedWarehouse.contacts.map((contact, index) => (
+                    <div key={index} className={`p-4 border rounded-lg ${contact.isPrimary ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className={`text-base font-medium ${contact.isPrimary ? 'text-green-800' : 'text-gray-700'}`}>
+                          📞 {contact.isPrimary ? 'Primary Contact (Required)' : `Additional Contact ${index}`}
+                        </h4>
+                        {!contact.isPrimary && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Remove this contact (we'll implement this)
+                              console.log(`Remove contact ${index}`);
+                            }}
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <Label htmlFor={`editContactName${index + 1}`}>Contact Name {contact.isPrimary ? '*' : ''}</Label>
+                          <Input
+                            id={`editContactName${index + 1}`}
+                            name={`contactName${index + 1}`}
+                            defaultValue={contact.name}
+                            required={contact.isPrimary}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`editContactEmail${index + 1}`}>Contact Email {contact.isPrimary ? '*' : ''}</Label>
+                          <Input
+                            id={`editContactEmail${index + 1}`}
+                            name={`contactEmail${index + 1}`}
+                            type="email"
+                            defaultValue={contact.email}
+                            required={contact.isPrimary}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`editContactPhone${index + 1}`}>Phone Number</Label>
+                          <Input
+                            id={`editContactPhone${index + 1}`}
+                            name={`contactPhone${index + 1}`}
+                            defaultValue={contact.phone || ''}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`editContactExt${index + 1}`}>Extension</Label>
+                          <Input
+                            id={`editContactExt${index + 1}`}
+                            name={`contactExt${index + 1}`}
+                            defaultValue={contact.extension || ''}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="editContactEmail1">Contact Email *</Label>
-                      <Input
-                        id="editContactEmail1"
-                        name="contactEmail1"
-                        type="email"
-                        defaultValue={selectedWarehouse.contacts?.[0]?.email || selectedWarehouse.contactEmail}
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="editContactPhone1">Phone Number</Label>
-                      <Input
-                        id="editContactPhone1"
-                        name="contactPhone1"
-                        defaultValue={selectedWarehouse.contacts?.[0]?.phone || selectedWarehouse.contactPhone}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="editContactExt1">Extension</Label>
-                      <Input
-                        id="editContactExt1"
-                        name="contactExt1"
-                        defaultValue={selectedWarehouse.contacts?.[0]?.extension || ''}
-                        className="mt-1"
-                      />
+                  ))
+                ) : (
+                  // Fallback for legacy data
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="editContactName1">Contact Name *</Label>
+                        <Input
+                          id="editContactName1"
+                          name="contactName1"
+                          defaultValue={selectedWarehouse.contactName || ''}
+                          required
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="editContactEmail1">Contact Email *</Label>
+                        <Input
+                          id="editContactEmail1"
+                          name="contactEmail1"
+                          type="email"
+                          defaultValue={selectedWarehouse.contactEmail || ''}
+                          required
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="editContactPhone1">Phone Number</Label>
+                        <Input
+                          id="editContactPhone1"
+                          name="contactPhone1"
+                          defaultValue={selectedWarehouse.contactPhone || ''}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="editContactExt1">Extension</Label>
+                        <Input
+                          id="editContactExt1"
+                          name="contactExt1"
+                          defaultValue=""
+                          className="mt-1"
+                        />
+                      </div>
                     </div>
                   </div>
+                )}
+              </div>
+
+              {/* Document Upload */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-lg font-medium text-gray-900">Warehouse Documents</Label>
+                  <p className="text-sm text-gray-600 mt-1">Upload contracts, certifications, and other warehouse-specific documents</p>
                 </div>
+                
+                {/* Dropzone */}
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                    isDragActive 
+                      ? 'border-indigo-500 bg-indigo-50' 
+                      : 'border-gray-300 hover:border-indigo-400'
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <SemanticBDIIcon semantic="upload" size={48} className="mx-auto text-gray-400 mb-4" />
+                  {isDragActive ? (
+                    <p className="text-lg font-medium text-indigo-600">Drop files here...</p>
+                  ) : (
+                    <>
+                      <p className="text-lg font-medium text-gray-700 mb-2">Drop warehouse documents here</p>
+                      <p className="text-sm text-gray-500 mb-4">or click to browse files</p>
+                      <div className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                        <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
+                        Choose Files
+                      </div>
+                    </>
+                  )}
+                  <p className="text-xs text-gray-400 mt-2">PDF, DOC, XLS, PNG, JPG files up to 5MB each</p>
+                </div>
+
+                {/* File Preview */}
+                {warehouseFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="text-sm font-medium text-gray-900">Files to Upload ({warehouseFiles.length})</h5>
+                    {warehouseFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <SemanticBDIIcon semantic="document" size={16} className="text-gray-600" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                            <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Form Actions */}
