@@ -178,7 +178,30 @@ export default function AdminOrganizationsPage() {
       // Refresh organizations list
       mutateOrganizations();
       
-      alert(`Organization "${addForm.companyName}" created successfully! Admin user can login immediately.`);
+      // Enhanced success message with email status and credentials
+      const emailStatusMessage = result.email?.sent 
+        ? `✅ Welcome email sent to: ${result.email.recipient}`
+        : result.email?.error 
+        ? `❌ Email failed: ${result.email.error}`
+        : `⚠️ Email status unknown`;
+
+      alert(`🎉 Organization "${addForm.companyName}" created successfully!
+
+📧 ${emailStatusMessage}
+
+🔑 Login Credentials (for your reference):
+   Email: ${result.loginInfo.email}
+   Temporary Password: ${result.loginInfo.tempPassword}
+   
+🌐 Login URL: ${result.loginInfo.loginUrl}
+
+${result.email?.sent 
+  ? '✅ Admin can login immediately!' 
+  : '⚠️ Please share the credentials manually with the admin.'}`);
+
+      // Also log detailed info to console for debugging
+      console.log('📧 Email Status:', result.email);
+      console.log('🔑 Login Info:', result.loginInfo);
     } catch (error) {
       console.error('Error creating organization:', error);
       alert('Failed to create organization. Please try again.');

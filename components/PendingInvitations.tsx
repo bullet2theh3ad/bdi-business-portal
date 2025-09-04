@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, X, AlertCircle } from 'lucide-react';
@@ -38,6 +38,7 @@ import { useActionState } from 'react';
 
 interface Invitation {
   id: string;
+  type?: 'organization_invitation' | 'organization_created' | 'user_invitation';
   email: string;
   role: string;
   status: string;
@@ -49,6 +50,8 @@ interface Invitation {
   title?: string;
   department?: string;
   expiresAt?: string;
+  organizationName?: string;
+  organizationCode?: string;
 }
 
 const fetcher = async (url: string) => {
@@ -157,21 +160,25 @@ export function PendingInvitations() {
     );
   }
 
-  const pendingInvitations = Array.isArray(invitations) ? invitations.filter(inv => inv.status === 'pending') : [];
+  // Separate different types of activities
+  const allActivities = Array.isArray(invitations) ? invitations : [];
+  const pendingInvitations = allActivities.filter(inv => inv.status === 'pending');
+  const recentOrganizations = allActivities.filter(inv => inv.type === 'organization_created');
+  const totalActivities = allActivities.length;
 
-  if (pendingInvitations.length === 0) {
+  if (totalActivities === 0) {
     return (
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <SemanticBDIIcon semantic="notifications" size={20} />
-            Pending Invitations
+            Recent Activity
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-gray-500 flex items-center gap-2">
             <SemanticBDIIcon semantic="notifications" size={16} />
-            No pending invitations
+            No recent organization activity
           </p>
         </CardContent>
       </Card>
@@ -201,12 +208,15 @@ export function PendingInvitations() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <SemanticBDIIcon semantic="notifications" size={20} />
-          Pending Invitations ({pendingInvitations.length})
+          Recent Activity ({totalActivities})
         </CardTitle>
+        <CardDescription>
+          Pending invitations ({pendingInvitations.length}) • Recent organizations ({recentOrganizations.length})
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {pendingInvitations.map((invitation) => (
+          {allActivities.map((invitation) => (
             <div 
               key={invitation.id} 
               className="flex items-center justify-between p-4 border rounded-lg bg-gray-50"
@@ -214,8 +224,17 @@ export function PendingInvitations() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="flex items-center gap-2">
-                    <SemanticBDIIcon semantic="profile" size={16} className="text-gray-500" />
-                    <span className="font-medium">{invitation.name || invitation.email}</span>
+                    <SemanticBDIIcon 
+                      semantic={invitation.type === 'organization_created' ? 'collaboration' : 'profile'} 
+                      size={16} 
+                      className="text-gray-500" 
+                    />
+                    <span className="font-medium">
+                      {invitation.organizationName ? 
+                        `${invitation.name || invitation.email} (${invitation.organizationName})` : 
+                        invitation.name || invitation.email
+                      }
+                    </span>
                   </div>
                   <Badge variant={invitation.role === 'super_admin' ? 'default' : 'secondary'}
                          className={invitation.role === 'super_admin' ? 'bg-bdi-green-1 text-white' : 
@@ -223,10 +242,32 @@ export function PendingInvitations() {
                                    invitation.role === 'developer' ? 'bg-bdi-blue text-white' : ''}>
                     {invitation.role.replace('_', ' ').toUpperCase()}
                   </Badge>
-                  <Badge variant="outline" className="text-bdi-green-1 border-bdi-green-1">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Pending
+                  <Badge 
+                    variant="outline" 
+                    className={
+                      invitation.status === 'active' 
+                        ? 'text-green-600 border-green-600 bg-green-50' 
+                        : 'text-bdi-green-1 border-bdi-green-1'
+                    }
+                  >
+                    {invitation.status === 'active' ? (
+                      <>
+                        <SemanticBDIIcon semantic="check" size={12} className="mr-1" />
+                        Active
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="h-3 w-3 mr-1" />
+                        Pending
+                      </>
+                    )}
                   </Badge>
+                  {invitation.type === 'organization_created' && (
+                    <Badge variant="outline" className="text-blue-600 border-blue-600 bg-blue-50">
+                      <SemanticBDIIcon semantic="plus" size={12} className="mr-1" />
+                      Created
+                    </Badge>
+                  )}
                 </div>
                 <div className="text-sm text-gray-500 space-y-1">
                   <div>{invitation.email}</div>

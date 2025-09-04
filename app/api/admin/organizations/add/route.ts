@@ -204,9 +204,15 @@ export async function POST(request: NextRequest) {
     console.log('Created organization membership');
 
     // Send welcome email with login credentials
+    let emailStatus = {
+      sent: false,
+      error: null as string | null,
+      recipient: validatedData.adminEmail
+    };
+
     if (resend) {
       try {
-        await resend.emails.send({
+        const emailResult = await resend.emails.send({
           from: 'BDI Business Portal <noreply@boundlessdevices.com>',
           to: [validatedData.adminEmail],
           subject: `Welcome to BDI Business Portal - ${validatedData.companyName}`,
@@ -244,14 +250,14 @@ export async function POST(request: NextRequest) {
                 </div>
                 
                 <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin: 20px 0;">
-                  <h4 style="color: #856404; margin-top: 0;">🔒 Important Security Notice</h4>
-                  <p style="margin-bottom: 0; color: #856404;">Please change your password immediately after logging in. Go to your profile settings to update your password and complete your account setup.</p>
+                  <h4 style="color: #856404; margin-top: 0;">🔒 Setting Your Permanent Password</h4>
+                  <p style="margin-bottom: 0; color: #856404;">For security, please set your own password after logging in. You can use the "Forgot your password?" link on the sign-in page to set a permanent password, or contact support for assistance.</p>
                 </div>
                 
                 <h3>🚀 What's Next?</h3>
                 <ul>
                   <li>Login with your credentials above</li>
-                  <li>Change your temporary password</li>
+                  <li>Set your permanent password (recommended)</li>
                   <li>Complete your organization profile</li>
                   <li>Invite team members to join your organization</li>
                   <li>Explore the available features and capabilities</li>
@@ -269,11 +275,16 @@ export async function POST(request: NextRequest) {
           `,
         });
 
-        console.log('Welcome email sent to:', validatedData.adminEmail);
+        emailStatus.sent = true;
+        console.log('✅ Welcome email sent successfully to:', validatedData.adminEmail, 'Message ID:', emailResult.data?.id);
       } catch (emailError) {
-        console.error('Failed to send welcome email:', emailError);
+        emailStatus.error = emailError instanceof Error ? emailError.message : 'Unknown email error';
+        console.error('❌ Failed to send welcome email:', emailError);
         // Don't fail the entire operation if email fails
       }
+    } else {
+      emailStatus.error = 'Email service not configured (RESEND_API_KEY missing)';
+      console.warn('⚠️ Email service not available - RESEND_API_KEY not configured');
     }
 
     return NextResponse.json({
@@ -292,6 +303,7 @@ export async function POST(request: NextRequest) {
         email: newUser.email,
         role: newUser.role,
       },
+      email: emailStatus,
       loginInfo: {
         email: validatedData.adminEmail,
         tempPassword: tempPassword, // Include in response for Super Admin reference

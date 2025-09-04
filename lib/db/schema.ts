@@ -340,6 +340,25 @@ export const invitations = pgTable('invitations', {
   token: text('token').unique(),
 });
 
+// Organization invitations for Super Admin organization creation
+export const organizationInvitations = pgTable('organization_invitations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  organizationCode: varchar('organization_code', { length: 10 }).notNull(),
+  organizationName: varchar('organization_name', { length: 200 }),
+  invitedEmail: varchar('invited_email', { length: 255 }).notNull(),
+  invitedName: varchar('invited_name', { length: 255 }).notNull(),
+  invitedRole: varchar('invited_role', { length: 20 }).notNull().default('member'),
+  invitationToken: varchar('invitation_token', { length: 255 }).notNull().unique(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+  acceptedAt: timestamp('accepted_at'),
+  acceptedByUserId: uuid('accepted_by_user_id'),
+  createdByUserId: uuid('created_by_user_id'),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // ===== RELATIONS =====
 
 export const organizationsRelations = relations(organizations, ({ many, one }) => ({
