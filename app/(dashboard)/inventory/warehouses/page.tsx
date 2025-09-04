@@ -86,6 +86,7 @@ export default function WarehousesPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [warehouseFiles, setWarehouseFiles] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [showExtraContact, setShowExtraContact] = useState(false);
 
   // Load existing files when opening edit modal
   useEffect(() => {
@@ -1285,10 +1286,7 @@ export default function WarehousesPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      // Add a new contact (we'll implement this with React state)
-                      console.log('Add contact clicked');
-                    }}
+                    onClick={() => setShowExtraContact(true)}
                     className="text-green-600 border-green-300 hover:bg-green-50"
                   >
                     <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
@@ -1403,6 +1401,63 @@ export default function WarehousesPage() {
                           id="editContactExt1"
                           name="contactExt1"
                           defaultValue=""
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Contact Form (Simple) */}
+                {showExtraContact && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-base font-medium text-blue-800">📞 Additional Contact</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowExtraContact(false)}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="extraContactName">Contact Name</Label>
+                        <Input
+                          id="extraContactName"
+                          name="contactName2"
+                          placeholder="Additional contact name"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="extraContactEmail">Contact Email</Label>
+                        <Input
+                          id="extraContactEmail"
+                          name="contactEmail2"
+                          type="email"
+                          placeholder="additional@company.com"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="extraContactPhone">Phone Number</Label>
+                        <Input
+                          id="extraContactPhone"
+                          name="contactPhone2"
+                          placeholder="+1 (555) 123-4567"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="extraContactExt">Extension</Label>
+                        <Input
+                          id="extraContactExt"
+                          name="contactExt2"
+                          placeholder="5678"
                           className="mt-1"
                         />
                       </div>
