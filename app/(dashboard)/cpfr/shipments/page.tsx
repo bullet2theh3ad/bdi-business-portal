@@ -848,7 +848,6 @@ export default function ShipmentsPage() {
                               forecast.transitSignal === 'accepted' ? 'bg-green-100 text-green-800' :
                               forecast.transitSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
                               forecast.transitSignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                              forecast.transitSignal === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-600'
                             }>
                               {forecast.transitSignal === 'accepted' ? 'delivered' :
@@ -1506,6 +1505,7 @@ export default function ShipmentsPage() {
               >
                 {statusChangeModal.milestone === 'sales' && (
                   <>
+                    <option value="unknown">Unknown</option>
                     <option value="draft">Draft</option>
                     <option value="submitted">Submitted</option>
                     <option value="accepted">Confirmed</option>
@@ -1514,6 +1514,7 @@ export default function ShipmentsPage() {
                 )}
                 {statusChangeModal.milestone === 'factory' && (
                   <>
+                    <option value="unknown">Unknown</option>
                     <option value="pending">Pending</option>
                     <option value="in_production">In Production</option>
                     <option value="ready_to_ship">Ready to Ship</option>
@@ -1523,6 +1524,7 @@ export default function ShipmentsPage() {
                 )}
                 {statusChangeModal.milestone === 'transit' && (
                   <>
+                    <option value="unknown">Unknown</option>
                     <option value="pending">Pending</option>
                     <option value="submitted">In Transit</option>
                     <option value="accepted">Delivered</option>
@@ -1531,6 +1533,7 @@ export default function ShipmentsPage() {
                 )}
                 {statusChangeModal.milestone === 'warehouse' && (
                   <>
+                    <option value="unknown">Unknown</option>
                     <option value="pending">Scheduled</option>
                     <option value="accepted">Received</option>
                     <option value="processing">Processing</option>
