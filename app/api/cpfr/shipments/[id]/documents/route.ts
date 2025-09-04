@@ -72,7 +72,7 @@ export async function POST(
     
     // Process each uploaded file (Node.js compatible check)
     for (const [key, value] of formData.entries()) {
-      console.log(`🔍 Processing entry: ${key}, startsWith('file'): ${key.startsWith('file')}, isObject: ${value && typeof value === 'object'}, hasName: ${'name' in value}`);
+      console.log(`🔍 Processing entry: ${key}, startsWith('file'): ${key.startsWith('file')}, isObject: ${value && typeof value === 'object'}, hasName: ${typeof value === 'object' && value !== null && 'name' in value}`);
       
       if (key.startsWith('file') && value && typeof value === 'object' && 'name' in value) {
         console.log(`✅ File entry matched for processing: ${key}`);
