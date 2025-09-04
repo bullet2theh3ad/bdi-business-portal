@@ -91,12 +91,8 @@ export default function WarehousesPage() {
   // Load existing files when opening edit modal
   useEffect(() => {
     if (selectedWarehouse) {
-      // Check if we should show extra contact form (if there are 2+ contacts)
-      if (selectedWarehouse.contacts && selectedWarehouse.contacts.length > 1) {
-        setShowExtraContact(true);
-      } else {
-        setShowExtraContact(false);
-      }
+      // Don't auto-show extra contact form - only show when user clicks "Add Contact"
+      setShowExtraContact(false);
 
       // Fetch existing documents for this warehouse
       fetch(`/api/inventory/warehouses/${selectedWarehouse.id}/documents`)
@@ -189,24 +185,29 @@ export default function WarehousesPage() {
           timezone: formData.get('timezone'),
           capabilities: shippingCapabilities,
           mainCapabilities: mainCapabilities,
-          contacts: (() => {
-            const contacts = [];
-            // Collect all contact entries dynamically
-            for (let i = 1; i <= 10; i++) { // Check up to 10 possible contacts
-              const name = formData.get(`contactName${i}`);
-              const email = formData.get(`contactEmail${i}`);
-              if (name && email) {
+                      contacts: (() => {
+              const contacts = [];
+              
+              // Always include existing contacts from the database first
+              if (selectedWarehouse?.contacts) {
+                contacts.push(...selectedWarehouse.contacts);
+              }
+              
+              // Then check for new contact from the form (contactName3, contactEmail3)
+              const newContactName = formData.get('contactName3');
+              const newContactEmail = formData.get('contactEmail3');
+              if (newContactName && newContactEmail) {
                 contacts.push({
-                  name: name,
-                  email: email,
-                  phone: formData.get(`contactPhone${i}`) || '',
-                  extension: formData.get(`contactExt${i}`) || '',
-                  isPrimary: i === 1
+                  name: newContactName,
+                  email: newContactEmail,
+                  phone: formData.get('contactPhone3') || '',
+                  extension: formData.get('contactExt3') || '',
+                  isPrimary: false
                 });
               }
-            }
-            return contacts;
-          })(),
+              
+              return contacts;
+            })(),
         }),
       });
 
@@ -1290,16 +1291,18 @@ export default function WarehousesPage() {
                     <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
                     <p className="text-sm text-gray-600 mt-1">Manage all contacts for this warehouse</p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowExtraContact(true)}
-                    className="text-green-600 border-green-300 hover:bg-green-50"
-                  >
-                    <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
-                    Add Contact
-                  </Button>
+                  {(!selectedWarehouse?.contacts || selectedWarehouse.contacts.length < 2) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowExtraContact(true)}
+                      className="text-green-600 border-green-300 hover:bg-green-50"
+                    >
+                      <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                      Add Contact
+                    </Button>
+                  )}
                 </div>
                 
                 {/* Display all existing contacts */}
@@ -1420,7 +1423,7 @@ export default function WarehousesPage() {
                 {showExtraContact && (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-base font-medium text-blue-800">📞 Additional Contact</h4>
+                      <h4 className="text-base font-medium text-blue-800">📞 New Additional Contact</h4>
                       <Button
                         type="button"
                         variant="outline"
@@ -1436,8 +1439,7 @@ export default function WarehousesPage() {
                         <Label htmlFor="extraContactName">Contact Name</Label>
                         <Input
                           id="extraContactName"
-                          name="contactName2"
-                          defaultValue={selectedWarehouse?.contacts?.[1]?.name || ''}
+                          name="contactName3"
                           placeholder="Additional contact name"
                           className="mt-1"
                         />
@@ -1446,9 +1448,8 @@ export default function WarehousesPage() {
                         <Label htmlFor="extraContactEmail">Contact Email</Label>
                         <Input
                           id="extraContactEmail"
-                          name="contactEmail2"
+                          name="contactEmail3"
                           type="email"
-                          defaultValue={selectedWarehouse?.contacts?.[1]?.email || ''}
                           placeholder="additional@company.com"
                           className="mt-1"
                         />
@@ -1457,8 +1458,7 @@ export default function WarehousesPage() {
                         <Label htmlFor="extraContactPhone">Phone Number</Label>
                         <Input
                           id="extraContactPhone"
-                          name="contactPhone2"
-                          defaultValue={selectedWarehouse?.contacts?.[1]?.phone || ''}
+                          name="contactPhone3"
                           placeholder="+1 (555) 123-4567"
                           className="mt-1"
                         />
@@ -1467,8 +1467,7 @@ export default function WarehousesPage() {
                         <Label htmlFor="extraContactExt">Extension</Label>
                         <Input
                           id="extraContactExt"
-                          name="contactExt2"
-                          defaultValue={selectedWarehouse?.contacts?.[1]?.extension || ''}
+                          name="contactExt3"
                           placeholder="5678"
                           className="mt-1"
                         />
