@@ -345,7 +345,6 @@ export const organizationInvitations = pgTable('organization_invitations', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   organizationCode: varchar('organization_code', { length: 10 }).notNull(),
-  organizationName: varchar('organization_name', { length: 200 }),
   invitedEmail: varchar('invited_email', { length: 255 }).notNull(),
   invitedName: varchar('invited_name', { length: 255 }).notNull(),
   invitedRole: varchar('invited_role', { length: 20 }).notNull().default('member'),

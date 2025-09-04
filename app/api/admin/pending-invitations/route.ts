@@ -60,7 +60,6 @@ export async function GET(request: NextRequest) {
     const pendingOrgInvitations = await db
       .select({
         id: organizationInvitations.id,
-        organizationName: organizationInvitations.organizationName,
         organizationCode: organizationInvitations.organizationCode,
         email: organizationInvitations.invitedEmail,
         name: organizationInvitations.invitedName,
@@ -154,7 +153,7 @@ export async function GET(request: NextRequest) {
         name: inv.name,
         role: inv.role,
         status: 'pending',
-        organizationName: inv.organizationName,
+        organizationName: inv.organizationCode, // Use code as name for now
         organizationCode: inv.organizationCode,
         invitedAt: inv.createdAt?.toISOString(),
         expiresAt: inv.expiresAt?.toISOString(),
