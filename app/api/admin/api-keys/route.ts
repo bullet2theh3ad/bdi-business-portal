@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     // Generate API key
     const orgCode = targetOrganization.code || 'org';
     const apiKey = `bdi_${orgCode.toLowerCase()}_${crypto.randomBytes(32).toString('hex')}`;
-    const keyPrefix = apiKey.substring(0, 12) + '...';
+    const keyPrefix = apiKey.substring(0, 10); // Limit to 10 chars to fit database column
     const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
     // Calculate expiration date

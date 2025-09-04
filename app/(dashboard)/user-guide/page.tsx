@@ -663,7 +663,8 @@ curl -H "Authorization: Bearer bdi_gpn_xyz..." \\
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h4 className="font-semibold text-gray-800 mb-3">🔐 Authentication Methods</h4>
                     <ul className="space-y-1 text-sm">
-                      <li>• <strong>Supabase Auth:</strong> Enterprise-grade user authentication</li>
+                      <li>• <strong>SOC 2, Type 2 Compliant:</strong> Enterprise-grade security controls and auditing</li>
+                      <li>• <strong>FIPS 140-2 Compliant Encryption:</strong> Federal-grade cryptographic standards</li>
                       <li>• <strong>API Keys:</strong> Secure programmatic access for external partners</li>
                       <li>• <strong>Role-Based Access:</strong> Super Admin, Admin, Member, Developer roles</li>
                       <li>• <strong>Organization Isolation:</strong> Multi-tenant data separation</li>
@@ -726,11 +727,13 @@ curl -H "Authorization: Bearer bdi_gpn_xyz..." \\
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p><strong>Business Address:</strong></p>
-                    <p>343 S Highway 101, Suite 200</p>
-                    <p>Solana Beach, CA 92075</p>
+                    <p>Boundless Devices, Inc</p>
+                    <p>17875 VON KARMAN AVE. SUITE 150</p>
+                    <p>IRVINE, CA 92614</p>
                   </div>
                   <div>
                     <p><strong>General Contact:</strong></p>
+                    <p>Phone: <a href="tel:949-994-7791" className="text-blue-600 hover:underline">949-994-7791</a></p>
                     <p>Email: <a href="mailto:info@boundlessdevices.com" className="text-blue-600 hover:underline">info@boundlessdevices.com</a></p>
                     <p>Portal: <a href="https://www.bdibusinessportal.com" className="text-blue-600 hover:underline">www.bdibusinessportal.com</a></p>
                   </div>
