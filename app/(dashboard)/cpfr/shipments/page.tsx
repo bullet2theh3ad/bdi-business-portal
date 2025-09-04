@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useDropzone } from 'react-dropzone';
 import useSWR from 'swr';
@@ -58,6 +58,17 @@ export default function ShipmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
+  
+  // Status change modal state
+  const [statusChangeModal, setStatusChangeModal] = useState<{
+    isOpen: boolean;
+    milestone: 'sales' | 'factory' | 'transit' | 'warehouse' | null;
+    forecast: SalesForecast | null;
+  }>({
+    isOpen: false,
+    milestone: null,
+    forecast: null
+  });
   
   // Shipment form state
   const [shipmentForm, setShipmentForm] = useState({
@@ -433,6 +444,15 @@ export default function ShipmentsPage() {
     return '📦';
   };
 
+  // Handle milestone icon click
+  const handleMilestoneClick = (milestone: 'sales' | 'factory' | 'transit' | 'warehouse', forecast: SalesForecast) => {
+    setStatusChangeModal({
+      isOpen: true,
+      milestone,
+      forecast
+    });
+  };
+
   const calculateMilestoneDates = (forecast: SalesForecast) => {
     // Parse delivery week (e.g., "2025-W47" to actual date)
     const [year, week] = forecast.deliveryWeek.split('-W').map(Number);
@@ -734,11 +754,15 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 1: Sales */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
-                            forecast.salesSignal === 'accepted' ? 'border-green-500' :
-                            forecast.salesSignal === 'submitted' ? 'border-blue-500' :
-                            'border-gray-300'
-                          }`}>
+                          <button
+                            onClick={() => handleMilestoneClick('sales', forecast)}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                              forecast.salesSignal === 'accepted' ? 'border-green-500' :
+                              forecast.salesSignal === 'submitted' ? 'border-blue-500' :
+                              'border-gray-300'
+                            }`}
+                            title="Click to change sales status"
+                          >
                             <SemanticBDIIcon 
                               semantic="profile" 
                               size={20} 
@@ -748,7 +772,7 @@ export default function ShipmentsPage() {
                                 'text-gray-600'
                               } 
                             />
-                          </div>
+                          </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Sales</p>
                             <p className="text-xs text-gray-600">
@@ -1425,6 +1449,120 @@ export default function ShipmentsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Change Modal */}
+      <Dialog open={statusChangeModal.isOpen} onOpenChange={(open) => setStatusChangeModal(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <SemanticBDIIcon 
+                semantic={
+                  statusChangeModal.milestone === 'sales' ? 'profile' :
+                  statusChangeModal.milestone === 'factory' ? 'manufacturing' :
+                  statusChangeModal.milestone === 'transit' ? 'shipping' :
+                  'warehouse'
+                } 
+                size={20} 
+              />
+              <span>
+                Update {statusChangeModal.milestone === 'sales' ? 'Sales' :
+                       statusChangeModal.milestone === 'factory' ? 'Factory' :
+                       statusChangeModal.milestone === 'transit' ? 'Transit' :
+                       'Warehouse'} Status
+              </span>
+            </DialogTitle>
+            <DialogDescription>
+              Change the status for {statusChangeModal.forecast?.sku.sku} - {statusChangeModal.forecast?.sku.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newStatus">New Status</Label>
+              <select
+                id="newStatus"
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={
+                  statusChangeModal.milestone === 'sales' ? statusChangeModal.forecast?.salesSignal :
+                  statusChangeModal.milestone === 'factory' ? statusChangeModal.forecast?.factorySignal :
+                  statusChangeModal.milestone === 'transit' ? 'pending' :
+                  statusChangeModal.forecast?.shippingSignal
+                }
+              >
+                {statusChangeModal.milestone === 'sales' && (
+                  <>
+                    <option value="draft">Draft</option>
+                    <option value="submitted">Submitted</option>
+                    <option value="accepted">Confirmed</option>
+                    <option value="rejected">Rejected</option>
+                  </>
+                )}
+                {statusChangeModal.milestone === 'factory' && (
+                  <>
+                    <option value="pending">Pending</option>
+                    <option value="in_production">In Production</option>
+                    <option value="ready_to_ship">Ready to Ship</option>
+                    <option value="accepted">Shipped</option>
+                    <option value="rejected">Rejected</option>
+                  </>
+                )}
+                {statusChangeModal.milestone === 'transit' && (
+                  <>
+                    <option value="pending">Quote Requested</option>
+                    <option value="in_transit">In Transit</option>
+                    <option value="delayed">Delayed</option>
+                    <option value="delivered">Delivered</option>
+                  </>
+                )}
+                {statusChangeModal.milestone === 'warehouse' && (
+                  <>
+                    <option value="pending">Scheduled</option>
+                    <option value="accepted">Received</option>
+                    <option value="processing">Processing</option>
+                    <option value="completed">Complete</option>
+                  </>
+                )}
+              </select>
+            </div>
+            
+            <div>
+              <Label htmlFor="statusNotes">Notes (Optional)</Label>
+              <textarea
+                id="statusNotes"
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+                placeholder="Add any notes about this status change..."
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setStatusChangeModal(prev => ({ ...prev, isOpen: false }))}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                // TODO: Implement status update API call
+                console.log('Status change:', {
+                  milestone: statusChangeModal.milestone,
+                  forecast: statusChangeModal.forecast?.id,
+                  newStatus: (document.getElementById('newStatus') as HTMLSelectElement)?.value,
+                  notes: (document.getElementById('statusNotes') as HTMLTextAreaElement)?.value
+                });
+                alert('Status update functionality coming next!');
+                setStatusChangeModal(prev => ({ ...prev, isOpen: false }));
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <SemanticBDIIcon semantic="check" size={16} className="mr-2" />
+              Update Status
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
