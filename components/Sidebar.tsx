@@ -116,7 +116,7 @@ const navigationItems: NavItem[] = [
       {
         title: 'Connections',
         href: '/admin/connections',
-        icon: 'network-5',
+        icon: 'connections',
       },
       {
         title: 'Users',
