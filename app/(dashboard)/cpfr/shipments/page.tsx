@@ -1119,34 +1119,48 @@ export default function ShipmentsPage() {
                               console.log('🖥️ RENDER CHECK - documentsForCurrentShipment:', documentsForCurrentShipment);
                               console.log('🖥️ RENDER CHECK - documentsForCurrentShipment.length:', documentsForCurrentShipment.length);
                               console.log('🖥️ RENDER CHECK - Will show documents:', documentsForCurrentShipment.length > 0);
-                              return documentsForCurrentShipment.length > 0;
+                              
+                              // TEST: Always show a test document section to verify rendering works
+                              const hasRealDocs = documentsForCurrentShipment.length > 0;
+                              const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
+                              const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
+                              
+                              return true; // Always show for testing
                             })() && (
                               <div className="mt-3 pt-3 border-t border-green-200">
-                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
+                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents: (TEST MODE)</h5>
                                 <div className="space-y-1">
-                                  {documentsForCurrentShipment.map((doc: any, index: number) => (
-                                    <div key={doc.id || doc.name || index} className="flex items-center justify-between bg-green-100 p-2 rounded">
-                                      <div className="flex items-center space-x-2">
-                                        <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
-                                        <span className="text-xs text-green-800">{doc.file_name || doc.name || 'Unknown File'}</span>
-                                        <span className="text-xs text-green-600">
-                                          ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
-                                        </span>
+                                  {(() => {
+                                    const hasRealDocs = documentsForCurrentShipment.length > 0;
+                                    const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
+                                    const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
+                                    
+                                    return docsToShow.map((doc: any, index: number) => (
+                                      <div key={doc.id || doc.file_name || index} className="flex items-center justify-between bg-green-100 p-2 rounded">
+                                        <div className="flex items-center space-x-2">
+                                          <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
+                                          <span className="text-xs text-green-800">{doc.file_name || doc.name || 'Unknown File'}</span>
+                                          <span className="text-xs text-green-600">
+                                            ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
+                                          </span>
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
+                                                             actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                                            if (shipmentId && hasRealDocs) {
+                                              window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
+                                            } else {
+                                              alert('TEST MODE - Real download not available');
+                                            }
+                                          }}
+                                          className="text-green-600 hover:text-green-800 text-xs underline"
+                                        >
+                                          {hasRealDocs ? 'Download' : 'TEST'}
+                                        </button>
                                       </div>
-                                      <button
-                                        onClick={() => {
-                                          const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                                           actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                                          if (shipmentId) {
-                                            window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
-                                          }
-                                        }}
-                                        className="text-green-600 hover:text-green-800 text-xs underline"
-                                      >
-                                        Download
-                                      </button>
-                                    </div>
-                                  ))}
+                                    ));
+                                  })()}
                                 </div>
                               </div>
                             )}
