@@ -40,9 +40,11 @@ export default function AdminOrganizationsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   const { data: organizations, mutate: mutateOrganizations } = useSWR('/api/admin/organizations', fetcher);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [selectedOrgForCpfr, setSelectedOrgForCpfr] = useState<any>(null);
   const [isInviting, setIsInviting] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingContacts, setIsSavingContacts] = useState(false);
   
@@ -59,6 +61,15 @@ export default function AdminOrganizationsPage() {
     role: 'admin' | 'member';
   }>>([{ name: '', email: '', role: 'member' }]);
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
+    companyName: '',
+    organizationCode: '',
+    organizationType: 'contractor',
+    adminName: '',
+    adminEmail: '',
+    capabilities: ['document_management'], // Default capability
+    description: ''
+  });
+  const [addForm, setAddForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
     organizationType: 'contractor',
@@ -113,13 +124,67 @@ export default function AdminOrganizationsPage() {
     }
   };
 
-  const toggleCapability = (capabilityId: CapabilityId) => {
-    setInviteForm(prev => ({
-      ...prev,
-      capabilities: prev.capabilities.includes(capabilityId)
-        ? prev.capabilities.filter(id => id !== capabilityId)
-        : [...prev.capabilities, capabilityId]
-    }));
+  const toggleCapability = (capabilityId: CapabilityId, formType: 'invite' | 'add' = 'invite') => {
+    if (formType === 'invite') {
+      setInviteForm(prev => ({
+        ...prev,
+        capabilities: prev.capabilities.includes(capabilityId)
+          ? prev.capabilities.filter(id => id !== capabilityId)
+          : [...prev.capabilities, capabilityId]
+      }));
+    } else {
+      setAddForm(prev => ({
+        ...prev,
+        capabilities: prev.capabilities.includes(capabilityId)
+          ? prev.capabilities.filter(id => id !== capabilityId)
+          : [...prev.capabilities, capabilityId]
+      }));
+    }
+  };
+
+  const handleAddOrganization = async () => {
+    if (!addForm.companyName || !addForm.adminEmail || !addForm.adminName) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const response = await fetch('/api/admin/organizations/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addForm)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create organization');
+      }
+
+      const result = await response.json();
+      console.log('Organization created:', result);
+      
+      // Reset form and close modal
+      setAddForm({
+        companyName: '',
+        organizationCode: '',
+        organizationType: 'contractor',
+        adminName: '',
+        adminEmail: '',
+        capabilities: ['document_management'],
+        description: ''
+      });
+      setShowAddModal(false);
+      
+      // Refresh organizations list
+      mutateOrganizations();
+      
+      alert(`Organization "${addForm.companyName}" created successfully! Admin user can login immediately.`);
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      alert('Failed to create organization. Please try again.');
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const handleDeleteOrganization = async (orgId: string, orgName: string) => {
@@ -210,14 +275,25 @@ export default function AdminOrganizationsPage() {
               <p className="text-muted-foreground text-sm sm:text-base">Manage external partner companies, suppliers, and vendors</p>
             </div>
           </div>
-          <Button 
-            className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto justify-center" 
-            onClick={() => setShowInviteModal(true)}
-          >
-            <SemanticBDIIcon semantic="notifications" size={16} className="mr-2 brightness-0 invert" />
-            <span className="sm:hidden">Invite New Organization</span>
-            <span className="hidden sm:inline">Invite Organization</span>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button 
+              className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto justify-center" 
+              onClick={() => setShowAddModal(true)}
+            >
+              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+              <span className="sm:hidden">Add Organization</span>
+              <span className="hidden sm:inline">Add Organization</span>
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full sm:w-auto justify-center border-bdi-green-1 text-bdi-green-1 hover:bg-bdi-green-1 hover:text-white" 
+              onClick={() => setShowInviteModal(true)}
+            >
+              <SemanticBDIIcon semantic="notifications" size={16} className="mr-2" />
+              <span className="sm:hidden">Invite Organization</span>
+              <span className="hidden sm:inline">Invite Organization</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -294,13 +370,23 @@ export default function AdminOrganizationsPage() {
                 <SemanticBDIIcon semantic="collaboration" size={48} className="mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No Organizations Yet</h3>
                 <p className="text-muted-foreground mb-4">Get started by inviting your first partner organization</p>
-                <Button 
-                  className="bg-bdi-green-1 hover:bg-bdi-green-2" 
-                  onClick={() => setShowInviteModal(true)}
-                >
-                  <SemanticBDIIcon semantic="notifications" size={16} className="mr-2 brightness-0 invert" />
-                  Invite Organization
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button 
+                    className="bg-bdi-green-1 hover:bg-bdi-green-2" 
+                    onClick={() => setShowAddModal(true)}
+                  >
+                    <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+                    Add Organization
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="border-bdi-green-1 text-bdi-green-1 hover:bg-bdi-green-1 hover:text-white" 
+                    onClick={() => setShowInviteModal(true)}
+                  >
+                    <SemanticBDIIcon semantic="notifications" size={16} className="mr-2" />
+                    Invite Organization
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
@@ -958,6 +1044,188 @@ export default function AdminOrganizationsPage() {
                       <>
                         <SemanticBDIIcon semantic="notifications" size={16} className="mr-2 brightness-0 invert" />
                         Send Invitation
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Add Organization Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <SemanticBDIIcon semantic="plus" size={24} className="mr-2" />
+                Add New Organization
+              </CardTitle>
+              <CardDescription>Create a new organization with immediate access - no invitation required</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Basic Organization Info */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Organization Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="addCompanyName">Company Name *</Label>
+                      <Input 
+                        id="addCompanyName" 
+                        placeholder="ACME Manufacturing Corp" 
+                        value={addForm.companyName}
+                        onChange={(e) => setAddForm(prev => ({ ...prev, companyName: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="addOrganizationCode">Organization Code *</Label>
+                      <Input 
+                        id="addOrganizationCode" 
+                        placeholder="ACME" 
+                        value={addForm.organizationCode}
+                        onChange={(e) => setAddForm(prev => ({ ...prev, organizationCode: e.target.value.toUpperCase() }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="addOrganizationType">Organization Type *</Label>
+                      <select 
+                        id="addOrganizationType"
+                        value={addForm.organizationType}
+                        onChange={(e) => setAddForm(prev => ({ ...prev, organizationType: e.target.value as any }))}
+                        className="mt-1 w-full h-9 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1 text-sm"
+                      >
+                        <option value="contractor">Contractor</option>
+                        <option value="shipping_logistics">Shipping & Logistics</option>
+                        <option value="oem_partner">OEM Partner</option>
+                        <option value="rd_partner">R&D Partner</option>
+                        <option value="distributor">Distributor</option>
+                        <option value="retail_partner">Retail Partner</option>
+                        <option value="threpl_partner">3PL Partner</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Admin Contact Info */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Administrator Contact</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <SemanticBDIIcon semantic="check" size={16} className="text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">
+                        Organization and admin user will be created immediately with full access
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="addAdminName">Admin Full Name *</Label>
+                      <Input 
+                        id="addAdminName" 
+                        placeholder="John Smith" 
+                        value={addForm.adminName}
+                        onChange={(e) => setAddForm(prev => ({ ...prev, adminName: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="addAdminEmail">Admin Email *</Label>
+                      <Input 
+                        id="addAdminEmail" 
+                        type="email" 
+                        placeholder="john.smith@company.com" 
+                        value={addForm.adminEmail}
+                        onChange={(e) => setAddForm(prev => ({ ...prev, adminEmail: e.target.value }))}
+                        className="mt-1" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Capabilities Selection */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Access Capabilities</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Select which features and capabilities this organization will have access to. You can modify these later.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {AVAILABLE_CAPABILITIES.map((capability) => (
+                      <div 
+                        key={capability.id}
+                        className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                          addForm.capabilities.includes(capability.id)
+                            ? 'border-bdi-green-1 bg-bdi-green-1/5'
+                            : 'border-gray-200 hover:border-bdi-green-1/50'
+                        }`}
+                        onClick={() => toggleCapability(capability.id, 'add')}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 ${
+                            addForm.capabilities.includes(capability.id)
+                              ? 'border-bdi-green-1 bg-bdi-green-1'
+                              : 'border-gray-300'
+                          }`}>
+                            {addForm.capabilities.includes(capability.id) && (
+                              <SemanticBDIIcon semantic="settings" size={12} className="text-white brightness-0 invert" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{capability.name}</h4>
+                            <p className="text-xs text-gray-500 mt-1">{capability.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Optional Description */}
+                <div>
+                  <Label htmlFor="addDescription">Partnership Description (Optional)</Label>
+                  <textarea
+                    id="addDescription"
+                    placeholder="Brief description of the partnership and collaboration goals"
+                    value={addForm.description}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bdi-green-1"
+                    rows={3}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowAddModal(false)}
+                    disabled={isAdding}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="bg-bdi-green-1 hover:bg-bdi-green-2" 
+                    onClick={handleAddOrganization}
+                    disabled={isAdding}
+                  >
+                    {isAdding ? (
+                      <>
+                        <SemanticBDIIcon semantic="sync" size={16} className="mr-2 brightness-0 invert animate-spin" />
+                        Creating Organization...
+                      </>
+                    ) : (
+                      <>
+                        <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+                        Create Organization
                       </>
                     )}
                   </Button>
