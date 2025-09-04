@@ -713,7 +713,11 @@ export default function ShipmentsPage() {
                           onClick={() => setSelectedShipment(forecast)}
                         >
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
-                          Details
+                          {(() => {
+                            const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === forecast.id);
+                            const localShipment = createdShipments.get(forecast.id);
+                            return (existingShipment || localShipment) ? 'Edit' : 'Create';
+                          })()}
                         </Button>
                       </div>
                     </div>
