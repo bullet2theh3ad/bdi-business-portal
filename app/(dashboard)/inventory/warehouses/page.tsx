@@ -90,18 +90,21 @@ export default function WarehousesPage() {
   const handleCreateWarehouse = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      // Collect selected capabilities from checkboxes
-      const selectedCapabilities = formData.getAll('capabilities') as string[];
+      // Collect main capabilities
+      const mainCapabilities = formData.getAll('mainCapabilities') as string[];
       
-      // Collect other capabilities (existing checkboxes)
-      const additionalCapabilities = {
+      // Collect shipping capabilities (matches existing database structure)
+      const shippingCapabilities = {
         airFreight: formData.get('airFreight') === 'on',
         seaFreight: formData.get('seaFreight') === 'on',
         truckLoading: formData.get('truckLoading') === 'on',
         railAccess: formData.get('railAccess') === 'on',
-        coldStorage: formData.get('coldStorage') === 'on',
         hazmatHandling: formData.get('hazmatHandling') === 'on',
+        coldStorage: formData.get('coldStorage') === 'on', // Can be both main and shipping capability
       };
+
+      // Determine primary type (use first selected main capability or default to 'warehouse')
+      const primaryType = mainCapabilities.length > 0 ? mainCapabilities[0] : 'warehouse';
 
       const response = await fetch('/api/inventory/warehouses', {
         method: 'POST',
@@ -109,18 +112,39 @@ export default function WarehousesPage() {
         body: JSON.stringify({
           warehouseCode: formData.get('warehouseCode'),
           name: formData.get('name'),
-          capabilities: selectedCapabilities, // Send array of selected capabilities
+          type: primaryType, // Primary warehouse type from main capabilities
           address: formData.get('address'),
           city: formData.get('city'),
           state: formData.get('state'),
           country: formData.get('country'),
           postalCode: formData.get('postalCode'),
           timezone: formData.get('timezone'),
-          additionalCapabilities,
-          operatingHours: formData.get('operatingHours'),
-          contactName: formData.get('contactName'),
-          contactEmail: formData.get('contactEmail'),
-          contactPhone: formData.get('contactPhone'),
+          capabilities: shippingCapabilities,
+          mainCapabilities: mainCapabilities, // Send main capabilities array for future use
+          operatingHours: `${formData.get('openTime')} - ${formData.get('closeTime')}`,
+          contacts: [
+            {
+              name: formData.get('contactName1'),
+              email: formData.get('contactEmail1'),
+              phone: formData.get('contactPhone1'),
+              extension: formData.get('contactExt1'),
+              isPrimary: true
+            },
+            ...(formData.get('contactName2') ? [{
+              name: formData.get('contactName2'),
+              email: formData.get('contactEmail2'),
+              phone: formData.get('contactPhone2'),
+              extension: formData.get('contactExt2'),
+              isPrimary: false
+            }] : []),
+            ...(formData.get('contactName3') ? [{
+              name: formData.get('contactName3'),
+              email: formData.get('contactEmail3'),
+              phone: formData.get('contactPhone3'),
+              extension: formData.get('contactExt3'),
+              isPrimary: false
+            }] : [])
+          ].filter(contact => contact.name && contact.email), // Only include contacts with name and email
           maxPalletHeight: parseInt(formData.get('maxPalletHeight') as string) || 0,
           maxPalletWeight: parseInt(formData.get('maxPalletWeight') as string) || 0,
           loadingDockCount: parseInt(formData.get('loadingDockCount') as string) || 0,
@@ -273,17 +297,33 @@ export default function WarehousesPage() {
                         <Badge className="bg-indigo-100 text-indigo-800">
                           {warehouse.warehouseCode}
                         </Badge>
-                        {/* Display multiple capabilities as badges */}
-                        {Array.isArray(warehouse.capabilities) ? (
-                          warehouse.capabilities.map((capability: string, index: number) => (
-                            <Badge key={index} className={getTypeColor(capability)}>
-                              {capability.replace('_', ' ')}
-                            </Badge>
-                          ))
-                        ) : (
-                          <Badge className={getTypeColor(warehouse.capabilities || 'warehouse')}>
-                            {(warehouse.capabilities || 'warehouse').replace('_', ' ')}
-                          </Badge>
+                        {/* Display primary type badge */}
+                        <Badge className={getTypeColor(warehouse.type)}>
+                          {warehouse.type.replace('_', ' ')}
+                        </Badge>
+                        
+                        {/* Display additional capabilities as badges */}
+                        {warehouse.capabilities && typeof warehouse.capabilities === 'object' && (
+                          <>
+                            {warehouse.capabilities.airFreight && (
+                              <Badge className="bg-sky-100 text-sky-800">✈️ Air</Badge>
+                            )}
+                            {warehouse.capabilities.seaFreight && (
+                              <Badge className="bg-blue-100 text-blue-800">🚢 Sea</Badge>
+                            )}
+                            {warehouse.capabilities.truckLoading && (
+                              <Badge className="bg-gray-100 text-gray-800">🚛 Truck</Badge>
+                            )}
+                            {warehouse.capabilities.railAccess && (
+                              <Badge className="bg-amber-100 text-amber-800">🚂 Rail</Badge>
+                            )}
+                            {warehouse.capabilities.coldStorage && (
+                              <Badge className="bg-cyan-100 text-cyan-800">❄️ Cold</Badge>
+                            )}
+                            {warehouse.capabilities.hazmatHandling && (
+                              <Badge className="bg-orange-100 text-orange-800">⚠️ Hazmat</Badge>
+                            )}
+                          </>
                         )}
                       </div>
                       
@@ -373,7 +413,7 @@ export default function WarehousesPage() {
           }}>
             
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <Label htmlFor="warehouseCode">Warehouse Code *</Label>
                 <Input
@@ -387,7 +427,7 @@ export default function WarehousesPage() {
                   Unique identifier for this warehouse
                 </div>
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="name">Warehouse Name *</Label>
                 <Input
                   id="name"
@@ -397,36 +437,111 @@ export default function WarehousesPage() {
                   className="mt-1"
                 />
               </div>
+            </div>
+
+            {/* Warehouse Capabilities - Full Width Professional Layout */}
+            <div className="space-y-6">
               <div>
-                <Label htmlFor="capabilities">Warehouse Capabilities *</Label>
-                <div className="mt-1 space-y-2 p-3 border border-gray-300 rounded-md">
-                  <p className="text-sm text-gray-600 mb-3">Select all capabilities this warehouse provides:</p>
-                  
-                  {[
-                    { value: 'warehouse', label: 'Warehouse' },
-                    { value: 'distribution_center', label: 'Distribution Center' },
-                    { value: 'fulfillment_center', label: 'Fulfillment Center' },
-                    { value: 'cross_dock', label: 'Cross Dock' },
-                    { value: 'manufacturing', label: 'Manufacturing' },
-                    { value: 'cold_storage', label: 'Cold Storage' },
-                    { value: 'hazmat_storage', label: 'Hazmat Storage' }
-                  ].map((capability) => (
-                    <div key={capability.value} className="flex items-center space-x-2">
+                <Label className="text-lg font-medium text-gray-900">Warehouse Capabilities *</Label>
+                <p className="text-sm text-gray-600 mt-1">Select all capabilities this warehouse provides</p>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Main Warehouse Capabilities */}
+                <div className="p-6 bg-indigo-50 border border-indigo-200 rounded-lg">
+                  <h4 className="text-base font-medium text-indigo-800 mb-4 flex items-center">
+                    🏢 Warehouse Operations
+                  </h4>
+                  <div className="space-y-3">
+                    {[
+                      { value: 'warehouse', label: 'General Warehouse' },
+                      { value: 'distribution_center', label: 'Distribution Center' },
+                      { value: 'fulfillment_center', label: 'Fulfillment Center' },
+                      { value: 'cross_dock', label: 'Cross Dock' },
+                      { value: 'manufacturing', label: 'Manufacturing' },
+                      { value: 'cold_storage', label: 'Cold Storage' }
+                    ].map((capability) => (
+                      <div key={capability.value} className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id={capability.value}
+                          name="mainCapabilities"
+                          value={capability.value}
+                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        />
+                        <label 
+                          htmlFor={capability.value}
+                          className="text-sm font-medium text-gray-700 cursor-pointer"
+                        >
+                          {capability.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shipping Capabilities */}
+                <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-base font-medium text-blue-800 mb-4 flex items-center">
+                    🚚 Shipping Capabilities
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
                       <input
                         type="checkbox"
-                        id={`capability-${capability.value}`}
-                        name="capabilities"
-                        value={capability.value}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        id="airFreight"
+                        name="airFreight"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <label 
-                        htmlFor={`capability-${capability.value}`}
-                        className="text-sm font-medium text-gray-700 cursor-pointer"
-                      >
-                        {capability.label}
+                      <label htmlFor="airFreight" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        ✈️ Air Freight
                       </label>
                     </div>
-                  ))}
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="seaFreight"
+                        name="seaFreight"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="seaFreight" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        🚢 Sea Freight
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="truckLoading"
+                        name="truckLoading"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="truckLoading" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        🚛 Truck Loading
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="railAccess"
+                        name="railAccess"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="railAccess" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        🚂 Rail Access
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="hazmatHandling"
+                        name="hazmatHandling"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="hazmatHandling" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        ⚠️ Hazmat Handling
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -483,37 +598,247 @@ export default function WarehousesPage() {
               </div>
             </div>
 
-            {/* Shipping Capabilities */}
-            <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
-              <h4 className="font-semibold text-indigo-800 mb-4 flex items-center">
-                <SemanticBDIIcon semantic="shipping" size={16} className="mr-2" />
-                Shipping Capabilities
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" name="airFreight" className="rounded border-gray-300" />
-                  <span className="text-sm">✈️ Air Freight</span>
+            {/* Contact Information - Multiple Contacts */}
+            <div className="space-y-6">
+              <div>
+                <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
+                <p className="text-sm text-gray-600 mt-1">Primary contact is required. Add additional contacts as needed.</p>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Primary Contact (Required) */}
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="contactName1">Contact Name *</Label>
+                      <Input
+                        id="contactName1"
+                        name="contactName1"
+                        placeholder="John Smith"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactEmail1">Contact Email *</Label>
+                      <Input
+                        id="contactEmail1"
+                        name="contactEmail1"
+                        type="email"
+                        placeholder="john@company.com"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactPhone1">Phone Number</Label>
+                      <Input
+                        id="contactPhone1"
+                        name="contactPhone1"
+                        placeholder="+1 (555) 123-4567"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactExt1">Extension</Label>
+                      <Input
+                        id="contactExt1"
+                        name="contactExt1"
+                        placeholder="1234"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Contact 2 (Optional) */}
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <h4 className="text-base font-medium text-gray-700 mb-4">📞 Additional Contact 2 (Optional)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="contactName2">Contact Name</Label>
+                      <Input
+                        id="contactName2"
+                        name="contactName2"
+                        placeholder="Jane Doe"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactEmail2">Contact Email</Label>
+                      <Input
+                        id="contactEmail2"
+                        name="contactEmail2"
+                        type="email"
+                        placeholder="jane@company.com"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactPhone2">Phone Number</Label>
+                      <Input
+                        id="contactPhone2"
+                        name="contactPhone2"
+                        placeholder="+1 (555) 123-4567"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactExt2">Extension</Label>
+                      <Input
+                        id="contactExt2"
+                        name="contactExt2"
+                        placeholder="5678"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Contact 3 (Optional) */}
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <h4 className="text-base font-medium text-gray-700 mb-4">📞 Additional Contact 3 (Optional)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="contactName3">Contact Name</Label>
+                      <Input
+                        id="contactName3"
+                        name="contactName3"
+                        placeholder="Bob Wilson"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactEmail3">Contact Email</Label>
+                      <Input
+                        id="contactEmail3"
+                        name="contactEmail3"
+                        type="email"
+                        placeholder="bob@company.com"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactPhone3">Phone Number</Label>
+                      <Input
+                        id="contactPhone3"
+                        name="contactPhone3"
+                        placeholder="+1 (555) 123-4567"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contactExt3">Extension</Label>
+                      <Input
+                        id="contactExt3"
+                        name="contactExt3"
+                        placeholder="9012"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Operating Hours with Time Picker */}
+            <div className="space-y-4">
+              <Label className="text-lg font-medium text-gray-900">Operating Hours</Label>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="openTime">Opening Time</Label>
+                  <select
+                    id="openTime"
+                    name="openTime"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
+                  >
+                    <option value="">Select Opening Time</option>
+                    {Array.from({ length: 96 }, (_, i) => {
+                      const hours = Math.floor(i / 4);
+                      const minutes = (i % 4) * 15;
+                      const time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                      const displayTime = new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      return (
+                        <option key={time} value={time}>{displayTime}</option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="closeTime">Closing Time</Label>
+                  <select
+                    id="closeTime"
+                    name="closeTime"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
+                  >
+                    <option value="">Select Closing Time</option>
+                    {Array.from({ length: 96 }, (_, i) => {
+                      const hours = Math.floor(i / 4);
+                      const minutes = (i % 4) * 15;
+                      const time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                      const displayTime = new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      return (
+                        <option key={time} value={time}>{displayTime}</option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="timezone">Timezone</Label>
+                <select
+                  id="timezone"
+                  name="timezone"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
+                >
+                  <option value="UTC">UTC</option>
+                  <option value="America/New_York">Eastern Time</option>
+                  <option value="America/Chicago">Central Time</option>
+                  <option value="America/Denver">Mountain Time</option>
+                  <option value="America/Los_Angeles">Pacific Time</option>
+                  <option value="Europe/London">London Time</option>
+                  <option value="Asia/Shanghai">Shanghai Time</option>
+                  <option value="Asia/Tokyo">Tokyo Time</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Document Upload */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-lg font-medium text-gray-900">Warehouse Documents</Label>
+                <p className="text-sm text-gray-600 mt-1">Upload contracts, certifications, and other warehouse-specific documents</p>
+              </div>
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
+                <SemanticBDIIcon semantic="upload" size={48} className="mx-auto text-gray-400 mb-4" />
+                <p className="text-lg font-medium text-gray-700 mb-2">Drop warehouse documents here</p>
+                <p className="text-sm text-gray-500 mb-4">or click to browse files</p>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                  className="hidden"
+                  id="warehouseDocuments"
+                  name="warehouseDocuments"
+                />
+                <label
+                  htmlFor="warehouseDocuments"
+                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer"
+                >
+                  <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
+                  Choose Files
                 </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" name="seaFreight" className="rounded border-gray-300" />
-                  <span className="text-sm">🚢 Sea Freight</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" name="truckLoading" className="rounded border-gray-300" />
-                  <span className="text-sm">🚛 Truck Loading</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" name="railAccess" className="rounded border-gray-300" />
-                  <span className="text-sm">🚂 Rail Access</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" name="coldStorage" className="rounded border-gray-300" />
-                  <span className="text-sm">❄️ Cold Storage</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" name="hazmatHandling" className="rounded border-gray-300" />
-                  <span className="text-sm">⚠️ Hazmat Handling</span>
-                </label>
+                <p className="text-xs text-gray-400 mt-2">PDF, DOC, XLS, PNG, JPG files up to 5MB each</p>
               </div>
             </div>
 
@@ -564,67 +889,6 @@ export default function WarehousesPage() {
               </div>
             </div>
 
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <Label htmlFor="contactName">Contact Name</Label>
-                <Input
-                  id="contactName"
-                  name="contactName"
-                  placeholder="Warehouse manager name"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="contactEmail">Contact Email</Label>
-                <Input
-                  id="contactEmail"
-                  name="contactEmail"
-                  type="email"
-                  placeholder="manager@warehouse.com"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="contactPhone">Contact Phone</Label>
-                <Input
-                  id="contactPhone"
-                  name="contactPhone"
-                  placeholder="+1 555 123 4567"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label htmlFor="operatingHours">Operating Hours</Label>
-                <Input
-                  id="operatingHours"
-                  name="operatingHours"
-                  placeholder="8:00 AM - 6:00 PM UTC+8"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="timezone">Timezone</Label>
-                <select
-                  id="timezone"
-                  name="timezone"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
-                >
-                  <option value="UTC">UTC</option>
-                  <option value="America/New_York">Eastern Time (EST/EDT)</option>
-                  <option value="America/Chicago">Central Time (CST/CDT)</option>
-                  <option value="America/Denver">Mountain Time (MST/MDT)</option>
-                  <option value="America/Los_Angeles">Pacific Time (PST/PDT)</option>
-                  <option value="Asia/Shanghai">China Standard Time</option>
-                  <option value="Asia/Tokyo">Japan Standard Time</option>
-                  <option value="Europe/London">Greenwich Mean Time</option>
-                  <option value="Europe/Berlin">Central European Time</option>
-                </select>
-              </div>
-            </div>
 
             <div className="mb-6">
               <Label htmlFor="notes">Notes & Special Information</Label>

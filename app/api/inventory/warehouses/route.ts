@@ -197,8 +197,8 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Creating warehouse:', body);
 
     // Validate required fields
-    if (!body.warehouseCode || !body.name || !body.capabilities || !Array.isArray(body.capabilities) || body.capabilities.length === 0 || !body.address || !body.city || !body.country) {
-      return NextResponse.json({ error: 'Missing required fields. At least one capability must be selected.' }, { status: 400 });
+    if (!body.warehouseCode || !body.name || !body.type || !body.address || !body.city || !body.country) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Create warehouse in database
@@ -207,14 +207,14 @@ export async function POST(request: NextRequest) {
       .insert({
         warehouse_code: body.warehouseCode,
         name: body.name,
-        capabilities: JSON.stringify(body.capabilities), // Store capabilities array as JSON
+        type: body.type, // Primary warehouse type
         address: body.address,
         city: body.city,
         state: body.state || null,
         country: body.country,
         postal_code: body.postalCode || null,
         timezone: body.timezone || 'UTC',
-        additional_capabilities: body.additionalCapabilities || {},
+        capabilities: body.capabilities || {},
         operating_hours: body.operatingHours || null,
         contact_name: body.contactName || null,
         contact_email: body.contactEmail || null,

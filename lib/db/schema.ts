@@ -755,7 +755,7 @@ export const warehouses = pgTable('warehouses', {
   id: uuid('id').defaultRandom().primaryKey(),
   warehouseCode: varchar('warehouse_code', { length: 50 }).notNull().unique(),
   name: varchar('name', { length: 255 }).notNull(),
-  capabilities: jsonb('capabilities').notNull().default('[]'), // Array of warehouse capabilities
+  type: varchar('type', { length: 50 }).notNull(), // Primary warehouse type
   
   // Location Information
   address: text('address').notNull(),
@@ -765,15 +765,8 @@ export const warehouses = pgTable('warehouses', {
   postalCode: varchar('postal_code', { length: 20 }),
   timezone: varchar('timezone', { length: 50 }).default('UTC'),
   
-  // Shipping Capabilities
-  capabilities: jsonb('capabilities').notNull().default({
-    airFreight: false,
-    seaFreight: false,
-    truckLoading: false,
-    railAccess: false,
-    coldStorage: false,
-    hazmatHandling: false
-  }),
+  // Operational Capabilities (boolean flags)
+  capabilities: jsonb('capabilities').notNull().default('{"airFreight": false, "seaFreight": false, "truckLoading": false, "railAccess": false, "coldStorage": false, "hazmatHandling": false}'),
   
   // Operational Details
   operatingHours: varchar('operating_hours', { length: 100 }),
