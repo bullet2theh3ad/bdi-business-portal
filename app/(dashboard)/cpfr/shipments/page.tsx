@@ -136,10 +136,14 @@ export default function ShipmentsPage() {
           fetch(`/api/cpfr/shipments/${shipmentId}/documents`)
             .then(res => res.json())
             .then(docs => {
-              console.log('🔍 Loaded documents:', docs);
+              console.log('🔍 Loaded documents from API:', docs);
+              console.log('🔍 Setting documents for forecast ID:', selectedShipment.id);
               setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs)));
+              console.log('🔍 Documents state updated');
             })
             .catch(err => console.error('Error loading existing documents:', err));
+        } else {
+          console.log('🔍 No shipment ID found - no documents to load');
         }
       } else {
         console.log('🔍 No existing shipment found - creating new');
@@ -159,6 +163,11 @@ export default function ShipmentsPage() {
           overrideDefaults: false
         });
       }
+    } else {
+      // Clear documents when modal closes
+      console.log('🔍 Modal closed - clearing documents state');
+      setUploadedDocumentsFromDB(new Map());
+      setShipmentDocuments(new Map());
     }
   }, [selectedShipment, actualShipments, createdShipments]);
 
