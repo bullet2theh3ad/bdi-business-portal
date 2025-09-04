@@ -91,6 +91,13 @@ export default function WarehousesPage() {
   // Load existing files when opening edit modal
   useEffect(() => {
     if (selectedWarehouse) {
+      // Check if we should show extra contact form (if there are 2+ contacts)
+      if (selectedWarehouse.contacts && selectedWarehouse.contacts.length > 1) {
+        setShowExtraContact(true);
+      } else {
+        setShowExtraContact(false);
+      }
+
       // Fetch existing documents for this warehouse
       fetch(`/api/inventory/warehouses/${selectedWarehouse.id}/documents`)
         .then(res => res.json())
@@ -103,6 +110,7 @@ export default function WarehousesPage() {
       // Clear files when modal closes
       setUploadedFiles([]);
       setWarehouseFiles([]);
+      setShowExtraContact(false);
     }
   }, [selectedWarehouse]);
 
@@ -1429,6 +1437,7 @@ export default function WarehousesPage() {
                         <Input
                           id="extraContactName"
                           name="contactName2"
+                          defaultValue={selectedWarehouse?.contacts?.[1]?.name || ''}
                           placeholder="Additional contact name"
                           className="mt-1"
                         />
@@ -1439,6 +1448,7 @@ export default function WarehousesPage() {
                           id="extraContactEmail"
                           name="contactEmail2"
                           type="email"
+                          defaultValue={selectedWarehouse?.contacts?.[1]?.email || ''}
                           placeholder="additional@company.com"
                           className="mt-1"
                         />
@@ -1448,6 +1458,7 @@ export default function WarehousesPage() {
                         <Input
                           id="extraContactPhone"
                           name="contactPhone2"
+                          defaultValue={selectedWarehouse?.contacts?.[1]?.phone || ''}
                           placeholder="+1 (555) 123-4567"
                           className="mt-1"
                         />
@@ -1457,6 +1468,7 @@ export default function WarehousesPage() {
                         <Input
                           id="extraContactExt"
                           name="contactExt2"
+                          defaultValue={selectedWarehouse?.contacts?.[1]?.extension || ''}
                           placeholder="5678"
                           className="mt-1"
                         />
