@@ -60,6 +60,11 @@ export default function AdminOrganizationsPage() {
     email: string;
     role: 'admin' | 'member';
   }>>([{ name: '', email: '', role: 'member' }]);
+  
+  // User management state
+  const [showUserManagement, setShowUserManagement] = useState(false);
+  const [selectedOrgUsers, setSelectedOrgUsers] = useState<any>(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [inviteForm, setInviteForm] = useState<OrganizationInvitation>({
     companyName: '',
     organizationCode: '',
@@ -207,6 +212,29 @@ ${result.email?.sent
       alert('Failed to create organization. Please try again.');
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleManageUsers = async (org: any) => {
+    setIsLoadingUsers(true);
+    setShowUserManagement(true);
+    
+    try {
+      const response = await fetch(`/api/admin/organizations/${org.id}/users`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch organization users');
+      }
+      
+      const userData = await response.json();
+      setSelectedOrgUsers(userData);
+      console.log('Loaded organization users:', userData);
+    } catch (error) {
+      console.error('Error loading organization users:', error);
+      alert('Failed to load organization users. Please try again.');
+      setShowUserManagement(false);
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
@@ -837,7 +865,11 @@ ${result.email?.sent
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Button variant="outline" className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/10"
+                      onClick={() => handleManageUsers(selectedOrg)}
+                    >
                       <SemanticBDIIcon semantic="users" size={20} />
                       <span className="text-sm">Manage Users</span>
                     </Button>
@@ -1665,6 +1697,294 @@ ${result.email?.sent
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* User Management Modal */}
+      {showUserManagement && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <SemanticBDIIcon semantic="users" size={24} className="mr-2" />
+                  User Management
+                  {selectedOrgUsers && (
+                    <span className="ml-2 text-lg font-normal text-gray-600">
+                      - {selectedOrgUsers.organization?.name} ({selectedOrgUsers.organization?.code})
+                    </span>
+                  )}
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setShowUserManagement(false);
+                    setSelectedOrgUsers(null);
+                  }}
+                >
+                  ×
+                </Button>
+              </div>
+              <CardDescription>
+                Manage users, roles, and access for this organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <SemanticBDIIcon semantic="sync" size={32} className="mx-auto mb-4 text-muted-foreground animate-spin" />
+                    <p className="text-muted-foreground">Loading organization users...</p>
+                  </div>
+                </div>
+              ) : selectedOrgUsers ? (
+                <div className="space-y-6">
+                  {/* Organization Summary */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{selectedOrgUsers.totalUsers}</div>
+                        <div className="text-sm text-blue-800">Total Users</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{selectedOrgUsers.activeUsers}</div>
+                        <div className="text-sm text-green-800">Active Users</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-purple-600">{selectedOrgUsers.adminUsers}</div>
+                        <div className="text-sm text-purple-800">Admin Users</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {selectedOrgUsers.totalUsers - selectedOrgUsers.activeUsers}
+                        </div>
+                        <div className="text-sm text-orange-800">Pending Users</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current Users List */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Current Users</h3>
+                    {selectedOrgUsers.users && selectedOrgUsers.users.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedOrgUsers.users.map((user: any) => (
+                          <div key={user.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <SemanticBDIIcon semantic="profile" size={16} className="text-gray-500" />
+                                  <span className="font-medium">{user.name}</span>
+                                  <Badge variant={user.membershipRole === 'admin' ? 'default' : 'secondary'}
+                                         className={user.membershipRole === 'admin' ? 'bg-bdi-green-1 text-white' : ''}>
+                                    {user.membershipRole?.toUpperCase()}
+                                  </Badge>
+                                  <Badge variant={user.isActive ? 'default' : 'secondary'}
+                                         className={user.isActive ? 'bg-green-600 text-white' : 'bg-orange-500 text-white'}>
+                                    {user.isActive ? 'ACTIVE' : 'PENDING'}
+                                  </Badge>
+                                </div>
+                                <div className="text-sm text-gray-500 space-y-1">
+                                  <div>📧 {user.email}</div>
+                                  {user.title && <div>💼 {user.title}</div>}
+                                  {user.department && <div>🏢 {user.department}</div>}
+                                  {user.phone && <div>📞 {user.phone}</div>}
+                                  <div>📅 Joined {new Date(user.createdAt).toLocaleDateString()}</div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-300 hover:bg-blue-50">
+                                  <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                  Edit
+                                </Button>
+                                {!user.isActive ? (
+                                  <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50">
+                                    <SemanticBDIIcon semantic="check" size={14} className="mr-1" />
+                                    Activate
+                                  </Button>
+                                ) : (
+                                  <Button variant="outline" size="sm" className="text-orange-600 border-orange-300 hover:bg-orange-50">
+                                    <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                    Deactivate
+                                  </Button>
+                                )}
+                                <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+                                  <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                        <SemanticBDIIcon semantic="users" size={32} className="mx-auto mb-2 text-gray-400" />
+                        <p>No users found in this organization</p>
+                        <p className="text-xs">Add users using the invitation section below</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add New Users Section */}
+                  <Separator />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Add New Users</h3>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <SemanticBDIIcon semantic="plus" size={16} className="text-green-600" />
+                        <span className="text-sm font-medium text-green-800">
+                          Add users to {selectedOrgUsers?.organization?.name}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {orgUserInvites.map((invite, index) => (
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-white rounded border">
+                            <div>
+                              <Label className="text-xs">Full Name *</Label>
+                              <Input
+                                value={invite.name}
+                                onChange={(e) => {
+                                  const updated = [...orgUserInvites];
+                                  updated[index].name = e.target.value;
+                                  setOrgUserInvites(updated);
+                                }}
+                                placeholder="John Smith"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Email Address *</Label>
+                              <Input
+                                type="email"
+                                value={invite.email}
+                                onChange={(e) => {
+                                  const updated = [...orgUserInvites];
+                                  updated[index].email = e.target.value;
+                                  setOrgUserInvites(updated);
+                                }}
+                                placeholder="john@company.com"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Role</Label>
+                              <select
+                                value={invite.role}
+                                onChange={(e) => {
+                                  const updated = [...orgUserInvites];
+                                  updated[index].role = e.target.value as 'admin' | 'member';
+                                  setOrgUserInvites(updated);
+                                }}
+                                className="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm"
+                              >
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                            </div>
+                            <div className="flex items-end">
+                              {orgUserInvites.length > 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setOrgUserInvites(orgUserInvites.filter((_, i) => i !== index));
+                                  }}
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="flex justify-between">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setOrgUserInvites([...orgUserInvites, { name: '', email: '', role: 'member' }]);
+                            }}
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                            Add Another User
+                          </Button>
+                          
+                          <Button
+                            onClick={async () => {
+                              const validInvites = orgUserInvites.filter(inv => inv.name && inv.email);
+                              
+                              if (validInvites.length === 0) {
+                                alert('Please add at least one valid user (name and email required)');
+                                return;
+                              }
+
+                              try {
+                                // Add users to the specific organization
+                                for (const invite of validInvites) {
+                                  const response = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      name: invite.name,
+                                      email: invite.email,
+                                      role: invite.role,
+                                    })
+                                  });
+
+                                  if (!response.ok) {
+                                    const error = await response.json();
+                                    throw new Error(`Failed to add ${invite.email}: ${error.message}`);
+                                  }
+                                }
+
+                                alert(`Successfully added ${validInvites.length} users to ${selectedOrgUsers.organization.name}!`);
+                                
+                                // Refresh the user list
+                                handleManageUsers(selectedOrgUsers.organization);
+                                
+                                // Clear the invitation form
+                                setOrgUserInvites([{ name: '', email: '', role: 'member' }]);
+                              } catch (error) {
+                                console.error('Error adding users:', error);
+                                alert(`Error adding users: ${error}`);
+                              }
+                            }}
+                            disabled={!orgUserInvites.some(inv => inv.name && inv.email)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                            Add Users ({orgUserInvites.filter(inv => inv.name && inv.email).length})
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <SemanticBDIIcon semantic="users" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Failed to load organization users</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4" 
+                      onClick={() => {
+                        setShowUserManagement(false);
+                        setSelectedOrgUsers(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
