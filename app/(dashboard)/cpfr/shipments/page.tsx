@@ -188,6 +188,17 @@ export default function ShipmentsPage() {
     }
   }, [selectedShipment, actualShipments, createdShipments]);
 
+  // Watch for changes in uploadedDocumentsFromDB and update display state
+  useEffect(() => {
+    if (selectedShipment) {
+      const docs = uploadedDocumentsFromDB.get(selectedShipment.id);
+      if (docs && docs.length > 0) {
+        console.log('👀 WATCHER - Documents found for shipment, updating display state:', docs);
+        setDocumentsForCurrentShipment(docs);
+      }
+    }
+  }, [uploadedDocumentsFromDB, selectedShipment]);
+
   // Drag and drop for cost documents (shipment-specific)
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (selectedShipment) {
