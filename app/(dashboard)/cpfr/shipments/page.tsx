@@ -144,9 +144,13 @@ export default function ShipmentsPage() {
               console.log('🔍 Documents array length:', docs?.length || 0);
               
               // Use same method as successful update callback
+              console.log('🔍 INITIAL LOAD PATH - Setting documents state:');
+              console.log('🔍 INITIAL LOAD PATH - Docs to set:', docs);
+              console.log('🔍 INITIAL LOAD PATH - Forecast ID:', selectedShipment.id);
               setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs || [])));
               setDocumentsForCurrentShipment(docs || []);
-              console.log('🔍 Documents state updated - using same method as update callback');
+              console.log('🔍 INITIAL LOAD PATH - State updated');
+              console.log('🔍 INITIAL LOAD PATH - documentsForCurrentShipment set to:', docs || []);
               setLoadingDocuments(false);
             })
             .catch(err => {
@@ -368,11 +372,14 @@ export default function ShipmentsPage() {
               const fetchDocsResponse = await fetch(`/api/cpfr/shipments/${result.shipment.id}/documents`);
               if (fetchDocsResponse.ok) {
                 const uploadedDocs = await fetchDocsResponse.json();
-                console.log('📎 Fetched documents after upload:', uploadedDocs);
+                console.log('📎 UPDATE PATH - Fetched documents after upload:', uploadedDocs);
+                console.log('📎 UPDATE PATH - Forecast ID:', selectedShipment.id);
+                console.log('📎 UPDATE PATH - Setting documents state:');
                 // Use selectedShipment.id (forecast ID) as key since that's what we check in display
                 setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, uploadedDocs)));
                 setDocumentsForCurrentShipment(uploadedDocs || []);
-                console.log('📎 Set documents in state for forecast ID:', selectedShipment.id);
+                console.log('📎 UPDATE PATH - State updated');
+                console.log('📎 UPDATE PATH - documentsForCurrentShipment set to:', uploadedDocs || []);
               } else {
                 console.error('📎 Failed to fetch documents after upload:', fetchDocsResponse.status);
               }
@@ -1096,7 +1103,13 @@ export default function ShipmentsPage() {
                             )}
                             
                             {/* Show uploaded documents from database */}
-                            {!loadingDocuments && documentsForCurrentShipment.length > 0 && (
+                            {(() => {
+                              console.log('🖥️ RENDER CHECK - loadingDocuments:', loadingDocuments);
+                              console.log('🖥️ RENDER CHECK - documentsForCurrentShipment:', documentsForCurrentShipment);
+                              console.log('🖥️ RENDER CHECK - documentsForCurrentShipment.length:', documentsForCurrentShipment.length);
+                              console.log('🖥️ RENDER CHECK - Will show documents:', !loadingDocuments && documentsForCurrentShipment.length > 0);
+                              return !loadingDocuments && documentsForCurrentShipment.length > 0;
+                            })() && (
                               <div className="mt-3 pt-3 border-t border-green-200">
                                 <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
                                 <div className="space-y-1">
