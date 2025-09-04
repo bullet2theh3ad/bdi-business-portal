@@ -44,6 +44,7 @@ export default function ApiKeysPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<any>(null);
+  const [editingApiKey, setEditingApiKey] = useState<any>(null);
   const [apiKeyForm, setApiKeyForm] = useState<ApiKeyForm>({
     organizationId: '',
     keyName: '',
@@ -113,6 +114,52 @@ export default function ApiKeysPage() {
         ? prev.permissions.filter(id => id !== permissionId)
         : [...prev.permissions, permissionId]
     }));
+  };
+
+  const handleEditApiKey = (apiKey: any) => {
+    setEditingApiKey(apiKey);
+  };
+
+  const handleDeleteApiKey = async (apiKey: any) => {
+    const confirmMessage = `Are you sure you want to permanently delete the API key "${apiKey.keyName}" for ${apiKey.organizationName}? This action cannot be undone and will immediately revoke API access.`;
+    
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const response = await fetch(`/api/admin/api-keys/${apiKey.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      alert(`API key "${apiKey.keyName}" deleted successfully!`);
+      
+      // Refresh API keys list
+      mutateApiKeys();
+    } catch (error) {
+      console.error('Error deleting API key:', error);
+      alert(`Failed to delete API key: ${error}`);
+    }
+  };
+
+  const handleCopyApiKey = (apiKey: any) => {
+    // For existing keys, we can only show the prefix since the full key isn't stored
+    const textToCopy = `API Key: ${apiKey.keyPrefix}
+Organization: ${apiKey.organizationName} (${apiKey.organizationCode})
+Rate Limit: ${apiKey.rateLimitPerHour}/hour
+Base URL: https://www.bdibusinessportal.com/api/v1
+Authentication: Authorization: Bearer ${apiKey.keyPrefix}...
+
+Note: This is only the key prefix. The full key was provided when originally generated.
+For security reasons, the full key cannot be retrieved again.
+If you need the full key, please request a new API key generation.`;
+
+    navigator.clipboard.writeText(textToCopy);
+    alert('API key information copied to clipboard!');
   };
 
   // Only BDI Super Admins can access API key management
@@ -290,38 +337,28 @@ export default function ApiKeysPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="w-full sm:w-auto justify-center sm:justify-start"
+                        className="w-full sm:w-auto justify-center sm:justify-start bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
+                        onClick={() => handleEditApiKey(key)}
                       >
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
-                        <span className="sm:hidden">Edit Permissions</span>
+                        <span className="sm:hidden">Edit & Copy</span>
                         <span className="hidden sm:inline">Edit</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="w-full sm:w-auto justify-center sm:justify-start bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
+                        className="w-full sm:w-auto justify-center sm:justify-start bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
+                        onClick={() => handleCopyApiKey(key)}
                       >
                         <SemanticBDIIcon semantic="reports" size={14} className="mr-2 sm:mr-1" />
-                        <span className="sm:hidden">View Documentation</span>
-                        <span className="hidden sm:inline">Docs</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className={`w-full sm:w-auto justify-center sm:justify-start ${
-                          key.isActive 
-                            ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-200'
-                            : 'bg-green-50 hover:bg-green-100 text-green-600 border-green-200'
-                        }`}
-                      >
-                        <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
-                        <span className="sm:hidden">{key.isActive ? 'Deactivate' : 'Activate'}</span>
-                        <span className="hidden sm:inline">{key.isActive ? 'Deactivate' : 'Activate'}</span>
+                        <span className="sm:hidden">Copy Details</span>
+                        <span className="hidden sm:inline">Copy</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="w-full sm:w-auto justify-center sm:justify-start bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                        onClick={() => handleDeleteApiKey(key)}
                       >
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-2 sm:mr-1" />
                         <span className="sm:hidden">Delete Key</span>
@@ -475,6 +512,123 @@ export default function ApiKeysPage() {
                         Generate API Key
                       </>
                     )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit API Key Modal */}
+      {editingApiKey && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <SemanticBDIIcon semantic="settings" size={24} className="mr-2" />
+                Edit API Key - {editingApiKey.keyName}
+              </CardTitle>
+              <CardDescription>View and copy API key details for {editingApiKey.organizationName}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* API Key Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-800 mb-3">🔑 API Key Details</h4>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-blue-700">Organization</Label>
+                        <div className="font-mono text-sm">{editingApiKey.organizationName} ({editingApiKey.organizationCode})</div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-blue-700">Key Name</Label>
+                        <div className="font-mono text-sm">{editingApiKey.keyName}</div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-blue-700">Key Prefix</Label>
+                        <div className="bg-white border rounded p-2 font-mono text-sm">
+                          {editingApiKey.keyPrefix}...
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-blue-700">Rate Limit</Label>
+                        <div className="text-sm">{editingApiKey.rateLimitPerHour} requests/hour</div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-blue-700">Status</Label>
+                        <Badge variant={editingApiKey.isActive ? 'default' : 'secondary'}
+                               className={editingApiKey.isActive ? 'bg-green-600 text-white' : 'bg-gray-500 text-white'}>
+                          {editingApiKey.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-blue-700">Last Used</Label>
+                        <div className="text-sm">{editingApiKey.lastUsedAt ? new Date(editingApiKey.lastUsedAt).toLocaleDateString() : 'Never'}</div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-blue-700">Permissions</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {Object.entries(editingApiKey.permissions || {})
+                          .filter(([perm, enabled]) => enabled)
+                          .map(([perm, enabled]) => (
+                            <Badge key={perm} variant="outline" className="text-xs">
+                              {API_PERMISSIONS.find(p => p.id === perm)?.name || perm}
+                            </Badge>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Integration Information */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-medium text-green-800 mb-3">🚀 Integration Information</h4>
+                  <div className="space-y-2 text-sm text-green-700">
+                    <div><strong>Base URL:</strong> <code>https://www.bdibusinessportal.com/api/v1</code></div>
+                    <div><strong>Authentication:</strong> <code>Authorization: Bearer {editingApiKey.keyPrefix}...</code></div>
+                    <div><strong>Documentation:</strong> <a href="/admin/api-keys/documentation" className="text-blue-600 hover:underline">Complete API Reference</a></div>
+                  </div>
+                </div>
+
+                {/* Security Notice */}
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <h4 className="font-medium text-orange-800 mb-2">🔒 Security Notice</h4>
+                  <p className="text-sm text-orange-700">
+                    For security reasons, the full API key cannot be retrieved after creation. 
+                    Only the prefix is stored and displayed. If the partner needs the full key again, 
+                    you must generate a new API key and delete the old one.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setEditingApiKey(null)}
+                  >
+                    Close
+                  </Button>
+                  <Button 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => handleCopyApiKey(editingApiKey)}
+                  >
+                    <SemanticBDIIcon semantic="reports" size={16} className="mr-2 brightness-0 invert" />
+                    Copy Integration Details
+                  </Button>
+                  <Button 
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={() => {
+                      handleDeleteApiKey(editingApiKey);
+                      setEditingApiKey(null);
+                    }}
+                  >
+                    <SemanticBDIIcon semantic="settings" size={16} className="mr-2 brightness-0 invert" />
+                    Delete Key
                   </Button>
                 </div>
               </div>
