@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { UserMenu } from '@/app/(dashboard)/user-menu';
 import { Button } from '@/components/ui/button';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import VersionDisplay from '@/components/VersionDisplay';
 
 export default function DashboardLayout({
   children
@@ -79,6 +80,9 @@ export default function DashboardLayout({
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* Version Display */}
+                <VersionDisplay />
+                
                 <UserMenu />
               </div>
             </div>
