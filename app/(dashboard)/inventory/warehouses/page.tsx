@@ -87,6 +87,24 @@ export default function WarehousesPage() {
   const [warehouseFiles, setWarehouseFiles] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
+  // Load existing files when opening edit modal
+  useEffect(() => {
+    if (selectedWarehouse) {
+      // Fetch existing documents for this warehouse
+      fetch(`/api/inventory/warehouses/${selectedWarehouse.id}/documents`)
+        .then(res => res.json())
+        .then(docs => {
+          console.log('📁 Loaded warehouse documents:', docs);
+          setUploadedFiles(docs || []);
+        })
+        .catch(err => console.error('Error loading warehouse documents:', err));
+    } else {
+      // Clear files when modal closes
+      setUploadedFiles([]);
+      setWarehouseFiles([]);
+    }
+  }, [selectedWarehouse]);
+
   // Dropzone for warehouse documents
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setWarehouseFiles(prev => [...prev, ...acceptedFiles]);
@@ -1426,10 +1444,36 @@ export default function WarehousesPage() {
                   <p className="text-xs text-gray-400 mt-2">PDF, DOC, XLS, PNG, JPG files up to 5MB each</p>
                 </div>
 
+                {/* Existing Uploaded Files */}
+                {uploadedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="text-sm font-medium text-green-700">📁 Existing Files ({uploadedFiles.length})</h5>
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-green-50 p-3 rounded-lg border border-green-200">
+                        <div className="flex items-center space-x-3">
+                          <SemanticBDIIcon semantic="document" size={16} className="text-green-600" />
+                          <div>
+                            <p className="text-sm font-medium text-green-900">{file.fileName}</p>
+                            <p className="text-xs text-green-600">{(file.fileSize / 1024).toFixed(1)} KB</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-green-600 hover:text-green-700 border-green-300"
+                        >
+                          Download
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* File Preview */}
                 {warehouseFiles.length > 0 && (
                   <div className="space-y-2">
-                    <h5 className="text-sm font-medium text-gray-900">Files to Upload ({warehouseFiles.length})</h5>
+                    <h5 className="text-sm font-medium text-gray-900">📤 Files to Upload ({warehouseFiles.length})</h5>
                     {warehouseFiles.map((file, index) => (
                       <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                         <div className="flex items-center space-x-3">
