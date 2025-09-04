@@ -1498,56 +1498,52 @@ export default function ShipmentsPage() {
                 </div>
 
                 {/* Show uploaded documents from database - MOVED TO CORRECT LOCATION */}
-                {(() => {
-                  console.log('🖥️ RENDER CHECK - loadingDocuments:', loadingDocuments);
-                  console.log('🖥️ RENDER CHECK - documentsForCurrentShipment:', documentsForCurrentShipment);
-                  console.log('🖥️ RENDER CHECK - documentsForCurrentShipment.length:', documentsForCurrentShipment.length);
-                  console.log('🖥️ RENDER CHECK - Will show documents:', documentsForCurrentShipment.length > 0);
-                  
-                  // TEST: Always show a test document section to verify rendering works
-                  const hasRealDocs = documentsForCurrentShipment.length > 0;
-                  const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
-                  const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
-                  
-                  return true; // Always show for testing
-                })() && (
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <h5 className="text-sm font-medium text-gray-800 mb-3">Existing Documents: (TEST MODE)</h5>
-                    <div className="space-y-2">
-                      {(() => {
-                        const hasRealDocs = documentsForCurrentShipment.length > 0;
-                        const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
-                        const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
-                        
-                        return docsToShow.map((doc: any, index: number) => (
-                          <div key={doc.id || doc.file_name || index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                            <div className="flex items-center space-x-3">
-                              <SemanticBDIIcon semantic="document" size={16} className="text-blue-600" />
-                              <span className="text-sm text-gray-800">{doc.file_name || doc.name || 'Unknown File'}</span>
-                              <span className="text-sm text-gray-500">
-                                ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => {
-                                const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                                 actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                                if (shipmentId && hasRealDocs) {
-                                  window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
-                                } else {
-                                  alert('TEST MODE - Real download not available');
-                                }
-                              }}
-                              className="text-blue-600 hover:text-blue-800 text-sm underline"
-                            >
-                              {hasRealDocs ? 'Download' : 'TEST'}
-                            </button>
-                          </div>
-                        ));
-                      })()}
-                    </div>
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h5 className="text-sm font-medium text-gray-800 mb-3">
+                    Existing Documents: (FORCED DISPLAY TEST)
+                  </h5>
+                  <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                    <p className="text-sm text-yellow-800">
+                      🖥️ Documents state: {documentsForCurrentShipment.length} documents loaded
+                    </p>
+                    <p className="text-sm text-yellow-800">
+                      🔍 Loading: {loadingDocuments ? 'true' : 'false'}
+                    </p>
                   </div>
-                )}
+                  <div className="space-y-2">
+                    {(() => {
+                      const hasRealDocs = documentsForCurrentShipment.length > 0;
+                      const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
+                      const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
+                      
+                      return docsToShow.map((doc: any, index: number) => (
+                        <div key={doc.id || doc.file_name || index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                          <div className="flex items-center space-x-3">
+                            <SemanticBDIIcon semantic="document" size={16} className="text-blue-600" />
+                            <span className="text-sm text-gray-800">{doc.file_name || doc.name || 'Unknown File'}</span>
+                            <span className="text-sm text-gray-500">
+                              ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
+                                               actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                              if (shipmentId && hasRealDocs) {
+                                window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
+                              } else {
+                                alert('TEST MODE - Real download not available');
+                              }
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-sm underline"
+                          >
+                            {hasRealDocs ? 'Download' : 'TEST'}
+                          </button>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
                 
                 <div className="flex space-x-3">
                   <Button
