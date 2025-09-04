@@ -92,6 +92,7 @@ export default function ShipmentsPage() {
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
   const [uploadedDocumentsFromDB, setUploadedDocumentsFromDB] = useState<Map<string, any[]>>(new Map());
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [documentsForCurrentShipment, setDocumentsForCurrentShipment] = useState<any[]>([]);
 
   // Load existing shipment data when opening Details modal
   useEffect(() => {
@@ -144,6 +145,7 @@ export default function ShipmentsPage() {
               
               // Force state update with new Map to trigger re-render
               setUploadedDocumentsFromDB(new Map([[selectedShipment.id, docs || []]]));
+              setDocumentsForCurrentShipment(docs || []);
               console.log('🔍 Documents state updated - forced re-render');
               setLoadingDocuments(false);
             })
@@ -178,6 +180,7 @@ export default function ShipmentsPage() {
       console.log('🔍 Modal closed - clearing documents state');
       setUploadedDocumentsFromDB(new Map());
       setShipmentDocuments(new Map());
+      setDocumentsForCurrentShipment([]);
     }
   }, [selectedShipment, actualShipments, createdShipments]);
 
@@ -317,7 +320,6 @@ export default function ShipmentsPage() {
       // Check if shipment already exists for this forecast
       const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
       const localShipment = createdShipments.get(selectedShipment.id);
-      
       const isUpdate = existingShipment || localShipment;
       const shipmentId = existingShipment?.id || localShipment?.id;
       
@@ -373,14 +375,13 @@ export default function ShipmentsPage() {
               } else {
                 console.error('📎 Failed to fetch documents after upload:', fetchDocsResponse.status);
               }
-              const isUpdate = existingShipment || localShipment;
-          alert(`Shipment ${isUpdate ? 'updated' : 'created'} successfully with ${currentDocs.length} documents uploaded!`);
+              alert(`Shipment ${isUpdate ? 'updated' : 'created'} successfully with ${currentDocs.length} documents uploaded!`);
             } else {
-              alert('Shipment created but document upload failed');
+              alert(`Shipment ${isUpdate ? 'updated' : 'created'} but document upload failed`);
             }
           } catch (docError) {
             console.error('Error uploading documents:', docError);
-            alert('Shipment created but document upload failed');
+            alert(`Shipment ${isUpdate ? 'updated' : 'created'} but document upload failed`);
           }
         } else {
           alert(isUpdate ? 'Shipment updated successfully!' : 'Shipment created successfully and logged for shipper processing!');
@@ -1094,51 +1095,34 @@ export default function ShipmentsPage() {
                             )}
                             
                             {/* Show uploaded documents from database */}
-                            {!loadingDocuments && (
-                              <div className="mt-3">
-                                {(() => {
-                                  console.log('📎 Display check - forecast ID:', selectedShipment.id);
-                                  console.log('📎 Display check - has documents:', uploadedDocumentsFromDB.has(selectedShipment.id));
-                                  console.log('📎 Display check - documents:', uploadedDocumentsFromDB.get(selectedShipment.id));
-                                  const docs = uploadedDocumentsFromDB.get(selectedShipment.id);
-                                  console.log('📎 Display check - docs exists:', !!docs);
-                                  console.log('📎 Display check - docs length:', docs?.length);
-                                  console.log('📎 Display check - will show:', !!(docs && docs.length > 0));
-                                  
-                                  if (docs && docs.length > 0) {
-                                    return (
-                                      <div className="pt-3 border-t border-green-200">
-                                        <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
-                                        <div className="space-y-1">
-                                          {docs.map((doc: any, index: number) => (
-                                            <div key={doc.id || doc.name || index} className="flex items-center justify-between bg-green-100 p-2 rounded">
-                                              <div className="flex items-center space-x-2">
-                                                <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
-                                                <span className="text-xs text-green-800">{doc.file_name || doc.name || 'Unknown File'}</span>
-                                                <span className="text-xs text-green-600">
-                                                  ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
-                                                </span>
-                                              </div>
-                                              <button
-                                                onClick={() => {
-                                                  const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                                                   actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                                                  if (shipmentId) {
-                                                    window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
-                                                  }
-                                                }}
-                                                className="text-green-600 hover:text-green-800 text-xs underline"
-                                              >
-                                                Download
-                                              </button>
-                                            </div>
-                                          ))}
-                                        </div>
+                            {!loadingDocuments && documentsForCurrentShipment.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-green-200">
+                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
+                                <div className="space-y-1">
+                                  {documentsForCurrentShipment.map((doc: any, index: number) => (
+                                    <div key={doc.id || doc.name || index} className="flex items-center justify-between bg-green-100 p-2 rounded">
+                                      <div className="flex items-center space-x-2">
+                                        <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
+                                        <span className="text-xs text-green-800">{doc.file_name || doc.name || 'Unknown File'}</span>
+                                        <span className="text-xs text-green-600">
+                                          ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
+                                        </span>
                                       </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
+                                      <button
+                                        onClick={() => {
+                                          const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
+                                                           actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                                          if (shipmentId) {
+                                            window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
+                                          }
+                                        }}
+                                        className="text-green-600 hover:text-green-800 text-xs underline"
+                                      >
+                                        Download
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
