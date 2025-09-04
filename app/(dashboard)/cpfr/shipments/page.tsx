@@ -124,7 +124,7 @@ export default function ShipmentsPage() {
           deliveryLocation: shipmentData.delivery_location || shipmentData.deliveryLocation || '',
           estimatedShipDate: shipmentData.estimated_departure ? new Date(shipmentData.estimated_departure).toISOString().split('T')[0] : '',
           requestedDeliveryDate: shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toISOString().split('T')[0] : '',
-          overrideDefaults: true // If shipment exists, assume they want to see/edit the overrides
+          overrideDefaults: false // Default to unchecked, user can check if they want to override
         };
         
         console.log('🔍 Setting form data:', formData);
@@ -1091,40 +1091,51 @@ export default function ShipmentsPage() {
                             )}
                             
                             {/* Show uploaded documents from database */}
-                            {!loadingDocuments && (() => {
-                              console.log('📎 Display check - forecast ID:', selectedShipment.id);
-                              console.log('📎 Display check - has documents:', uploadedDocumentsFromDB.has(selectedShipment.id));
-                              console.log('📎 Display check - documents:', uploadedDocumentsFromDB.get(selectedShipment.id));
-                              const docs = uploadedDocumentsFromDB.get(selectedShipment.id);
-                              return docs && docs.length > 0;
-                            })() && (
-                              <div className="mt-3 pt-3 border-t border-green-200">
-                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
-                                <div className="space-y-1">
-                                  {uploadedDocumentsFromDB.get(selectedShipment.id)?.map((doc: any) => (
-                                    <div key={doc.id || doc.name} className="flex items-center justify-between bg-green-100 p-2 rounded">
-                                      <div className="flex items-center space-x-2">
-                                        <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
-                                        <span className="text-xs text-green-800">{doc.file_name || doc.name}</span>
-                                        <span className="text-xs text-green-600">
-                                          ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
-                                        </span>
+                            {!loadingDocuments && (
+                              <div className="mt-3">
+                                {(() => {
+                                  console.log('📎 Display check - forecast ID:', selectedShipment.id);
+                                  console.log('📎 Display check - has documents:', uploadedDocumentsFromDB.has(selectedShipment.id));
+                                  console.log('📎 Display check - documents:', uploadedDocumentsFromDB.get(selectedShipment.id));
+                                  const docs = uploadedDocumentsFromDB.get(selectedShipment.id);
+                                  console.log('📎 Display check - docs exists:', !!docs);
+                                  console.log('📎 Display check - docs length:', docs?.length);
+                                  console.log('📎 Display check - will show:', !!(docs && docs.length > 0));
+                                  
+                                  if (docs && docs.length > 0) {
+                                    return (
+                                      <div className="pt-3 border-t border-green-200">
+                                        <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
+                                        <div className="space-y-1">
+                                          {docs.map((doc: any, index: number) => (
+                                            <div key={doc.id || doc.name || index} className="flex items-center justify-between bg-green-100 p-2 rounded">
+                                              <div className="flex items-center space-x-2">
+                                                <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
+                                                <span className="text-xs text-green-800">{doc.file_name || doc.name || 'Unknown File'}</span>
+                                                <span className="text-xs text-green-600">
+                                                  ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
+                                                </span>
+                                              </div>
+                                              <button
+                                                onClick={() => {
+                                                  const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
+                                                                   actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                                                  if (shipmentId) {
+                                                    window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
+                                                  }
+                                                }}
+                                                className="text-green-600 hover:text-green-800 text-xs underline"
+                                              >
+                                                Download
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
-                                      <button
-                                        onClick={() => {
-                                          const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                                           actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                                          if (shipmentId) {
-                                            window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
-                                          }
-                                        }}
-                                        className="text-green-600 hover:text-green-800 text-xs underline"
-                                      >
-                                        Download
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </div>
                             )}
                           </div>
