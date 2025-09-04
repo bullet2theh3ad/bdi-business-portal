@@ -48,6 +48,15 @@ interface Warehouse {
   contactEmail: string;
   contactPhone: string;
   
+  // New multiple contacts structure
+  contacts?: Array<{
+    name: string;
+    email: string;
+    phone?: string;
+    extension?: string;
+    isPrimary: boolean;
+  }>;
+  
   // Physical Specifications
   maxPalletHeight: number; // cm
   maxPalletWeight: number; // kg
@@ -86,6 +95,70 @@ export default function WarehousesPage() {
       </div>
     );
   }
+
+  const handleEditWarehouse = async (formData: FormData) => {
+    if (!selectedWarehouse) return;
+    
+    setIsLoading(true);
+    try {
+      // Collect main capabilities
+      const mainCapabilities = formData.getAll('mainCapabilities') as string[];
+      
+      // Collect shipping capabilities
+      const shippingCapabilities = {
+        airFreight: formData.get('airFreight') === 'on',
+        seaFreight: formData.get('seaFreight') === 'on',
+        truckLoading: formData.get('truckLoading') === 'on',
+        railAccess: formData.get('railAccess') === 'on',
+        hazmatHandling: formData.get('hazmatHandling') === 'on',
+        coldStorage: formData.get('coldStorage') === 'on',
+      };
+
+      // Determine primary type
+      const primaryType = mainCapabilities.length > 0 ? mainCapabilities[0] : selectedWarehouse.type;
+
+      const response = await fetch(`/api/inventory/warehouses/${selectedWarehouse.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          warehouseCode: formData.get('warehouseCode'),
+          name: formData.get('name'),
+          type: primaryType,
+          address: formData.get('address'),
+          city: formData.get('city'),
+          state: formData.get('state'),
+          country: formData.get('country'),
+          postalCode: formData.get('postalCode'),
+          timezone: formData.get('timezone'),
+          capabilities: shippingCapabilities,
+          mainCapabilities: mainCapabilities,
+          contacts: [
+            {
+              name: formData.get('contactName1'),
+              email: formData.get('contactEmail1'),
+              phone: formData.get('contactPhone1'),
+              extension: formData.get('contactExt1'),
+              isPrimary: true
+            }
+          ].filter(contact => contact.name && contact.email),
+        }),
+      });
+
+      if (response.ok) {
+        alert('Warehouse updated successfully!');
+        setSelectedWarehouse(null);
+        mutateWarehouses(); // Refresh the list
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update warehouse: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating warehouse:', error);
+      alert('Failed to update warehouse');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateWarehouse = async (formData: FormData) => {
     setIsLoading(true);
@@ -334,7 +407,12 @@ export default function WarehousesPage() {
                         </div>
                         <div>
                           <span className="text-gray-500">Contact:</span>
-                          <p className="font-medium">{warehouse.contactName}</p>
+                          <p className="font-medium">
+                            {warehouse.contacts && Array.isArray(warehouse.contacts) && warehouse.contacts.length > 0 
+                              ? warehouse.contacts.find(c => c.isPrimary)?.name || warehouse.contacts[0]?.name || warehouse.contactName
+                              : warehouse.contactName || 'No contact info'
+                            }
+                          </p>
                         </div>
                         <div>
                           <span className="text-gray-500">Max Pallet:</span>
@@ -913,23 +991,274 @@ export default function WarehousesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Warehouse Modal - Placeholder for now */}
+      {/* Edit Warehouse Modal */}
       <Dialog open={!!selectedWarehouse} onOpenChange={() => setSelectedWarehouse(null)}>
         <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
             <DialogTitle>Edit Warehouse: {selectedWarehouse?.name}</DialogTitle>
           </DialogHeader>
           {selectedWarehouse && (
-            <div className="p-8">
-              <p className="text-center text-lg font-semibold text-indigo-600 mb-4">
-                Edit functionality will be implemented in the next update.
-              </p>
-              <div className="flex justify-center">
-                <Button onClick={() => setSelectedWarehouse(null)}>
-                  Close
+            <form className="space-y-12 p-8" onSubmit={(e) => {
+              e.preventDefault();
+              handleEditWarehouse(new FormData(e.currentTarget));
+            }}>
+              
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <Label htmlFor="editWarehouseCode">Warehouse Code *</Label>
+                  <Input
+                    id="editWarehouseCode"
+                    name="warehouseCode"
+                    defaultValue={selectedWarehouse.warehouseCode}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="editName">Warehouse Name *</Label>
+                  <Input
+                    id="editName"
+                    name="name"
+                    defaultValue={selectedWarehouse.name}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Warehouse Capabilities */}
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-lg font-medium text-gray-900">Warehouse Capabilities *</Label>
+                  <p className="text-sm text-gray-600 mt-1">Select all capabilities this warehouse provides</p>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Main Warehouse Capabilities */}
+                  <div className="p-6 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <h4 className="text-base font-medium text-indigo-800 mb-4">🏢 Warehouse Operations</h4>
+                    <div className="space-y-3">
+                      {[
+                        { value: 'warehouse', label: 'General Warehouse' },
+                        { value: 'distribution_center', label: 'Distribution Center' },
+                        { value: 'fulfillment_center', label: 'Fulfillment Center' },
+                        { value: 'cross_dock', label: 'Cross Dock' },
+                        { value: 'manufacturing', label: 'Manufacturing' },
+                        { value: 'cold_storage', label: 'Cold Storage' }
+                      ].map((capability) => (
+                        <div key={capability.value} className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id={`edit-${capability.value}`}
+                            name="mainCapabilities"
+                            value={capability.value}
+                            defaultChecked={selectedWarehouse.type === capability.value}
+                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          />
+                          <label 
+                            htmlFor={`edit-${capability.value}`}
+                            className="text-sm font-medium text-gray-700 cursor-pointer"
+                          >
+                            {capability.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Shipping Capabilities */}
+                  <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="text-base font-medium text-blue-800 mb-4">🚚 Shipping Capabilities</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="edit-airFreight"
+                          name="airFreight"
+                          defaultChecked={selectedWarehouse.capabilities?.airFreight}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="edit-airFreight" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          ✈️ Air Freight
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="edit-seaFreight"
+                          name="seaFreight"
+                          defaultChecked={selectedWarehouse.capabilities?.seaFreight}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="edit-seaFreight" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          🚢 Sea Freight
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="edit-truckLoading"
+                          name="truckLoading"
+                          defaultChecked={selectedWarehouse.capabilities?.truckLoading}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="edit-truckLoading" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          🚛 Truck Loading
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="edit-railAccess"
+                          name="railAccess"
+                          defaultChecked={selectedWarehouse.capabilities?.railAccess}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="edit-railAccess" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          🚂 Rail Access
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="edit-hazmatHandling"
+                          name="hazmatHandling"
+                          defaultChecked={selectedWarehouse.capabilities?.hazmatHandling}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="edit-hazmatHandling" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          ⚠️ Hazmat Handling
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Information */}
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+                <div className="md:col-span-2">
+                  <Label htmlFor="editAddress">Address *</Label>
+                  <Input
+                    id="editAddress"
+                    name="address"
+                    defaultValue={selectedWarehouse.address}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editCity">City *</Label>
+                  <Input
+                    id="editCity"
+                    name="city"
+                    defaultValue={selectedWarehouse.city}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editState">State/Province</Label>
+                  <Input
+                    id="editState"
+                    name="state"
+                    defaultValue={selectedWarehouse.state || ''}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editCountry">Country *</Label>
+                  <Input
+                    id="editCountry"
+                    name="country"
+                    defaultValue={selectedWarehouse.country}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editPostalCode">Postal Code</Label>
+                  <Input
+                    id="editPostalCode"
+                    name="postalCode"
+                    defaultValue={selectedWarehouse.postalCode || ''}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
+                  <p className="text-sm text-gray-600 mt-1">Update contact details for this warehouse</p>
+                </div>
+                
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="editContactName1">Contact Name *</Label>
+                      <Input
+                        id="editContactName1"
+                        name="contactName1"
+                        defaultValue={selectedWarehouse.contacts?.[0]?.name || selectedWarehouse.contactName}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editContactEmail1">Contact Email *</Label>
+                      <Input
+                        id="editContactEmail1"
+                        name="contactEmail1"
+                        type="email"
+                        defaultValue={selectedWarehouse.contacts?.[0]?.email || selectedWarehouse.contactEmail}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editContactPhone1">Phone Number</Label>
+                      <Input
+                        id="editContactPhone1"
+                        name="contactPhone1"
+                        defaultValue={selectedWarehouse.contacts?.[0]?.phone || selectedWarehouse.contactPhone}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editContactExt1">Extension</Label>
+                      <Input
+                        id="editContactExt1"
+                        name="contactExt1"
+                        defaultValue={selectedWarehouse.contacts?.[0]?.extension || ''}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-4 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedWarehouse(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  {isLoading ? 'Updating...' : 'Update Warehouse'}
                 </Button>
               </div>
-            </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
