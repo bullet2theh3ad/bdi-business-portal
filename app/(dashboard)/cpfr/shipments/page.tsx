@@ -143,10 +143,10 @@ export default function ShipmentsPage() {
               console.log('🔍 Setting documents for forecast ID:', selectedShipment.id);
               console.log('🔍 Documents array length:', docs?.length || 0);
               
-              // Force state update with new Map to trigger re-render
-              setUploadedDocumentsFromDB(new Map([[selectedShipment.id, docs || []]]));
+              // Use same method as successful update callback
+              setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs || [])));
               setDocumentsForCurrentShipment(docs || []);
-              console.log('🔍 Documents state updated - forced re-render');
+              console.log('🔍 Documents state updated - using same method as update callback');
               setLoadingDocuments(false);
             })
             .catch(err => {
@@ -371,6 +371,7 @@ export default function ShipmentsPage() {
                 console.log('📎 Fetched documents after upload:', uploadedDocs);
                 // Use selectedShipment.id (forecast ID) as key since that's what we check in display
                 setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, uploadedDocs)));
+                setDocumentsForCurrentShipment(uploadedDocs || []);
                 console.log('📎 Set documents in state for forecast ID:', selectedShipment.id);
               } else {
                 console.error('📎 Failed to fetch documents after upload:', fetchDocsResponse.status);
