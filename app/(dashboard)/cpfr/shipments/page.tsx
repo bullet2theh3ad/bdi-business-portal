@@ -790,11 +790,15 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 2: Factory EXW */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
-                            forecast.factorySignal === 'accepted' ? 'border-green-500' :
-                            forecast.factorySignal === 'submitted' ? 'border-orange-500' :
-                            'border-gray-300'
-                          }`}>
+                          <button
+                            onClick={() => handleMilestoneClick('factory', forecast)}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                              forecast.factorySignal === 'accepted' ? 'border-green-500' :
+                              forecast.factorySignal === 'submitted' ? 'border-orange-500' :
+                              'border-gray-300'
+                            }`}
+                            title="Click to change factory status"
+                          >
                             <SemanticBDIIcon 
                               semantic="collaboration" 
                               size={20} 
@@ -804,7 +808,7 @@ export default function ShipmentsPage() {
                                 'text-gray-600'
                               } 
                             />
-                          </div>
+                          </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Factory EXW</p>
                             <p className="text-xs text-gray-600">
@@ -822,13 +826,17 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 3: In Transit */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white ${
-                            progress >= 3 ? 'border-blue-500' : 'border-gray-300'
-                          }`}>
+                          <button
+                            onClick={() => handleMilestoneClick('transit', forecast)}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                              progress >= 3 ? 'border-blue-500' : 'border-gray-300'
+                            }`}
+                            title="Click to change transit status"
+                          >
                             <span className={`text-xl ${
                               progress >= 3 ? 'text-blue-600' : 'text-gray-600'
                             }`}>{shippingIcon}</span>
-                          </div>
+                          </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">
                               {(() => {
@@ -854,11 +862,15 @@ export default function ShipmentsPage() {
 
                         {/* Milestone 4: Warehouse Arrival */}
                         <div className="flex flex-col items-center space-y-2 relative z-10">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                            forecast.shippingSignal === 'accepted' ? 'bg-green-500 border-green-500' :
-                            forecast.shippingSignal === 'submitted' ? 'bg-orange-500 border-orange-500' :
-                            'bg-gray-300 border-gray-300'
-                          }`}>
+                          <button
+                            onClick={() => handleMilestoneClick('warehouse', forecast)}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                              forecast.shippingSignal === 'accepted' ? 'bg-green-500 border-green-500' :
+                              forecast.shippingSignal === 'submitted' ? 'bg-orange-500 border-orange-500' :
+                              'bg-gray-300 border-gray-300'
+                            }`}
+                            title="Click to change warehouse status"
+                          >
                             <SemanticBDIIcon 
                               semantic="sites" 
                               size={20} 
@@ -868,7 +880,7 @@ export default function ShipmentsPage() {
                                   : 'text-gray-600'
                               } 
                             />
-                          </div>
+                          </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800">Warehouse</p>
                             <p className="text-xs text-gray-600">
