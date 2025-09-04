@@ -115,8 +115,22 @@ export async function GET(request: NextRequest) {
       postalCode: row.postal_code,
       timezone: row.timezone,
       capabilities: row.capabilities,
-      mainCapabilities: row.main_capabilities ? JSON.parse(row.main_capabilities) : [],
-      contacts: row.contacts ? JSON.parse(row.contacts) : [],
+      mainCapabilities: (() => {
+        try {
+          return row.main_capabilities && row.main_capabilities !== '' ? JSON.parse(row.main_capabilities) : [];
+        } catch (e) {
+          console.warn('Invalid main_capabilities JSON:', row.main_capabilities);
+          return [];
+        }
+      })(),
+      contacts: (() => {
+        try {
+          return row.contacts && row.contacts !== '' ? JSON.parse(row.contacts) : [];
+        } catch (e) {
+          console.warn('Invalid contacts JSON:', row.contacts);
+          return [];
+        }
+      })(),
       operatingHours: row.operating_hours,
       contactName: row.contact_name,
       contactEmail: row.contact_email,
