@@ -91,6 +91,7 @@ export default function ShipmentsPage() {
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
   const [uploadedDocumentsFromDB, setUploadedDocumentsFromDB] = useState<Map<string, any[]>>(new Map());
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   // Load existing shipment data when opening Details modal
   useEffect(() => {
@@ -133,17 +134,24 @@ export default function ShipmentsPage() {
         const shipmentId = existingShipment?.id || localShipment?.id;
         if (shipmentId) {
           console.log('🔍 Loading documents for shipment:', shipmentId);
+          setLoadingDocuments(true);
           fetch(`/api/cpfr/shipments/${shipmentId}/documents`)
             .then(res => res.json())
             .then(docs => {
               console.log('🔍 Loaded documents from API:', docs);
               console.log('🔍 Setting documents for forecast ID:', selectedShipment.id);
-              setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs)));
+              console.log('🔍 Documents array length:', docs?.length || 0);
+              setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, docs || [])));
               console.log('🔍 Documents state updated');
+              setLoadingDocuments(false);
             })
-            .catch(err => console.error('Error loading existing documents:', err));
+            .catch(err => {
+              console.error('Error loading existing documents:', err);
+              setLoadingDocuments(false);
+            });
         } else {
           console.log('🔍 No shipment ID found - no documents to load');
+          setLoadingDocuments(false);
         }
       } else {
         console.log('🔍 No existing shipment found - creating new');
@@ -1072,25 +1080,44 @@ export default function ShipmentsPage() {
                               ✅ Timeline shows "Awaiting Quote" status • Documents saved to database
                             </div>
                             
+                            {/* Show loading state for documents */}
+                            {loadingDocuments && (
+                              <div className="mt-3 pt-3 border-t border-blue-200">
+                                <div className="flex items-center space-x-2">
+                                  <SemanticBDIIcon semantic="loading" size={14} className="animate-spin text-blue-600" />
+                                  <span className="text-sm text-blue-600">Loading existing documents...</span>
+                                </div>
+                              </div>
+                            )}
+                            
                             {/* Show uploaded documents from database */}
-                            {(() => {
+                            {!loadingDocuments && (() => {
                               console.log('📎 Display check - forecast ID:', selectedShipment.id);
                               console.log('📎 Display check - has documents:', uploadedDocumentsFromDB.has(selectedShipment.id));
                               console.log('📎 Display check - documents:', uploadedDocumentsFromDB.get(selectedShipment.id));
-                              return uploadedDocumentsFromDB.has(selectedShipment.id);
+                              const docs = uploadedDocumentsFromDB.get(selectedShipment.id);
+                              return docs && docs.length > 0;
                             })() && (
                               <div className="mt-3 pt-3 border-t border-green-200">
-                                <h5 className="text-sm font-medium text-green-800 mb-2">Uploaded Documents:</h5>
+                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
                                 <div className="space-y-1">
                                   {uploadedDocumentsFromDB.get(selectedShipment.id)?.map((doc: any) => (
-                                    <div key={doc.id} className="flex items-center justify-between bg-green-100 p-2 rounded">
+                                    <div key={doc.id || doc.name} className="flex items-center justify-between bg-green-100 p-2 rounded">
                                       <div className="flex items-center space-x-2">
                                         <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
-                                        <span className="text-xs text-green-800">{doc.file_name}</span>
-                                        <span className="text-xs text-green-600">({(doc.file_size / 1024).toFixed(1)} KB)</span>
+                                        <span className="text-xs text-green-800">{doc.file_name || doc.name}</span>
+                                        <span className="text-xs text-green-600">
+                                          ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
+                                        </span>
                                       </div>
                                       <button
-                                        onClick={() => window.open(`/api/cpfr/shipments/${createdShipments.get(selectedShipment.id)?.id}/documents/${doc.id}`, '_blank')}
+                                        onClick={() => {
+                                          const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
+                                                           actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                                          if (shipmentId) {
+                                            window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
+                                          }
+                                        }}
                                         className="text-green-600 hover:text-green-800 text-xs underline"
                                       >
                                         Download
