@@ -1107,8 +1107,8 @@ export default function ShipmentsPage() {
                               console.log('🖥️ RENDER CHECK - loadingDocuments:', loadingDocuments);
                               console.log('🖥️ RENDER CHECK - documentsForCurrentShipment:', documentsForCurrentShipment);
                               console.log('🖥️ RENDER CHECK - documentsForCurrentShipment.length:', documentsForCurrentShipment.length);
-                              console.log('🖥️ RENDER CHECK - Will show documents:', !loadingDocuments && documentsForCurrentShipment.length > 0);
-                              return !loadingDocuments && documentsForCurrentShipment.length > 0;
+                              console.log('🖥️ RENDER CHECK - Will show documents:', documentsForCurrentShipment.length > 0);
+                              return documentsForCurrentShipment.length > 0;
                             })() && (
                               <div className="mt-3 pt-3 border-t border-green-200">
                                 <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
