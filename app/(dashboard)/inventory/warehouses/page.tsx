@@ -90,7 +90,11 @@ export default function WarehousesPage() {
   const handleCreateWarehouse = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      const capabilities = {
+      // Collect selected capabilities from checkboxes
+      const selectedCapabilities = formData.getAll('capabilities') as string[];
+      
+      // Collect other capabilities (existing checkboxes)
+      const additionalCapabilities = {
         airFreight: formData.get('airFreight') === 'on',
         seaFreight: formData.get('seaFreight') === 'on',
         truckLoading: formData.get('truckLoading') === 'on',
@@ -105,14 +109,14 @@ export default function WarehousesPage() {
         body: JSON.stringify({
           warehouseCode: formData.get('warehouseCode'),
           name: formData.get('name'),
-          type: formData.get('type'),
+          capabilities: selectedCapabilities, // Send array of selected capabilities
           address: formData.get('address'),
           city: formData.get('city'),
           state: formData.get('state'),
           country: formData.get('country'),
           postalCode: formData.get('postalCode'),
           timezone: formData.get('timezone'),
-          capabilities,
+          additionalCapabilities,
           operatingHours: formData.get('operatingHours'),
           contactName: formData.get('contactName'),
           contactEmail: formData.get('contactEmail'),
@@ -173,8 +177,10 @@ export default function WarehousesPage() {
       'warehouse': 'bg-blue-100 text-blue-800',
       'distribution_center': 'bg-green-100 text-green-800',
       'fulfillment_center': 'bg-purple-100 text-purple-800',
-      'cross_dock': 'bg-orange-100 text-orange-800',
+      'cross_dock': 'bg-yellow-100 text-yellow-800',
       'manufacturing': 'bg-red-100 text-red-800',
+      'cold_storage': 'bg-cyan-100 text-cyan-800',
+      'hazmat_storage': 'bg-orange-100 text-orange-800'
     };
     return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -267,9 +273,18 @@ export default function WarehousesPage() {
                         <Badge className="bg-indigo-100 text-indigo-800">
                           {warehouse.warehouseCode}
                         </Badge>
-                        <Badge className={getTypeColor(warehouse.type)}>
-                          {warehouse.type.replace('_', ' ')}
-                        </Badge>
+                        {/* Display multiple capabilities as badges */}
+                        {Array.isArray(warehouse.capabilities) ? (
+                          warehouse.capabilities.map((capability: string, index: number) => (
+                            <Badge key={index} className={getTypeColor(capability)}>
+                              {capability.replace('_', ' ')}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge className={getTypeColor(warehouse.capabilities || 'warehouse')}>
+                            {(warehouse.capabilities || 'warehouse').replace('_', ' ')}
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
@@ -383,20 +398,36 @@ export default function WarehousesPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="type">Warehouse Type *</Label>
-                <select
-                  id="type"
-                  name="type"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
-                >
-                  <option value="">Select Type</option>
-                  <option value="warehouse">Warehouse</option>
-                  <option value="distribution_center">Distribution Center</option>
-                  <option value="fulfillment_center">Fulfillment Center</option>
-                  <option value="cross_dock">Cross Dock</option>
-                  <option value="manufacturing">Manufacturing</option>
-                </select>
+                <Label htmlFor="capabilities">Warehouse Capabilities *</Label>
+                <div className="mt-1 space-y-2 p-3 border border-gray-300 rounded-md">
+                  <p className="text-sm text-gray-600 mb-3">Select all capabilities this warehouse provides:</p>
+                  
+                  {[
+                    { value: 'warehouse', label: 'Warehouse' },
+                    { value: 'distribution_center', label: 'Distribution Center' },
+                    { value: 'fulfillment_center', label: 'Fulfillment Center' },
+                    { value: 'cross_dock', label: 'Cross Dock' },
+                    { value: 'manufacturing', label: 'Manufacturing' },
+                    { value: 'cold_storage', label: 'Cold Storage' },
+                    { value: 'hazmat_storage', label: 'Hazmat Storage' }
+                  ].map((capability) => (
+                    <div key={capability.value} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`capability-${capability.value}`}
+                        name="capabilities"
+                        value={capability.value}
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      />
+                      <label 
+                        htmlFor={`capability-${capability.value}`}
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        {capability.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

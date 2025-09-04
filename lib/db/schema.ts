@@ -755,7 +755,7 @@ export const warehouses = pgTable('warehouses', {
   id: uuid('id').defaultRandom().primaryKey(),
   warehouseCode: varchar('warehouse_code', { length: 50 }).notNull().unique(),
   name: varchar('name', { length: 255 }).notNull(),
-  type: varchar('type', { length: 50 }).notNull(),
+  capabilities: jsonb('capabilities').notNull().default('[]'), // Array of warehouse capabilities
   
   // Location Information
   address: text('address').notNull(),
