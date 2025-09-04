@@ -1546,15 +1546,39 @@ export default function ShipmentsPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                // TODO: Implement status update API call
-                console.log('Status change:', {
-                  milestone: statusChangeModal.milestone,
-                  forecast: statusChangeModal.forecast?.id,
-                  newStatus: (document.getElementById('newStatus') as HTMLSelectElement)?.value,
-                  notes: (document.getElementById('statusNotes') as HTMLTextAreaElement)?.value
-                });
-                alert('Status update functionality coming next!');
+              onClick={async () => {
+                const newStatus = (document.getElementById('newStatus') as HTMLSelectElement)?.value;
+                const notes = (document.getElementById('statusNotes') as HTMLTextAreaElement)?.value;
+                
+                if (!statusChangeModal.forecast || !statusChangeModal.milestone) return;
+
+                try {
+                  const response = await fetch(`/api/cpfr/forecasts/${statusChangeModal.forecast.id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      milestone: statusChangeModal.milestone,
+                      status: newStatus,
+                      notes: notes || undefined
+                    }),
+                  });
+
+                  const result = await response.json();
+                  
+                  if (result.success) {
+                    alert(`✅ ${statusChangeModal.milestone} status updated to ${newStatus}!`);
+                    // Refresh the forecasts data to update the timeline
+                    mutateForecasts();
+                  } else {
+                    alert(`❌ Error: ${result.error}`);
+                  }
+                } catch (error) {
+                  console.error('Status update error:', error);
+                  alert('❌ Failed to update status. Please try again.');
+                }
+                
                 setStatusChangeModal(prev => ({ ...prev, isOpen: false }));
               }}
               className="bg-blue-600 hover:bg-blue-700"
