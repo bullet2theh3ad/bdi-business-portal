@@ -1117,25 +1117,14 @@ export default function ShipmentsPage() {
                             {(() => {
                               console.log('🖥️ RENDER CHECK - loadingDocuments:', loadingDocuments);
                               console.log('🖥️ RENDER CHECK - documentsForCurrentShipment:', documentsForCurrentShipment);
-                              console.log('🖥️ RENDER CHECK - documentsForCurrentShipment.length:', documentsForCurrentShipment.length);
-                              console.log('🖥️ RENDER CHECK - Will show documents:', documentsForCurrentShipment.length > 0);
-                              
-                              // TEST: Always show a test document section to verify rendering works
-                              const hasRealDocs = documentsForCurrentShipment.length > 0;
-                              const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
-                              const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
-                              
-                              return true; // Always show for testing
+                              // Show documents section only if there are actual documents
+                              return documentsForCurrentShipment.length > 0;
                             })() && (
                               <div className="mt-3 pt-3 border-t border-green-200">
-                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents: (TEST MODE)</h5>
+                                <h5 className="text-sm font-medium text-green-800 mb-2">Existing Documents:</h5>
                                 <div className="space-y-1">
-                                  {(() => {
-                                    const hasRealDocs = documentsForCurrentShipment.length > 0;
-                                    const testDoc = { file_name: 'TEST - Summary and Payment Schedule For Premier 270710.xlsx', file_size: 33126 };
-                                    const docsToShow = hasRealDocs ? documentsForCurrentShipment : [testDoc];
-                                    
-                                    return docsToShow.map((doc: any, index: number) => (
+                                  {documentsForCurrentShipment.length > 0 ? (
+                                    documentsForCurrentShipment.map((doc: any, index: number) => (
                                       <div key={doc.id || doc.file_name || index} className="flex items-center justify-between bg-green-100 p-2 rounded">
                                         <div className="flex items-center space-x-2">
                                           <SemanticBDIIcon semantic="document" size={12} className="text-green-600" />
@@ -1148,19 +1137,21 @@ export default function ShipmentsPage() {
                                           onClick={() => {
                                             const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
                                                              actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                                            if (shipmentId && hasRealDocs) {
+                                            if (shipmentId) {
                                               window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
                                             } else {
-                                              alert('TEST MODE - Real download not available');
+                                              alert('Shipment not found - cannot download document');
                                             }
                                           }}
                                           className="text-green-600 hover:text-green-800 text-xs underline"
                                         >
-                                          {hasRealDocs ? 'Download' : 'TEST'}
+                                          Download
                                         </button>
                                       </div>
-                                    ));
-                                  })()}
+                                    ))
+                                  ) : (
+                                    <div className="text-xs text-gray-500 italic">No documents uploaded yet</div>
+                                  )}
                                 </div>
                               </div>
                             )}
