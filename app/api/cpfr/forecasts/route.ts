@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
         .select(`
           id,
           sku_id,
+          purchase_order_id,
           delivery_week,
           quantity,
           confidence,
@@ -158,6 +159,7 @@ export async function GET(request: NextRequest) {
       const allForecasts = (forecastsData || []).map((row: any) => ({
         id: row.id,
         skuId: row.sku_id,
+        purchaseOrderId: row.purchase_order_id,
         deliveryWeek: row.delivery_week,
         quantity: row.quantity,
         confidence: row.confidence,
@@ -297,6 +299,7 @@ export async function POST(request: NextRequest) {
         .from('sales_forecasts')
         .insert({
           sku_id: body.skuId,
+          purchase_order_id: body.purchaseOrderId || null,
           delivery_week: body.deliveryWeek,
           quantity: parseInt(body.quantity),
           confidence: body.confidence || 'medium',
