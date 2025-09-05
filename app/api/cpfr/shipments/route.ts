@@ -155,6 +155,9 @@ export async function POST(request: NextRequest) {
       .insert({
         shipment_number: shipmentNumber,
         forecast_id: body.forecastId,
+        priority: body.priority || 'standard',
+        shipper_reference: body.shipperReference || null,
+        factory_warehouse_id: body.factoryWarehouseId || null,
         destination_custom_location: 'Customer Warehouse', // Required field
         destination_country: 'USA', // Default
         shipping_method: 'SEA_FCL', // Default

@@ -76,6 +76,7 @@ export default function ShipmentsPage() {
   const [shipmentForm, setShipmentForm] = useState({
     shippingOrganization: '',
     shipperReference: '',
+    factoryWarehouseId: '',
     unitsPerCarton: 5,
     requestedQuantity: 0,
     notes: '',
@@ -116,6 +117,7 @@ export default function ShipmentsPage() {
         const formData = {
           shippingOrganization: shipmentData.shipping_organization_code || shipmentData.shippingOrganizationCode || 'OLM',
           shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
+          factoryWarehouseId: shipmentData.factory_warehouse_id || shipmentData.factoryWarehouseId || '',
           unitsPerCarton: shipmentData.units_per_carton || shipmentData.unitsPerCarton || 5,
           requestedQuantity: shipmentData.requested_quantity || shipmentData.requestedQuantity || selectedShipment.quantity,
           notes: shipmentData.notes || '',
@@ -167,6 +169,7 @@ export default function ShipmentsPage() {
         setShipmentForm({
           shippingOrganization: '',
           shipperReference: '',
+          factoryWarehouseId: '',
           unitsPerCarton: 5,
           requestedQuantity: 0,
           notes: '',
@@ -1197,6 +1200,28 @@ export default function ShipmentsPage() {
                               <option value="expedited">Expedited</option>
                               <option value="urgent">Urgent</option>
                             </select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="factoryWarehouse">Factory/Origin Warehouse</Label>
+                            <select
+                              id="factoryWarehouse"
+                              value={shipmentForm.factoryWarehouseId}
+                              onChange={(e) => setShipmentForm(prev => ({ ...prev, factoryWarehouseId: e.target.value }))}
+                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select Factory Warehouse</option>
+                              {Array.isArray(warehouses) && warehouses
+                                .filter(warehouse => warehouse.isActive)
+                                .map(warehouse => (
+                                  <option key={warehouse.id} value={warehouse.id}>
+                                    {warehouse.name} - {warehouse.city || 'Location TBD'}
+                                  </option>
+                                ))}
+                            </select>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Select the factory/origin warehouse for contact details and pickup location
+                            </div>
                           </div>
 
                           {/* Override Section */}

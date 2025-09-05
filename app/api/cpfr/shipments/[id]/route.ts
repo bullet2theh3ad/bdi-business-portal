@@ -47,6 +47,7 @@ export async function PUT(
       .update({
         priority: body.priority || 'standard',
         shipper_reference: body.shipperReference || null,
+        factory_warehouse_id: body.factoryWarehouseId || null,
         incoterms: body.incoterms || 'EXW',
         estimated_departure: estimatedDeparture,
         estimated_arrival: estimatedArrival,
