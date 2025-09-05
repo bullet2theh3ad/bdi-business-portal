@@ -1096,6 +1096,14 @@ export default function ShipmentsPage() {
                             <div><strong>Shipment Number:</strong> {createdShipments.get(selectedShipment.id)?.shipment_number}</div>
                             <div><strong>Status:</strong> Pending Shipper Confirmation</div>
                             <div><strong>Organization:</strong> {shipmentForm.shippingOrganization}</div>
+                            {shipmentForm.factoryWarehouseId && (
+                              <div><strong>Factory/Origin:</strong> {
+                                (() => {
+                                  const selectedWarehouse = warehouses?.find(w => w.id === shipmentForm.factoryWarehouseId);
+                                  return selectedWarehouse ? `${selectedWarehouse.name} - ${selectedWarehouse.city || 'Location TBD'}` : 'Warehouse Selected';
+                                })()
+                              }</div>
+                            )}
                             {shipmentForm.shipperReference && (
                               <div><strong>Reference:</strong> {shipmentForm.shipperReference}</div>
                             )}
