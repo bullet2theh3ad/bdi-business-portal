@@ -1519,6 +1519,50 @@ export default function ShipmentsPage() {
                     <SemanticBDIIcon semantic="download" size={16} />
                     <span>Export CSV</span>
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
+                                         actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                        
+                        if (!shipmentId) {
+                          alert('Please create the shipment first before generating the form');
+                          return;
+                        }
+
+                        const response = await fetch(`/api/cpfr/shipments/${shipmentId}/form`);
+                        if (!response.ok) throw new Error('Failed to generate form');
+
+                        const data = await response.json();
+                        
+                        // Create a new window/tab with the form
+                        const formWindow = window.open('', '_blank');
+                        if (formWindow) {
+                          formWindow.document.write(data.formHtml);
+                          formWindow.document.close();
+                        } else {
+                          // Fallback: download as HTML file
+                          const blob = new Blob([data.formHtml], { type: 'text/html' });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `Shipment-Form-${data.shipmentNumber}.html`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        }
+                      } catch (error) {
+                        console.error('Error generating shipment form:', error);
+                        alert('Failed to generate shipment form');
+                      }
+                    }}
+                    className="flex items-center space-x-2 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                  >
+                    <SemanticBDIIcon semantic="document" size={16} />
+                    <span>Generate Form</span>
+                  </Button>
                 </div>
 
                 {/* Show uploaded documents from database */}
