@@ -279,7 +279,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                 <div class="grid">
                     <div class="field">
                         <div class="field-label">SKU Code</div>
-                        <div class="field-value highlight">${sku.sku}</div>
+                        <div class="field-value highlight">${sku.sku.replace(/\([^)]*\)/g, '').trim()}</div>
                     </div>
                     <div class="field">
                         <div class="field-label">Product Name</div>
@@ -389,7 +389,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
 
             <!-- BDI Contact Information -->
             <div class="section">
-                <h2>📞 BDI Contact Information</h2>
+                <h2>📞 BDI Business Contact Information</h2>
                 <div class="contact-card">
                     <div class="contact-name">Boundless Devices, Inc.</div>
                     <div class="grid">
@@ -419,11 +419,11 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                 <div class="grid">
                     <div class="field">
                         <div class="field-label">Estimated Ship Date</div>
-                        <div class="field-value">${shipmentData.estimated_departure ? new Date(shipmentData.estimated_departure).toLocaleDateString() : 'TBD'}</div>
+                        <div class="field-value">${shipmentData.estimated_departure ? new Date(shipmentData.estimated_departure).toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric' }) : 'TBD'}</div>
                     </div>
                     <div class="field">
                         <div class="field-label">Requested Delivery Date</div>
-                        <div class="field-value">${shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toLocaleDateString() : 'TBD'}</div>
+                        <div class="field-value">${shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric' }) : 'TBD'}</div>
                     </div>
                     <div class="field">
                         <div class="field-label">Delivery Week</div>
