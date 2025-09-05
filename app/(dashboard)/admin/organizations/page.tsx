@@ -971,10 +971,12 @@ ${result.email?.sent
                         
                         <Button
                           onClick={async () => {
+                            console.log('Current orgUserInvites:', orgUserInvites);
                             const validInvites = orgUserInvites.filter(inv => inv.name && inv.email);
+                            console.log('Valid invites:', validInvites);
                             
                             if (validInvites.length === 0) {
-                              alert('Please add at least one valid invitation (name and email required)');
+                              alert(`Please add at least one valid invitation (name and email required). Current invites: ${JSON.stringify(orgUserInvites)}`);
                               return;
                             }
 

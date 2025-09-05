@@ -1316,8 +1316,14 @@ export default function WarehousesPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              // Remove this contact (we'll implement this)
-                              console.log(`Remove contact ${index}`);
+                              // Remove this contact from the selectedWarehouse
+                              if (selectedWarehouse) {
+                                const updatedContacts = selectedWarehouse.contacts?.filter((_, i) => i !== index) || [];
+                                setSelectedWarehouse(prev => prev ? ({
+                                  ...prev,
+                                  contacts: updatedContacts
+                                }) : null);
+                              }
                             }}
                             className="text-red-600 border-red-300 hover:bg-red-50"
                           >
