@@ -791,6 +791,7 @@ export const warehouses = pgTable('warehouses', {
   contactName: varchar('contact_name', { length: 255 }),
   contactEmail: varchar('contact_email', { length: 255 }),
   contactPhone: varchar('contact_phone', { length: 50 }),
+  contacts: jsonb('contacts'), // New multiple contacts format
   
   // Physical Specifications
   maxPalletHeightCm: integer('max_pallet_height_cm').default(180),

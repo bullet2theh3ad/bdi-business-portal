@@ -429,9 +429,13 @@ export default function ShipmentsPage() {
     const quantity = shipmentForm.requestedQuantity || selectedShipment.quantity;
     const shippingData = calculateShippingData(selectedShipment.sku, quantity, shipmentForm.unitsPerCarton);
     
+    // Get the current shipment data for configuration fields
+    const currentShipment = actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id);
+    const linkedWarehouse = warehouses?.find((w: any) => w.id === shipmentForm.factoryWarehouseId);
+    
     const csvData = [
       ['Field', 'Value', '', 'CTN_L', 'CTN_W', 'CTN_H', 'CBM per Carton'],
-      ['Select SKU', selectedShipment.sku.sku, '', shippingData.ctnL, shippingData.ctnW, shippingData.ctnH, shippingData.cbmPerCarton],
+      ['Select SKU', selectedShipment.sku.sku.replace(/\([^)]*\)/g, '').replace(/-+$/, '').trim(), '', shippingData.ctnL, shippingData.ctnW, shippingData.ctnH, shippingData.cbmPerCarton],
       ['Enter Units', `${quantity} units`, '', '', '', '', ''],
       ['Enter Cartons', `${shippingData.cartonCount} cartons`, '', '', '', '', ''],
       ['Units per Carton', shippingData.unitsPerCarton, '', '', '', '', ''],
@@ -449,7 +453,41 @@ export default function ShipmentsPage() {
       ['Total Units in Carton', `${quantity} units`, '', '', '', '', ''],
       ['Total Number of Cartons', `${shippingData.cartonCount} cartons`, '', '', '', '', ''],
       ['Total Number of Pallets', `${shippingData.palletCount} pallet(s)`, '', '', '', '', ''],
-      ['Cost per Unit (SEA)', shippingData.costPerUnitSEA, '', '', '', '', '']
+      ['Cost per Unit (SEA)', shippingData.costPerUnitSEA, '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      
+      // Shipment Configuration Section
+      ['=== SHIPMENT CONFIGURATION ===', '', '', '', '', '', ''],
+      ['Shipping Organization', shipmentForm.shippingOrganization || 'Not Set', '', '', '', '', ''],
+      ['Shipper Reference Number', shipmentForm.shipperReference || 'Not Set', '', '', '', '', ''],
+      ['Shipment Priority', shipmentForm.priority || 'Standard', '', '', '', '', ''],
+      ['Factory/Origin Warehouse', linkedWarehouse?.name || 'Not Selected', '', '', '', '', ''],
+      ['Incoterms', currentShipment?.incoterms || shipmentForm.incoterms || 'Not Set', '', '', '', ''],
+      ['Estimated Ship Date', currentShipment?.estimated_departure ? new Date(currentShipment.estimated_departure).toLocaleDateString() : 'Not Set', '', '', '', '', ''],
+      ['Requested Delivery Date', currentShipment?.estimated_arrival ? new Date(currentShipment.estimated_arrival).toLocaleDateString() : 'Not Set', '', '', '', '', ''],
+      ['Shipping Method', selectedShipment.shippingPreference || 'Not Set', '', '', '', '', ''],
+      ['Special Instructions', currentShipment?.notes || selectedShipment.notes || 'None', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      
+      // Factory/Origin Warehouse Details Section
+      ['=== FACTORY/ORIGIN WAREHOUSE ===', '', '', '', '', '', ''],
+      ['Warehouse Code', linkedWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Name', linkedWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      ['Address', linkedWarehouse?.address || 'Not Available', '', '', '', '', ''],
+      ['City', linkedWarehouse?.city || 'Not Available', '', '', '', '', ''],
+      ['State/Province', linkedWarehouse?.state || 'Not Available', '', '', '', '', ''],
+      ['Country', linkedWarehouse?.country || 'Not Available', '', '', '', '', ''],
+      ['Postal Code', linkedWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
+      ['Time Zone', linkedWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
+      ['Operating Hours', linkedWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Name', linkedWarehouse?.contactName || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Email', linkedWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Phone', linkedWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Max Pallet Height (cm)', linkedWarehouse?.maxPalletHeightCm || 'Not Available', '', '', '', '', ''],
+      ['Max Pallet Weight (kg)', linkedWarehouse?.maxPalletWeightKg || 'Not Available', '', '', '', '', ''],
+      ['Loading Dock Count', linkedWarehouse?.loadingDockCount || 'Not Available', '', '', '', '', ''],
+      ['Storage Capacity (sqm)', linkedWarehouse?.storageCapacitySqm || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Notes', linkedWarehouse?.notes || 'None', '', '', '', '', '']
     ];
     
     const csvContent = csvData.map(row => row.join(',')).join('\n');
@@ -457,7 +495,7 @@ export default function ShipmentsPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `shipment_${selectedShipment.sku.sku}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `shipment_${selectedShipment.sku.sku.replace(/\([^)]*\)/g, '').replace(/-+$/, '').trim()}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -1518,50 +1556,6 @@ export default function ShipmentsPage() {
                   >
                     <SemanticBDIIcon semantic="download" size={16} />
                     <span>Export CSV</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                         actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                        
-                        if (!shipmentId) {
-                          alert('Please create the shipment first before generating the form');
-                          return;
-                        }
-
-                        const response = await fetch(`/api/cpfr/shipments/${shipmentId}/form`);
-                        if (!response.ok) throw new Error('Failed to generate form');
-
-                        const data = await response.json();
-                        
-                        // Create a new window/tab with the form
-                        const formWindow = window.open('', '_blank');
-                        if (formWindow) {
-                          formWindow.document.write(data.formHtml);
-                          formWindow.document.close();
-                        } else {
-                          // Fallback: download as HTML file
-                          const blob = new Blob([data.formHtml], { type: 'text/html' });
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `Shipment-Form-${data.shipmentNumber}.html`;
-                          document.body.appendChild(a);
-                          a.click();
-                          window.URL.revokeObjectURL(url);
-                          document.body.removeChild(a);
-                        }
-                      } catch (error) {
-                        console.error('Error generating shipment form:', error);
-                        alert('Failed to generate shipment form');
-                      }
-                    }}
-                    className="flex items-center space-x-2 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                  >
-                    <SemanticBDIIcon semantic="document" size={16} />
-                    <span>Generate Form</span>
                   </Button>
                 </div>
 

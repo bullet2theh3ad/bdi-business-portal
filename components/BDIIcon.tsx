@@ -154,6 +154,9 @@ export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   info: 'mobile-10', // Info icon
   security: 'network-8', // Security/lock icon
   check: 'network-9', // Check/success icon
+  calendar: 'mobile-11', // Calendar icon
+  document: 'mobile-12', // Document icon
+  calculator: 'mobile-13', // Calculator icon
 };
 
 interface SemanticBDIIconProps {

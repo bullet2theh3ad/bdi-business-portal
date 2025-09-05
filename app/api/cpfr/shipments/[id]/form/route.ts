@@ -157,6 +157,12 @@ export async function GET(
       .limit(1);
 
     // Generate professional shipment form HTML
+    console.log('🔧 About to generate form HTML with:', {
+      shipmentData: !!shipmentData,
+      factoryWarehouse: !!factoryWarehouse,
+      userData: !!userData?.organization
+    });
+    
     const formHtml = generateShipmentFormHTML(shipmentData, factoryWarehouse, userData?.organization);
 
     return NextResponse.json({
