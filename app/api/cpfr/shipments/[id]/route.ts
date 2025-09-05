@@ -45,6 +45,8 @@ export async function PUT(
     const { data: updatedShipment, error: shipmentError } = await supabase
       .from('shipments')
       .update({
+        priority: body.priority || 'standard',
+        shipper_reference: body.shipperReference || null,
         incoterms: body.incoterms || 'EXW',
         estimated_departure: estimatedDeparture,
         estimated_arrival: estimatedArrival,
