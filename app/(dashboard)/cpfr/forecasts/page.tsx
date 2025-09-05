@@ -22,13 +22,16 @@ interface UserWithOrganization extends User {
 
 interface PurchaseOrder {
   id: string;
-  poNumber: string;
+  purchaseOrderNumber: string;
   supplierName: string;
-  orderDate: string;
-  requestedDeliveryWeek: string;
+  purchaseOrderDate: string;
+  requestedDeliveryDate: string;
   status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
   terms: string;
+  incoterms: string;
+  incotermsLocation: string;
   totalValue: number;
+  notes?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -1158,7 +1161,7 @@ export default function SalesForecastsPage() {
                       })
                       .map(po => (
                         <option key={po.id} value={po.id}>
-                          {po.poNumber} - {po.supplierName} (${Number(po.totalValue).toLocaleString()})
+                          {po.purchaseOrderNumber} - {po.supplierName} - ${Number(po.totalValue).toLocaleString()}
                         </option>
                       ))}
                   </select>
@@ -1828,25 +1831,7 @@ export default function SalesForecastsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-10">
-                <div>
-                  <Label htmlFor="purchaseOrderId">Link to Purchase Order</Label>
-                  <select
-                    id="purchaseOrderId"
-                    name="purchaseOrderId"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
-                  >
-                    <option value="">No PO (Independent Forecast)</option>
-                    {posArray.map(po => (
-                      <option key={po.id} value={po.id}>
-                        PO #{po.poNumber} - {po.supplierName} ({po.requestedDeliveryWeek})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="mt-1 text-xs text-gray-600">
-                    Optional: Link forecast to existing Purchase Order
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-12 mt-10">
                 
                 <div>
                   <Label htmlFor="salesForecastStatus">Sales Forecast Status</Label>
