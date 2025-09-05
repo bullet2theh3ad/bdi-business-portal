@@ -48,7 +48,10 @@ export default function SKUsPage() {
     color: '',
     charger: '',
     carrier: '',
+    subSku: '',
   });
+  const [customSubSku, setCustomSubSku] = useState(false);
+  const [customSubSkuCode, setCustomSubSkuCode] = useState('');
 
   // Access control - only BDI Super Admins and Admins can manage SKUs
   if (!user || !['super_admin', 'admin'].includes(user.role) || (user as any).organization?.code !== 'BDI') {
@@ -121,7 +124,10 @@ export default function SKUsPage() {
           color: '',
           charger: '',
           carrier: '',
+          subSku: '',
         });
+        setCustomSubSku(false);
+        setCustomSubSkuCode('');
       } else {
         const errorData = await response.json();
         alert(`Failed to create SKU: ${errorData.error || 'Unknown error'}`);
@@ -282,17 +288,22 @@ export default function SKUsPage() {
       { code: 'V', name: 'Verizon' },
       { code: 'E', name: 'Europe' },
       { code: 'A', name: 'AT&T' },
+      { code: 'CUSTOM', name: '📝 Custom Carrier Code' },
+      { code: '', name: 'None (Leave Empty)' },
+    ],
+    subSkus: [
       { code: 'HSN', name: 'HSN' },
       { code: 'WMT', name: 'WMT' },
+      { code: 'CCO', name: 'CCO' },
       { code: 'SPC', name: 'SPC' },
-      { code: 'CUSTOM', name: '📝 Custom Carrier Code' },
+      { code: 'CUSTOM', name: '📝 Custom Sub-SKU Code' },
       { code: '', name: 'None (Leave Empty)' },
     ],
   };
 
-  // Generate SKU from builder selections - Format: MNQ1525-D30W-U (with variant) or MNQ1525-30W-U (no variant)
+  // Generate SKU from builder selections - Format: MNQ1525-D30W-U-CARRIER-(SUBSKU)
   const generateSku = () => {
-    const { brand, productType, modelNumber, modelYear, variant, region, color, charger, carrier } = skuBuilder;
+    const { brand, productType, modelNumber, modelYear, variant, region, color, charger, carrier, subSku } = skuBuilder;
     
     // First part: Brand + ProductType + ModelNumber + ModelYear (e.g., MNQ1525)
     const firstPart = `${brand}${productType}${modelNumber}${modelYear}`;
@@ -306,13 +317,16 @@ export default function SKUsPage() {
     // Fourth part: Carrier (with dash prefix, can be empty)
     const fourthPart = carrier ? `-${carrier}` : '';
     
-    // Combine with proper formatting: MNQ1525-D30W-U or MNQ1525-30W-U-HSN
+    // Fifth part: Sub-SKU (in parentheses, for BDI internal planning)
+    const subSkuCode = customSubSku ? customSubSkuCode : subSku;
+    const fifthPart = subSkuCode ? `-(${subSkuCode})` : '';
+    
+    // Combine with proper formatting: MNQ1525-D30W-U-CARRIER-(SUBSKU)
     if (!brand || !productType || !modelNumber || !modelYear || !region || !color || !charger) {
       return '';
     }
     
-    let sku = `${firstPart}-${secondPart}-${thirdPart}${fourthPart}`;
-    
+    let sku = `${firstPart}-${secondPart}-${thirdPart}${fourthPart}${fifthPart}`;
     
     return sku;
   };
@@ -772,6 +786,72 @@ export default function SKUsPage() {
                           </Button>
                         </div>
                       )}
+                    </div>
+
+                    {/* Sub-SKU (BDI Internal Tracking) */}
+                    <div className="min-w-0">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Sub-SKU (Internal Tracking)
+                      </label>
+                      {!customSubSku ? (
+                        <select
+                          value={skuBuilder.subSku}
+                          onChange={(e) => {
+                            if (e.target.value === 'CUSTOM') {
+                              setCustomSubSku(true);
+                              setCustomSubSkuCode('');
+                            } else {
+                              updateGeneratedSku('subSku', e.target.value);
+                            }
+                          }}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">None</option>
+                          {skuConfig.subSkus.map(subSku => (
+                            <option key={subSku.code} value={subSku.code}>
+                              {subSku.code === '' ? subSku.name : 
+                               subSku.code === 'CUSTOM' ? subSku.name :
+                               `${subSku.code} - ${subSku.name}`}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="flex space-x-1">
+                          <div className="flex items-center">
+                            <span className="px-2 py-1.5 text-sm bg-gray-100 border border-r-0 border-gray-300 rounded-l">-(</span>
+                          </div>
+                          <Input
+                            value={customSubSkuCode}
+                            onChange={(e) => {
+                              const value = e.target.value.toUpperCase().slice(0, 4);
+                              setCustomSubSkuCode(value);
+                              updateGeneratedSku('subSku', value);
+                            }}
+                            placeholder="ABCD"
+                            maxLength={4}
+                            className="w-20 text-sm text-center font-mono"
+                          />
+                          <div className="flex items-center">
+                            <span className="px-2 py-1.5 text-sm bg-gray-100 border border-l-0 border-r-0 border-gray-300">)</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCustomSubSku(false);
+                              setCustomSubSkuCode('');
+                              updateGeneratedSku('subSku', '');
+                            }}
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        For BDI internal tracking. Shown in parentheses.
+                      </div>
                     </div>
                   </div>
 
