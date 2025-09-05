@@ -83,15 +83,63 @@ export async function GET(
     let factoryWarehouse = null;
     if (shipmentData.factory_warehouse_id) {
       const [warehouseData] = await db
-        .select()
+        .select({
+          id: warehouses.id,
+          warehouse_code: warehouses.warehouseCode,
+          name: warehouses.name,
+          type: warehouses.type,
+          address: warehouses.address,
+          city: warehouses.city,
+          state: warehouses.state,
+          country: warehouses.country,
+          postalCode: warehouses.postalCode,
+          timezone: warehouses.timezone,
+          capabilities: warehouses.capabilities,
+          operating_hours: warehouses.operatingHours,
+          contact_name: warehouses.contactName,
+          contact_email: warehouses.contactEmail,
+          contact_phone: warehouses.contactPhone,
+          contacts: warehouses.contacts,
+          max_pallet_height_cm: warehouses.maxPalletHeightCm,
+          max_pallet_weight_kg: warehouses.maxPalletWeightKg,
+          loading_dock_count: warehouses.loadingDockCount,
+          storage_capacity_sqm: warehouses.storageCapacitySqm,
+          is_active: warehouses.isActive,
+          notes: warehouses.notes,
+          created_by: warehouses.createdBy,
+          created_at: warehouses.createdAt,
+          updated_at: warehouses.updatedAt,
+          organization_id: warehouses.organizationId
+        })
         .from(warehouses)
         .where(eq(warehouses.id, shipmentData.factory_warehouse_id))
         .limit(1);
       
       factoryWarehouse = warehouseData;
       console.log('🏭 Factory warehouse data:', JSON.stringify(factoryWarehouse, null, 2));
-      console.log('🏭 Contacts field type:', typeof (factoryWarehouse as any)?.contacts);
-      console.log('🏭 Contacts data:', (factoryWarehouse as any)?.contacts);
+      console.log('🏭 Raw contacts field:', factoryWarehouse?.contacts);
+      console.log('🏭 Contacts field type:', typeof factoryWarehouse?.contacts);
+      
+      // Transform snake_case to camelCase for the warehouse data
+      if (factoryWarehouse) {
+        factoryWarehouse = {
+          ...factoryWarehouse,
+          warehouseCode: factoryWarehouse.warehouse_code,
+          contactName: factoryWarehouse.contact_name,
+          contactEmail: factoryWarehouse.contact_email,
+          contactPhone: factoryWarehouse.contact_phone,
+          maxPalletHeightCm: factoryWarehouse.max_pallet_height_cm,
+          maxPalletWeightKg: factoryWarehouse.max_pallet_weight_kg,
+          loadingDockCount: factoryWarehouse.loading_dock_count,
+          storageCapacitySqm: factoryWarehouse.storage_capacity_sqm,
+          isActive: factoryWarehouse.is_active,
+          createdBy: factoryWarehouse.created_by,
+          createdAt: factoryWarehouse.created_at,
+          updatedAt: factoryWarehouse.updated_at,
+          organizationId: factoryWarehouse.organization_id,
+          operatingHours: factoryWarehouse.operating_hours
+        };
+      }
     } else {
       console.log('🏭 No factory_warehouse_id found in shipment:', shipmentData.factory_warehouse_id);
     }
