@@ -74,6 +74,11 @@ export async function GET(
       return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
     }
 
+    console.log('📅 Shipment dates debug:');
+    console.log('📅 estimated_departure:', shipmentData.estimated_departure);
+    console.log('📅 estimated_arrival:', shipmentData.estimated_arrival);
+    console.log('📅 Raw shipment data keys:', Object.keys(shipmentData));
+
     // Get factory warehouse details if linked
     let factoryWarehouse = null;
     if (shipmentData.factory_warehouse_id) {
@@ -84,6 +89,11 @@ export async function GET(
         .limit(1);
       
       factoryWarehouse = warehouseData;
+      console.log('🏭 Factory warehouse data:', JSON.stringify(factoryWarehouse, null, 2));
+      console.log('🏭 Contacts field type:', typeof (factoryWarehouse as any)?.contacts);
+      console.log('🏭 Contacts data:', (factoryWarehouse as any)?.contacts);
+    } else {
+      console.log('🏭 No factory_warehouse_id found in shipment:', shipmentData.factory_warehouse_id);
     }
 
     // Get user organization for BDI contact info
