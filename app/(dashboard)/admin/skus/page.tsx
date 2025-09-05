@@ -68,6 +68,32 @@ export default function SKUsPage() {
     );
   }
 
+  const handleDeleteSku = async (skuId: string, skuName: string) => {
+    if (!confirm(`Are you sure you want to delete SKU "${skuName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/skus/${skuId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        mutateSkus(); // Refresh the SKU list
+        alert('SKU deleted successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete SKU: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting SKU:', error);
+      alert('Failed to delete SKU. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCreateSku = async (formData: FormData) => {
     setIsLoading(true);
     try {
@@ -493,9 +519,20 @@ export default function SKUsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedSku(sku)}
+                        disabled={isLoading}
                       >
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteSku(sku.id, sku.sku)}
+                        disabled={isLoading}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </div>
@@ -509,14 +546,13 @@ export default function SKUsPage() {
                     return (
                       <div 
                         key={sku.id} 
-                        className={`relative border-2 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all ${getProductTypeColor(productType)}`}
-                        onClick={() => setSelectedSku(sku)}
+                        className={`relative border-2 rounded-lg p-3 hover:shadow-md transition-all ${getProductTypeColor(productType)}`}
                       >
                         <div className="text-center">
                           <div className="text-xs font-mono font-bold mb-1 truncate">
                             {sku.sku}
                           </div>
-                          <div className="text-xs font-medium leading-tight line-clamp-2 min-h-[2.5rem] flex items-center justify-center">
+                          <div className="text-xs font-medium leading-tight line-clamp-2 min-h-[2.5rem] flex items-center justify-center mb-2">
                             {sku.name}
                           </div>
                           {!sku.isActive && (
@@ -526,6 +562,27 @@ export default function SKUsPage() {
                               </Badge>
                             </div>
                           )}
+                          <div className="flex items-center justify-center space-x-1 mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedSku(sku)}
+                              disabled={isLoading}
+                              className="text-xs px-2 py-1"
+                            >
+                              <SemanticBDIIcon semantic="settings" size={12} className="mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteSku(sku.id, sku.sku)}
+                              disabled={isLoading}
+                              className="text-xs px-2 py-1 text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              <SemanticBDIIcon semantic="delete" size={12} />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );

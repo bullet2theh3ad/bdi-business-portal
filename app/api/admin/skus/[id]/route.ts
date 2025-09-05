@@ -103,3 +103,74 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     );
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify BDI Admin permission
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!requestingUser || !['super_admin', 'admin'].includes(requestingUser.role)) {
+      return NextResponse.json({ error: 'Forbidden - BDI Admin required' }, { status: 403 });
+    }
+
+    const { id: skuId } = await params;
+
+    // Check if SKU exists
+    const [existingSku] = await db
+      .select()
+      .from(productSkus)
+      .where(eq(productSkus.id, skuId))
+      .limit(1);
+
+    if (!existingSku) {
+      return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
+    }
+
+    // Delete the SKU
+    await db
+      .delete(productSkus)
+      .where(eq(productSkus.id, skuId));
+
+    console.log(`✅ SKU deleted: ${existingSku.sku} (${existingSku.name})`);
+
+    return NextResponse.json({
+      success: true,
+      message: `SKU "${existingSku.sku}" deleted successfully`
+    });
+
+  } catch (error) {
+    console.error('Error deleting SKU:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
