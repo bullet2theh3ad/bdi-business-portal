@@ -415,19 +415,35 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                         </div>
                     </div>
                     
-                    ${factoryWarehouse.contacts ? (() => {
-                        let contactsArray;
-                        try {
-                            contactsArray = typeof factoryWarehouse.contacts === 'string' 
-                                ? JSON.parse(factoryWarehouse.contacts) 
-                                : factoryWarehouse.contacts;
-                        } catch {
-                            contactsArray = [];
+                    ${(() => {
+                        // Handle both new contacts array format and old single contact format
+                        let contactsToShow = [];
+                        
+                        // Try new contacts array format first
+                        if (factoryWarehouse.contacts) {
+                            try {
+                                const contactsArray = typeof factoryWarehouse.contacts === 'string' 
+                                    ? JSON.parse(factoryWarehouse.contacts) 
+                                    : factoryWarehouse.contacts;
+                                if (Array.isArray(contactsArray)) {
+                                    contactsToShow = contactsArray;
+                                }
+                            } catch (e) {
+                                console.log('Error parsing contacts array:', e);
+                            }
                         }
                         
-                        if (!Array.isArray(contactsArray)) contactsArray = [];
+                        // Fallback to old single contact format
+                        if (contactsToShow.length === 0 && (factoryWarehouse.contactName || factoryWarehouse.contactEmail || factoryWarehouse.contactPhone)) {
+                            contactsToShow = [{
+                                name: factoryWarehouse.contactName,
+                                email: factoryWarehouse.contactEmail, 
+                                phone: factoryWarehouse.contactPhone,
+                                isPrimary: true
+                            }];
+                        }
                         
-                        return contactsArray.map((contact: any, index: number) => `
+                        return contactsToShow.map((contact: any, index: number) => `
                             <div class="contact-card" style="margin-top: 15px; background: #f0fdf4;">
                                 <div class="contact-name">${contact.name || contact.contact_name || 'Contact ' + (index + 1)}${contact.isPrimary || contact.is_primary ? ' (Primary)' : ''}</div>
                                 <div class="grid">
@@ -442,7 +458,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                                 </div>
                             </div>
                         `).join('');
-                    })() : ''}
+                    })()}
                     
                     <div class="grid" style="margin-top: 15px;">
                         <div class="field">
