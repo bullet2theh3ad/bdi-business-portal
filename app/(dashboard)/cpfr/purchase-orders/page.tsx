@@ -60,6 +60,8 @@ export default function PurchaseOrdersPage() {
           skuCode: string;
           skuName: string;
           quantity: number;
+          unitCost: number;
+          totalCost: number;
         }>> = {};
 
         for (const po of purchaseOrders) {
@@ -70,7 +72,9 @@ export default function PurchaseOrdersPage() {
               lineItemsData[po.id] = lineItems.map((item: any) => ({
                 skuCode: item.skuCode,
                 skuName: item.skuName,
-                quantity: item.quantity
+                quantity: item.quantity,
+                unitCost: parseFloat(item.unitCost) || 0,
+                totalCost: parseFloat(item.totalCost) || 0
               }));
             }
           } catch (error) {
@@ -113,6 +117,19 @@ export default function PurchaseOrdersPage() {
       `${sku}: ${data.quantity.toLocaleString()}`
     ).join(' • ');
   };
+
+  // Helper function to get detailed line items for display
+  const getDetailedLineItems = (purchaseOrderId: string) => {
+    const lineItems = purchaseOrderLineItems[purchaseOrderId] || [];
+    if (lineItems.length === 0) return null;
+
+    const grandTotal = lineItems.reduce((sum, item) => sum + item.totalCost, 0);
+
+    return {
+      items: lineItems,
+      grandTotal: grandTotal
+    };
+  };
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
@@ -145,6 +162,8 @@ export default function PurchaseOrdersPage() {
     skuCode: string;
     skuName: string;
     quantity: number;
+    unitCost: number;
+    totalCost: number;
   }>>>({});
 
   // Helper functions for line items
@@ -458,15 +477,21 @@ export default function PurchaseOrdersPage() {
                           const lineItemsResponse = await fetch(`/api/cpfr/purchase-orders/${po.id}/line-items`);
                           if (lineItemsResponse.ok) {
                             const lineItems = await lineItemsResponse.json();
-                            const mappedItems = lineItems.map((item: any) => ({
-                              id: item.id,
-                              skuId: item.skuId,
-                              sku: item.skuCode,
-                              skuName: item.skuName,
-                              quantity: item.quantity,
-                              unitCost: parseFloat(item.unitCost),
-                              lineTotal: parseFloat(item.totalCost)
-                            }));
+                            const mappedItems = lineItems.map((item: any) => {
+                              const quantity = item.quantity || 0;
+                              const unitCost = parseFloat(item.unitCost) || 0;
+                              const lineTotal = parseFloat(item.totalCost) || (quantity * unitCost);
+                              
+                              return {
+                                id: item.id,
+                                skuId: item.skuId,
+                                sku: item.skuCode,
+                                skuName: item.skuName,
+                                quantity: quantity,
+                                unitCost: unitCost,
+                                lineTotal: lineTotal
+                              };
+                            });
                             
                             console.log('Mapped line items for UI:', mappedItems);
                             setEditLineItems(mappedItems);
