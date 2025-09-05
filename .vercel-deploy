@@ -1,0 +1,14 @@
+# Vercel Deployment Trigger
+# This file forces Vercel to recognize changes and deploy
+
+Deployment needed for:
+- API Keys system (Admin → API Keys)
+- API endpoints (/api/v1/production-files)
+- External partner API integration
+- GPN API key testing
+
+Current local version: v1.290+
+Current Vercel version: v1.289 (outdated)
+
+Deploy timestamp: 2025-09-04
+Required commit: 04aa2e0 or newer
