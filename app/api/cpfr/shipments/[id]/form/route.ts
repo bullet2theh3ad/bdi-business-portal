@@ -293,7 +293,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                     </div>
                     <div class="field">
                         <div class="field-label">Incoterms</div>
-                        <div class="field-value">${shipmentData.incoterms || 'EXW'}</div>
+                        <div class="field-value">${shipmentData.incoterms || forecast?.incoterms || 'FOB'}</div>
                     </div>
                 </div>
             </div>
@@ -419,15 +419,15 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                         
                         return contactsArray.map((contact: any, index: number) => `
                             <div class="contact-card" style="margin-top: 15px; background: #f0fdf4;">
-                                <div class="contact-name">${contact.contact_name || contact.name || 'Contact ' + (index + 1)}</div>
+                                <div class="contact-name">${contact.name || contact.contact_name || 'Contact ' + (index + 1)}${contact.isPrimary || contact.is_primary ? ' (Primary)' : ''}</div>
                                 <div class="grid">
                                     <div class="field">
                                         <div class="field-label">Email</div>
-                                        <div class="field-value">${contact.contact_email || contact.email || 'Email TBD'}</div>
+                                        <div class="field-value">${contact.email || contact.contact_email || 'Email TBD'}</div>
                                     </div>
                                     <div class="field">
                                         <div class="field-label">Phone</div>
-                                        <div class="field-value">${contact.contact_phone || contact.phone || 'Phone TBD'}${contact.contact_extension || contact.extension ? ' ext. ' + (contact.contact_extension || contact.extension) : ''}</div>
+                                        <div class="field-value">${contact.phone || contact.contact_phone || 'Phone TBD'}${(contact.extension || contact.contact_extension) ? ' ext. ' + (contact.extension || contact.contact_extension) : ''}</div>
                                     </div>
                                 </div>
                             </div>
