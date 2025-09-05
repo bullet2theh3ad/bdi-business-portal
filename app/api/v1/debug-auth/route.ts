@@ -69,11 +69,12 @@ export async function GET(request: NextRequest) {
     let dbConnectionTest;
     try {
       const { db } = await import('@/lib/db/drizzle');
+      const { organizations } = await import('@/lib/db/schema');
       dbConnectionTest = 'Database import successful';
       
       // Try a simple database query
-      const testQuery = await db.$count(db.select().from(db.organizations));
-      dbConnectionTest = `Database connection successful, found ${testQuery} organizations`;
+      const testQuery = await db.select().from(organizations).limit(1);
+      dbConnectionTest = `Database connection successful, found ${testQuery.length} organizations`;
     } catch (dbError) {
       return NextResponse.json({
         success: false,
