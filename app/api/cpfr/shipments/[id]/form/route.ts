@@ -125,6 +125,32 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
     day: 'numeric' 
   });
 
+  // Calculate shipping data using the same logic as the UI
+  const quantity = forecast?.quantity || 0;
+  const unitsPerCarton = sku?.boxes_per_carton || 5;
+  const cartonCount = Math.ceil(quantity / unitsPerCarton);
+  const palletCount = Math.ceil(cartonCount / 40); // Assuming 40 cartons per pallet
+  
+  const shippingData = {
+    totalUnits: quantity,
+    cartonCount: cartonCount,
+    palletCount: palletCount,
+    unitsPerCarton: unitsPerCarton,
+    ctnL: sku?.carton_length_cm || '0',
+    ctnW: sku?.carton_width_cm || '0', 
+    ctnH: sku?.carton_height_cm || '0',
+    cbmPerCarton: sku?.carton_length_cm && sku?.carton_width_cm && sku?.carton_height_cm 
+      ? ((parseFloat(sku.carton_length_cm) * parseFloat(sku.carton_width_cm) * parseFloat(sku.carton_height_cm)) / 1000000).toFixed(8)
+      : '0',
+    unitNW: sku?.box_weight_kg || '0',
+    ctnGW: sku?.carton_weight_kg || '0',
+    totalShippingWeight: cartonCount * parseFloat(sku?.carton_weight_kg || '0'),
+    totalVolumeCartons: sku?.carton_length_cm && sku?.carton_width_cm && sku?.carton_height_cm 
+      ? (cartonCount * (parseFloat(sku.carton_length_cm) * parseFloat(sku.carton_width_cm) * parseFloat(sku.carton_height_cm)) / 1000000).toFixed(7)
+      : '0',
+    htsCode: sku?.hts_code || 'TBD'
+  };
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -272,42 +298,84 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                 </div>
             </div>
 
-            <!-- Product Information -->
+            <!-- Package Summary -->
             ${sku ? `
             <div class="section">
-                <h2>📋 Product Information</h2>
+                <h2>📦 Package Summary</h2>
                 <div class="grid">
                     <div class="field">
-                        <div class="field-label">SKU Code</div>
-                        <div class="field-value highlight">${sku.sku.replace(/\([^)]*\)/g, '').replace(/-+$/, '').trim()}</div>
+                        <div class="field-label">Total Units</div>
+                        <div class="field-value highlight">${shippingData.totalUnits.toLocaleString()}</div>
                     </div>
                     <div class="field">
-                        <div class="field-label">Product Name</div>
-                        <div class="field-value">${sku.name}</div>
+                        <div class="field-label">Total Cartons</div>
+                        <div class="field-value highlight">${shippingData.cartonCount}</div>
                     </div>
                     <div class="field">
-                        <div class="field-label">Quantity</div>
-                        <div class="field-value highlight">${forecast?.quantity?.toLocaleString() || 'TBD'} units</div>
+                        <div class="field-label">Total Pallets</div>
+                        <div class="field-value highlight">${shippingData.palletCount}</div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Units/Carton</div>
+                        <div class="field-value">${shippingData.unitsPerCarton}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight Breakdown -->
+            <div class="section">
+                <h2>⚖️ Weight Breakdown (kg)</h2>
+                <div class="grid">
+                    <div class="field">
+                        <div class="field-label">Unit NW</div>
+                        <div class="field-value">${shippingData.unitNW} kg</div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">CTN GW</div>
+                        <div class="field-value">${shippingData.ctnGW} kg</div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Total Shipping Weight</div>
+                        <div class="field-value highlight">${shippingData.totalShippingWeight} kg</div>
                     </div>
                     <div class="field">
                         <div class="field-label">HTS Code</div>
-                        <div class="field-value">${sku.hts_code || 'TBD'}</div>
+                        <div class="field-value">${shippingData.htsCode}</div>
                     </div>
                 </div>
-                
-                <div class="grid-3" style="margin-top: 15px;">
+            </div>
+
+            <!-- Volume Breakdown -->
+            <div class="section">
+                <h2>📐 Volume Breakdown (CBM)</h2>
+                <div class="grid">
                     <div class="field">
-                        <div class="field-label">Carton Dimensions (cm)</div>
-                        <div class="field-value">${sku.carton_length_cm}×${sku.carton_width_cm}×${sku.carton_height_cm}</div>
+                        <div class="field-label">Dimensions (L×W×H)</div>
+                        <div class="field-value">${shippingData.ctnL}×${shippingData.ctnW}×${shippingData.ctnH} cm</div>
                     </div>
                     <div class="field">
-                        <div class="field-label">Carton Weight (kg)</div>
-                        <div class="field-value">${sku.carton_weight_kg}</div>
+                        <div class="field-label">CBM per Carton</div>
+                        <div class="field-value">${shippingData.cbmPerCarton}</div>
                     </div>
                     <div class="field">
-                        <div class="field-label">Units per Carton</div>
-                        <div class="field-value">${sku.boxes_per_carton}</div>
+                        <div class="field-label">Total Volume</div>
+                        <div class="field-value highlight">${shippingData.totalVolumeCartons} cbm</div>
                     </div>
+                    <div class="field">
+                        <div class="field-label">SKU Code</div>
+                        <div class="field-value">${sku.sku.replace(/\([^)]*\)/g, '').replace(/-+$/, '').trim()}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Preview -->
+            <div class="section">
+                <h2>📄 Export Preview</h2>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; border: 1px solid #dee2e6;">
+                    <div style="color: #6c757d;">SKU: ${sku.sku.replace(/\([^)]*\)/g, '').replace(/-+$/, '').trim()}</div>
+                    <div>Units: ${shippingData.totalUnits.toLocaleString()}, Cartons: ${shippingData.cartonCount}</div>
+                    <div>CBM: ${shippingData.cbmPerCarton}, Weight: ${shippingData.totalShippingWeight}kg</div>
+                    <div style="color: #0d6efd; margin-top: 8px;">✅ Ready for CSV export to shipper</div>
                 </div>
             </div>
             ` : ''}
@@ -373,7 +441,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                         </div>
                         <div class="field">
                             <div class="field-label">Time Zone</div>
-                            <div class="field-value">${factoryWarehouse.timeZone || 'Time Zone TBD'}</div>
+                            <div class="field-value">${factoryWarehouse.timezone || 'Time Zone TBD'}</div>
                         </div>
                     </div>
                 </div>
@@ -400,14 +468,6 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                         <div class="field">
                             <div class="field-label">Phone</div>
                             <div class="field-value">949-994-7791</div>
-                        </div>
-                        <div class="field">
-                            <div class="field-label">Primary Contact</div>
-                            <div class="field-value">Dariush Zand<br>dzand@boundlessdevices.com</div>
-                        </div>
-                        <div class="field">
-                            <div class="field-label">Technical Contact</div>
-                            <div class="field-value">Steven Cistulli<br>scistulli@boundlessdevices.com</div>
                         </div>
                     </div>
                 </div>
