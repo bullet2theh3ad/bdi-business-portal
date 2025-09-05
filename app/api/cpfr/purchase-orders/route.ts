@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
     const userOrganization = userOrgMembership[0].organization;
 
     // Fetch purchase orders from database using Supabase client
+    // Users can see POs where they are either:
+    // 1. The buyer (their organization created the PO)
+    // 2. The supplier (their organization code matches supplier_name)
     const { data: purchaseOrdersData, error: purchaseOrdersError } = await supabase
       .from('purchase_orders')
       .select(`
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at
       `)
-      .eq('organization_id', userOrganization.id)
+      .or(`organization_id.eq.${userOrganization.id},supplier_name.eq.${userOrganization.code}`)
       .order('created_at', { ascending: false });
 
     if (purchaseOrdersError) {

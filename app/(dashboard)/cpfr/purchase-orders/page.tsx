@@ -43,7 +43,7 @@ export default function PurchaseOrdersPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: purchaseOrders, mutate: mutatePurchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
-  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher, {
+  const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=false', fetcher, {
     onError: (error) => {
       // Silently handle 403 errors for non-admin users
       if (error?.status !== 403) {
@@ -966,13 +966,28 @@ export default function PurchaseOrdersPage() {
               {/* Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <Label htmlFor="editSupplierName">Supplier Name</Label>
-                  <Input
+                  <Label htmlFor="editSupplierName">Supplier Organization</Label>
+                  <select
                     id="editSupplierName"
                     name="editSupplierName"
                     defaultValue={selectedPurchaseOrder.supplierName || ''}
-                    placeholder="Supplier name"
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select Supplier Organization</option>
+                    {Array.isArray(organizations) && organizations.map((org: any) => (
+                      <option key={org.id} value={org.code}>
+                        {org.code} - {org.name}
+                      </option>
+                    ))}
+                    {(!Array.isArray(organizations) || organizations.length === 0) && user?.organization && (
+                      <option key={user.organization.id} value={user.organization.code}>
+                        {user.organization.code} - {user.organization.name}
+                      </option>
+                    )}
+                  </select>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Select the Supplier/Vendor organization (Factory) for CPFR signaling
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="editStatus">Status</Label>
