@@ -216,10 +216,18 @@ export default function ProductionFilesPage() {
 
   const handleDownload = async (file: ProductionFile) => {
     try {
+      // Get the signed download URL from our API
       const response = await fetch(`/api/inventory/production-files/${file.id}/download`);
       if (!response.ok) throw new Error('Download failed');
 
-      const blob = await response.blob();
+      const data = await response.json();
+      if (!data.downloadUrl) throw new Error('No download URL received');
+
+      // Fetch the actual file using the signed URL
+      const fileResponse = await fetch(data.downloadUrl);
+      if (!fileResponse.ok) throw new Error('File download failed');
+
+      const blob = await fileResponse.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

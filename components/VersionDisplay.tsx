@@ -36,7 +36,7 @@ export default function VersionDisplay({ className = '', showDetails = false }: 
 
       {/* Detailed tooltip */}
       {(showTooltip || showDetails) && (
-        <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-64 z-50">
+        <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-64 z-50">
           <div className="space-y-2">
             <div className="flex items-center space-x-2 border-b border-gray-100 pb-2">
               <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"></div>
