@@ -2041,7 +2041,10 @@ export default function SalesForecastsPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={async () => {
-                                  if (confirm(`Delete forecast for ${forecast.sku.sku} (${forecast.quantity.toLocaleString()} units)?\n\nThis action cannot be undone.`)) {
+                                  // Enhanced confirmation message
+                                  const confirmMessage = `Delete forecast for ${forecast.sku.sku} (${forecast.quantity.toLocaleString()} units)?\n\n⚠️ WARNING: This will also delete any related shipments and their documents.\n\nThis action cannot be undone.`;
+                                  
+                                  if (confirm(confirmMessage)) {
                                     try {
                                       const response = await fetch(`/api/cpfr/forecasts`, {
                                         method: 'DELETE',
@@ -2050,8 +2053,12 @@ export default function SalesForecastsPage() {
                                       });
                                       
                                       if (response.ok) {
+                                        const result = await response.json();
                                         mutateForecasts();
-                                        alert('Forecast deleted successfully!');
+                                        
+                                        // Show enhanced success message
+                                        alert(`✅ ${result.message}${result.deletedShipments > 0 ? `\n\n📦 Also deleted ${result.deletedShipments} related shipment${result.deletedShipments === 1 ? '' : 's'} and their documents.` : ''}`);
+                                        
                                         // Close modal if no more forecasts for this week
                                         const remainingForecasts = forecastsArray.filter(f => 
                                           f.deliveryWeek === selectedWeekForDetail && f.id !== forecast.id
@@ -2064,7 +2071,7 @@ export default function SalesForecastsPage() {
                                         
                                         // Show specific error message for foreign key constraints
                                         if (errorData.code === 'FOREIGN_KEY_CONSTRAINT') {
-                                          alert(`⚠️ Cannot Delete Forecast\n\n${errorData.error}\n\nThis forecast may be referenced in:\n• Production Files\n• Shipment Records\n• Other system data\n\nPlease remove all references first, then try deleting again.`);
+                                          alert(`⚠️ Cannot Delete Forecast\n\n${errorData.error}\n\nThis forecast may be referenced in:\n• Production Files\n• Other system data\n\nPlease remove all references first, then try deleting again.`);
                                         } else {
                                           alert(`Failed to delete forecast: ${errorData.error || 'Unknown error'}`);
                                         }

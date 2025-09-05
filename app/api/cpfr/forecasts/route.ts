@@ -673,8 +673,56 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ Deleting forecast:', forecastId);
 
-    // Delete forecast from database
+    // First, check if there are any shipments that reference this forecast
+    const { data: relatedShipments, error: shipmentCheckError } = await supabase
+      .from('shipments')
+      .select('id, shipper_reference, bdi_reference')
+      .eq('forecast_id', forecastId);
+
+    if (shipmentCheckError) {
+      console.error('Error checking related shipments:', shipmentCheckError);
+    }
+
+    const hasRelatedShipments = relatedShipments && relatedShipments.length > 0;
+    console.log(`📦 Found ${relatedShipments?.length || 0} related shipments for forecast ${forecastId}`);
+
+    // Delete forecast from database (and related shipments if any)
     try {
+      let deletionMessage = 'Forecast deleted successfully!';
+      
+      // If there are related shipments, delete them first
+      if (hasRelatedShipments) {
+        console.log('🚛 Deleting related shipments first...');
+        
+        for (const shipment of relatedShipments) {
+          // Delete shipment documents first
+          const { error: docsDeleteError } = await supabase
+            .from('shipment_documents')
+            .delete()
+            .eq('shipment_id', shipment.id);
+            
+          if (docsDeleteError) {
+            console.error('Error deleting shipment documents:', docsDeleteError);
+          }
+          
+          // Delete the shipment
+          const { error: shipmentDeleteError } = await supabase
+            .from('shipments')
+            .delete()
+            .eq('id', shipment.id);
+            
+          if (shipmentDeleteError) {
+            console.error('Error deleting shipment:', shipmentDeleteError);
+            throw shipmentDeleteError;
+          }
+          
+          console.log(`✅ Deleted shipment: ${shipment.shipper_reference || shipment.bdi_reference || shipment.id}`);
+        }
+        
+        deletionMessage = `Forecast and ${relatedShipments.length} related shipment${relatedShipments.length === 1 ? '' : 's'} deleted successfully!`;
+      }
+
+      // Now delete the forecast
       const { data: deletedForecast, error: deleteError } = await supabase
         .from('sales_forecasts')
         .delete()
@@ -693,8 +741,6 @@ export async function DELETE(request: NextRequest) {
           let referencingTable = 'other records';
           if (deleteError.details?.includes('production_files')) {
             referencingTable = 'production files';
-          } else if (deleteError.details?.includes('shipments')) {
-            referencingTable = 'shipments';
           }
 
           return NextResponse.json({
@@ -711,8 +757,9 @@ export async function DELETE(request: NextRequest) {
       
       return NextResponse.json({
         success: true,
-        message: 'Forecast deleted successfully!',
-        forecast: deletedForecast
+        message: deletionMessage,
+        forecast: deletedForecast,
+        deletedShipments: relatedShipments?.length || 0
       });
       
     } catch (dbError) {
