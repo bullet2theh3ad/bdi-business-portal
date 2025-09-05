@@ -152,6 +152,8 @@ export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   plus: 'network-6', // Plus/add icon
   inventory: 'warehouse-3', // Inventory icon
   info: 'mobile-10', // Info icon
+  security: 'network-8', // Security/lock icon
+  check: 'network-9', // Check/success icon
 };
 
 interface SemanticBDIIconProps {
