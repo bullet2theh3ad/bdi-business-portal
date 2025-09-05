@@ -2042,7 +2042,7 @@ export default function SalesForecastsPage() {
                                 size="sm"
                                 onClick={async () => {
                                   // Enhanced confirmation message
-                                  const confirmMessage = `Delete forecast for ${forecast.sku.sku} (${forecast.quantity.toLocaleString()} units)?\n\n⚠️ WARNING: This will also delete any related shipments and their documents.\n\nThis action cannot be undone.`;
+                                  const confirmMessage = `Delete forecast for ${forecast.sku.sku} (${forecast.quantity.toLocaleString()} units)?\n\n⚠️ WARNING: This will also delete:\n• Any related shipments and their documents\n• Any related production files\n• All associated data\n\nThis action cannot be undone.`;
                                   
                                   if (confirm(confirmMessage)) {
                                     try {

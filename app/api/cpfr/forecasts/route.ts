@@ -673,22 +673,77 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ Deleting forecast:', forecastId);
 
-    // First, check if there are any shipments that reference this forecast
+    // Get forecast details for logging
+    const { data: forecastDetails } = await supabase
+      .from('sales_forecasts')
+      .select('sku_id, delivery_week, quantity, status')
+      .eq('id', forecastId)
+      .single();
+    
+    console.log('📋 Forecast to delete:', forecastDetails);
+
+    // Check for related records that need to be deleted first
+    // 1. Check for shipments that reference this forecast
     const { data: relatedShipments, error: shipmentCheckError } = await supabase
       .from('shipments')
-      .select('id, shipper_reference, bdi_reference')
+      .select('id, shipper_reference, bdi_reference, status')
       .eq('forecast_id', forecastId);
 
     if (shipmentCheckError) {
       console.error('Error checking related shipments:', shipmentCheckError);
     }
 
-    const hasRelatedShipments = relatedShipments && relatedShipments.length > 0;
-    console.log(`📦 Found ${relatedShipments?.length || 0} related shipments for forecast ${forecastId}`);
+    // 2. Check for production files that reference this forecast
+    const { data: relatedProductionFiles, error: productionFilesCheckError } = await supabase
+      .from('production_files')
+      .select('id, file_name, file_path')
+      .eq('forecast_id', forecastId);
 
-    // Delete forecast from database (and related shipments if any)
+    if (productionFilesCheckError) {
+      console.error('Error checking related production files:', productionFilesCheckError);
+    }
+
+    const hasRelatedShipments = relatedShipments && relatedShipments.length > 0;
+    const hasRelatedProductionFiles = relatedProductionFiles && relatedProductionFiles.length > 0;
+    
+    console.log(`📦 Found ${relatedShipments?.length || 0} related shipments for forecast ${forecastId}`);
+    console.log(`📁 Found ${relatedProductionFiles?.length || 0} related production files for forecast ${forecastId}`);
+
+    // Delete forecast from database (and all related records)
     try {
       let deletionMessage = 'Forecast deleted successfully!';
+      let deletedItems = [];
+      
+      // If there are related production files, delete them first
+      if (hasRelatedProductionFiles) {
+        console.log('📁 Deleting related production files first...');
+        
+        for (const productionFile of relatedProductionFiles) {
+          // Delete the file from Supabase Storage first
+          const { error: storageDeleteError } = await supabase.storage
+            .from('organization-documents')
+            .remove([productionFile.file_path]);
+            
+          if (storageDeleteError) {
+            console.error('Error deleting file from storage:', storageDeleteError);
+          }
+          
+          // Delete the production file record
+          const { error: fileDeleteError } = await supabase
+            .from('production_files')
+            .delete()
+            .eq('id', productionFile.id);
+            
+          if (fileDeleteError) {
+            console.error('Error deleting production file:', fileDeleteError);
+            throw fileDeleteError;
+          }
+          
+          console.log(`✅ Deleted production file: ${productionFile.file_name}`);
+        }
+        
+        deletedItems.push(`${relatedProductionFiles.length} production file${relatedProductionFiles.length === 1 ? '' : 's'}`);
+      }
       
       // If there are related shipments, delete them first
       if (hasRelatedShipments) {
@@ -719,7 +774,12 @@ export async function DELETE(request: NextRequest) {
           console.log(`✅ Deleted shipment: ${shipment.shipper_reference || shipment.bdi_reference || shipment.id}`);
         }
         
-        deletionMessage = `Forecast and ${relatedShipments.length} related shipment${relatedShipments.length === 1 ? '' : 's'} deleted successfully!`;
+        deletedItems.push(`${relatedShipments.length} shipment${relatedShipments.length === 1 ? '' : 's'}`);
+      }
+      
+      // Update deletion message
+      if (deletedItems.length > 0) {
+        deletionMessage = `Forecast and ${deletedItems.join(' and ')} deleted successfully!`;
       }
 
       // Now delete the forecast
@@ -732,21 +792,27 @@ export async function DELETE(request: NextRequest) {
 
       if (deleteError) {
         console.error('Database delete error:', deleteError);
+        console.error('Full error details:', JSON.stringify(deleteError, null, 2));
         
         // Handle foreign key constraint violations
         if (deleteError.code === '23503') {
-          console.error('Foreign key constraint violation:', deleteError.details);
+          console.error('Foreign key constraint violation:', deleteError.details || deleteError.message);
           
           // Extract table name from error for better messaging
           let referencingTable = 'other records';
-          if (deleteError.details?.includes('production_files')) {
+          const errorDetail = deleteError.details || deleteError.message || '';
+          
+          if (errorDetail.includes('production_files')) {
             referencingTable = 'production files';
+          } else if (errorDetail.includes('shipment')) {
+            referencingTable = 'shipments';
           }
 
           return NextResponse.json({
             error: `Cannot delete forecast because it is currently being used in ${referencingTable}. Please remove all references to this forecast before deleting it.`,
             code: 'FOREIGN_KEY_CONSTRAINT',
-            referencingTable: referencingTable
+            referencingTable: referencingTable,
+            debugInfo: errorDetail
           }, { status: 409 }); // 409 Conflict
         }
         
