@@ -684,6 +684,26 @@ export async function DELETE(request: NextRequest) {
 
       if (deleteError) {
         console.error('Database delete error:', deleteError);
+        
+        // Handle foreign key constraint violations
+        if (deleteError.code === '23503') {
+          console.error('Foreign key constraint violation:', deleteError.details);
+          
+          // Extract table name from error for better messaging
+          let referencingTable = 'other records';
+          if (deleteError.details?.includes('production_files')) {
+            referencingTable = 'production files';
+          } else if (deleteError.details?.includes('shipments')) {
+            referencingTable = 'shipments';
+          }
+
+          return NextResponse.json({
+            error: `Cannot delete forecast because it is currently being used in ${referencingTable}. Please remove all references to this forecast before deleting it.`,
+            code: 'FOREIGN_KEY_CONSTRAINT',
+            referencingTable: referencingTable
+          }, { status: 409 }); // 409 Conflict
+        }
+        
         throw deleteError;
       }
 

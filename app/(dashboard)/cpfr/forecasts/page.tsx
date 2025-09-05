@@ -2060,7 +2060,14 @@ export default function SalesForecastsPage() {
                                           setShowDetailModal(false);
                                         }
                                       } else {
-                                        alert('Failed to delete forecast');
+                                        const errorData = await response.json();
+                                        
+                                        // Show specific error message for foreign key constraints
+                                        if (errorData.code === 'FOREIGN_KEY_CONSTRAINT') {
+                                          alert(`⚠️ Cannot Delete Forecast\n\n${errorData.error}\n\nThis forecast may be referenced in:\n• Production Files\n• Shipment Records\n• Other system data\n\nPlease remove all references first, then try deleting again.`);
+                                        } else {
+                                          alert(`Failed to delete forecast: ${errorData.error || 'Unknown error'}`);
+                                        }
                                       }
                                     } catch (error) {
                                       console.error('Error deleting forecast:', error);
