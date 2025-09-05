@@ -686,7 +686,7 @@ export async function DELETE(request: NextRequest) {
     // 1. Check for shipments that reference this forecast
     const { data: relatedShipments, error: shipmentCheckError } = await supabase
       .from('shipments')
-      .select('id, shipper_reference, bdi_reference, status')
+      .select('id, shipment_number, tracking_number, status')
       .eq('forecast_id', forecastId);
 
     if (shipmentCheckError) {
@@ -771,7 +771,7 @@ export async function DELETE(request: NextRequest) {
             throw shipmentDeleteError;
           }
           
-          console.log(`✅ Deleted shipment: ${shipment.shipper_reference || shipment.bdi_reference || shipment.id}`);
+          console.log(`✅ Deleted shipment: ${shipment.shipment_number || shipment.tracking_number || shipment.id}`);
         }
         
         deletedItems.push(`${relatedShipments.length} shipment${relatedShipments.length === 1 ? '' : 's'}`);
