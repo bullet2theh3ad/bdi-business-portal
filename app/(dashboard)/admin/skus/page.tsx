@@ -84,7 +84,13 @@ export default function SKUsPage() {
         alert('SKU deleted successfully!');
       } else {
         const errorData = await response.json();
-        alert(`Failed to delete SKU: ${errorData.error || 'Unknown error'}`);
+        
+        // Show specific error message for foreign key constraints
+        if (errorData.code === 'FOREIGN_KEY_CONSTRAINT') {
+          alert(`⚠️ Cannot Delete SKU\n\n${errorData.error}\n\nTo delete this SKU:\n1. Remove it from all invoices, purchase orders, and forecasts first\n2. Then try deleting again`);
+        } else {
+          alert(`Failed to delete SKU: ${errorData.error || 'Unknown error'}`);
+        }
       }
     } catch (error) {
       console.error('Error deleting SKU:', error);

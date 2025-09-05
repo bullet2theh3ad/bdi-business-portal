@@ -155,16 +155,42 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Delete the SKU
-    await db
-      .delete(productSkus)
-      .where(eq(productSkus.id, skuId));
+    try {
+      await db
+        .delete(productSkus)
+        .where(eq(productSkus.id, skuId));
 
-    console.log(`✅ SKU deleted: ${existingSku.sku} (${existingSku.name})`);
+      console.log(`✅ SKU deleted: ${existingSku.sku} (${existingSku.name})`);
 
-    return NextResponse.json({
-      success: true,
-      message: `SKU "${existingSku.sku}" deleted successfully`
-    });
+      return NextResponse.json({
+        success: true,
+        message: `SKU "${existingSku.sku}" deleted successfully`
+      });
+    } catch (deleteError: any) {
+      // Handle foreign key constraint violations
+      if (deleteError.code === '23503') {
+        console.error('Foreign key constraint violation:', deleteError.detail);
+        
+        // Extract table name from error for better messaging
+        let referencingTable = 'other records';
+        if (deleteError.detail?.includes('invoice_line_items')) {
+          referencingTable = 'invoice line items';
+        } else if (deleteError.detail?.includes('purchase_order_line_items')) {
+          referencingTable = 'purchase order line items';
+        } else if (deleteError.detail?.includes('sales_forecasts')) {
+          referencingTable = 'sales forecasts';
+        }
+
+        return NextResponse.json({
+          error: `Cannot delete SKU "${existingSku.sku}" because it is currently being used in ${referencingTable}. Please remove all references to this SKU before deleting it.`,
+          code: 'FOREIGN_KEY_CONSTRAINT',
+          referencingTable: referencingTable
+        }, { status: 409 }); // 409 Conflict
+      }
+      
+      // Re-throw other database errors
+      throw deleteError;
+    }
 
   } catch (error) {
     console.error('Error deleting SKU:', error);
