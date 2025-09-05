@@ -279,7 +279,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
                 <div class="grid">
                     <div class="field">
                         <div class="field-label">SKU Code</div>
-                        <div class="field-value highlight">${sku.sku.replace(/\([^)]*\)/g, '').trim()}</div>
+                        <div class="field-value highlight">${sku.sku.replace(/\([^)]*\)/g, '').replace(/-+$/, '').trim()}</div>
                     </div>
                     <div class="field">
                         <div class="field-label">Product Name</div>
@@ -317,7 +317,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
             <div class="section">
                 <h2>🏭 Factory Contact Information</h2>
                 <div class="contact-card">
-                    <div class="contact-name">${factoryWarehouse.name}</div>
+                    <div class="contact-name">MTN Factory: ${factoryWarehouse.name}</div>
                     <div class="grid">
                         <div class="field">
                             <div class="field-label">Address</div>
