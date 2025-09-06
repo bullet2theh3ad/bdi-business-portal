@@ -52,11 +52,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user's organization
+    const [userOrgMembership] = await db
+      .select({
+        organizationId: organizationMembers.organizationUuid,
+        organizationCode: organizations.code,
+        role: organizationMembers.role
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, currentUser.authId))
+      .limit(1);
+
+    if (!userOrgMembership) {
+      return NextResponse.json({ error: 'User not associated with any organization' }, { status: 403 });
+    }
+
+    const isSuperAdmin = currentUser.role === 'super_admin';
+    const userOrgCode = userOrgMembership.organizationCode;
+
     // Get all recent organization activity (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // 1. Get pending organization invitations from organization_invitations table
+    // Filter by organization unless super admin
+    const orgInvitationWhere = isSuperAdmin 
+      ? and(
+          eq(organizationInvitations.status, 'pending'),
+          gte(organizationInvitations.createdAt, thirtyDaysAgo)
+        )
+      : and(
+          eq(organizationInvitations.status, 'pending'),
+          eq(organizationInvitations.organizationCode, userOrgCode || ''),
+          gte(organizationInvitations.createdAt, thirtyDaysAgo)
+        );
+
     const pendingOrgInvitations = await db
       .select({
         id: organizationInvitations.invitationToken, // Use invitation token as ID for revocation
@@ -69,16 +100,12 @@ export async function GET(request: NextRequest) {
         expiresAt: organizationInvitations.expiresAt,
       })
       .from(organizationInvitations)
-      .where(
-        and(
-          eq(organizationInvitations.status, 'pending'),
-          gte(organizationInvitations.createdAt, thirtyDaysAgo)
-        )
-      )
+      .where(orgInvitationWhere)
       .orderBy(desc(organizationInvitations.createdAt));
 
     // 2. Get recently created organizations (Add Organization flow)
-    const recentOrganizations = await db
+    // Only show for super admin (BDI), external orgs don't see this
+    const recentOrganizations = isSuperAdmin ? await db
       .select({
         id: organizations.id,
         name: organizations.name,
@@ -105,17 +132,20 @@ export async function GET(request: NextRequest) {
           ne(organizations.code, 'BDI') // Exclude BDI itself
         )
       )
-      .orderBy(desc(organizations.createdAt));
+      .orderBy(desc(organizations.createdAt))
+    : [];
 
-    // 3. Get pending BDI user invitations (traditional user invites)
-    const [bdiOrg] = await db
+    // 3. Get pending user invitations for current organization
+    // Super admin sees BDI invitations, other orgs see their own
+    const targetOrgCode = isSuperAdmin ? 'BDI' : (userOrgCode || 'BDI');
+    const [targetOrg] = await db
       .select()
       .from(organizations)
-      .where(eq(organizations.code, 'BDI'))
+      .where(eq(organizations.code, targetOrgCode))
       .limit(1);
 
     let pendingUserInvitations: any[] = [];
-    if (bdiOrg) {
+    if (targetOrg) {
       pendingUserInvitations = await db
         .select({
           id: users.id,
@@ -134,7 +164,7 @@ export async function GET(request: NextRequest) {
         .innerJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
         .where(
           and(
-            eq(organizationMembers.organizationUuid, bdiOrg.id),
+            eq(organizationMembers.organizationUuid, targetOrg.id),
             eq(users.isActive, false), // Not yet activated
             eq(users.passwordHash, 'invitation_pending'), // Pending invitation
             isNull(users.deletedAt)
