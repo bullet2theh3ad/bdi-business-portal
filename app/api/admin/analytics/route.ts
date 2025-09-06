@@ -57,35 +57,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'month'
     const metric = searchParams.get('metric') || 'count'
+    const startDateParam = searchParams.get('startDate')
+    const endDateParam = searchParams.get('endDate')
 
-    // Calculate date range based on period
-    const now = new Date()
-    let startDate: Date
-    let dateFormat: string
-    let intervals: number
-
-    switch (period) {
-      case 'day':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 days
-        dateFormat = 'YYYY-MM-DD'
-        intervals = 30
-        break
-      case 'week':
-        startDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000) // 12 weeks
-        dateFormat = 'YYYY-"W"WW'
-        intervals = 12
-        break
-      case 'year':
-        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000) // 5 years
-        dateFormat = 'YYYY'
-        intervals = 5
-        break
-      default: // month
-        startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000) // 12 months
-        dateFormat = 'YYYY-MM'
-        intervals = 12
-        break
-    }
+    // Use provided date range or default to last 30 days
+    const startDate = startDateParam || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const endDate = endDateParam || new Date().toISOString().split('T')[0]
 
     // Fetch summary data using direct SQL for sales_forecasts table
     const [
@@ -161,14 +138,14 @@ export async function GET(request: NextRequest) {
       `).then(result => (result as any)[0] || { count: 0, total_units: 0 })
     ])
 
-    // Fetch simplified time series data (last 30 days for now)
+    // Fetch simplified time series data using actual tables
     const timeSeriesResult = await db.execute(sql`
       WITH RECURSIVE date_series AS (
-        SELECT CURRENT_DATE - INTERVAL '29 days' AS date
+        SELECT ${startDate}::date AS date
         UNION ALL
         SELECT date + INTERVAL '1 day'
         FROM date_series
-        WHERE date < CURRENT_DATE
+        WHERE date < ${endDate}::date
       )
       SELECT 
         date_series.date::text as date,
@@ -177,7 +154,7 @@ export async function GET(request: NextRequest) {
         COALESCE(f.count, 0) as forecasts,
         COALESCE(i.value, 0) as invoice_value,
         COALESCE(po.value, 0) as po_value,
-        COALESCE(i.units + po.units + f.units, 0) as units
+        COALESCE(COALESCE(i.units, 0) + COALESCE(po.units, 0) + COALESCE(f.units, 0), 0) as units
       FROM date_series
       LEFT JOIN (
         SELECT 
@@ -186,7 +163,7 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(total_value), 0)::numeric as value,
           0 as units
         FROM invoices
-        WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
+        WHERE created_at >= ${startDate}::date AND created_at <= ${endDate}::date + INTERVAL '1 day'
         GROUP BY DATE(created_at)
       ) i ON date_series.date = i.date
       LEFT JOIN (
@@ -196,7 +173,7 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(total_value), 0)::numeric as value,
           0 as units
         FROM purchase_orders
-        WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
+        WHERE created_at >= ${startDate}::date AND created_at <= ${endDate}::date + INTERVAL '1 day'
         GROUP BY DATE(created_at)
       ) po ON date_series.date = po.date
       LEFT JOIN (
@@ -204,8 +181,8 @@ export async function GET(request: NextRequest) {
           DATE(created_at) as date,
           COUNT(*)::int as count,
           COALESCE(SUM(quantity), 0)::int as units
-        FROM forecasts
-        WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
+        FROM sales_forecasts
+        WHERE created_at >= ${startDate}::date AND created_at <= ${endDate}::date + INTERVAL '1 day'
         GROUP BY DATE(created_at)
       ) f ON date_series.date = f.date
       ORDER BY date_series.date
