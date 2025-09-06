@@ -141,11 +141,11 @@ export async function GET(request: NextRequest) {
     // Fetch simplified time series data using actual tables
     const timeSeriesResult = await db.execute(sql`
       WITH RECURSIVE date_series AS (
-        SELECT ${startDate}::date AS date
+        SELECT ${startDate}::timestamp AS date
         UNION ALL
         SELECT date + INTERVAL '1 day'
         FROM date_series
-        WHERE date < ${endDate}::date
+        WHERE date < ${endDate}::timestamp + INTERVAL '1 day'
       )
       SELECT 
         date_series.date::text as date,
@@ -163,9 +163,9 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(total_value), 0)::numeric as value,
           0 as units
         FROM invoices
-        WHERE created_at >= ${startDate}::date AND created_at <= ${endDate}::date + INTERVAL '1 day'
+        WHERE created_at >= ${startDate}::timestamp AND created_at <= ${endDate}::timestamp + INTERVAL '1 day'
         GROUP BY DATE(created_at)
-      ) i ON date_series.date = i.date
+      ) i ON DATE(date_series.date) = i.date
       LEFT JOIN (
         SELECT 
           DATE(created_at) as date,
@@ -173,20 +173,25 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(total_value), 0)::numeric as value,
           0 as units
         FROM purchase_orders
-        WHERE created_at >= ${startDate}::date AND created_at <= ${endDate}::date + INTERVAL '1 day'
+        WHERE created_at >= ${startDate}::timestamp AND created_at <= ${endDate}::timestamp + INTERVAL '1 day'
         GROUP BY DATE(created_at)
-      ) po ON date_series.date = po.date
+      ) po ON DATE(date_series.date) = po.date
       LEFT JOIN (
         SELECT 
           DATE(created_at) as date,
           COUNT(*)::int as count,
           COALESCE(SUM(quantity), 0)::int as units
         FROM sales_forecasts
-        WHERE created_at >= ${startDate}::date AND created_at <= ${endDate}::date + INTERVAL '1 day'
+        WHERE created_at >= ${startDate}::timestamp AND created_at <= ${endDate}::timestamp + INTERVAL '1 day'
         GROUP BY DATE(created_at)
-      ) f ON date_series.date = f.date
+      ) f ON DATE(date_series.date) = f.date
       ORDER BY date_series.date
     `)
+
+    // Debug: Log the raw results
+    console.log('📊 Analytics Debug - Invoice Stats:', invoiceStats);
+    console.log('📊 Analytics Debug - Forecast Stats:', forecastStats);
+    console.log('📊 Analytics Debug - Time Series Sample:', (timeSeriesResult as any).slice(0, 3));
 
     // Format response
     const response = {

@@ -104,6 +104,9 @@ export async function GET(request: NextRequest) {
       total: Number(row.total || 0)
     }))
 
+    console.log('📊 Invoices by Org Debug - Raw Result:', (invoicesByOrgResult as any).slice(0, 3));
+    console.log('📊 Invoices by Org Debug - Formatted:', invoicesByOrg.slice(0, 3));
+
     return NextResponse.json(invoicesByOrg)
 
   } catch (error) {
