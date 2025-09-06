@@ -8,6 +8,20 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
+import { 
+  BarChart, 
+  Bar, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts';
 
 interface AnalyticsData {
   invoices: {
@@ -163,221 +177,272 @@ export default function AnalyticsPage() {
     }
   }, [user, selectedPeriod, selectedMetric, startDate, endDate]);
 
-  // Stacked Invoice Chart by Organization
+  // Ultra-Cool Stacked Invoice Chart by Organization
   const InvoicesByOrgChart = ({ data }: { data: InvoiceByOrgData[] }) => {
     if (!data.length) return <div className="h-80 flex items-center justify-center text-gray-500">No invoice data available</div>;
 
-    const maxValue = Math.max(...data.map(d => d.total));
+    // Transform data for Recharts stacked bar chart
+    const chartData = data.map(monthData => {
+      const result: any = { month: monthData.month };
+      Object.entries(monthData.organizations).forEach(([orgCode, orgData]) => {
+        result[orgCode] = orgData.value;
+      });
+      return result;
+    });
+
     const allOrgs = Array.from(new Set(data.flatMap(d => Object.keys(d.organizations))));
 
     return (
-      <div className="h-80 relative">
-        {/* Y-axis labels */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-gray-500 pr-2">
-          <span>${(maxValue / 1000).toFixed(0)}K</span>
-          <span>${(maxValue * 0.75 / 1000).toFixed(0)}K</span>
-          <span>${(maxValue * 0.5 / 1000).toFixed(0)}K</span>
-          <span>${(maxValue * 0.25 / 1000).toFixed(0)}K</span>
-          <span>$0</span>
-        </div>
-        
-        {/* Chart bars */}
-        <div className="ml-16 h-full flex items-end space-x-2">
-          {data.map((monthData, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center">
-              {/* Stacked bar */}
-              <div className="w-full flex flex-col justify-end" style={{ height: '85%' }}>
-                {allOrgs.map((orgCode, orgIndex) => {
-                  const orgData = monthData.organizations[orgCode];
-                  if (!orgData || orgData.value === 0) return null;
-                  
-                  const height = (orgData.value / maxValue) * 100;
-                  const color = orgColors[orgCode] || '#6b7280';
-                  
-                  return (
-                    <div
-                      key={orgCode}
-                      className="w-full transition-all duration-300 hover:opacity-80 border-r border-white"
-                      style={{ 
-                        height: `${height}%`,
-                        backgroundColor: color,
-                        borderTopLeftRadius: orgIndex === 0 ? '4px' : '0',
-                        borderTopRightRadius: orgIndex === 0 ? '4px' : '0'
-                      }}
-                      title={`${orgCode}: $${orgData.value.toLocaleString()} (${orgData.count} invoices)`}
-                    />
-                  );
-                })}
-              </div>
-              
-              {/* Month label */}
-              <span className="text-xs text-gray-500 mt-2 font-medium">
-                {monthData.month}
-              </span>
-              
-              {/* Total value */}
-              <span className="text-xs text-gray-700 font-semibold">
-                ${(monthData.total / 1000).toFixed(0)}K
-              </span>
-            </div>
-          ))}
-        </div>
-        
-        {/* Legend */}
-        <div className="absolute top-0 right-0 flex flex-wrap gap-2">
-          {allOrgs.map(orgCode => (
-            <div key={orgCode} className="flex items-center space-x-1">
-              <div 
-                className="w-3 h-3 rounded"
-                style={{ backgroundColor: orgColors[orgCode] || '#6b7280' }}
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="month" 
+              tick={{ fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+            />
+            <Tooltip 
+              formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name]}
+              labelFormatter={(label) => `Month: ${label}`}
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+              }}
+            />
+            <Legend />
+            {allOrgs.map((orgCode) => (
+              <Bar
+                key={orgCode}
+                dataKey={orgCode}
+                stackId="invoices"
+                fill={orgColors[orgCode] || '#6b7280'}
+                radius={[0, 0, 0, 0]}
               />
-              <span className="text-xs font-medium">{orgCode}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     );
   };
 
-  // Forecast Delivery Timeline Chart
+  // Ultra-Cool Forecast Delivery Timeline Chart
   const ForecastDeliveryChart = ({ data }: { data: ForecastDeliveryData[] }) => {
     if (!data.length) return <div className="h-80 flex items-center justify-center text-gray-500">No forecast delivery data available</div>;
 
-    const maxUnits = Math.max(...data.map(d => d.totalUnits));
+    // Transform data for Recharts area chart
+    const chartData = data.map(weekData => ({
+      week: weekData.deliveryWeek.replace('2025-W', 'W'),
+      totalUnits: weekData.totalUnits,
+      submittedUnits: weekData.forecasts
+        .filter(f => f.status === 'submitted')
+        .reduce((sum, f) => sum + f.quantity, 0),
+      draftUnits: weekData.forecasts
+        .filter(f => f.status === 'draft')
+        .reduce((sum, f) => sum + f.quantity, 0),
+      forecastCount: weekData.forecasts.length
+    }));
 
     return (
-      <div className="h-80 relative">
-        {/* Y-axis labels */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-gray-500 pr-2">
-          <span>{(maxUnits / 1000).toFixed(0)}K</span>
-          <span>{(maxUnits * 0.75 / 1000).toFixed(0)}K</span>
-          <span>{(maxUnits * 0.5 / 1000).toFixed(0)}K</span>
-          <span>{(maxUnits * 0.25 / 1000).toFixed(0)}K</span>
-          <span>0</span>
-        </div>
-        
-        {/* Timeline bars */}
-        <div className="ml-16 h-full flex items-end space-x-1">
-          {data.map((weekData, index) => {
-            const height = (weekData.totalUnits / maxUnits) * 100;
-            const statusCounts = weekData.forecasts.reduce((acc, f) => {
-              acc[f.status] = (acc[f.status] || 0) + 1;
-              return acc;
-            }, {} as { [key: string]: number });
-            
-            const isSubmitted = statusCounts.submitted > 0;
-            const isDraft = statusCounts.draft > 0;
-            
-            return (
-              <div key={index} className="flex-1 flex flex-col items-center group">
-                {/* Bar with gradient based on status */}
-                <div 
-                  className={`w-full rounded-t transition-all duration-300 hover:scale-105 ${
-                    isSubmitted ? 'bg-gradient-to-t from-blue-600 to-blue-400' :
-                    isDraft ? 'bg-gradient-to-t from-orange-500 to-orange-300' :
-                    'bg-gradient-to-t from-gray-400 to-gray-300'
-                  }`}
-                  style={{ height: `${Math.max(height, 2)}%` }}
-                  title={`${weekData.deliveryWeek}: ${weekData.totalUnits.toLocaleString()} units (${weekData.forecasts.length} forecasts)`}
-                />
-                
-                {/* Week label */}
-                <span className="text-xs text-gray-500 mt-1 transform -rotate-45 origin-left">
-                  {weekData.deliveryWeek.replace('2025-W', 'W')}
-                </span>
-                
-                {/* Units count */}
-                <span className="text-xs text-gray-700 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                  {(weekData.totalUnits / 1000).toFixed(1)}K
-                </span>
-                
-                {/* Status indicators */}
-                <div className="flex space-x-1 mt-1">
-                  {isSubmitted && <div className="w-2 h-2 bg-blue-500 rounded-full" title="Submitted forecasts" />}
-                  {isDraft && <div className="w-2 h-2 bg-orange-500 rounded-full" title="Draft forecasts" />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* Status legend */}
-        <div className="absolute top-0 right-0 flex space-x-4">
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-blue-500 rounded" />
-            <span className="text-xs font-medium">Submitted</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-orange-500 rounded" />
-            <span className="text-xs font-medium">Draft</span>
-          </div>
-        </div>
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <defs>
+              <linearGradient id="submittedGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.2}/>
+              </linearGradient>
+              <linearGradient id="draftGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.2}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="week" 
+              tick={{ fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+            />
+            <Tooltip 
+              formatter={(value: any, name: string) => [
+                `${Number(value).toLocaleString()} units`, 
+                name === 'submittedUnits' ? 'Submitted' : 
+                name === 'draftUnits' ? 'Draft' : 'Total'
+              ]}
+              labelFormatter={(label) => `Week: ${label}`}
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+              }}
+            />
+            <Legend />
+            <Area
+              type="monotone"
+              dataKey="submittedUnits"
+              stackId="1"
+              stroke="#3b82f6"
+              fill="url(#submittedGradient)"
+              name="Submitted"
+            />
+            <Area
+              type="monotone"
+              dataKey="draftUnits"
+              stackId="1"
+              stroke="#f59e0b"
+              fill="url(#draftGradient)"
+              name="Draft"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     );
   };
 
-  // Simple chart component (existing)
-  const SimpleChart = ({ data, metric }: { data: TimeSeriesData[], metric: string }) => {
+  // Ultra-Cool Multi-Line Trends Chart
+  const TrendsChart = ({ data, metric }: { data: TimeSeriesData[], metric: string }) => {
     if (!data.length) return <div className="h-64 flex items-center justify-center text-gray-500">No data available</div>;
 
-    const maxValue = Math.max(...data.map(d => {
-      switch (metric) {
-        case 'count': return Math.max(d.invoices, d.purchaseOrders, d.forecasts);
-        case 'value': return Math.max(d.invoiceValue, d.poValue);
-        case 'units': return d.units;
-        default: return 0;
-      }
+    // Transform data for better date formatting
+    const chartData = data.map(item => ({
+      ...item,
+      dateFormatted: new Date(item.date).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      })
     }));
 
+    const getDataKey = (metric: string) => {
+      switch (metric) {
+        case 'value': return ['invoiceValue', 'poValue'];
+        case 'units': return ['units'];
+        default: return ['invoices', 'purchaseOrders', 'forecasts'];
+      }
+    };
+
+    const dataKeys = getDataKey(metric);
+    const formatValue = (value: number) => {
+      if (metric === 'value') return `$${(value / 1000).toFixed(0)}K`;
+      if (metric === 'units') return `${(value / 1000).toFixed(1)}K`;
+      return value.toString();
+    };
+
     return (
-      <div className="h-64 relative">
-        <div className="absolute inset-0 flex flex-col">
-          {/* Y-axis labels */}
-          <div className="flex-1 flex flex-col justify-between text-xs text-gray-500 pr-2">
-            <span>{maxValue.toLocaleString()}</span>
-            <span>{(maxValue * 0.75).toLocaleString()}</span>
-            <span>{(maxValue * 0.5).toLocaleString()}</span>
-            <span>{(maxValue * 0.25).toLocaleString()}</span>
-            <span>0</span>
-          </div>
-        </div>
-        <div className="ml-12 h-full flex items-end space-x-1">
-          {data.map((item, index) => {
-            let height = 0;
-            let color = 'bg-blue-500';
-            
-            switch (metric) {
-              case 'count':
-                height = (item.invoices / maxValue) * 100;
-                color = 'bg-blue-500';
-                break;
-              case 'value':
-                height = (item.invoiceValue / maxValue) * 100;
-                color = 'bg-green-500';
-                break;
-              case 'units':
-                height = (item.units / maxValue) * 100;
-                color = 'bg-purple-500';
-                break;
-            }
-            
-            return (
-              <div key={index} className="flex-1 flex flex-col items-center">
-                <div 
-                  className={`w-full ${color} rounded-t transition-all duration-300 hover:opacity-80`}
-                  style={{ height: `${Math.max(height, 2)}%` }}
-                  title={`${item.date}: ${height.toFixed(0)}%`}
-                />
-                <span className="text-xs text-gray-500 mt-1 transform -rotate-45 origin-left">
-                  {new Date(item.date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="dateFormatted" 
+              tick={{ fontSize: 11 }}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickFormatter={formatValue}
+            />
+            <Tooltip 
+              formatter={(value: any, name: string) => [
+                formatValue(Number(value)), 
+                name === 'invoiceValue' ? 'Invoice Value' :
+                name === 'poValue' ? 'PO Value' :
+                name === 'purchaseOrders' ? 'Purchase Orders' :
+                name.charAt(0).toUpperCase() + name.slice(1)
+              ]}
+              labelFormatter={(label) => `Date: ${label}`}
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+              }}
+            />
+            <Legend />
+            {dataKeys.includes('invoices') && (
+              <Line 
+                type="monotone" 
+                dataKey="invoices" 
+                stroke="#3b82f6" 
+                strokeWidth={3}
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+                name="Invoices"
+              />
+            )}
+            {dataKeys.includes('purchaseOrders') && (
+              <Line 
+                type="monotone" 
+                dataKey="purchaseOrders" 
+                stroke="#10b981" 
+                strokeWidth={3}
+                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                name="Purchase Orders"
+              />
+            )}
+            {dataKeys.includes('forecasts') && (
+              <Line 
+                type="monotone" 
+                dataKey="forecasts" 
+                stroke="#8b5cf6" 
+                strokeWidth={3}
+                dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2 }}
+                name="Forecasts"
+              />
+            )}
+            {dataKeys.includes('invoiceValue') && (
+              <Line 
+                type="monotone" 
+                dataKey="invoiceValue" 
+                stroke="#059669" 
+                strokeWidth={3}
+                dot={{ fill: '#059669', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#059669', strokeWidth: 2 }}
+                name="Invoice Value"
+              />
+            )}
+            {dataKeys.includes('poValue') && (
+              <Line 
+                type="monotone" 
+                dataKey="poValue" 
+                stroke="#dc2626" 
+                strokeWidth={3}
+                dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#dc2626', strokeWidth: 2 }}
+                name="PO Value"
+              />
+            )}
+            {dataKeys.includes('units') && (
+              <Line 
+                type="monotone" 
+                dataKey="units" 
+                stroke="#7c3aed" 
+                strokeWidth={3}
+                dot={{ fill: '#7c3aed', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#7c3aed', strokeWidth: 2 }}
+                name="Total Units"
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     );
   };
@@ -657,7 +722,7 @@ export default function AnalyticsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SimpleChart data={timeSeriesData} metric={selectedMetric} />
+              <TrendsChart data={timeSeriesData} metric={selectedMetric} />
             </CardContent>
           </Card>
 
