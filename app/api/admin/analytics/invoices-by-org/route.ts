@@ -43,13 +43,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Get invoice data by organization for the last 12 months
+    // Get date range from query params
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate') || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0]
+
+    // Get invoice data by organization for the selected date range
     const invoicesByOrgResult = await db.execute(sql`
       WITH months AS (
         SELECT 
           generate_series(
-            date_trunc('month', CURRENT_DATE - INTERVAL '11 months'),
-            date_trunc('month', CURRENT_DATE),
+            date_trunc('month', ${startDate}::date),
+            date_trunc('month', ${endDate}::date),
             '1 month'::interval
           ) AS month
       )
@@ -71,6 +76,8 @@ export async function GET(request: NextRequest) {
                 SUM(total_value)::numeric as total_value
               FROM invoices
               WHERE date_trunc('month', created_at) = m.month
+                AND created_at >= ${startDate}::date
+                AND created_at <= ${endDate}::date + INTERVAL '1 day'
                 AND customer_name IS NOT NULL
               GROUP BY customer_name
             ) org_data
@@ -82,6 +89,8 @@ export async function GET(request: NextRequest) {
             SELECT SUM(total_value)::numeric
             FROM invoices
             WHERE date_trunc('month', created_at) = m.month
+              AND created_at >= ${startDate}::date
+              AND created_at <= ${endDate}::date + INTERVAL '1 day'
           ),
           0
         ) as total

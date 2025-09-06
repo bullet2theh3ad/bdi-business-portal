@@ -88,6 +88,14 @@ export default function AnalyticsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [selectedMetric, setSelectedMetric] = useState<'count' | 'value' | 'units'>('count');
   const [askBdiQuery, setAskBdiQuery] = useState('');
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 3); // Default to 3 months ago
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   // Organization colors for consistent branding
   const orgColors: { [key: string]: string } = {
@@ -123,9 +131,9 @@ export default function AnalyticsPage() {
       setIsLoading(true);
       try {
         const [basicResponse, invoicesResponse, forecastsResponse] = await Promise.all([
-          fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}`),
-          fetch('/api/admin/analytics/invoices-by-org'),
-          fetch('/api/admin/analytics/forecast-deliveries')
+          fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}&startDate=${startDate}&endDate=${endDate}`),
+          fetch(`/api/admin/analytics/invoices-by-org?startDate=${startDate}&endDate=${endDate}`),
+          fetch(`/api/admin/analytics/forecast-deliveries?startDate=${startDate}&endDate=${endDate}`)
         ]);
         
         if (basicResponse.ok) {
@@ -153,7 +161,7 @@ export default function AnalyticsPage() {
     if (user) {
       fetchAnalytics();
     }
-  }, [user, selectedPeriod, selectedMetric]);
+  }, [user, selectedPeriod, selectedMetric, startDate, endDate]);
 
   // Stacked Invoice Chart by Organization
   const InvoicesByOrgChart = ({ data }: { data: InvoiceByOrgData[] }) => {
@@ -441,9 +449,49 @@ export default function AnalyticsPage() {
       <Separator />
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg">
+      <div className="flex flex-wrap items-center gap-6 p-4 bg-gray-50 rounded-lg">
+        {/* Date Range Picker */}
+        <div className="flex items-center space-x-3">
+          <Label className="font-medium">📅 Date Range:</Label>
+          <div className="flex items-center space-x-2">
+            <div className="flex flex-col">
+              <Label className="text-xs text-gray-500 mb-1">From</Label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <span className="text-gray-400 mt-4">—</span>
+            <div className="flex flex-col">
+              <Label className="text-xs text-gray-500 mb-1">To</Label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const today = new Date();
+                const threeMonthsAgo = new Date();
+                threeMonthsAgo.setMonth(today.getMonth() - 3);
+                setStartDate(threeMonthsAgo.toISOString().split('T')[0]);
+                setEndDate(today.toISOString().split('T')[0]);
+              }}
+              className="mt-4"
+            >
+              Last 3 Months
+            </Button>
+          </div>
+        </div>
+        
         <div className="flex items-center space-x-2">
-          <Label>Time Period:</Label>
+          <Label>Period:</Label>
           <div className="flex space-x-1">
             {[
               { key: 'day', label: 'Daily' },
