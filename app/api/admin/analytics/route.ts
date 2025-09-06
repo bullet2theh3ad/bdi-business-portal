@@ -128,7 +128,10 @@ export async function GET(request: NextRequest) {
           COALESCE(AVG(quantity), 0)::numeric as avg_units,
           COUNT(DISTINCT sku_id)::int as sku_count
         FROM sales_forecasts
-      `).then(result => (result as any)[0] || { count: 0, total_units: 0, avg_units: 0, sku_count: 0 }),
+      `).then(result => {
+        const rows = result as any;
+        return rows.length > 0 ? rows[0] : { count: 0, total_units: 0, avg_units: 0, sku_count: 0 };
+      }),
 
       // SKU statistics
       db

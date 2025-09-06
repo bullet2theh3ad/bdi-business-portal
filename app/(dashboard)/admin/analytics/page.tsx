@@ -52,14 +52,54 @@ interface TimeSeriesData {
   units: number;
 }
 
+interface InvoiceByOrgData {
+  month: string;
+  organizations: {
+    [orgCode: string]: {
+      value: number;
+      count: number;
+      color: string;
+    };
+  };
+  total: number;
+}
+
+interface ForecastDeliveryData {
+  deliveryWeek: string;
+  deliveryDate: string;
+  forecasts: Array<{
+    id: string;
+    skuName: string;
+    quantity: number;
+    organization: string;
+    status: string;
+    confidence: string;
+  }>;
+  totalUnits: number;
+}
+
 export default function AnalyticsPage() {
   const [user, setUser] = useState<any>(null);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
+  const [invoicesByOrg, setInvoicesByOrg] = useState<InvoiceByOrgData[]>([]);
+  const [forecastDeliveries, setForecastDeliveries] = useState<ForecastDeliveryData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [selectedMetric, setSelectedMetric] = useState<'count' | 'value' | 'units'>('count');
   const [askBdiQuery, setAskBdiQuery] = useState('');
+
+  // Organization colors for consistent branding
+  const orgColors: { [key: string]: string } = {
+    'BDI': '#1e3a8a', // Blue
+    'MTN': '#059669', // Green  
+    'TC1': '#dc2626', // Red
+    'OLM': '#7c3aed', // Purple
+    'EMG': '#ea580c', // Orange
+    'GPN': '#0891b2', // Cyan
+    'HSN': '#be185d', // Pink
+    'QVC': '#65a30d', // Lime
+  };
 
   // Fetch user data
   useEffect(() => {
@@ -82,11 +122,26 @@ export default function AnalyticsPage() {
     const fetchAnalytics = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}`);
-        if (response.ok) {
-          const data = await response.json();
+        const [basicResponse, invoicesResponse, forecastsResponse] = await Promise.all([
+          fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}`),
+          fetch('/api/admin/analytics/invoices-by-org'),
+          fetch('/api/admin/analytics/forecast-deliveries')
+        ]);
+        
+        if (basicResponse.ok) {
+          const data = await basicResponse.json();
           setAnalyticsData(data.summary);
           setTimeSeriesData(data.timeSeries);
+        }
+        
+        if (invoicesResponse.ok) {
+          const invoicesData = await invoicesResponse.json();
+          setInvoicesByOrg(invoicesData);
+        }
+        
+        if (forecastsResponse.ok) {
+          const forecastsData = await forecastsResponse.json();
+          setForecastDeliveries(forecastsData);
         }
       } catch (error) {
         console.error('Error fetching analytics:', error);
@@ -100,7 +155,160 @@ export default function AnalyticsPage() {
     }
   }, [user, selectedPeriod, selectedMetric]);
 
-  // Simple chart component
+  // Stacked Invoice Chart by Organization
+  const InvoicesByOrgChart = ({ data }: { data: InvoiceByOrgData[] }) => {
+    if (!data.length) return <div className="h-80 flex items-center justify-center text-gray-500">No invoice data available</div>;
+
+    const maxValue = Math.max(...data.map(d => d.total));
+    const allOrgs = Array.from(new Set(data.flatMap(d => Object.keys(d.organizations))));
+
+    return (
+      <div className="h-80 relative">
+        {/* Y-axis labels */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-gray-500 pr-2">
+          <span>${(maxValue / 1000).toFixed(0)}K</span>
+          <span>${(maxValue * 0.75 / 1000).toFixed(0)}K</span>
+          <span>${(maxValue * 0.5 / 1000).toFixed(0)}K</span>
+          <span>${(maxValue * 0.25 / 1000).toFixed(0)}K</span>
+          <span>$0</span>
+        </div>
+        
+        {/* Chart bars */}
+        <div className="ml-16 h-full flex items-end space-x-2">
+          {data.map((monthData, index) => (
+            <div key={index} className="flex-1 flex flex-col items-center">
+              {/* Stacked bar */}
+              <div className="w-full flex flex-col justify-end" style={{ height: '85%' }}>
+                {allOrgs.map((orgCode, orgIndex) => {
+                  const orgData = monthData.organizations[orgCode];
+                  if (!orgData || orgData.value === 0) return null;
+                  
+                  const height = (orgData.value / maxValue) * 100;
+                  const color = orgColors[orgCode] || '#6b7280';
+                  
+                  return (
+                    <div
+                      key={orgCode}
+                      className="w-full transition-all duration-300 hover:opacity-80 border-r border-white"
+                      style={{ 
+                        height: `${height}%`,
+                        backgroundColor: color,
+                        borderTopLeftRadius: orgIndex === 0 ? '4px' : '0',
+                        borderTopRightRadius: orgIndex === 0 ? '4px' : '0'
+                      }}
+                      title={`${orgCode}: $${orgData.value.toLocaleString()} (${orgData.count} invoices)`}
+                    />
+                  );
+                })}
+              </div>
+              
+              {/* Month label */}
+              <span className="text-xs text-gray-500 mt-2 font-medium">
+                {monthData.month}
+              </span>
+              
+              {/* Total value */}
+              <span className="text-xs text-gray-700 font-semibold">
+                ${(monthData.total / 1000).toFixed(0)}K
+              </span>
+            </div>
+          ))}
+        </div>
+        
+        {/* Legend */}
+        <div className="absolute top-0 right-0 flex flex-wrap gap-2">
+          {allOrgs.map(orgCode => (
+            <div key={orgCode} className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded"
+                style={{ backgroundColor: orgColors[orgCode] || '#6b7280' }}
+              />
+              <span className="text-xs font-medium">{orgCode}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Forecast Delivery Timeline Chart
+  const ForecastDeliveryChart = ({ data }: { data: ForecastDeliveryData[] }) => {
+    if (!data.length) return <div className="h-80 flex items-center justify-center text-gray-500">No forecast delivery data available</div>;
+
+    const maxUnits = Math.max(...data.map(d => d.totalUnits));
+
+    return (
+      <div className="h-80 relative">
+        {/* Y-axis labels */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-gray-500 pr-2">
+          <span>{(maxUnits / 1000).toFixed(0)}K</span>
+          <span>{(maxUnits * 0.75 / 1000).toFixed(0)}K</span>
+          <span>{(maxUnits * 0.5 / 1000).toFixed(0)}K</span>
+          <span>{(maxUnits * 0.25 / 1000).toFixed(0)}K</span>
+          <span>0</span>
+        </div>
+        
+        {/* Timeline bars */}
+        <div className="ml-16 h-full flex items-end space-x-1">
+          {data.map((weekData, index) => {
+            const height = (weekData.totalUnits / maxUnits) * 100;
+            const statusCounts = weekData.forecasts.reduce((acc, f) => {
+              acc[f.status] = (acc[f.status] || 0) + 1;
+              return acc;
+            }, {} as { [key: string]: number });
+            
+            const isSubmitted = statusCounts.submitted > 0;
+            const isDraft = statusCounts.draft > 0;
+            
+            return (
+              <div key={index} className="flex-1 flex flex-col items-center group">
+                {/* Bar with gradient based on status */}
+                <div 
+                  className={`w-full rounded-t transition-all duration-300 hover:scale-105 ${
+                    isSubmitted ? 'bg-gradient-to-t from-blue-600 to-blue-400' :
+                    isDraft ? 'bg-gradient-to-t from-orange-500 to-orange-300' :
+                    'bg-gradient-to-t from-gray-400 to-gray-300'
+                  }`}
+                  style={{ height: `${Math.max(height, 2)}%` }}
+                  title={`${weekData.deliveryWeek}: ${weekData.totalUnits.toLocaleString()} units (${weekData.forecasts.length} forecasts)`}
+                />
+                
+                {/* Week label */}
+                <span className="text-xs text-gray-500 mt-1 transform -rotate-45 origin-left">
+                  {weekData.deliveryWeek.replace('2025-W', 'W')}
+                </span>
+                
+                {/* Units count */}
+                <span className="text-xs text-gray-700 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  {(weekData.totalUnits / 1000).toFixed(1)}K
+                </span>
+                
+                {/* Status indicators */}
+                <div className="flex space-x-1 mt-1">
+                  {isSubmitted && <div className="w-2 h-2 bg-blue-500 rounded-full" title="Submitted forecasts" />}
+                  {isDraft && <div className="w-2 h-2 bg-orange-500 rounded-full" title="Draft forecasts" />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Status legend */}
+        <div className="absolute top-0 right-0 flex space-x-4">
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-blue-500 rounded" />
+            <span className="text-xs font-medium">Submitted</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-orange-500 rounded" />
+            <span className="text-xs font-medium">Draft</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Simple chart component (existing)
   const SimpleChart = ({ data, metric }: { data: TimeSeriesData[], metric: string }) => {
     if (!data.length) return <div className="h-64 flex items-center justify-center text-gray-500">No data available</div>;
 
@@ -355,11 +563,42 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          {/* Main Chart */}
+          {/* Cool Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Invoice Values by Organization - Stacked Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <SemanticBDIIcon semantic="analytics" size={20} className="mr-2 text-blue-600" />
+                  Invoice Values by Organization
+                </CardTitle>
+                <CardDescription>Monthly breakdown showing invoice amounts per organization (stacked view)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <InvoicesByOrgChart data={invoicesByOrg} />
+              </CardContent>
+            </Card>
+
+            {/* Forecast Delivery Timeline - Super Cool! */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <SemanticBDIIcon semantic="calendar" size={20} className="mr-2 text-purple-600" />
+                  Forecast Delivery Timeline
+                </CardTitle>
+                <CardDescription>Weekly forecast deliveries with status indicators - the future pipeline!</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ForecastDeliveryChart data={forecastDeliveries} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Trends Chart */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <SemanticBDIIcon semantic="analytics" size={20} className="mr-2" />
+                <SemanticBDIIcon semantic="charts" size={20} className="mr-2" />
                 {selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}ly Trends - {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}
               </CardTitle>
               <CardDescription>
@@ -374,7 +613,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          {/* Additional Charts Grid */}
+          {/* Process Health Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
