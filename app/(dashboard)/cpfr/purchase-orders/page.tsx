@@ -791,11 +791,16 @@ export default function PurchaseOrdersPage() {
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={item.unitCost === 0 ? '' : item.unitCost.toFixed(2)}
-                                onChange={(e) => updateLineItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                                min="0"
+                                type="text"
+                                value={item.unitCost === 0 ? '' : item.unitCost.toString()}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  // Allow numbers, decimal point, and empty string
+                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                    const newUnitCost = value === '' ? 0 : parseFloat(value) || 0;
+                                    updateLineItem(item.id, 'unitCost', newUnitCost);
+                                  }
+                                }}
                                 className="text-sm pl-6 font-mono"
                                 placeholder="0.00"
                                 required
@@ -1169,20 +1174,22 @@ export default function PurchaseOrdersPage() {
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={item.unitCost === 0 ? '' : item.unitCost.toFixed(2)}
+                                type="text"
+                                value={item.unitCost === 0 ? '' : item.unitCost.toString()}
                                 onChange={(e) => {
-                                  const updatedItems = [...editLineItems];
-                                  const newUnitCost = parseFloat(e.target.value) || 0;
-                                  updatedItems[index] = {
-                                    ...item,
-                                    unitCost: newUnitCost,
-                                    lineTotal: item.quantity * newUnitCost
-                                  };
-                                  setEditLineItems(updatedItems);
+                                  const value = e.target.value;
+                                  // Allow numbers, decimal point, and empty string
+                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                    const updatedItems = [...editLineItems];
+                                    const newUnitCost = value === '' ? 0 : parseFloat(value) || 0;
+                                    updatedItems[index] = {
+                                      ...item,
+                                      unitCost: newUnitCost,
+                                      lineTotal: item.quantity * newUnitCost
+                                    };
+                                    setEditLineItems(updatedItems);
+                                  }
                                 }}
-                                min="0"
                                 className="text-sm pl-6 font-mono"
                                 placeholder="0.00"
                                 required
