@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, organizationMembers } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -61,6 +61,28 @@ export async function POST(request: NextRequest) {
 
     console.log('Attempting to revoke invitation ID:', invitationId);
 
+    // Check if this is an organization invitation (starts with org-invite-)
+    if (invitationId.startsWith('org-invite-')) {
+      // This is an organization invitation, handle differently
+      const actualToken = invitationId; // The full token is the invitation token
+      
+      // Delete from organization_invitations table
+      const deleteResult = await db
+        .execute(sql`DELETE FROM organization_invitations WHERE invitation_token = ${actualToken} RETURNING invited_email`);
+      
+      if ((deleteResult as any).length === 0) {
+        return NextResponse.json({ error: 'Organization invitation not found' }, { status: 404 });
+      }
+      
+      const deletedInvitation = (deleteResult as any)[0];
+      
+      return NextResponse.json({
+        success: true,
+        message: `Organization invitation for ${deletedInvitation.invited_email} has been revoked`
+      });
+    }
+
+    // Handle regular user invitations (existing logic)
     // First, check what user record exists
     const [userToCheck] = await db
       .select()
