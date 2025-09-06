@@ -202,7 +202,7 @@ export default function AnalyticsPage() {
         <CardHeader>
           <CardTitle className="flex items-center text-blue-800">
             <SemanticBDIIcon semantic="ai" size={20} className="mr-2" />
-            Ask BDI AI (Coming Soon)
+            Ask BDI (Coming Soon)
           </CardTitle>
           <CardDescription>
             Ask questions about your data and get AI-powered insights and analysis
@@ -225,7 +225,7 @@ export default function AnalyticsPage() {
             </Button>
           </div>
           <p className="text-sm text-blue-600 mt-2">
-            🚀 This feature will integrate with OpenAI to provide intelligent analysis of your business data
+            🚀 This feature integrates with BDI's SecureAI — powered by Retrieval-Augmented Generation (RAG) — to deliver intelligent, secure analysis of your business data.
           </p>
         </CardContent>
       </Card>
