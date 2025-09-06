@@ -75,6 +75,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         console.log(`Uploading file to path: ${filePath}`);
 
+        // Ensure directory structure exists by creating a placeholder if needed
+        const directoryPath = `${userOrg.organizationId}/invoices/${invoiceId}/.keep`;
+        try {
+          await supabase.storage
+            .from('organization-documents')
+            .upload(directoryPath, new Blob([''], { type: 'text/plain' }), {
+              upsert: true
+            });
+        } catch (dirError) {
+          // Directory creation failed or already exists - continue anyway
+          console.log('Directory setup result:', dirError);
+        }
+
         // Upload to Supabase Storage with correct bucket name
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('organization-documents') // Use the correct bucket name

@@ -145,6 +145,19 @@ export async function POST(
           const fileName = `${timestamp}_${(value as any).name}`;
           const filePath = `${userOrganization.id}/purchase-orders/${purchaseOrderId}/${fileName}`;
 
+          // Ensure directory structure exists by creating a placeholder if needed
+          const directoryPath = `${userOrganization.id}/purchase-orders/${purchaseOrderId}/.keep`;
+          try {
+            await supabase.storage
+              .from('organization-documents')
+              .upload(directoryPath, new Blob([''], { type: 'text/plain' }), {
+                upsert: true
+              });
+          } catch (dirError) {
+            // Directory creation failed or already exists - continue anyway
+            console.log('Directory setup result:', dirError);
+          }
+
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('organization-documents')
             .upload(filePath, value as any);
