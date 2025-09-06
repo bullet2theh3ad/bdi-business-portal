@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Attempting to revoke invitation ID:', invitationId);
 
-    // Check if this is an organization invitation (starts with org-invite-)
-    if (invitationId.startsWith('org-invite-')) {
-      // This is an organization invitation, handle differently
-      const actualToken = invitationId; // The full token is the invitation token
+    // Check if this is an organization invitation (contains MTN-, CBN-, etc.)
+    if (invitationId.includes('-') && invitationId.match(/^[A-Z]{2,3}-\d+/)) {
+      // This is an organization invitation token (format: MTN-timestamp-randomstring)
+      const actualToken = invitationId;
       
       // Delete from organization_invitations table
       const deleteResult = await db

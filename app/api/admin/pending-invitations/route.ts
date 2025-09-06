@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     // 1. Get pending organization invitations from organization_invitations table
     const pendingOrgInvitations = await db
       .select({
-        id: organizationInvitations.id,
+        id: organizationInvitations.invitationToken, // Use invitation token as ID for revocation
         organizationCode: organizationInvitations.organizationCode,
         email: organizationInvitations.invitedEmail,
         name: organizationInvitations.invitedName,
