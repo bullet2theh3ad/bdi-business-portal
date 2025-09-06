@@ -103,6 +103,11 @@ const navigationItems: NavItem[] = [
     requiresBDI: true, // Only show Admin menu for BDI users
     children: [
       {
+        title: 'Analytics',
+        href: '/admin/analytics',
+        icon: 'analytics',
+      },
+      {
         title: 'Organizations',
         href: '/admin/organizations',
         icon: 'collaboration',

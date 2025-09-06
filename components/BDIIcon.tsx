@@ -157,6 +157,9 @@ export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   calendar: 'mobile-11', // Calendar icon
   document: 'mobile-12', // Document icon
   calculator: 'mobile-13', // Calculator icon
+  charts: 'mobile-14', // Charts icon
+  ai: 'mobile-15', // AI/brain icon
+  query: 'mobile-16', // Query icon
 };
 
 interface SemanticBDIIconProps {
