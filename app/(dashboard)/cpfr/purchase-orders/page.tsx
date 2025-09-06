@@ -791,24 +791,14 @@ export default function PurchaseOrdersPage() {
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <Input
-                                type="text"
-                                value={item.unitCost === 0 ? '' : 
-                                  item.unitCost % 1 === 0 ? item.unitCost.toString() : item.unitCost.toFixed(2)}
+                                type="number"
+                                step="0.01"
+                                value={item.unitCost === 0 ? '' : item.unitCost}
                                 onChange={(e) => {
-                                  const value = e.target.value;
-                                  // Allow numbers, decimal point, and empty string
-                                  if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-                                    const newUnitCost = value === '' ? 0 : parseFloat(value) || 0;
-                                    updateLineItem(item.id, 'unitCost', newUnitCost);
-                                  }
+                                  const newUnitCost = parseFloat(e.target.value) || 0;
+                                  updateLineItem(item.id, 'unitCost', newUnitCost);
                                 }}
-                                onBlur={(e) => {
-                                  // Format to 2 decimal places on blur
-                                  const value = parseFloat(e.target.value) || 0;
-                                  if (value > 0) {
-                                    updateLineItem(item.id, 'unitCost', value);
-                                  }
-                                }}
+                                min="0"
                                 className="text-sm pl-6 font-mono"
                                 placeholder="0.00"
                                 required
@@ -1182,36 +1172,20 @@ export default function PurchaseOrdersPage() {
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <Input
-                                type="text"
-                                value={item.unitCost === 0 ? '' : 
-                                  item.unitCost % 1 === 0 ? item.unitCost.toString() : item.unitCost.toFixed(2)}
+                                type="number"
+                                step="0.01"
+                                value={item.unitCost === 0 ? '' : item.unitCost}
                                 onChange={(e) => {
-                                  const value = e.target.value;
-                                  // Allow numbers, decimal point, and up to 2 decimal places
-                                  if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-                                    const updatedItems = [...editLineItems];
-                                    const newUnitCost = value === '' ? 0 : parseFloat(value) || 0;
-                                    updatedItems[index] = {
-                                      ...item,
-                                      unitCost: newUnitCost,
-                                      lineTotal: item.quantity * newUnitCost
-                                    };
-                                    setEditLineItems(updatedItems);
-                                  }
+                                  const updatedItems = [...editLineItems];
+                                  const newUnitCost = parseFloat(e.target.value) || 0;
+                                  updatedItems[index] = {
+                                    ...item,
+                                    unitCost: newUnitCost,
+                                    lineTotal: item.quantity * newUnitCost
+                                  };
+                                  setEditLineItems(updatedItems);
                                 }}
-                                onBlur={(e) => {
-                                  // Format to 2 decimal places on blur
-                                  const value = parseFloat(e.target.value) || 0;
-                                  if (value >= 0) {
-                                    const updatedItems = [...editLineItems];
-                                    updatedItems[index] = {
-                                      ...item,
-                                      unitCost: value,
-                                      lineTotal: item.quantity * value
-                                    };
-                                    setEditLineItems(updatedItems);
-                                  }
-                                }}
+                                min="0"
                                 className="text-sm pl-6 font-mono"
                                 placeholder="0.00"
                                 required
