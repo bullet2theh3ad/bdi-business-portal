@@ -70,7 +70,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       try {
         // Generate file path: organizationId/invoices/invoiceId/filename
         const timestamp = Date.now();
-        const fileName = `${timestamp}_${file.name}`;
+        // Sanitize filename - remove invalid characters for Supabase Storage
+        const sanitizedFileName = file.name
+          .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace invalid chars with underscore
+          .replace(/_+/g, '_') // Replace multiple underscores with single
+          .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+        const fileName = `${timestamp}_${sanitizedFileName}`;
         const filePath = `${userOrg.organizationId}/invoices/${invoiceId}/${fileName}`;
 
         console.log(`Uploading file to path: ${filePath}`);

@@ -142,7 +142,12 @@ export async function POST(
       if (key.startsWith('file-') && value && typeof value === 'object' && 'name' in value) {
         try {
           const timestamp = Date.now();
-          const fileName = `${timestamp}_${(value as any).name}`;
+          // Sanitize filename - remove invalid characters for Supabase Storage
+          const sanitizedFileName = (value as any).name
+            .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace invalid chars with underscore
+            .replace(/_+/g, '_') // Replace multiple underscores with single
+            .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+          const fileName = `${timestamp}_${sanitizedFileName}`;
           const filePath = `${userOrganization.id}/purchase-orders/${purchaseOrderId}/${fileName}`;
 
           // Ensure directory structure exists by creating a placeholder if needed
