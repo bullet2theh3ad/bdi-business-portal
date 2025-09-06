@@ -1352,6 +1352,19 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
+              {/* Notes */}
+              <div>
+                <Label htmlFor="editNotes">Notes</Label>
+                <textarea
+                  id="editNotes"
+                  name="editNotes"
+                  defaultValue={selectedInvoice.notes || ''}
+                  placeholder="Special instructions, delivery requirements, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                  rows={3}
+                />
+              </div>
+
               <div className="bg-blue-100 p-4 rounded">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-blue-800">Total Value:</span>

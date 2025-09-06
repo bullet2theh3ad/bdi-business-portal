@@ -712,7 +712,10 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <SemanticBDIIcon semantic="charts" size={20} className="mr-2" />
-                {selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}ly Trends - {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}
+                {selectedPeriod === 'day' ? 'Daily' : 
+                 selectedPeriod === 'week' ? 'Weekly' : 
+                 selectedPeriod === 'month' ? 'Monthly' : 
+                 selectedPeriod === 'year' ? 'Yearly' : selectedPeriod} Trends - {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}
               </CardTitle>
               <CardDescription>
                 {selectedPeriod === 'day' && 'Daily trends over the last 30 days'}
@@ -750,13 +753,13 @@ export default function AnalyticsPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Average Invoice Value</span>
                     <Badge variant="outline">
-                      ${analyticsData?.invoices.avgValue.toLocaleString() || '0'}
+                      ${Math.round(analyticsData?.invoices.avgValue || 0).toLocaleString()}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Average PO Value</span>
                     <Badge variant="outline">
-                      ${analyticsData?.purchaseOrders.avgValue.toLocaleString() || '0'}
+                      ${Math.round(analyticsData?.purchaseOrders.avgValue || 0).toLocaleString()}
                     </Badge>
                   </div>
                 </div>
