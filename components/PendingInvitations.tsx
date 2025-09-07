@@ -221,61 +221,67 @@ export function PendingInvitations() {
               key={invitation.id} 
               className="p-3 sm:p-4 border rounded-lg bg-gray-50 space-y-3"
             >
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <SemanticBDIIcon 
-                      semantic={invitation.type === 'organization_created' ? 'collaboration' : 'profile'} 
-                      size={16} 
-                      className="text-gray-500 flex-shrink-0" 
-                    />
-                    <span className="font-medium truncate">
-                      {invitation.organizationName ? 
-                        `${invitation.name || invitation.email} (${invitation.organizationName})` : 
-                        invitation.name || invitation.email
-                      }
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={invitation.role === 'super_admin' ? 'default' : 'secondary'}
-                           className={`text-xs ${invitation.role === 'super_admin' ? 'bg-bdi-green-1 text-white' : 
-                                     invitation.role === 'admin' ? 'bg-bdi-green-2 text-white' :
-                                     invitation.role === 'developer' ? 'bg-bdi-blue text-white' : ''}`}>
-                      {invitation.role.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${
-                        invitation.status === 'active' 
-                          ? 'text-green-600 border-green-600 bg-green-50' 
-                          : 'text-bdi-green-1 border-bdi-green-1'
-                      }`}
-                    >
-                      {invitation.status === 'active' ? (
-                        <>
-                          <SemanticBDIIcon semantic="check" size={10} className="mr-1" />
-                          Active
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-2 w-2 mr-1" />
-                          Pending
-                        </>
-                      )}
-                    </Badge>
-                    {invitation.type === 'organization_created' && (
-                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-600 bg-blue-50">
-                        <SemanticBDIIcon semantic="plus" size={10} className="mr-1" />
-                        Created
-                      </Badge>
+              {/* Mobile-First Layout: Name, Badges, Details, Button */}
+              <div className="space-y-3">
+                {/* Name and Icon */}
+                <div className="flex items-center gap-2">
+                  <SemanticBDIIcon 
+                    semantic={invitation.type === 'organization_created' ? 'collaboration' : 'profile'} 
+                    size={16} 
+                    className="text-gray-500 flex-shrink-0" 
+                  />
+                  <span className="font-medium text-sm sm:text-base">
+                    {invitation.name || invitation.email}
+                    {invitation.organizationName && (
+                      <span className="text-gray-500 ml-1">({invitation.organizationName})</span>
                     )}
-                  </div>
-                  <div className="text-sm text-gray-500 space-y-1 mt-2">
-                    <div className="truncate">{invitation.email}</div>
+                  </span>
+                </div>
+
+                {/* Badges Row */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={invitation.role === 'super_admin' ? 'default' : 'secondary'}
+                         className={`text-xs ${invitation.role === 'super_admin' ? 'bg-bdi-green-1 text-white' : 
+                                   invitation.role === 'admin' ? 'bg-bdi-green-2 text-white' :
+                                   invitation.role === 'developer' ? 'bg-bdi-blue text-white' : ''}`}>
+                    {invitation.role.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs ${
+                      invitation.status === 'active' 
+                        ? 'text-green-600 border-green-600 bg-green-50' 
+                        : 'text-bdi-green-1 border-bdi-green-1'
+                    }`}
+                  >
+                    {invitation.status === 'active' ? (
+                      <>
+                        <SemanticBDIIcon semantic="check" size={10} className="mr-1" />
+                        Active
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="h-2 w-2 mr-1" />
+                        Pending
+                      </>
+                    )}
+                  </Badge>
+                  {invitation.type === 'organization_created' && (
+                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-600 bg-blue-50">
+                      <SemanticBDIIcon semantic="plus" size={10} className="mr-1" />
+                      Created
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Details and Action */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-xs sm:text-sm text-gray-500 space-y-1">
+                    <div className="break-all">{invitation.email}</div>
                     {invitation.title && invitation.department && (
-                      <div className="truncate">{invitation.title} • {invitation.department}</div>
+                      <div>{invitation.title} • {invitation.department}</div>
                     )}
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                       <span>Invited {getDaysAgo(invitation.invitedAt)}</span>
                       <span>•</span>
                       <span>{formatDate(invitation.invitedAt)}</span>
@@ -287,13 +293,13 @@ export function PendingInvitations() {
                       )}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-center sm:justify-end">
-                  <RevokeInvitationButton 
-                    invitationId={invitation.id} 
-                    email={invitation.email}
-                    mutate={mutate}
-                  />
+                  <div className="flex justify-start sm:justify-end">
+                    <RevokeInvitationButton 
+                      invitationId={invitation.id} 
+                      email={invitation.email}
+                      mutate={mutate}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
