@@ -148,15 +148,21 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="text-center p-4 bg-bdi-green-1/5 rounded-lg">
                   <SemanticBDIIcon semantic="collaboration" size={24} className="mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-bdi-green-1">{mockOrganizations.length}</div>
-                  <div className="text-sm text-gray-600">Organizations</div>
+                  <div className="text-2xl font-bold text-bdi-green-1">
+                    {isBDIUser ? 'Multiple' : '1'}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {isBDIUser ? 'Organizations' : 'My Organization'}
+                  </div>
                 </div>
                 <div className="text-center p-4 bg-bdi-green-2/5 rounded-lg">
                   <SemanticBDIIcon semantic="users" size={24} className="mx-auto mb-2" />
                   <div className="text-2xl font-bold text-bdi-green-1">
-                    {mockOrganizations.reduce((total, org) => total + org.memberCount, 0)}
+                    {isBDIUser ? 'Multiple' : '1'}
                   </div>
-                  <div className="text-sm text-gray-600">Total Users</div>
+                  <div className="text-sm text-gray-600">
+                    {isBDIUser ? 'Total Users' : 'Your Access'}
+                  </div>
                 </div>
                 <div className="text-center p-4 bg-bdi-blue/5 rounded-lg">
                   <SemanticBDIIcon semantic="connect" size={24} className="mx-auto mb-2" />
