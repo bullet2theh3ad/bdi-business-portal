@@ -43,16 +43,32 @@ async function getCurrentUser() {
   return dbUser;
 }
 
-// GET - Fetch all API keys (Super Admin only)
+// GET - Fetch API keys (Super Admin sees all, organization users see their own)
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     
-    if (!currentUser || currentUser.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Unauthorized - Super Admin required' }, { status: 401 });
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all API keys with organization and user information
+    const isSuperAdmin = currentUser.role === 'super_admin';
+
+    // Get user's organization for filtering (non-super admin users)
+    let userOrganizationId = null;
+    if (!isSuperAdmin) {
+      const [userOrgMembership] = await db
+        .select({
+          organizationId: organizationMembers.organizationUuid,
+        })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userAuthId, currentUser.authId))
+        .limit(1);
+      
+      userOrganizationId = userOrgMembership?.organizationId;
+    }
+
+    // Get API keys with organization and user information
     const allApiKeys = await db
       .select({
         id: apiKeys.id,
@@ -78,6 +94,11 @@ export async function GET(request: NextRequest) {
       .from(apiKeys)
       .leftJoin(organizations, eq(apiKeys.organizationUuid, organizations.id))
       .leftJoin(users, eq(apiKeys.userAuthId, users.authId))
+      .where(
+        isSuperAdmin 
+          ? undefined // Super admin sees all keys
+          : eq(apiKeys.organizationUuid, userOrganizationId!) // Organization users see only their keys
+      )
       .orderBy(apiKeys.createdAt);
 
     console.log(`Found ${allApiKeys.length} API keys`);
