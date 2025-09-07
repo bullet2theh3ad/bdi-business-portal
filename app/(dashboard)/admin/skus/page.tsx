@@ -371,18 +371,18 @@ export default function SKUsPage() {
   };
 
   return (
-    <div className="flex-1 p-4 lg:p-8">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="inventory" size={32} />
+      <div className="mb-6 lg:mb-8">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="inventory" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Product SKUs</h1>
-              <p className="text-muted-foreground">Manage your product catalog for CPFR planning</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Product SKUs</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage your product catalog for CPFR planning</p>
             </div>
           </div>
-          <Button className="bg-bdi-green-1 hover:bg-bdi-green-2" onClick={() => setShowCreateModal(true)}>
+          <Button className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
             Add SKU
           </Button>
@@ -390,43 +390,45 @@ export default function SKUsPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <div className="mb-6 flex flex-col space-y-4 sm:flex-row sm:space-y-0 gap-4">
         <div className="flex-1">
           <Input
             placeholder="Search SKUs, names, or descriptions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
+            className="w-full"
           />
         </div>
-        <div className="flex items-center space-x-2">
-          <Label htmlFor="category-filter">Category:</Label>
-          <select
-            id="category-filter"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 border rounded-md"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category || ''}>
-                {category && category.length === 1 ? `${category} - Product Type` : category}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="category-filter" className="text-sm">Category:</Label>
+            <select
+              id="category-filter"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-3 py-2 border rounded-md text-sm flex-1 sm:flex-none"
+            >
+              <option value="all">All Categories</option>
+              {categories.map(category => (
+                <option key={category} value={category || ''}>
+                  {category && category.length === 1 ? `${category} - Product Type` : category}
+                </option>
+              ))}
+            </select>
+          </div>
           
-          <div className="flex border rounded-md ml-4">
+          <div className="flex border rounded-md w-full sm:w-auto">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`px-2 sm:px-3 py-2 text-xs sm:text-sm transition-colors flex-1 sm:flex-none ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              📋 List
+              📋 <span className="hidden sm:inline ml-1">List</span>
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'grid' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`px-2 sm:px-3 py-2 text-xs sm:text-sm transition-colors flex-1 sm:flex-none ${viewMode === 'grid' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              🔲 Grid
+              🔲 <span className="hidden sm:inline ml-1">Grid</span>
             </button>
           </div>
         </div>
@@ -503,7 +505,7 @@ export default function SKUsPage() {
                       {sku.description && (
                         <p className="text-muted-foreground mb-3">{sku.description}</p>
                       )}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
                         {sku.model && (
                           <div>
                             <span className="text-gray-500">Model:</span>
@@ -546,7 +548,7 @@ export default function SKUsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4">
                   {filteredSkus.map((sku) => {
                     const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : 'C';
                     return (
@@ -637,7 +639,7 @@ export default function SKUsPage() {
                     SKU Builder
                   </h3>
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 lg:gap-4 text-sm">
                     {/* Brand */}
                     <div className="min-w-0">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -951,7 +953,7 @@ export default function SKUsPage() {
               )}
 
               {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="name">Product Name *</Label>
                   <Input
@@ -988,7 +990,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Box Dims/Weights
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                   <div>
                     <Label className="text-xs">Length (cm)</Label>
                     <Input
@@ -1188,7 +1190,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
                   Forecast Terms
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-12">
                   <div>
                     <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
                     <Input
@@ -1354,7 +1356,7 @@ export default function SKUsPage() {
               handleEditSku(new FormData(e.currentTarget));
             }}>
               {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="editSku">SKU *</Label>
                   <Input
@@ -1402,7 +1404,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Box Dims/Weights
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                   <div>
                     <Label className="text-xs">Length (cm)</Label>
                     <Input
@@ -1617,7 +1619,7 @@ export default function SKUsPage() {
                   <SemanticBDIIcon semantic="orders" size={16} className="mr-2" />
                   Forecast Terms
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-12">
                   <div>
                     <Label className="text-xs">Minimum Order Quantity (MOQ)</Label>
                     <Input
