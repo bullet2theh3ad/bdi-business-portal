@@ -259,7 +259,7 @@ export function Sidebar({ className }: SidebarProps) {
             : 'text-gray-700'
         )}
       >
-        <SemanticBDIIcon semantic={item.icon} size={20} className="mr-3" />
+        <SemanticBDIIcon semantic={item.icon} size={20} className="mr-3" priority={true} />
         {item.title}
       </Link>
     );
@@ -273,6 +273,8 @@ export function Sidebar({ className }: SidebarProps) {
             src="/logos/SVG/Full Lockup Color.svg" 
             alt="BDI Business Portal" 
             className="h-8"
+            loading="eager"
+            fetchPriority="high"
           />
         </Link>
       </div>
@@ -285,7 +287,7 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-center text-sm">
             <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center mr-3">
-              <SemanticBDIIcon semantic="profile" size={16} className="text-bdi-green-1" />
+              <SemanticBDIIcon semantic="profile" size={16} className="text-bdi-green-1" priority={true} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 truncate">

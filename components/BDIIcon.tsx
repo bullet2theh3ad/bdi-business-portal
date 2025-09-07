@@ -96,9 +96,10 @@ interface BDIIconProps {
   size?: number | string;
   className?: string;
   alt?: string;
+  priority?: boolean; // For critical icons that should load immediately
 }
 
-export function BDIIcon({ name, size = 24, className, alt }: BDIIconProps) {
+export function BDIIcon({ name, size = 24, className, alt, priority = false }: BDIIconProps) {
   const iconPath = BDI_ICONS[name];
   
   if (!iconPath) {
@@ -117,6 +118,9 @@ export function BDIIcon({ name, size = 24, className, alt }: BDIIconProps) {
         width: typeof size === 'number' ? `${size}px` : size,
         height: typeof size === 'number' ? `${size}px` : size,
       }}
+      loading={priority ? "eager" : "lazy"}
+      decoding="async"
+      fetchPriority={priority ? "high" : "auto"}
     />
   );
 }
@@ -168,9 +172,10 @@ interface SemanticBDIIconProps {
   size?: number | string;
   className?: string;
   alt?: string;
+  priority?: boolean; // For critical icons that should load immediately
 }
 
-export function SemanticBDIIcon({ semantic, size = 24, className, alt }: SemanticBDIIconProps) {
+export function SemanticBDIIcon({ semantic, size = 24, className, alt, priority = false }: SemanticBDIIconProps) {
   const iconName = SEMANTIC_ICONS[semantic];
   
   if (!iconName) {
@@ -184,6 +189,7 @@ export function SemanticBDIIcon({ semantic, size = 24, className, alt }: Semanti
       size={size}
       className={className}
       alt={alt || `${semantic} icon`}
+      priority={priority}
     />
   );
 }
