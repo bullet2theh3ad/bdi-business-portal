@@ -112,11 +112,11 @@ export async function POST(request: NextRequest) {
         `
 
         const { error: emailError } = await resend.emails.send({
-          from: 'BDI Business Portal <noreply@boundlessdevices.com>',
+          from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
           to: [invite.email],
           subject: `Invitation to Join ${organizationName} - BDI Business Portal`,
           html: emailHtml,
-          replyTo: 'support@boundlessdevices.com'
+          replyTo: 'support@bdibusinessportal.com'
         })
 
         if (emailError) {

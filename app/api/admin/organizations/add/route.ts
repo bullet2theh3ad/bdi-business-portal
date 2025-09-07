@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
     if (resend) {
       try {
         const emailResult = await resend.emails.send({
-          from: 'BDI Business Portal <noreply@boundlessdevices.com>',
+          from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
           to: [validatedData.adminEmail],
           subject: `Welcome to BDI Business Portal - ${validatedData.companyName}`,
           html: `
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
                   <p>If you have any questions or need assistance, please contact our support team.</p>
                   <p><strong>BDI Business Portal</strong><br>
                   Boundless Devices Inc<br>
-                  <a href="mailto:support@boundlessdevices.com" style="color: #007bff;">support@boundlessdevices.com</a></p>
+                  <a href="mailto:support@bdibusinessportal.com" style="color: #007bff;">support@bdibusinessportal.com</a></p>
                 </div>
               </div>
             </body>
