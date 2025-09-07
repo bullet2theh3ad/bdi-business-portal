@@ -839,36 +839,46 @@ export default function SalesForecastsPage() {
             ) : (
               <div className="space-y-4">
                 {forecastsArray.map((forecast) => (
-                  <div key={forecast.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between">
+                  <div key={forecast.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="font-semibold">{forecast.sku.name}</h3>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {forecast.sku.sku}
-                          </Badge>
-                          <div className="flex items-center space-x-4 text-xs">
+                        {/* Header with SKU name and code */}
+                        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3 mb-3">
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-semibold text-sm sm:text-base">{forecast.sku.name}</h3>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {forecast.sku.sku}
+                            </Badge>
+                          </div>
+                          
+                          {/* CPFR Signals - Mobile: Below title, Desktop: Same line */}
+                          <div className="flex items-center space-x-3 sm:space-x-4 text-xs">
                             <div className="flex items-center space-x-1">
-                              <span className="text-gray-600">Sales</span>
+                              <span className="text-gray-600 hidden sm:inline">Sales</span>
+                              <span className="text-gray-600 sm:hidden">S</span>
                               <span className={getSignalColor(forecast.salesSignal || 'unknown')}>
                                 {getSignalIcon(forecast.salesSignal || 'unknown')}
                               </span>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <span className="text-gray-600">Factory</span>
+                              <span className="text-gray-600 hidden sm:inline">Factory</span>
+                              <span className="text-gray-600 sm:hidden">F</span>
                               <span className={getSignalColor(forecast.factorySignal || 'unknown')}>
                                 {getSignalIcon(forecast.factorySignal || 'unknown')}
                               </span>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <span className="text-gray-600">Shipping</span>
+                              <span className="text-gray-600 hidden sm:inline">Shipping</span>
+                              <span className="text-gray-600 sm:hidden">Sh</span>
                               <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
                                 {getSignalIcon(forecast.shippingSignal || 'unknown')}
                               </span>
                             </div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
+                        
+                        {/* Forecast Details */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-4 text-sm">
                           <div>
                             <span className="text-gray-500">Delivery Week:</span>
                             <p className="font-medium">{forecast.deliveryWeek}</p>
@@ -886,8 +896,10 @@ export default function SalesForecastsPage() {
                           <p className="text-sm text-gray-600 mt-2">{forecast.notes}</p>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
+                      
+                      {/* Edit Button - Mobile: Below content, Desktop: Right side */}
+                      <div className="flex items-center justify-center sm:justify-end">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
                           <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                           Edit
                         </Button>
