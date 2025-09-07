@@ -612,36 +612,38 @@ export default function ShipmentsPage() {
     <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 sm:p-6">
-        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="shipping" size={24} className="sm:w-8 sm:h-8" />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Shipments</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Global logistics tracking from forecasts to delivery</p>
-            </div>
-          </div>
-          <div className="flex justify-center sm:justify-end">
-            <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto">
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="px-2 sm:px-3 flex-1 sm:flex-none"
-              >
-                <SemanticBDIIcon semantic="analytics" size={14} className="mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Timeline</span>
-                <span className="sm:hidden">List</span>
-              </Button>
-              <Button
-                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('calendar')}
-                className="px-2 sm:px-3 flex-1 sm:flex-none"
-              >
-                <SemanticBDIIcon semantic="calendar" size={14} className="mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Calendar</span>
-                <span className="sm:hidden">Cal</span>
-              </Button>
+            <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold">Shipments</h1>
+                  <p className="text-sm sm:text-base text-muted-foreground">Global logistics tracking from forecasts to delivery</p>
+                </div>
+                <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                      className="px-2 text-xs"
+                    >
+                      <SemanticBDIIcon semantic="analytics" size={12} className="mr-1" />
+                      Timeline
+                    </Button>
+                    <Button
+                      variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('calendar')}
+                      className="px-2 text-xs"
+                    >
+                      <SemanticBDIIcon semantic="calendar" size={12} className="mr-1" />
+                      Calendar
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
