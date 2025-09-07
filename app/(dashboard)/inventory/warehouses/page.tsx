@@ -387,18 +387,18 @@ export default function WarehousesPage() {
   };
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-6">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="sites" size={32} />
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="sites" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Warehouses</h1>
-              <p className="text-muted-foreground">Manage warehouse locations and shipping capabilities</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Warehouses</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage warehouse locations and shipping capabilities</p>
             </div>
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => setShowCreateModal(true)}>
+          <Button className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
             Add Warehouse
           </Button>
@@ -493,7 +493,7 @@ export default function WarehousesPage() {
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Location:</span>
                           <p className="font-medium">{warehouse.city}, {warehouse.state}</p>
@@ -546,8 +546,8 @@ export default function WarehousesPage() {
                         <p className="text-sm text-gray-600 mt-2">{warehouse.notes}</p>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedWarehouse(warehouse)}>
+                    <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedWarehouse(warehouse)} className="w-full sm:w-auto">
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
@@ -555,9 +555,9 @@ export default function WarehousesPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteWarehouse(warehouse.id)}
-                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:border-red-300"
                       >
-                        <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
+                        <span className="mr-1 text-sm">🗑️</span>
                         Delete
                       </Button>
                     </div>
@@ -584,7 +584,7 @@ export default function WarehousesPage() {
           }}>
             
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               <div>
                 <Label htmlFor="warehouseCode">Warehouse Code *</Label>
                 <Input
@@ -617,7 +617,7 @@ export default function WarehousesPage() {
                 <p className="text-sm text-gray-600 mt-1">Select all capabilities this warehouse provides</p>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 {/* Main Warehouse Capabilities */}
                 <div className="p-6 bg-indigo-50 border border-indigo-200 rounded-lg">
                   <h4 className="text-base font-medium text-indigo-800 mb-4 flex items-center">
@@ -718,7 +718,7 @@ export default function WarehousesPage() {
             </div>
 
             {/* Location Information */}
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div className="md:col-span-2">
                 <Label htmlFor="address">Address *</Label>
                 <Input
@@ -780,7 +780,7 @@ export default function WarehousesPage() {
                 {/* Primary Contact (Required) */}
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                     <div>
                       <Label htmlFor="contactName1">Contact Name *</Label>
                       <Input
@@ -826,7 +826,7 @@ export default function WarehousesPage() {
                 {/* Additional Contact 2 (Optional) */}
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                   <h4 className="text-base font-medium text-gray-700 mb-4">📞 Additional Contact 2 (Optional)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                     <div>
                       <Label htmlFor="contactName2">Contact Name</Label>
                       <Input
@@ -870,7 +870,7 @@ export default function WarehousesPage() {
                 {/* Additional Contact 3 (Optional) */}
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                   <h4 className="text-base font-medium text-gray-700 mb-4">📞 Additional Contact 3 (Optional)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                     <div>
                       <Label htmlFor="contactName3">Contact Name</Label>
                       <Input
@@ -916,7 +916,7 @@ export default function WarehousesPage() {
             {/* Operating Hours with Time Picker */}
             <div className="space-y-4">
               <Label className="text-lg font-medium text-gray-900">Operating Hours</Label>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="openTime">Opening Time</Label>
                   <select
@@ -1014,7 +1014,7 @@ export default function WarehousesPage() {
             </div>
 
             {/* Physical Specifications */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
               <div>
                 <Label htmlFor="maxPalletHeight">Max Pallet Height (cm)</Label>
                 <Input
@@ -1097,7 +1097,7 @@ export default function WarehousesPage() {
             }}>
               
               {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="editWarehouseCode">Warehouse Code *</Label>
                   <Input
@@ -1127,7 +1127,7 @@ export default function WarehousesPage() {
                   <p className="text-sm text-gray-600 mt-1">Select all capabilities this warehouse provides</p>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                   {/* Main Warehouse Capabilities */}
                   <div className="p-6 bg-indigo-50 border border-indigo-200 rounded-lg">
                     <h4 className="text-base font-medium text-indigo-800 mb-4">🏢 Warehouse Operations</h4>
@@ -1230,7 +1230,7 @@ export default function WarehousesPage() {
               </div>
 
               {/* Location Information */}
-              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
                 <div className="md:col-span-2">
                   <Label htmlFor="editAddress">Address *</Label>
                   <Input
@@ -1331,7 +1331,7 @@ export default function WarehousesPage() {
                           </Button>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                         <div>
                           <Label htmlFor={`editContactName${index + 1}`}>Contact Name {contact.isPrimary ? '*' : ''}</Label>
                           <Input
@@ -1378,7 +1378,7 @@ export default function WarehousesPage() {
                   // Fallback for legacy data
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                     <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                       <div>
                         <Label htmlFor="editContactName1">Contact Name *</Label>
                         <Input
@@ -1437,7 +1437,7 @@ export default function WarehousesPage() {
                         Remove
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                       <div>
                         <Label htmlFor="extraContactName">Contact Name</Label>
                         <Input
