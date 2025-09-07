@@ -306,31 +306,31 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex-1 p-4 lg:p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="profile" size={32} />
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 max-w-4xl mx-auto">
+      <div className="mb-6 lg:mb-8">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="profile" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">My Account Profile</h1>
-              <p className="text-muted-foreground">Manage your personal and business information for B2B data exchange</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">My Account Profile</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage your personal and business information for B2B data exchange</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="bg-bdi-green-1 text-white">
+          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
+            <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="bg-bdi-green-1 text-white text-xs sm:text-sm">
               {user.role.replace('_', ' ').toUpperCase()}
             </Badge>
             {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)} className="bg-bdi-green-1 hover:bg-bdi-green-2">
+              <Button onClick={() => setIsEditing(true)} className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto">
                 <SemanticBDIIcon semantic="settings" size={16} className="mr-2 brightness-0 invert" />
                 Edit Profile
               </Button>
             ) : (
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={handleCancel} disabled={isSaving} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={isSaving} className="bg-bdi-green-1 hover:bg-bdi-green-2">
+                <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto bg-bdi-green-1 hover:bg-bdi-green-2">
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
@@ -339,7 +339,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
         {/* Personal Information */}
         <Card>
           <CardHeader>
@@ -450,7 +450,7 @@ export default function ProfilePage() {
                 placeholder="If different from company name"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="dunsNumber">DUNS Number</Label>
                 <Input
@@ -474,7 +474,7 @@ export default function ProfilePage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="industryCode">Industry Code (NAICS)</Label>
                 <Input
@@ -632,7 +632,7 @@ export default function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="supplierCode">Supplier/Customer Code</Label>
                 <Input
@@ -661,7 +661,7 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="standardLeadTime">Standard Lead Time (days)</Label>
                 <Input
@@ -688,7 +688,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="minimumOrderQty">Minimum Order Quantity</Label>
                 <Input
@@ -722,7 +722,7 @@ export default function ProfilePage() {
 
             <div>
               <Label htmlFor="businessHours">Business Hours & Time Zone</Label>
-              <div className="grid grid-cols-2 gap-4 mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
                 <Input
                   placeholder="9:00 AM - 5:00 PM"
                   value={formData.businessHours}
@@ -757,7 +757,7 @@ export default function ProfilePage() {
           <CardDescription>Technical preferences for API and data integration</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             <div>
               <Label className="text-sm font-medium text-gray-700">Supported Data Formats</Label>
               <div className="mt-2 space-y-2">
@@ -934,7 +934,7 @@ export default function ProfilePage() {
               <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
               US Banking Details
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="routingNumber">Routing Number (ABA)</Label>
                 <Input
@@ -1359,7 +1359,7 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             {/* Contracts & Agreements */}
             <div>
               <h4 className="font-medium text-gray-700 mb-4 flex items-center">
