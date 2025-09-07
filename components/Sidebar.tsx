@@ -132,6 +132,7 @@ const navigationItems: NavItem[] = [
         title: 'Teams',
         href: '/admin/teams',
         icon: 'collaboration',
+        requiresBDI: true, // BDI-only feature
       },
     ],
   },

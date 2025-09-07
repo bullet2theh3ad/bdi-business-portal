@@ -463,16 +463,16 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-8">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-6 lg:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Comprehensive insights into your CPFR processes and business metrics
           </p>
         </div>
-        <Badge variant="outline" className="text-sm">
+        <Badge variant="outline" className="text-xs sm:text-sm w-fit">
           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
           Real-time Data
         </Badge>
@@ -514,28 +514,28 @@ export default function AnalyticsPage() {
       <Separator />
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-6 p-4 bg-gray-50 rounded-lg">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 gap-4 lg:gap-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
         {/* Date Range Picker */}
-        <div className="flex items-center space-x-3">
-          <Label className="font-medium">📅 Date Range:</Label>
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
+          <Label className="font-medium text-sm sm:text-base">📅 Date Range:</Label>
+          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
             <div className="flex flex-col">
               <Label className="text-xs text-gray-500 mb-1">From</Label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
               />
             </div>
-            <span className="text-gray-400 mt-4">—</span>
+            <span className="text-gray-400 hidden sm:block">—</span>
             <div className="flex flex-col">
               <Label className="text-xs text-gray-500 mb-1">To</Label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
               />
             </div>
             <Button
@@ -548,7 +548,7 @@ export default function AnalyticsPage() {
                 setStartDate(threeMonthsAgo.toISOString().split('T')[0]);
                 setEndDate(today.toISOString().split('T')[0]);
               }}
-              className="mt-4"
+              className="w-full sm:w-auto"
             >
               Last 3 Months
             </Button>
@@ -609,7 +609,7 @@ export default function AnalyticsPage() {
         <>
           {/* Summary Cards */}
           {analyticsData && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
@@ -677,7 +677,7 @@ export default function AnalyticsPage() {
           )}
 
           {/* Cool Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             {/* Invoice Values by Organization - Stacked Chart */}
             <Card>
               <CardHeader>
@@ -730,7 +730,7 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Process Health Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">CPFR Process Health</CardTitle>
