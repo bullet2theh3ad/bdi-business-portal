@@ -421,18 +421,18 @@ export default function SalesForecastsPage() {
   const posArray = Array.isArray(purchaseOrders) ? purchaseOrders : [];
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-6">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="forecasts" size={32} />
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="forecasts" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Sales Forecasts</h1>
-              <p className="text-muted-foreground">Create demand forecasts for CPFR planning</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Sales Forecasts</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Create demand forecasts for CPFR planning</p>
             </div>
           </div>
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowCreateModal(true)}>
+          <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
             New Forecast
           </Button>
@@ -580,7 +580,7 @@ export default function SalesForecastsPage() {
 
           {/* Months View - Landing Page */}
           {calendarView === 'months' && (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {generateMonths().map((month) => (
                 <Card 
                   key={month.key} 
@@ -725,7 +725,7 @@ export default function SalesForecastsPage() {
                 </h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
                 {generateWeeksForMonth(selectedMonth).map((week) => (
                   <Card key={week.isoWeek} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
@@ -857,7 +857,7 @@ export default function SalesForecastsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
                           <div>
                             <span className="text-gray-500">Delivery Week:</span>
                             <p className="font-medium">{forecast.deliveryWeek}</p>
@@ -907,7 +907,7 @@ export default function SalesForecastsPage() {
               {/* SKU Selection */}
               <div>
                 <Label className="text-base font-semibold mb-3 block">Select Product SKU</Label>
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-15 gap-4 max-h-80 overflow-y-auto border rounded-lg p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 lg:gap-4 max-h-80 overflow-y-auto border rounded-lg p-3 sm:p-6">
                   {skusArray.map((sku) => {
                     const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : 'C';
                     const getProductTypeColor = (type: string) => {
@@ -957,7 +957,7 @@ export default function SalesForecastsPage() {
                         <span className="font-semibold text-lg">{selectedSku.name}</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-10 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-10 text-sm">
                       <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Units per Carton</span>
                         <p className="font-bold text-3xl text-blue-600 mb-2">
@@ -1172,7 +1172,7 @@ export default function SalesForecastsPage() {
               )}
 
               {/* Forecast Details */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-20 mt-12">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-20 mt-8 lg:mt-12">
                 <div>
                   <Label htmlFor="deliveryWeek">Final Delivery Week *</Label>
                   
