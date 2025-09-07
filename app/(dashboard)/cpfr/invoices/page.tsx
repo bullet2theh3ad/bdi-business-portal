@@ -430,7 +430,7 @@ export default function InvoicesPage() {
                             }
                           }}
                         >
-                          <SemanticBDIIcon semantic="trash" size={14} className="mr-1" />
+                          <span className="mr-1 text-sm">🗑️</span>
                           Delete
                         </Button>
                       </div>
