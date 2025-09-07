@@ -149,7 +149,37 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     let pendingUserInvitations: any[] = [];
-    if (targetOrg) {
+    if (isSuperAdmin) {
+      // Super Admin sees ALL user invitations across ALL organizations
+      pendingUserInvitations = await db
+        .select({
+          id: users.id,
+          authId: users.authId,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          title: users.title,
+          department: users.department,
+          invitedAt: users.createdAt,
+          resetToken: users.resetToken,
+          resetTokenExpiry: users.resetTokenExpiry,
+          isActive: users.isActive,
+          organizationCode: organizations.code, // Add org code for Super Admin visibility
+        })
+        .from(users)
+        .innerJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
+        .innerJoin(organizations, eq(organizationMembers.organizationUuid, organizations.id))
+        .where(
+          and(
+            eq(users.isActive, false), // Not yet activated
+            eq(users.passwordHash, 'invitation_pending'), // Pending invitation
+            isNull(users.deletedAt),
+            gte(users.createdAt, thirtyDaysAgo)
+          )
+        )
+        .orderBy(desc(users.createdAt));
+    } else if (targetOrg) {
+      // Regular org admin sees only their org's user invitations
       pendingUserInvitations = await db
         .select({
           id: users.id,
@@ -176,6 +206,8 @@ export async function GET(request: NextRequest) {
         )
         .orderBy(desc(users.createdAt));
     }
+
+    console.log(`📊 Found ${pendingUserInvitations.length} user invitations for ${isSuperAdmin ? 'Super Admin (all orgs)' : userOrgCode}`);
 
     // Format all activities for the component
     const activities = [
