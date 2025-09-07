@@ -855,12 +855,12 @@ export default function ShipmentsPage() {
                           >
                             <SemanticBDIIcon 
                               semantic="profile" 
-                              size={20} 
-                              className={
+                              size={16} 
+                              className={`sm:w-5 sm:h-5 ${
                                 forecast.salesSignal === 'accepted' ? 'text-green-600' :
                                 forecast.salesSignal === 'submitted' ? 'text-blue-600' :
                                 'text-gray-600'
-                              } 
+                              }`} 
                             />
                           </button>
                           <div className="text-center">
@@ -892,12 +892,12 @@ export default function ShipmentsPage() {
                           >
                             <SemanticBDIIcon 
                               semantic="collaboration" 
-                              size={20} 
-                              className={
+                              size={16} 
+                              className={`sm:w-5 sm:h-5 ${
                                 forecast.factorySignal === 'accepted' ? 'text-green-600' :
                                 forecast.factorySignal === 'submitted' ? 'text-orange-600' :
                                 'text-gray-600'
-                              } 
+                              }`} 
                             />
                           </button>
                           <div className="text-center">
@@ -925,7 +925,7 @@ export default function ShipmentsPage() {
                             }`}
                             title="Click to change transit status"
                           >
-                            <span className={`text-xl ${
+                            <span className={`text-base sm:text-lg ${
                               progress >= 3 ? 'text-blue-600' : 'text-gray-600'
                             }`}>{shippingIcon}</span>
                           </button>
@@ -963,12 +963,12 @@ export default function ShipmentsPage() {
                           >
                             <SemanticBDIIcon 
                               semantic="sites" 
-                              size={20} 
-                              className={
+                              size={16} 
+                              className={`sm:w-5 sm:h-5 ${
                                 forecast.warehouseSignal === 'accepted' || forecast.warehouseSignal === 'submitted' 
                                   ? 'text-white' 
                                   : 'text-gray-600'
-                              } 
+                              }`} 
                             />
                           </button>
                           <div className="text-center">
