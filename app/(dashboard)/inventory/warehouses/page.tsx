@@ -455,41 +455,42 @@ export default function WarehousesPage() {
           ) : (
             <div className="space-y-4">
               {filteredWarehouses.map((warehouse) => (
-                <div key={warehouse.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">{warehouse.name}</h3>
-                        <Badge className="bg-indigo-100 text-indigo-800">
-                          {warehouse.warehouseCode}
-                        </Badge>
-                        {/* Display primary type badge */}
-                        <Badge className={getTypeColor(warehouse.type)}>
-                          {warehouse.type.replace('_', ' ')}
-                        </Badge>
+                <div key={warehouse.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col space-y-2 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-semibold text-base sm:text-lg break-words">{warehouse.name}</h3>
+                          <Badge className="bg-indigo-100 text-indigo-800 text-xs">
+                            {warehouse.warehouseCode}
+                          </Badge>
+                          <Badge className={`${getTypeColor(warehouse.type)} text-xs`}>
+                            {warehouse.type.replace('_', ' ')}
+                          </Badge>
+                        </div>
                         
-                        {/* Display additional capabilities as badges */}
+                        {/* Display additional capabilities as badges - Mobile optimized */}
                         {warehouse.capabilities && typeof warehouse.capabilities === 'object' && (
-                          <>
+                          <div className="flex flex-wrap gap-1">
                             {warehouse.capabilities.airFreight && (
-                              <Badge className="bg-sky-100 text-sky-800">✈️ Air</Badge>
+                              <Badge className="bg-sky-100 text-sky-800 text-xs">✈️ <span className="hidden sm:inline">Air</span></Badge>
                             )}
                             {warehouse.capabilities.seaFreight && (
-                              <Badge className="bg-blue-100 text-blue-800">🚢 Sea</Badge>
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">🚢 <span className="hidden sm:inline">Sea</span></Badge>
                             )}
                             {warehouse.capabilities.truckLoading && (
-                              <Badge className="bg-gray-100 text-gray-800">🚛 Truck</Badge>
+                              <Badge className="bg-gray-100 text-gray-800 text-xs">🚛 <span className="hidden sm:inline">Truck</span></Badge>
                             )}
                             {warehouse.capabilities.railAccess && (
-                              <Badge className="bg-amber-100 text-amber-800">🚂 Rail</Badge>
+                              <Badge className="bg-amber-100 text-amber-800 text-xs">🚂 <span className="hidden sm:inline">Rail</span></Badge>
                             )}
                             {warehouse.capabilities.coldStorage && (
-                              <Badge className="bg-cyan-100 text-cyan-800">❄️ Cold</Badge>
+                              <Badge className="bg-cyan-100 text-cyan-800 text-xs">❄️ <span className="hidden sm:inline">Cold</span></Badge>
                             )}
                             {warehouse.capabilities.hazmatHandling && (
-                              <Badge className="bg-orange-100 text-orange-800">⚠️ Hazmat</Badge>
+                              <Badge className="bg-orange-100 text-orange-800 text-xs">⚠️ <span className="hidden sm:inline">Hazmat</span></Badge>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                       
