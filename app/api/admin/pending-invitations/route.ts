@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
 
     // 2. Get recently created organizations (Add Organization flow)
     // Only show for super admin (BDI), external orgs don't see this
+    // Get organizations first, then get their admin users separately to avoid duplicates
     const recentOrganizations = isSuperAdmin ? await db
       .select({
         id: organizations.id,
@@ -117,19 +118,8 @@ export async function GET(request: NextRequest) {
         type: organizations.type,
         isActive: organizations.isActive,
         createdAt: organizations.createdAt,
-        // Get the admin user for this organization
-        adminUserId: users.id,
-        adminUserName: users.name,
-        adminUserEmail: users.email,
-        adminUserRole: users.role,
-        adminUserIsActive: users.isActive,
       })
       .from(organizations)
-      .leftJoin(organizationMembers, eq(organizations.id, organizationMembers.organizationUuid))
-      .leftJoin(users, and(
-        eq(organizationMembers.userAuthId, users.authId),
-        eq(organizationMembers.role, 'admin')
-      ))
       .where(
         and(
           gte(organizations.createdAt, thirtyDaysAgo),
@@ -138,6 +128,37 @@ export async function GET(request: NextRequest) {
       )
       .orderBy(desc(organizations.createdAt))
     : [];
+
+    // Get admin users for each organization separately to avoid duplicates
+    const recentOrganizationsWithAdmins = [];
+    for (const org of recentOrganizations) {
+      const [adminUser] = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          isActive: users.isActive,
+        })
+        .from(users)
+        .innerJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
+        .where(
+          and(
+            eq(organizationMembers.organizationUuid, org.id),
+            eq(organizationMembers.role, 'admin')
+          )
+        )
+        .limit(1); // Only get the first admin
+
+      recentOrganizationsWithAdmins.push({
+        ...org,
+        adminUserId: adminUser?.id || null,
+        adminUserName: adminUser?.name || 'Unknown Admin',
+        adminUserEmail: adminUser?.email || 'N/A',
+        adminUserRole: adminUser?.role || 'admin',
+        adminUserIsActive: adminUser?.isActive || false,
+      });
+    }
 
     // 3. Get pending user invitations for current organization
     // Super admin sees BDI invitations, other orgs see their own
@@ -229,7 +250,7 @@ export async function GET(request: NextRequest) {
       })),
       
       // Recently created organizations (active)
-      ...recentOrganizations.map(org => ({
+      ...recentOrganizationsWithAdmins.map(org => ({
         id: `org-created-${org.id}`,
         type: 'organization_created',
         email: org.adminUserEmail || 'N/A',

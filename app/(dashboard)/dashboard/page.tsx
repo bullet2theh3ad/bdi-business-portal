@@ -19,6 +19,7 @@ import {
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { User } from '@/lib/db/schema';
 import { PendingInvitations } from '@/components/PendingInvitations';
+import UserActivity from '@/components/UserActivity';
 
 // Extended user type with organization data
 interface UserWithOrganization extends User {
@@ -526,12 +527,15 @@ function AdminActions() {
 }
 
 export default function DashboardPage() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  
   return (
     <section className="flex-1 p-4 lg:p-8">
       <WelcomeCard />
       <CPFRMetrics />
       <ForecastMonthlyCharts />
       <PendingInvitations />
+      <UserActivity userRole={user?.role || ''} />
       <RecentActivity />
     </section>
   );
