@@ -440,21 +440,21 @@ export default function SalesForecastsPage() {
       </div>
 
       {/* View Toggle & Calendar Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
           {/* View Mode Toggle */}
           <div className="flex border rounded-md">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 text-sm transition-colors ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              📅 Calendar
+              📅 <span className="hidden sm:inline">Calendar</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 text-sm transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              📋 List
+              📋 <span className="hidden sm:inline">List</span>
             </button>
           </div>
 
@@ -466,42 +466,51 @@ export default function SalesForecastsPage() {
                   setCalendarView('months');
                   setSelectedMonth(null);
                 }}
-                className={`px-3 py-2 text-xs transition-colors ${calendarView === 'months' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`px-2 sm:px-3 py-2 text-xs transition-colors ${calendarView === 'months' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
               >
-                🗓️ Months
+                🗓️ <span className="hidden sm:inline">Months</span>
               </button>
               <button
                 onClick={() => setCalendarView('weeks')}
-                className={`px-3 py-2 text-xs transition-colors ${calendarView === 'weeks' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`px-2 sm:px-3 py-2 text-xs transition-colors ${calendarView === 'weeks' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
                 disabled={!selectedMonth}
               >
-                📊 Weeks
+                📊 <span className="hidden sm:inline">Weeks</span>
               </button>
               <button
                 onClick={() => setCalendarView('days')}
-                className={`px-3 py-2 text-xs transition-colors ${calendarView === 'days' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`px-2 sm:px-3 py-2 text-xs transition-colors ${calendarView === 'days' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:bg-gray-50'}`}
                 disabled={!selectedMonth}
               >
-                📋 Days
+                📋 <span className="hidden sm:inline">Days</span>
               </button>
             </div>
           )}
         </div>
-        <div className="flex items-center space-x-6">
-          {/* CPFR Supply Chain Signals Legend */}
-          <div className="flex items-center space-x-6 text-xs">
-            <span className="text-gray-500">CPFR Signals:</span>
-            <div className="flex items-center space-x-3">
-              <span className="font-medium">S: Sales</span>
-              <span className="font-medium">F: Factory</span>
-              <span className="font-medium">Sh: Shipping</span>
+        
+        {/* CPFR Supply Chain Signals Legend - Hidden on mobile, compact on tablet */}
+        <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
+          <div className="flex items-center space-x-2 lg:space-x-4 text-xs">
+            <span className="text-gray-500">CPFR:</span>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">S</span>
+              <span className="font-medium">F</span>
+              <span className="font-medium">Sh</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <span>❓ Unknown</span>
-              <span>⏳ Awaiting</span>
-              <span>✅ Accepted</span>
-              <span>❌ Rejected</span>
+            <div className="flex items-center space-x-2 lg:space-x-3">
+              <span>❓</span>
+              <span>⏳</span>
+              <span>✅</span>
+              <span>❌</span>
             </div>
+          </div>
+        </div>
+        
+        {/* Mobile CPFR Legend - Compact version */}
+        <div className="md:hidden">
+          <div className="flex items-center justify-center space-x-3 text-xs bg-gray-50 rounded-md p-2">
+            <span className="text-gray-500">CPFR:</span>
+            <span>❓ ⏳ ✅ ❌</span>
           </div>
         </div>
       </div>
@@ -510,11 +519,12 @@ export default function SalesForecastsPage() {
       {viewMode === 'calendar' ? (
         <div>
           {/* Calendar Navigation Header */}
-          <div className="flex items-center justify-between mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
               <Button
                 variant="outline"
                 size="sm"
+                className="text-xs sm:text-sm"
                 onClick={() => {
                   if (calendarView === 'months') {
                     // Navigate months view
@@ -529,16 +539,17 @@ export default function SalesForecastsPage() {
                   }
                 }}
               >
-                ← Previous {calendarView === 'months' ? '6 Months' : 'Month'}
+                ← <span className="hidden sm:inline">Previous </span>{calendarView === 'months' ? '6M' : 'Month'}
               </Button>
-              <h2 className="text-xl font-semibold text-blue-800">
-                {calendarView === 'months' && `${currentDate.getFullYear()} - CPFR Planning Calendar`}
+              <h2 className="text-sm sm:text-lg lg:text-xl font-semibold text-blue-800 text-center sm:text-left">
+                {calendarView === 'months' && `${currentDate.getFullYear()} - CPFR Planning`}
                 {calendarView === 'weeks' && selectedMonth && selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 {calendarView === 'days' && selectedMonth && selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </h2>
               <Button
                 variant="outline"
                 size="sm"
+                className="text-xs sm:text-sm"
                 onClick={() => {
                   if (calendarView === 'months') {
                     // Navigate months view
@@ -553,7 +564,7 @@ export default function SalesForecastsPage() {
                   }
                 }}
               >
-                Next {calendarView === 'months' ? '6 Months' : 'Month'} →
+                <span className="hidden sm:inline">Next </span>{calendarView === 'months' ? '6M' : 'Month'} →
               </Button>
               
               {/* Today/Current Button */}
