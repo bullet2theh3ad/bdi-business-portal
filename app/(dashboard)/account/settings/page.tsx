@@ -69,6 +69,9 @@ const mockApiKeys = [
 export default function SettingsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Only show Quick Actions for BDI users (Super Admin)
+  const isBDIUser = user?.role === 'super_admin';
 
   if (!user) {
     return (
@@ -165,8 +168,9 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card>
+          {/* Quick Actions - Only for BDI users */}
+          {isBDIUser && (
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
@@ -206,6 +210,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
       )}
 
