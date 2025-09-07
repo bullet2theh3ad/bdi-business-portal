@@ -481,8 +481,12 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-medium">Super Admin Access</div>
-                      <div className="text-sm text-gray-500">Full system administration</div>
+                      <div className="font-medium">
+                        {isBDIUser ? 'Super Admin Access' : 'Admin Access'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {isBDIUser ? 'Full system administration' : 'Organization administration and user management'}
+                      </div>
                     </div>
                     <Badge variant="default" className="bg-bdi-green-1">Active</Badge>
                   </div>
