@@ -260,15 +260,15 @@ export default function InvoicesPage() {
   };
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-6">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="orders" size={32} />
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="orders" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Invoices</h1>
-              <p className="text-muted-foreground">Manage supplier orders and delivery terms</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Invoices</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage supplier orders and delivery terms</p>
             </div>
           </div>
           <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
@@ -349,7 +349,7 @@ export default function InvoicesPage() {
                           {invoice.status}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Supplier:</span>
                           <p className="font-medium">{invoice.customerName}</p>
@@ -489,11 +489,11 @@ export default function InvoicesPage() {
                 Create Invoice
               </DialogTitle>
             </DialogHeader>
-            <form className="space-y-12 p-8" onSubmit={(e) => {
+            <form className="space-y-6 lg:space-y-12 p-4 sm:p-6 lg:p-8" onSubmit={(e) => {
               e.preventDefault();
               handleCreateInvoice(new FormData(e.currentTarget));
             }}>
-              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
                 <div>
                   <Label htmlFor="poNumber">Invoice Number *</Label>
                   <Input
@@ -695,7 +695,7 @@ export default function InvoicesPage() {
                   <div className="space-y-4">
                     {lineItems.map((item, index) => (
                       <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4 items-end">
                           <div>
                             <Label className="text-xs">SKU *</Label>
                             <select
@@ -775,7 +775,7 @@ export default function InvoicesPage() {
                   <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
                   Supporting Documents
                 </h4>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
                   <div>
                     <Label htmlFor="documents">Upload Documents</Label>
                     <input
@@ -993,7 +993,7 @@ export default function InvoicesPage() {
               
               setIsLoading(false);
             }}>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="editInvoiceNumber">Invoice Number</Label>
                   <Input
@@ -1089,7 +1089,7 @@ export default function InvoicesPage() {
                   <div className="space-y-4">
                     {editLineItems.map((item, index) => (
                       <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4 items-end">
                           <div>
                             <Label className="text-xs">SKU *</Label>
                             <select
@@ -1205,7 +1205,7 @@ export default function InvoicesPage() {
                   Document Management
                 </h4>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
                   {/* Existing Documents */}
                   <div>
                     <Label className="block mb-3">Existing Documents ({existingDocs.length})</Label>
