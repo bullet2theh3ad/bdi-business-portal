@@ -103,7 +103,7 @@ export default function SettingsPage() {
         <nav className="flex space-x-8" aria-label="Settings sections">
           {[
             { id: 'overview', name: 'Overview', icon: 'dashboard' },
-            { id: 'organizations', name: 'Organizations', icon: 'collaboration' },
+            ...(isBDIUser ? [{ id: 'organizations', name: 'Organizations', icon: 'collaboration' }] : []),
             { id: 'api-keys', name: 'API Keys', icon: 'connect' },
             { id: 'integrations', name: 'Integrations', icon: 'sync' },
             { id: 'security', name: 'Security', icon: 'settings' },
