@@ -29,12 +29,13 @@ export default function UserActivity({ userRole }: UserActivityProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [days, setDays] = useState(7);
 
-  // Only show for Super Admin
-  if (userRole !== 'super_admin') {
-    return null;
-  }
-
   useEffect(() => {
+    // Only fetch data for Super Admin
+    if (userRole !== 'super_admin') {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchActivity = async () => {
       setIsLoading(true);
       try {
@@ -51,7 +52,7 @@ export default function UserActivity({ userRole }: UserActivityProps) {
     };
 
     fetchActivity();
-  }, [days]);
+  }, [days, userRole]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -84,6 +85,11 @@ export default function UserActivity({ userRole }: UserActivityProps) {
     if (diffInDays < 7) return `${diffInDays}d ago`;
     return date.toLocaleDateString();
   };
+
+  // Only show for Super Admin
+  if (userRole !== 'super_admin') {
+    return null;
+  }
 
   return (
     <Card className="border border-red-200 bg-red-50/30">
