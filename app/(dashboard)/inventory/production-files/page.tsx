@@ -284,20 +284,20 @@ export default function ProductionFilesPage() {
   }, 0);
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-6">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="analytics" size={32} />
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="analytics" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Production Files</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold">Production Files</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Manufacturing files for device MAC addresses, serial numbers, and production data
               </p>
             </div>
           </div>
-          <Button onClick={() => setShowUploadModal(true)} className="bg-purple-600 hover:bg-purple-700">
+          <Button onClick={() => setShowUploadModal(true)} className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto">
             <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
             Upload Files
           </Button>
@@ -305,7 +305,7 @@ export default function ProductionFilesPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -446,27 +446,31 @@ export default function ProductionFilesPage() {
                 const deviceMetadata = file.deviceMetadata as any;
                 
                 return (
-                  <div key={file.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <SemanticBDIIcon semantic={fileTypeInfo.icon as any} size={20} className="text-purple-600" />
-                          <h3 className="font-semibold text-lg">{file.fileName}</h3>
-                          <Badge className="bg-purple-100 text-purple-800">
-                            {fileTypeInfo.label}
-                          </Badge>
-                          {file.bdiShipmentNumber && (
-                            <Badge className="bg-blue-100 text-blue-800">
-                              {file.bdiShipmentNumber}
+                  <div key={file.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col space-y-2 mb-3">
+                          <div className="flex items-center space-x-2">
+                            <SemanticBDIIcon semantic={fileTypeInfo.icon as any} size={18} className="text-purple-600 flex-shrink-0" />
+                            <h3 className="font-semibold text-base sm:text-lg break-all">{file.fileName}</h3>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <Badge className="bg-purple-100 text-purple-800 text-xs">
+                              {fileTypeInfo.label}
                             </Badge>
-                          )}
+                            {file.bdiShipmentNumber && (
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                {file.bdiShipmentNumber}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         
                         {file.description && (
                           <p className="text-gray-600 mb-2">{file.description}</p>
                         )}
                         
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
                           <div>
                             <span className="text-gray-600">Organization:</span>
                             <p className="font-medium">{(file as any).organizationCode || 'Unknown'}</p>
@@ -505,11 +509,12 @@ export default function ProductionFilesPage() {
                         )}
                       </div>
                       
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => handleDownload(file)}
+                          className="w-full sm:w-auto"
                         >
                           <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
                           Download
@@ -518,9 +523,9 @@ export default function ProductionFilesPage() {
                           variant="outline" 
                           size="sm" 
                           onClick={() => handleDelete(file.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="w-full sm:w-auto text-red-600 hover:text-red-700"
                         >
-                          <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
+                          <span className="mr-1 text-sm">🗑️</span>
                           Delete
                         </Button>
                       </div>
@@ -602,7 +607,7 @@ export default function ProductionFilesPage() {
                             }}
                             className="text-red-500 hover:text-red-700 p-1"
                           >
-                            <SemanticBDIIcon semantic="delete" size={16} />
+                            <span className="text-base">🗑️</span>
                           </Button>
                         </div>
                       );
