@@ -39,7 +39,7 @@ function WelcomeCard() {
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle className="text-2xl">
+        <CardTitle className="text-xl sm:text-2xl">
           {user ? `Welcome ${user.name || user.email}` : 'Welcome'}
         </CardTitle>
         <CardDescription>
@@ -69,29 +69,29 @@ function QuickActions() {
         <CardDescription>Get started with common tasks</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Link href="/cpfr/forecasts">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="forecasts" size={24} />
-              <span className="text-sm">View Forecasts</span>
+              <span className="text-xs sm:text-sm">View Forecasts</span>
             </Button>
           </Link>
           <Link href="/cpfr/supply-signals">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="supply" size={24} />
-              <span className="text-sm">Supply Signals</span>
+              <span className="text-xs sm:text-sm">Supply Signals</span>
             </Button>
           </Link>
           <Link href="/inventory">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="inventory_analytics" size={24} />
-              <span className="text-sm">Inventory</span>
+              <span className="text-xs sm:text-sm">Inventory</span>
             </Button>
           </Link>
           <Link href="/teams">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="users" size={24} />
-              <span className="text-sm">Manage Teams</span>
+              <span className="text-xs sm:text-sm">Manage Teams</span>
             </Button>
           </Link>
         </div>
@@ -179,7 +179,7 @@ function CPFRMetrics() {
   })();
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
       <Card className="border-blue-200 bg-blue-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-blue-800">{firstMetric.label}</CardTitle>
@@ -495,7 +495,7 @@ function AdminActions() {
         <CardDescription>System administration and setup</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
           <Link href="/admin/organizations">
             <Button variant="outline" className="w-full justify-start hover:border-bdi-blue hover:bg-bdi-blue/10">
               <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2" />
@@ -530,7 +530,7 @@ export default function DashboardPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   
   return (
-    <section className="flex-1 p-4 lg:p-8">
+    <section className="flex-1 p-3 sm:p-4 lg:p-8">
       <WelcomeCard />
       <CPFRMetrics />
       <ForecastMonthlyCharts />
