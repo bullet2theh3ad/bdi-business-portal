@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
@@ -905,6 +905,9 @@ export default function InvoicesPage() {
                 <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
                 Edit Invoice: {selectedInvoice.invoiceNumber}
               </DialogTitle>
+              <DialogDescription>
+                Modify invoice details, line items, and upload supporting documents. Changes will be saved when you submit the form.
+              </DialogDescription>
             </DialogHeader>
             <form className="space-y-8 p-8" onSubmit={async (e) => {
               e.preventDefault();
