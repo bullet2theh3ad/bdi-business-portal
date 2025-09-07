@@ -65,6 +65,17 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
+  
+  // Invitation tracking fields
+  invitationSenderDomain: varchar('invitation_sender_domain', { length: 100 }),
+  invitationDeliveryStatus: varchar('invitation_delivery_status', { length: 50 }),
+  invitationResendMessageId: varchar('invitation_resend_message_id', { length: 255 }),
+  invitationBounceReason: text('invitation_bounce_reason'),
+  invitationSentByUserType: varchar('invitation_sent_by_user_type', { length: 50 }),
+  invitationDeliveryAttempts: integer('invitation_delivery_attempts').default(0),
+  invitationLastDeliveryAttempt: timestamp('invitation_last_delivery_attempt'),
+  invitationEmailOpenedAt: timestamp('invitation_email_opened_at'),
+  invitationEmailClickedAt: timestamp('invitation_email_clicked_at'),
 });
 
 // Organizations (BDI internal or external OEM partners)
@@ -356,6 +367,16 @@ export const organizationInvitations = pgTable('organization_invitations', {
   acceptedByUserId: uuid('accepted_by_user_id'),
   createdByUserId: uuid('created_by_user_id'),
   updatedAt: timestamp('updated_at').defaultNow(),
+  // Enhanced tracking fields
+  senderDomain: varchar('sender_domain', { length: 100 }),
+  emailDeliveryStatus: varchar('email_delivery_status', { length: 50 }).default('pending'),
+  resendMessageId: varchar('resend_message_id', { length: 255 }),
+  bounceReason: text('bounce_reason'),
+  sentByUserType: varchar('sent_by_user_type', { length: 50 }),
+  deliveryAttempts: integer('delivery_attempts').default(1),
+  lastDeliveryAttempt: timestamp('last_delivery_attempt'),
+  emailOpenedAt: timestamp('email_opened_at'),
+  emailClickedAt: timestamp('email_clicked_at'),
 });
 
 // ===== RELATIONS =====

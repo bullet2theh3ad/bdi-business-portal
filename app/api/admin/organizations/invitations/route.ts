@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
           </div>
         `
 
-        const { error: emailError } = await resend.emails.send({
+        const emailResult = await resend.emails.send({
           from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
           to: [invite.email],
           subject: `Invitation to Join ${organizationName} - BDI Business Portal`,
@@ -119,14 +119,14 @@ export async function POST(request: NextRequest) {
           replyTo: 'support@bdibusinessportal.com'
         })
 
-        if (emailError) {
-          console.error('Email error:', emailError)
+        if (emailResult.error) {
+          console.error('Email error:', emailResult.error)
           errors.push(`Failed to send email to ${invite.email}`)
           continue
         }
 
         sentCount++
-        console.log(`Successfully sent invitation to ${invite.email} for ${organizationCode}`)
+        console.log(`Successfully sent invitation to ${invite.email} for ${organizationCode} (Message ID: ${emailResult.data?.id})`)
 
       } catch (error) {
         console.error(`Error processing invitation for ${invite.email}:`, error)
