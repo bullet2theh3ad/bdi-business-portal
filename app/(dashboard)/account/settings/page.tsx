@@ -91,20 +91,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 p-4 lg:p-8 max-w-6xl mx-auto">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 max-w-6xl mx-auto">
       <div className="mb-8">
-        <div className="flex items-center space-x-4">
-          <SemanticBDIIcon semantic="settings" size={32} />
+        <div className="flex items-center space-x-3 sm:space-x-4">
+          <SemanticBDIIcon semantic="settings" size={24} className="sm:w-8 sm:h-8" />
           <div>
-            <h1 className="text-3xl font-bold">Account Settings</h1>
-            <p className="text-muted-foreground">Manage organizations, API keys, and system administration</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage organizations, API keys, and system administration</p>
           </div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
       <div className="mb-8">
-        <nav className="flex space-x-8" aria-label="Settings sections">
+        <nav className="flex flex-wrap gap-2 sm:gap-4 lg:gap-8" aria-label="Settings sections">
           {[
             { id: 'overview', name: 'Overview', icon: 'dashboard' },
             ...(isBDIUser ? [{ id: 'organizations', name: 'Organizations', icon: 'collaboration' }] : []),
@@ -115,7 +115,7 @@ export default function SettingsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                 activeTab === tab.id
                   ? 'bg-bdi-green-1 text-white'
                   : 'text-gray-500 hover:text-bdi-green-1 hover:bg-bdi-green-1/10'
@@ -145,7 +145,7 @@ export default function SettingsPage() {
               <CardDescription>Quick overview of your BDI Business Portal administration</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
                 <div className="text-center p-4 bg-bdi-green-1/5 rounded-lg">
                   <SemanticBDIIcon semantic="collaboration" size={24} className="mx-auto mb-2" />
                   <div className="text-2xl font-bold text-bdi-green-1">
@@ -289,8 +289,8 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">API Key Management</h2>
-              <p className="text-muted-foreground">Monitor and manage API access for Developer users across all organizations</p>
+              <h2 className="text-xl sm:text-2xl font-bold">API Key Management</h2>
+              <p className="text-sm sm:text-base text-muted-foreground">Monitor and manage API access for Developer users across all organizations</p>
             </div>
             {isBDIUser && (
               <Button className="bg-bdi-blue hover:bg-bdi-blue/90 text-white">
@@ -301,7 +301,7 @@ export default function SettingsPage() {
           </div>
 
           {/* API Key Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-6">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Total API Keys</CardTitle>
@@ -470,11 +470,11 @@ export default function SettingsPage() {
       {activeTab === 'security' && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold">Security Settings</h2>
-            <p className="text-muted-foreground">Manage authentication, permissions, and security policies</p>
+            <h2 className="text-xl sm:text-2xl font-bold">Security Settings</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage authentication, permissions, and security policies</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
