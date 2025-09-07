@@ -853,15 +853,11 @@ export default function ShipmentsPage() {
                             }`}
                             title="Click to change sales status"
                           >
-                            <SemanticBDIIcon 
-                              semantic="profile" 
-                              size={16} 
-                              className={`sm:w-5 sm:h-5 ${
-                                forecast.salesSignal === 'accepted' ? 'text-green-600' :
-                                forecast.salesSignal === 'submitted' ? 'text-blue-600' :
-                                'text-gray-600'
-                              }`} 
-                            />
+                            <span className={`text-base sm:text-lg ${
+                              forecast.salesSignal === 'accepted' ? 'text-green-600' :
+                              forecast.salesSignal === 'submitted' ? 'text-blue-600' :
+                              'text-gray-600'
+                            }`}>👤</span>
                           </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Sales</p>
@@ -890,15 +886,11 @@ export default function ShipmentsPage() {
                             }`}
                             title="Click to change factory status"
                           >
-                            <SemanticBDIIcon 
-                              semantic="collaboration" 
-                              size={16} 
-                              className={`sm:w-5 sm:h-5 ${
-                                forecast.factorySignal === 'accepted' ? 'text-green-600' :
-                                forecast.factorySignal === 'submitted' ? 'text-orange-600' :
-                                'text-gray-600'
-                              }`} 
-                            />
+                            <span className={`text-base sm:text-lg ${
+                              forecast.factorySignal === 'accepted' ? 'text-green-600' :
+                              forecast.factorySignal === 'submitted' ? 'text-orange-600' :
+                              'text-gray-600'
+                            }`}>🏭</span>
                           </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Factory EXW</p>
@@ -961,15 +953,11 @@ export default function ShipmentsPage() {
                             }`}
                             title="Click to change warehouse status"
                           >
-                            <SemanticBDIIcon 
-                              semantic="sites" 
-                              size={16} 
-                              className={`sm:w-5 sm:h-5 ${
-                                forecast.warehouseSignal === 'accepted' || forecast.warehouseSignal === 'submitted' 
-                                  ? 'text-white' 
-                                  : 'text-gray-600'
-                              }`} 
-                            />
+                            <span className={`text-base sm:text-lg ${
+                              forecast.warehouseSignal === 'accepted' || forecast.warehouseSignal === 'submitted' 
+                                ? 'text-white' 
+                                : 'text-gray-600'
+                            }`}>🏢</span>
                           </button>
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Warehouse</p>
