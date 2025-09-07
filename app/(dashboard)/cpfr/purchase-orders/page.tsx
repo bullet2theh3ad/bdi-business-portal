@@ -850,13 +850,13 @@ export default function PurchaseOrdersPage() {
             </div>
 
             {/* File Upload Section */}
-            <div className="bg-green-50 p-6 rounded-lg border border-green-200">
-              <h4 className="font-semibold text-green-800 mb-4 flex items-center">
+            <div className="bg-green-50 p-3 sm:p-4 lg:p-6 rounded-lg border border-green-200">
+              <h4 className="font-semibold text-green-800 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
                 <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
                 Documents & Attachments
               </h4>
               
-              <div className="border-2 border-dashed border-green-300 rounded-lg p-6 bg-white">
+              <div className="border-2 border-dashed border-green-300 rounded-lg p-4 sm:p-6 bg-white">
                 <input
                   type="file"
                   multiple
@@ -1241,27 +1241,29 @@ export default function PurchaseOrdersPage() {
               </div>
 
               {/* Document Management Section */}
-              <div className="bg-green-50 p-6 rounded-lg border border-green-200">
-                <h4 className="font-semibold text-green-800 mb-4 flex items-center">
+              <div className="bg-green-50 p-3 sm:p-4 lg:p-6 rounded-lg border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
                   <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
                   Documents & Attachments
                 </h4>
                 
                 {/* Existing Documents */}
                 {existingDocs.length > 0 && (
-                  <div className="mb-4">
-                    <h5 className="font-medium text-green-800 mb-2">Existing Documents:</h5>
-                    <div className="space-y-2">
+                  <div className="mb-3 sm:mb-4">
+                    <h5 className="font-medium text-green-800 mb-2 text-sm sm:text-base">Existing Documents:</h5>
+                    <div className="space-y-3">
                       {existingDocs.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between bg-white p-3 rounded border border-green-200">
-                          <div className="flex items-center space-x-2">
-                            <SemanticBDIIcon semantic="upload" size={14} className="text-green-600" />
-                            <span className="text-sm font-medium text-green-800">{doc.fileName}</span>
+                        <div key={doc.id} className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 bg-white p-3 rounded border border-green-200">
+                          <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
+                            <div className="flex items-center space-x-2">
+                              <SemanticBDIIcon semantic="upload" size={14} className="text-green-600" />
+                              <span className="text-sm font-medium text-green-800 break-all">{doc.fileName}</span>
+                            </div>
                             <span className="text-xs text-green-600">
                               ({new Date(doc.uploadedAt).toLocaleDateString()})
                             </span>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
                             <Button
                               type="button"
                               variant="outline"
@@ -1290,7 +1292,7 @@ export default function PurchaseOrdersPage() {
                                   alert('Failed to download file');
                                 }
                               }}
-                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              className="w-full sm:w-auto text-blue-600 border-blue-300 hover:bg-blue-50"
                             >
                               <SemanticBDIIcon semantic="download" size={12} className="mr-1" />
                               Download
@@ -1319,7 +1321,7 @@ export default function PurchaseOrdersPage() {
                                   }
                                 }
                               }}
-                              className="text-red-600 border-red-300 hover:bg-red-50"
+                              className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
                             >
                               <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
                               Delete
