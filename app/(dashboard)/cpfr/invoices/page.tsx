@@ -343,12 +343,98 @@ export default function InvoicesPage() {
                 <div key={invoice.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
+                      <div className="flex items-center space-x-3 mb-3">
                         <h3 className="font-semibold text-lg">Invoice #{invoice.invoiceNumber}</h3>
                         <Badge className={getStatusColor(invoice.status)}>
                           {invoice.status}
                         </Badge>
                       </div>
+                      
+                      {/* Action Buttons - Right under invoice number */}
+                      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
+                          setSelectedInvoice(invoice);
+                          setEditUploadedDocs([]);
+                          
+                          // Fetch existing documents for this invoice
+                          try {
+                            const docsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/documents`);
+                            if (docsResponse.ok) {
+                              const docs = await docsResponse.json();
+                              setExistingDocs(docs);
+                              console.log('Loaded existing documents:', docs);
+                            }
+                          } catch (error) {
+                            console.error('Error loading documents:', error);
+                            setExistingDocs([]);
+                          }
+
+                          // Fetch existing line items for this invoice
+                          try {
+                            console.log(`🔍 Fetching line items for invoice: ${invoice.id}`);
+                            const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
+                            console.log('Line items response status:', lineItemsResponse.status);
+                            
+                            if (lineItemsResponse.ok) {
+                              const lineItems = await lineItemsResponse.json();
+                              console.log('Raw line items from API:', lineItems);
+                              
+                              const mappedItems = lineItems.map((item: any) => ({
+                                id: item.id,
+                                skuId: item.skuId,
+                                sku: item.sku,
+                                skuName: item.skuName,
+                                quantity: parseInt(item.quantity),
+                                unitCost: parseFloat(item.unitCost),
+                                lineTotal: parseFloat(item.lineTotal)
+                              }));
+                              
+                              console.log('Mapped line items for UI:', mappedItems);
+                              setEditLineItems(mappedItems);
+                            } else {
+                              const errorText = await lineItemsResponse.text();
+                              console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
+                              setEditLineItems([]);
+                            }
+                          } catch (error) {
+                            console.error('Error loading line items:', error);
+                            setEditLineItems([]);
+                          }
+                        }}>
+                          <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}?\n\nThis action cannot be undone and will delete:\n• The invoice\n• All line items\n• All documents\n• All related data`)) {
+                              try {
+                                const response = await fetch(`/api/cpfr/invoices/${invoice.id}`, {
+                                  method: 'DELETE'
+                                });
+
+                                if (response.ok) {
+                                  const result = await response.json();
+                                  alert(`✅ ${result.message}`);
+                                  mutateInvoices(); // Refresh the invoice list
+                                } else {
+                                  const errorData = await response.json();
+                                  alert(`❌ Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
+                                }
+                              } catch (error) {
+                                console.error('Error deleting invoice:', error);
+                                alert('❌ Failed to delete invoice');
+                              }
+                            }
+                          }}
+                        >
+                          <SemanticBDIIcon semantic="trash" size={14} className="mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                      
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Supplier:</span>
@@ -387,91 +473,6 @@ export default function InvoicesPage() {
                       {invoice.notes && (
                         <p className="text-sm text-gray-600 mt-2">{invoice.notes}</p>
                       )}
-                    </div>
-                    
-                    {/* Action Buttons - Mobile Optimized */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0 pt-3 border-t border-gray-200">
-                      <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
-                        setSelectedInvoice(invoice);
-                        setEditUploadedDocs([]);
-                        
-                        // Fetch existing documents for this invoice
-                        try {
-                          const docsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/documents`);
-                          if (docsResponse.ok) {
-                            const docs = await docsResponse.json();
-                            setExistingDocs(docs);
-                            console.log('Loaded existing documents:', docs);
-                          }
-                        } catch (error) {
-                          console.error('Error loading documents:', error);
-                          setExistingDocs([]);
-                        }
-
-                        // Fetch existing line items for this invoice
-                        try {
-                          console.log(`🔍 Fetching line items for invoice: ${invoice.id}`);
-                          const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
-                          console.log('Line items response status:', lineItemsResponse.status);
-                          
-                          if (lineItemsResponse.ok) {
-                            const lineItems = await lineItemsResponse.json();
-                            console.log('Raw line items from API:', lineItems);
-                            
-                            const mappedItems = lineItems.map((item: any) => ({
-                              id: item.id,
-                              skuId: item.skuId,
-                              sku: item.skuCode,
-                              skuName: item.skuName,
-                              quantity: item.quantity,
-                              unitCost: parseFloat(item.unitCost),
-                              lineTotal: parseFloat(item.lineTotal)
-                            }));
-                            
-                            console.log('Mapped line items for UI:', mappedItems);
-                            setEditLineItems(mappedItems);
-                          } else {
-                            const errorText = await lineItemsResponse.text();
-                            console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
-                            setEditLineItems([]);
-                          }
-                        } catch (error) {
-                          console.error('Error loading line items:', error);
-                          setEditLineItems([]);
-                        }
-                      }}>
-                        <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
-                        onClick={async () => {
-                          if (confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}?\n\nThis action cannot be undone and will delete:\n• The invoice\n• All line items\n• All documents\n• All related data`)) {
-                            try {
-                              const response = await fetch(`/api/cpfr/invoices/${invoice.id}`, {
-                                method: 'DELETE'
-                              });
-
-                              if (response.ok) {
-                                const result = await response.json();
-                                alert(`✅ ${result.message}`);
-                                mutateInvoices(); // Refresh the invoice list
-                              } else {
-                                const errorData = await response.json();
-                                alert(`❌ Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
-                              }
-                            } catch (error) {
-                              console.error('Error deleting invoice:', error);
-                              alert('❌ Failed to delete invoice');
-                            }
-                          }
-                        }}
-                      >
-                        <SemanticBDIIcon semantic="trash" size={14} className="mr-1" />
-                        Delete
-                      </Button>
                     </div>
                   </div>
                 </div>
