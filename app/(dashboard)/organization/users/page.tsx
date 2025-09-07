@@ -173,7 +173,7 @@ export default function OrganizationUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-1">
-              {Array.isArray(orgUsers) ? orgUsers.length : '...'}
+              {orgUsers?.totalUsers || orgUsers?.users?.length || (Array.isArray(orgUsers) ? orgUsers.length : '...')}
             </div>
             <p className="text-xs text-muted-foreground">Organization members</p>
           </CardContent>
@@ -184,7 +184,7 @@ export default function OrganizationUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-2">
-              {Array.isArray(orgUsers) ? orgUsers.filter((u: any) => u.isActive).length : '...'}
+              {orgUsers?.activeUsers || (Array.isArray(orgUsers) ? orgUsers.filter((u: any) => u.isActive).length : '...')}
             </div>
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
@@ -195,7 +195,7 @@ export default function OrganizationUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-blue">
-              {Array.isArray(orgUsers) ? orgUsers.filter((u: any) => !u.isActive).length : '...'}
+              {orgUsers?.totalPendingInvitations || (Array.isArray(orgUsers) ? orgUsers.filter((u: any) => !u.isActive).length : '...')}
             </div>
             <p className="text-xs text-muted-foreground">Awaiting signup</p>
           </CardContent>
@@ -206,7 +206,7 @@ export default function OrganizationUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-1">
-              {Array.isArray(orgUsers) ? orgUsers.filter((u: any) => u.role === 'admin').length : '...'}
+              {orgUsers?.adminUsers || (Array.isArray(orgUsers) ? orgUsers.filter((u: any) => u.role === 'admin').length : '...')}
             </div>
             <p className="text-xs text-muted-foreground">Organization admins</p>
           </CardContent>
@@ -232,7 +232,7 @@ export default function OrganizationUsersPage() {
                 <p className="text-muted-foreground">Loading users...</p>
               </div>
             </div>
-          ) : !Array.isArray(orgUsers) || orgUsers.length === 0 ? (
+          ) : (!orgUsers?.users && !Array.isArray(orgUsers)) || (orgUsers?.users?.length === 0 && (!Array.isArray(orgUsers) || orgUsers.length === 0)) ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <SemanticBDIIcon semantic="users" size={48} className="mx-auto mb-4 text-muted-foreground" />
@@ -249,7 +249,7 @@ export default function OrganizationUsersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orgUsers.map((orgUser: any) => (
+              {(orgUsers?.users || orgUsers || []).map((orgUser: any) => (
                 <div key={orgUser.id} className="border rounded-lg p-4 lg:p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex flex-col space-y-4">
                     {/* User Header */}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, organizationMembers, organizations } from '@/lib/db/schema';
+import { users, organizationMembers, organizations, organizationInvitations } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 
 async function createSupabaseServerClient() {
@@ -106,9 +106,34 @@ export async function GET(request: NextRequest) {
       )
       .orderBy(users.createdAt);
 
-    console.log('Found organization users:', organizationUsers.length);
+    // Also get pending organization invitations for this organization
+    const pendingInvitations = await db
+      .select({
+        id: organizationInvitations.id,
+        invitationToken: organizationInvitations.invitationToken,
+        invitedEmail: organizationInvitations.invitedEmail,
+        invitedName: organizationInvitations.invitedName,
+        invitedRole: organizationInvitations.invitedRole,
+        status: organizationInvitations.status,
+        createdAt: organizationInvitations.createdAt,
+        expiresAt: organizationInvitations.expiresAt,
+        acceptedAt: organizationInvitations.acceptedAt,
+      })
+      .from(organizationInvitations)
+      .where(eq(organizationInvitations.organizationId, userOrganization.id));
 
-    return NextResponse.json(organizationUsers);
+    console.log('Found organization users:', organizationUsers.length);
+    console.log('Found pending invitations:', pendingInvitations.length);
+
+    return NextResponse.json({
+      users: organizationUsers,
+      pendingInvitations: pendingInvitations,
+      organization: userOrganization,
+      totalUsers: organizationUsers.length,
+      totalPendingInvitations: pendingInvitations.length,
+      activeUsers: organizationUsers.filter(u => u.isActive).length,
+      adminUsers: organizationUsers.filter(u => u.membershipRole === 'admin').length,
+    });
     
   } catch (error) {
     console.error('Error fetching organization users:', error);
