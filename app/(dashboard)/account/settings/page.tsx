@@ -228,12 +228,12 @@ export default function SettingsPage() {
 
       {activeTab === 'organizations' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div>
-              <h2 className="text-2xl font-bold">Organizations</h2>
-              <p className="text-muted-foreground">Manage companies and their access to the BDI Business Portal</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Organizations</h2>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage companies and their access to the BDI Business Portal</p>
             </div>
-            <Button className="bg-bdi-green-1 hover:bg-bdi-green-2">
+            <Button className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto">
               <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2 brightness-0 invert" />
               Create Organization
             </Button>
@@ -247,32 +247,34 @@ export default function SettingsPage() {
             <CardContent>
               <div className="space-y-4">
                 {mockOrganizations.map((org) => (
-                  <div key={org.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-bdi-green-1/10 rounded-lg flex items-center justify-center">
-                        <SemanticBDIIcon semantic="collaboration" size={20} className="text-bdi-green-1" />
+                  <div key={org.id} className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 p-3 sm:p-4 border rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-bdi-green-1/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <SemanticBDIIcon semantic="collaboration" size={18} className="sm:w-5 sm:h-5 text-bdi-green-1" />
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium">{org.name}</h3>
-                          <Badge variant={org.type === 'internal' ? 'default' : 'secondary'} className="text-xs">
-                            {org.type.replace('_', ' ').toUpperCase()}
-                          </Badge>
-                          <Badge variant={org.status === 'active' ? 'default' : 'secondary'} className="text-xs bg-bdi-green-1">
-                            {org.status.toUpperCase()}
-                          </Badge>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
+                          <h3 className="font-medium text-sm sm:text-base break-words">{org.name}</h3>
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant={org.type === 'internal' ? 'default' : 'secondary'} className="text-xs">
+                              {org.type.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                            <Badge variant={org.status === 'active' ? 'default' : 'secondary'} className="text-xs bg-bdi-green-1">
+                              {org.status.toUpperCase()}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs sm:text-sm text-gray-500 break-words">
                           Code: {org.code} • {org.memberCount} members • {org.apiKeyCount} API keys
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
+                    <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Manage
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <SemanticBDIIcon semantic="notifications" size={14} className="mr-1" />
                         Invite Users
                       </Button>
@@ -287,13 +289,13 @@ export default function SettingsPage() {
 
       {activeTab === 'api-keys' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold">API Key Management</h2>
               <p className="text-sm sm:text-base text-muted-foreground">Monitor and manage API access for Developer users across all organizations</p>
             </div>
             {isBDIUser && (
-              <Button className="bg-bdi-blue hover:bg-bdi-blue/90 text-white">
+              <Button className="bg-bdi-blue hover:bg-bdi-blue/90 text-white w-full sm:w-auto">
                 <SemanticBDIIcon semantic="connect" size={16} className="mr-2 brightness-0 invert" />
                 Generate New Key
               </Button>
@@ -347,37 +349,39 @@ export default function SettingsPage() {
               {orgApiKeys && orgApiKeys.length > 0 ? (
                 <div className="space-y-4">
                   {orgApiKeys.map((key: any) => (
-                  <div key={key.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-bdi-blue/10 rounded-lg flex items-center justify-center">
+                  <div key={key.id} className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 p-3 sm:p-4 border rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-bdi-blue/10 rounded-lg flex items-center justify-center flex-shrink-0">
                         <SemanticBDIIcon semantic="connect" size={16} className="text-bdi-blue" />
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium">{key.keyName || 'API Key'}</h3>
-                          <Badge variant="secondary" className="text-xs font-mono">
-                            {key.keyPrefix}***
-                          </Badge>
-                          <Badge variant="default" className={`text-xs ${key.isActive ? 'bg-green-600' : 'bg-gray-500'}`}>
-                            {key.isActive ? 'ACTIVE' : 'INACTIVE'}
-                          </Badge>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
+                          <h3 className="font-medium text-sm sm:text-base break-words">{key.keyName || 'API Key'}</h3>
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant="secondary" className="text-xs font-mono">
+                              {key.keyPrefix}***
+                            </Badge>
+                            <Badge variant="default" className={`text-xs ${key.isActive ? 'bg-green-600' : 'bg-gray-500'}`}>
+                              {key.isActive ? 'ACTIVE' : 'INACTIVE'}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs sm:text-sm text-gray-500 break-words">
                           {key.organizationCode} • Created: {new Date(key.createdAt).toLocaleDateString()}
                           {key.lastUsedAt && ` • Last used: ${new Date(key.lastUsedAt).toLocaleDateString()}`}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
+                    <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
                         Usage
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Manage
                       </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50">
                         Revoke
                       </Button>
                     </div>
