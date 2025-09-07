@@ -327,6 +327,67 @@ export default function OrganizationUsersPage() {
         </CardContent>
       </Card>
 
+      {/* Pending Invitations Section */}
+      {orgUsers?.pendingInvitations && orgUsers.pendingInvitations.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/30">
+          <CardHeader>
+            <CardTitle className="flex items-center text-orange-800">
+              <SemanticBDIIcon semantic="notifications" size={20} className="mr-2" />
+              Pending Organization Invitations
+              <Badge variant="outline" className="ml-2 text-orange-600 border-orange-300">
+                {orgUsers.pendingInvitations.length}
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-orange-700">
+              Users who have been invited but haven't signed up yet
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {orgUsers.pendingInvitations.map((invitation: any) => (
+                <div key={invitation.id} className="border border-orange-200 rounded-lg p-4 bg-white hover:bg-orange-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <SemanticBDIIcon semantic="notifications" size={16} className="text-orange-500" />
+                        <span className="font-medium">{invitation.invitedName}</span>
+                        <Badge variant="outline" className="text-orange-600 border-orange-300">
+                          {invitation.invitedRole?.toUpperCase()}
+                        </Badge>
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">
+                          {invitation.status?.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>📧 {invitation.invitedEmail}</div>
+                        <div>📅 Invited {new Date(invitation.createdAt).toLocaleDateString()}</div>
+                        {invitation.expiresAt && (
+                          <div>⏰ Expires {new Date(invitation.expiresAt).toLocaleDateString()}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        onClick={() => {
+                          navigator.clipboard.writeText(invitation.invitedEmail);
+                          alert('Email copied to clipboard');
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="notifications" size={14} className="mr-1" />
+                        Copy Email
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* User Invitation Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
