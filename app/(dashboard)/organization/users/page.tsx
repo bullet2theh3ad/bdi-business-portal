@@ -46,7 +46,7 @@ export default function OrganizationUsersPage() {
       }
 
       const result = await response.json();
-      console.log('User invitation sent:', result);
+      // User invitation sent successfully
       
       // Reset form and close modal
       setInviteForm({
@@ -86,7 +86,7 @@ export default function OrganizationUsersPage() {
       }
 
       const result = await response.json();
-      console.log('User deleted:', result);
+      // User deleted successfully
       
       // Close modal and refresh users list
       setSelectedUser(null);

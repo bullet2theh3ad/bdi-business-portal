@@ -189,7 +189,7 @@ export default function AdminUsersPage() {
     }
 
     try {
-      console.log('Deleting user:', { userId, userName, userEmail });
+      // Deleting user - logging removed for security
 
       const response = await fetch('/api/admin/delete-user', {
         method: 'POST',

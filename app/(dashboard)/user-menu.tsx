@@ -25,9 +25,7 @@ export function UserMenu() {
   const { data: user, error } = useSWR<User>('/api/user', fetcher);
   const router = useRouter();
 
-  // Debug logging
-  console.log('UserMenu - User data:', user);
-  console.log('UserMenu - Error:', error);
+  // Debug logging removed for security - no user data in console logs
 
   async function handleSignOut() {
     await signOut();

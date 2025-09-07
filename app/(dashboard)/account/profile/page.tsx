@@ -233,10 +233,7 @@ export default function ProfilePage() {
         billingAddress: formData.billingAddress,
       };
 
-      // Debug logging
-      console.log('User object:', user);
-      console.log('User organization:', user.organization);
-      console.log('Organization data to save:', organizationData);
+      // Debug logging removed for security - no user data in console logs
 
       // Only admins can update organization data
       if (['super_admin', 'admin'].includes(user.role) && user.organization?.id) {

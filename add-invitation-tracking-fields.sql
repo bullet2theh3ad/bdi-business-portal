@@ -13,7 +13,7 @@ ADD COLUMN IF NOT EXISTS last_delivery_attempt TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS email_opened_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS email_clicked_at TIMESTAMPTZ;
 
--- 2. Add tracking fields to users tablof ae for user invitations
+-- 2. Add tracking fields to users tablof a -- image.pnge for user invitations
 ALTER TABLE users 
 ADD COLUMN IF NOT EXISTS invitation_sender_domain VARCHAR(100),
 ADD COLUMN IF NOT EXISTS invitation_delivery_status VARCHAR(50),

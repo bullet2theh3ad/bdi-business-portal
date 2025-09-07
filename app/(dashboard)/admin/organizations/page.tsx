@@ -242,7 +242,7 @@ ${result.email?.sent
       
       const userData = await response.json();
       setSelectedOrgUsers(userData);
-      console.log('Loaded organization users:', userData);
+      // Organization users loaded successfully
     } catch (error) {
       console.error('Error loading organization users:', error);
       alert('Failed to load organization users. Please try again.');
@@ -971,9 +971,9 @@ ${result.email?.sent
                         
                         <Button
                           onClick={async () => {
-                            console.log('Current orgUserInvites:', orgUserInvites);
+                            // Processing user invitations
                             const validInvites = orgUserInvites.filter(inv => inv.name && inv.email);
-                            console.log('Valid invites:', validInvites);
+                            // Filtered valid invitations
                             
                             if (validInvites.length === 0) {
                               alert(`Please add at least one valid invitation (name and email required). Current invites: ${JSON.stringify(orgUserInvites)}`);
