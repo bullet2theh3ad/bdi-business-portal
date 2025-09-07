@@ -7,78 +7,102 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { SemanticBDIIcon } from '@/components/BDIIcon';
 
 export default function UserGuidePage() {
   return (
-    <section className="flex-1 p-4 lg:p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">📚 Portal User Guide</h1>
-          <p className="text-xl text-gray-600">
+    <section className="flex-1 p-3 sm:p-4 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <SemanticBDIIcon semantic="help" size={32} className="text-blue-600 sm:w-10 sm:h-10" />
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Portal User Guide</h1>
+          </div>
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 px-2">
             Complete guide to the Boundless Devices Inc. Business Portal
           </p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-xs sm:text-sm text-gray-500 mt-2 px-2">
             Last Updated: {new Date().toLocaleDateString('en-US', { 
               year: 'numeric', 
               month: 'long', 
               day: 'numeric' 
             })}
           </p>
-          <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-green-500 mx-auto mt-4 rounded-full"></div>
+          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-blue-500 to-green-500 mx-auto mt-3 sm:mt-4 rounded-full"></div>
         </div>
         
-        <div className="space-y-8">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Getting Started */}
-          <Card className="border-l-4 border-l-blue-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                🚀 <span>Getting Started</span>
+          <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
+                <SemanticBDIIcon semantic="dashboard" size={24} className="text-blue-600 flex-shrink-0" />
+                <span>Getting Started</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-lg text-gray-700">
+            <CardContent className="space-y-3 sm:space-y-4">
+              <p className="text-sm sm:text-base lg:text-lg text-gray-700 leading-relaxed">
                 Welcome to the <strong className="text-blue-600">BDI Business Portal</strong> - your comprehensive 
                 <strong className="text-green-600"> CPFR (Collaborative Planning, Forecasting & Replenishment)</strong> 
                 supply chain management platform with full API integration capabilities.
               </p>
               
-              <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg border">
-                <h3 className="font-bold text-xl mb-4 text-gray-800">🎯 Core Capabilities</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                      <strong className="text-blue-700">CPFR Management:</strong> Real-time demand forecasting
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 sm:p-5 lg:p-6 rounded-lg border">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <SemanticBDIIcon semantic="analytics" size={20} className="text-gray-800 flex-shrink-0" />
+                  <h3 className="font-bold text-base sm:text-lg lg:text-xl text-gray-800">Core Capabilities</h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="forecasts" size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-blue-700">CPFR Management:</strong> Real-time demand forecasting with 4-stage signals
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      <strong className="text-green-700">Inventory Intelligence:</strong> SKU tracking & warehouse management
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="inventory" size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-green-700">Inventory Intelligence:</strong> SKU tracking & warehouse management
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                      <strong className="text-purple-700">Organization Management:</strong> Multi-tenant partner ecosystem
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="collaboration" size={16} className="text-purple-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-purple-700">Organization Management:</strong> Multi-tenant partner ecosystem
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                      <strong className="text-indigo-700">API Integration:</strong> Programmatic access for external partners
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="connect" size={16} className="text-indigo-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-indigo-700">API Integration:</strong> Secure external partner access
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                      <strong className="text-orange-700">Production Files:</strong> Factory data management & sharing
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="upload" size={16} className="text-orange-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-orange-700">Production Files:</strong> Factory data management & sharing
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                      <strong className="text-red-700">Shipment Tracking:</strong> Multi-stage logistics visibility
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="shipping" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-red-700">Shipment Tracking:</strong> Multi-stage logistics visibility
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
-                      <strong className="text-teal-700">Email Automation:</strong> CPFR notifications & alerts
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="notifications" size={16} className="text-teal-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-teal-700">Email Automation:</strong> CPFR notifications & alerts
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-pink-500 rounded-full"></span>
-                      <strong className="text-pink-700">Executive Dashboard:</strong> Business intelligence & metrics
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <SemanticBDIIcon semantic="analytics" size={16} className="text-pink-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <strong className="text-pink-700">Executive Dashboard:</strong> Business intelligence & metrics
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -87,107 +111,142 @@ export default function UserGuidePage() {
           </Card>
 
           {/* Navigation Guide */}
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                🧭 <span>Navigation Guide</span>
+          <Card className="border-l-4 border-l-green-500 shadow-sm">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
+                <SemanticBDIIcon semantic="search" size={24} className="text-green-600 flex-shrink-0" />
+                <span>Navigation Guide</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
                 
                 {/* Dashboard */}
-                <div className="bg-blue-50 p-5 rounded-lg border border-blue-200">
-                  <h4 className="font-bold text-lg text-blue-800 mb-3">
-                    📊 <Link href="/dashboard" className="hover:underline text-blue-600">Dashboard</Link>
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Executive CPFR metrics & KPIs
+                <div className="bg-blue-50 p-3 sm:p-4 lg:p-5 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <SemanticBDIIcon semantic="dashboard" size={20} className="text-blue-600 flex-shrink-0" />
+                    <h4 className="font-bold text-sm sm:text-base lg:text-lg text-blue-800">
+                      <Link href="/dashboard" className="hover:underline text-blue-600">Dashboard</Link>
+                    </h4>
+                  </div>
+                  <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="analytics" size={12} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                      <span>Executive CPFR metrics & KPIs</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      6-month forecast activity charts
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="charts" size={12} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                      <span>6-month forecast activity charts</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Shipment status & alerts
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="shipping" size={12} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                      <span>Shipment status & alerts</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Real-time activity feed & auto-refresh
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="sync" size={12} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                      <span>Real-time activity feed & auto-refresh</span>
                     </li>
                   </ul>
                 </div>
 
                 {/* CPFR */}
-                <div className="bg-green-50 p-5 rounded-lg border border-green-200">
-                  <h4 className="font-bold text-lg text-green-800 mb-3">
-                    📈 CPFR (Collaborative Planning)
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                      <Link href="/cpfr/forecasts" className="hover:underline text-green-600">Sales Forecasts</Link> - Multi-level calendar with CPFR signals
+                <div className="bg-green-50 p-3 sm:p-4 lg:p-5 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <SemanticBDIIcon semantic="forecasts" size={20} className="text-green-600 flex-shrink-0" />
+                    <h4 className="font-bold text-sm sm:text-base lg:text-lg text-green-800">
+                      CPFR (Collaborative Planning)
+                    </h4>
+                  </div>
+                  <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="forecasts" size={12} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/cpfr/forecasts" className="hover:underline text-green-600 font-medium">Sales Forecasts</Link> - Multi-level calendar with CPFR signals
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                      <Link href="/cpfr/invoices" className="hover:underline text-green-600">Invoices</Link> - Invoice management with line items & documents
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="document" size={12} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/cpfr/invoices" className="hover:underline text-green-600 font-medium">Invoices</Link> - Invoice management with line items & documents
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                      <Link href="/cpfr/purchase-orders" className="hover:underline text-green-600">Purchase Orders</Link> - PO creation & tracking
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="orders" size={12} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/cpfr/purchase-orders" className="hover:underline text-green-600 font-medium">Purchase Orders</Link> - PO creation & tracking
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                      <Link href="/cpfr/shipments" className="hover:underline text-green-600">Shipments</Link> - Multi-stage logistics timeline
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="shipping" size={12} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/cpfr/shipments" className="hover:underline text-green-600 font-medium">Shipments</Link> - Multi-stage logistics timeline
+                      </span>
                     </li>
                   </ul>
                 </div>
 
                 {/* Inventory */}
-                <div className="bg-purple-50 p-5 rounded-lg border border-purple-200">
-                  <h4 className="font-bold text-lg text-purple-800 mb-3">
-                    📦 Inventory Management
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                      <Link href="/admin/skus" className="hover:underline text-purple-600">SKUs</Link> - Product catalog with dimensional data
+                <div className="bg-purple-50 p-3 sm:p-4 lg:p-5 rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <SemanticBDIIcon semantic="inventory" size={20} className="text-purple-600 flex-shrink-0" />
+                    <h4 className="font-bold text-sm sm:text-base lg:text-lg text-purple-800">
+                      Inventory Management
+                    </h4>
+                  </div>
+                  <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="inventory_items" size={12} className="text-purple-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/admin/skus" className="hover:underline text-purple-600 font-medium">SKUs</Link> - Product catalog with dimensional data
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                      <Link href="/inventory/warehouses" className="hover:underline text-purple-600">Warehouses</Link> - Location management & capabilities
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="sites" size={12} className="text-purple-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/inventory/warehouses" className="hover:underline text-purple-600 font-medium">Warehouses</Link> - Location management & capabilities
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                      <Link href="/inventory/production-files" className="hover:underline text-purple-600">Production Files</Link> - Factory data & device tracking
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="upload" size={12} className="text-purple-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/inventory/production-files" className="hover:underline text-purple-600 font-medium">Production Files</Link> - Factory data & device tracking
+                      </span>
                     </li>
                   </ul>
                 </div>
 
                 {/* Admin (Super Admin Only) */}
-                <div className="bg-red-50 p-5 rounded-lg border border-red-200">
-                  <h4 className="font-bold text-lg text-red-800 mb-3">
-                    ⚙️ Admin (Super Admin Only)
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                      <Link href="/admin/organizations" className="hover:underline text-red-600">Organizations</Link> - Partner management & user administration
+                <div className="bg-red-50 p-3 sm:p-4 lg:p-5 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <SemanticBDIIcon semantic="settings" size={20} className="text-red-600 flex-shrink-0" />
+                    <h4 className="font-bold text-sm sm:text-base lg:text-lg text-red-800">
+                      Admin (Super Admin Only)
+                    </h4>
+                  </div>
+                  <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="collaboration" size={12} className="text-red-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/admin/organizations" className="hover:underline text-red-600 font-medium">Organizations</Link> - Partner management & user administration
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                      <Link href="/admin/api-keys" className="hover:underline text-red-600">API Keys</Link> - External partner API access management
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="connect" size={12} className="text-red-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/admin/api-keys" className="hover:underline text-red-600 font-medium">API Keys</Link> - External partner API access management
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                      <Link href="/admin/connections" className="hover:underline text-red-600">Connections</Link> - Cross-organization permissions matrix
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="connections" size={12} className="text-red-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/admin/connections" className="hover:underline text-red-600 font-medium">Connections</Link> - Cross-organization permissions matrix
+                      </span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                      <Link href="/admin/users" className="hover:underline text-red-600">Users</Link> - BDI team member management
+                    <li className="flex items-start gap-2">
+                      <SemanticBDIIcon semantic="users" size={12} className="text-red-500 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <Link href="/admin/users" className="hover:underline text-red-600 font-medium">Users</Link> - BDI team member management
+                      </span>
                     </li>
                   </ul>
                 </div>
@@ -196,35 +255,63 @@ export default function UserGuidePage() {
           </Card>
 
           {/* Super Admin Features */}
-          <Card className="border-l-4 border-l-red-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                👑 <span>Super Admin Features</span>
+          <Card className="border-l-4 border-l-red-500 shadow-sm">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
+                <SemanticBDIIcon semantic="security" size={24} className="text-red-600 flex-shrink-0" />
+                <span>Super Admin Features</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 
                 {/* Organization Management */}
-                <div className="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-lg border border-red-200">
-                  <h3 className="font-bold text-xl mb-4 text-red-800">🏢 Organization Management</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-red-700">Organization Creation:</h4>
-                      <ul className="space-y-1 text-sm">
-                        <li>• <strong>Add Organization:</strong> Direct creation with immediate access</li>
-                        <li>• <strong>Invite Organization:</strong> Traditional invitation workflow</li>
-                        <li>• <strong>Organization Types:</strong> Contractor, ODM, R&D Partner, Logistics, etc.</li>
-                        <li>• <strong>Capability Assignment:</strong> CPFR, API Access, Advanced Reporting</li>
+                <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 sm:p-5 lg:p-6 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <SemanticBDIIcon semantic="collaboration" size={20} className="text-red-800 flex-shrink-0" />
+                    <h3 className="font-bold text-base sm:text-lg lg:text-xl text-red-800">Organization Management</h3>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-2 sm:space-y-3">
+                      <h4 className="font-semibold text-red-700 text-sm sm:text-base">Organization Creation:</h4>
+                      <ul className="space-y-1 text-xs sm:text-sm">
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="plus" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>Add Organization:</strong> Direct creation with immediate access</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="notifications" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>Invite Organization:</strong> Traditional invitation workflow</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="collaboration" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>Organization Types:</strong> Contractor, ODM, R&D Partner, Logistics, etc.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="settings" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>Capability Assignment:</strong> CPFR, API Access, Advanced Reporting</span>
+                        </li>
                       </ul>
                     </div>
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-red-700">Organization Management:</h4>
-                      <ul className="space-y-1 text-sm">
-                        <li>• <strong>Edit Organization Details:</strong> Code, name, legal name with cascade updates</li>
-                        <li>• <strong>User Management:</strong> Add, edit, activate/deactivate users across organizations</li>
-                        <li>• <strong>API Settings:</strong> Generate API keys for external partner integration</li>
-                        <li>• <strong>CPFR Contacts:</strong> Notification preferences and escalation contacts</li>
+                    <div className="space-y-2 sm:space-y-3">
+                      <h4 className="font-semibold text-red-700 text-sm sm:text-base">Organization Management:</h4>
+                      <ul className="space-y-1 text-xs sm:text-sm">
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="settings" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>Edit Organization Details:</strong> Code, name, legal name with cascade updates</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="users" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>User Management:</strong> Add, edit, activate/deactivate users across organizations</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="connect" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>API Settings:</strong> Generate API keys for external partner integration</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <SemanticBDIIcon semantic="notifications" size={12} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <span><strong>CPFR Contacts:</strong> Notification preferences and escalation contacts</span>
+                        </li>
                       </ul>
                     </div>
                   </div>
