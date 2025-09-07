@@ -324,18 +324,18 @@ export default function PurchaseOrdersPage() {
   };
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-6">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="orders" size={32} />
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="orders" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Purchase Orders</h1>
-              <p className="text-muted-foreground">Manage supplier orders and delivery terms</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Purchase Orders</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage supplier orders and delivery terms</p>
             </div>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
+          <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => {
             // Clear all form state for a fresh purchase order
             setLineItems([]);
             setUploadedDocs([]);
@@ -404,22 +404,27 @@ export default function PurchaseOrdersPage() {
           ) : (
             <div className="space-y-4">
               {filteredPurchaseOrders.map((po) => (
-                <div key={po.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
+                <div key={po.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">Purchase Order #{po.purchaseOrderNumber}</h3>
-                        <Badge className={getStatusColor(po.status)}>
-                          {po.status}
-                        </Badge>
+                      {/* Header with PO number and status */}
+                      <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-semibold text-base sm:text-lg">PO #{po.purchaseOrderNumber}</h3>
+                          <Badge className={getStatusColor(po.status)}>
+                            {po.status}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                      
+                      {/* PO Details */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Supplier:</span>
                           <p className="font-medium">{po.supplierName}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Purchase Order Date:</span>
+                          <span className="text-gray-500">PO Date:</span>
                           <p className="font-medium">{new Date(po.purchaseOrderDate).toLocaleDateString()}</p>
                         </div>
                         <div>
@@ -442,6 +447,8 @@ export default function PurchaseOrdersPage() {
                           {getSkuSummary(po.id)}
                         </p>
                       </div>
+                      
+                      {/* Total Value */}
                       <div className="flex items-center space-x-4 text-sm">
                         <div>
                           <span className="text-gray-500">Total Value:</span>
@@ -452,8 +459,11 @@ export default function PurchaseOrdersPage() {
                         <p className="text-sm text-gray-600 mt-2">{po.notes}</p>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={async () => {
+                    
+                    {/* Edit Button - Mobile: Below content, Desktop: Right side */}
+                    <div className="flex items-center justify-center sm:justify-end">
+                      <div className="flex items-center space-x-2 w-full sm:w-auto">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
                         setSelectedPurchaseOrder(po);
                         setEditUploadedDocs([]);
                         
@@ -517,6 +527,7 @@ export default function PurchaseOrdersPage() {
                         <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
                         Delete
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -536,7 +547,7 @@ export default function PurchaseOrdersPage() {
             e.preventDefault();
             handleCreatePurchaseOrder(new FormData(e.currentTarget));
           }}>
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div>
                 <Label htmlFor="poNumber">Purchase Order Number *</Label>
                 <Input
@@ -585,7 +596,7 @@ export default function PurchaseOrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div>
                 <Label htmlFor="orderDate">Purchase Order Date *</Label>
                 <Input
@@ -611,7 +622,7 @@ export default function PurchaseOrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div>
                 <Label htmlFor="status">Status *</Label>
                 <select
@@ -713,7 +724,7 @@ export default function PurchaseOrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               <div>
                 <Label htmlFor="incotermsLocation">IncoTerms Location *</Label>
                 <Input
@@ -757,7 +768,7 @@ export default function PurchaseOrdersPage() {
                 <div className="space-y-3">
                   {lineItems.map((item) => (
                     <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4 items-end">
                         <div>
                           <Label className="text-xs">SKU *</Label>
                           <select
@@ -992,7 +1003,7 @@ export default function PurchaseOrdersPage() {
             }}>
               
               {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="editSupplierName">Supplier Organization</Label>
                   <select
@@ -1044,7 +1055,7 @@ export default function PurchaseOrdersPage() {
               </div>
 
               {/* IncoTerms Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <div>
                   <Label htmlFor="editIncoterms">IncoTerms</Label>
                   <select
@@ -1116,7 +1127,7 @@ export default function PurchaseOrdersPage() {
                   <div className="space-y-3">
                     {editLineItems.map((item, index) => (
                       <div key={item.id} className="bg-white p-4 rounded border border-blue-200">
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4 items-end">
                           <div>
                             <Label className="text-xs">SKU *</Label>
                             <select
