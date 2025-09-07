@@ -74,7 +74,7 @@ export default function SettingsPage() {
   // Only show Quick Actions for BDI users (Super Admin)
   const isBDIUser = user?.role === 'super_admin';
   
-  // Use real API keys instead of mock data
+  // For now, show all API keys (organization filtering to be implemented later)
   const orgApiKeys = allApiKeys;
 
   if (!user) {
@@ -160,8 +160,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="text-center p-4 bg-bdi-blue/5 rounded-lg">
                   <SemanticBDIIcon semantic="connect" size={24} className="mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-bdi-blue">{mockApiKeys.length}</div>
-                  <div className="text-sm text-gray-600">Active API Keys</div>
+                  <div className="text-2xl font-bold text-bdi-blue">{orgApiKeys?.length || 0}</div>
+                  <div className="text-sm text-gray-600">
+                    {isBDIUser ? 'All API Keys' : 'Your API Keys'}
+                  </div>
                 </div>
                 <div className="text-center p-4 bg-bdi-green-1/5 rounded-lg">
                   <SemanticBDIIcon semantic="sync" size={24} className="mx-auto mb-2" />
@@ -297,8 +299,10 @@ export default function SettingsPage() {
                 <CardTitle className="text-sm font-medium">Total API Keys</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-bdi-blue">{mockApiKeys.length}</div>
-                <p className="text-xs text-muted-foreground">Across all organizations</p>
+                <div className="text-2xl font-bold text-bdi-blue">{orgApiKeys?.length || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  {isBDIUser ? 'Across all organizations' : 'For your organization'}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -306,7 +310,7 @@ export default function SettingsPage() {
                 <CardTitle className="text-sm font-medium">Active Keys</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-bdi-green-1">{mockApiKeys.filter(k => k.status === 'active').length}</div>
+                <div className="text-2xl font-bold text-bdi-green-1">{orgApiKeys?.filter((k: any) => k.isActive)?.length || 0}</div>
                 <p className="text-xs text-muted-foreground">Currently in use</p>
               </CardContent>
             </Card>
