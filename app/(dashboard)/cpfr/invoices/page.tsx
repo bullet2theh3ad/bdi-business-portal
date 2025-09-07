@@ -388,8 +388,10 @@ export default function InvoicesPage() {
                         <p className="text-sm text-gray-600 mt-2">{invoice.notes}</p>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={async () => {
+                    
+                    {/* Action Buttons - Mobile Optimized */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0 pt-3 border-t border-gray-200">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
                         setSelectedInvoice(invoice);
                         setEditUploadedDocs([]);
                         
@@ -444,6 +446,7 @@ export default function InvoicesPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
+                        className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
                         onClick={async () => {
                           if (confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}?\n\nThis action cannot be undone and will delete:\n• The invoice\n• All line items\n• All documents\n• All related data`)) {
                             try {
@@ -465,7 +468,6 @@ export default function InvoicesPage() {
                             }
                           }
                         }}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
                       >
                         <SemanticBDIIcon semantic="trash" size={14} className="mr-1" />
                         Delete
