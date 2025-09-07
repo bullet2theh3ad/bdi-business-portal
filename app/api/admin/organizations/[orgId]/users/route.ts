@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, organizations, organizationMembers } from '@/lib/db/schema';
+import { users, organizations, organizationMembers, organizationInvitations } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -105,7 +105,28 @@ export async function GET(
       )
       .orderBy(users.createdAt);
 
-    console.log(`Found ${organizationUsers.length} users in organization ${targetOrganization.code}`);
+    // Also get pending organization invitations for this organization
+    const pendingInvitations = await db
+      .select({
+        id: organizationInvitations.id,
+        invitationToken: organizationInvitations.invitationToken,
+        invitedEmail: organizationInvitations.invitedEmail,
+        invitedName: organizationInvitations.invitedName,
+        invitedRole: organizationInvitations.invitedRole,
+        status: organizationInvitations.status,
+        createdAt: organizationInvitations.createdAt,
+        expiresAt: organizationInvitations.expiresAt,
+        acceptedAt: organizationInvitations.acceptedAt,
+        // Tracking fields
+        senderDomain: organizationInvitations.senderDomain,
+        emailDeliveryStatus: organizationInvitations.emailDeliveryStatus,
+        sentByUserType: organizationInvitations.sentByUserType,
+      })
+      .from(organizationInvitations)
+      .where(eq(organizationInvitations.organizationId, targetOrganization.id))
+      .orderBy(organizationInvitations.createdAt);
+
+    console.log(`Found ${organizationUsers.length} users and ${pendingInvitations.length} pending invitations in organization ${targetOrganization.code}`);
 
     return NextResponse.json({
       organization: {
@@ -116,7 +137,9 @@ export async function GET(
         isActive: targetOrganization.isActive,
       },
       users: organizationUsers,
+      pendingInvitations: pendingInvitations,
       totalUsers: organizationUsers.length,
+      totalPendingInvitations: pendingInvitations.length,
       activeUsers: organizationUsers.filter(u => u.isActive).length,
       adminUsers: organizationUsers.filter(u => u.membershipRole === 'admin').length,
     });

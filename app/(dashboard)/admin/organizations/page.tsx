@@ -1918,9 +1918,11 @@ ${result.email?.sent
                       </div>
                       <div>
                         <div className="text-2xl font-bold text-orange-600">
-                          {selectedOrgUsers.totalUsers - selectedOrgUsers.activeUsers}
+                          {(selectedOrgUsers.totalPendingInvitations || 0) + (selectedOrgUsers.totalUsers - selectedOrgUsers.activeUsers)}
                         </div>
-                        <div className="text-sm text-orange-800">Pending Users</div>
+                        <div className="text-sm text-orange-800">
+                          Pending ({selectedOrgUsers.totalPendingInvitations || 0} invites + {selectedOrgUsers.totalUsers - selectedOrgUsers.activeUsers} users)
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2007,6 +2009,93 @@ ${result.email?.sent
                       </div>
                     )}
                   </div>
+
+                  {/* Pending Organization Invitations Section */}
+                  {selectedOrgUsers?.pendingInvitations && selectedOrgUsers.pendingInvitations.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 flex items-center">
+                          <SemanticBDIIcon semantic="notifications" size={20} className="mr-2 text-orange-500" />
+                          Pending Organization Invitations
+                          <Badge variant="outline" className="ml-2 text-orange-600 border-orange-300">
+                            {selectedOrgUsers.pendingInvitations.length}
+                          </Badge>
+                        </h3>
+                        <div className="space-y-3">
+                          {selectedOrgUsers.pendingInvitations.map((invitation: any) => (
+                            <div key={invitation.id} className="border rounded-lg p-4 bg-orange-50 hover:bg-orange-100">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <SemanticBDIIcon semantic="notifications" size={16} className="text-orange-500" />
+                                    <span className="font-medium">{invitation.invitedName}</span>
+                                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                      {invitation.invitedRole?.toUpperCase()}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-blue-600 border-blue-300">
+                                      {invitation.status?.toUpperCase()}
+                                    </Badge>
+                                    {invitation.senderDomain && (
+                                      <Badge variant="outline" className={
+                                        invitation.senderDomain === 'bdibusinessportal.com' 
+                                          ? 'text-green-600 border-green-300 bg-green-50' 
+                                          : 'text-red-600 border-red-300 bg-red-50'
+                                      }>
+                                        {invitation.senderDomain === 'bdibusinessportal.com' ? '✓ Good Domain' : '⚠ Bad Domain'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                    <div>📧 {invitation.invitedEmail}</div>
+                                    <div>📅 Invited {new Date(invitation.createdAt).toLocaleDateString()}</div>
+                                    {invitation.expiresAt && (
+                                      <div>⏰ Expires {new Date(invitation.expiresAt).toLocaleDateString()}</div>
+                                    )}
+                                    {invitation.emailDeliveryStatus && (
+                                      <div>📤 Email Status: {invitation.emailDeliveryStatus}</div>
+                                    )}
+                                    {invitation.sentByUserType && (
+                                      <div>👤 Sent by: {invitation.sentByUserType.replace('_', ' ')}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                    onClick={() => {
+                                      // Copy invitation link or show details
+                                      navigator.clipboard.writeText(`Invitation ID: ${invitation.invitationToken}`);
+                                      alert('Invitation token copied to clipboard');
+                                    }}
+                                  >
+                                    <SemanticBDIIcon semantic="info" size={14} className="mr-1" />
+                                    Details
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-red-600 border-red-300 hover:bg-red-50"
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to revoke the invitation for ${invitation.invitedEmail}?`)) {
+                                        // TODO: Implement revoke invitation
+                                        alert('Revoke invitation functionality to be implemented');
+                                      }
+                                    }}
+                                  >
+                                    <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                    Revoke
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* Add New Users Section */}
                   <Separator />
