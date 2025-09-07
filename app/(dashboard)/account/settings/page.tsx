@@ -68,10 +68,14 @@ const mockApiKeys = [
 
 export default function SettingsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
+  const { data: allApiKeys } = useSWR('/api/admin/api-keys', fetcher);
   const [activeTab, setActiveTab] = useState('overview');
   
   // Only show Quick Actions for BDI users (Super Admin)
   const isBDIUser = user?.role === 'super_admin';
+  
+  // Use real API keys instead of mock data
+  const orgApiKeys = allApiKeys;
 
   if (!user) {
     return (
@@ -324,8 +328,9 @@ export default function SettingsPage() {
               <CardDescription>Monitor API key usage and manage access permissions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockApiKeys.map((key) => (
+              {orgApiKeys && orgApiKeys.length > 0 ? (
+                <div className="space-y-4">
+                  {orgApiKeys.map((key: any) => (
                   <div key={key.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-bdi-blue/10 rounded-lg flex items-center justify-center">
@@ -333,16 +338,17 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-medium">{key.name}</h3>
+                          <h3 className="font-medium">{key.keyName || 'API Key'}</h3>
                           <Badge variant="secondary" className="text-xs font-mono">
-                            {key.prefix}***
+                            {key.keyPrefix}***
                           </Badge>
-                          <Badge variant="default" className="text-xs bg-bdi-green-1">
-                            {key.status.toUpperCase()}
+                          <Badge variant="default" className={`text-xs ${key.isActive ? 'bg-green-600' : 'bg-gray-500'}`}>
+                            {key.isActive ? 'ACTIVE' : 'INACTIVE'}
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {key.organization} • Permissions: {key.permissions.join(', ')} • Last used: {key.lastUsed}
+                          {key.organizationCode} • Created: {new Date(key.createdAt).toLocaleDateString()}
+                          {key.lastUsedAt && ` • Last used: ${new Date(key.lastUsedAt).toLocaleDateString()}`}
                         </div>
                       </div>
                     </div>
@@ -360,8 +366,16 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <SemanticBDIIcon semantic="connect" size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-500">
+                    {isBDIUser ? 'No API keys found' : 'No API keys assigned to your organization'}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
