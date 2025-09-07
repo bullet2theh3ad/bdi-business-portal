@@ -292,10 +292,12 @@ export default function SettingsPage() {
               <h2 className="text-2xl font-bold">API Key Management</h2>
               <p className="text-muted-foreground">Monitor and manage API access for Developer users across all organizations</p>
             </div>
-            <Button className="bg-bdi-blue hover:bg-bdi-blue/90 text-white">
-              <SemanticBDIIcon semantic="connect" size={16} className="mr-2 brightness-0 invert" />
-              Generate New Key
-            </Button>
+            {isBDIUser && (
+              <Button className="bg-bdi-blue hover:bg-bdi-blue/90 text-white">
+                <SemanticBDIIcon semantic="connect" size={16} className="mr-2 brightness-0 invert" />
+                Generate New Key
+              </Button>
+            )}
           </div>
 
           {/* API Key Overview */}
@@ -325,8 +327,12 @@ export default function SettingsPage() {
                 <CardTitle className="text-sm font-medium">This Month</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-bdi-green-2">2.4M</div>
-                <p className="text-xs text-muted-foreground">API requests</p>
+                <div className="text-2xl font-bold text-bdi-green-2">
+                  {isBDIUser ? 'Multiple' : 'N/A'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isBDIUser ? 'API requests' : 'Tracking pending'}
+                </p>
               </CardContent>
             </Card>
           </div>
