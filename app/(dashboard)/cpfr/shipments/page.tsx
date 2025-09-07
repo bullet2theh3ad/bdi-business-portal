@@ -609,36 +609,38 @@ export default function ShipmentsPage() {
   });
 
   return (
-    <div className="flex-1 p-4 lg:p-8 space-y-6">
+    <div className="flex-1 p-3 sm:p-4 lg:p-8 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <SemanticBDIIcon semantic="shipping" size={32} />
+      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <SemanticBDIIcon semantic="shipping" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-3xl font-bold">Shipments</h1>
-              <p className="text-muted-foreground">Global logistics tracking from forecasts to delivery</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Shipments</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Global logistics tracking from forecasts to delivery</p>
             </div>
           </div>
-          <div className="flex space-x-3">
-            <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex justify-center sm:justify-end">
+            <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto">
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('list')}
-                className="px-3"
+                className="px-2 sm:px-3 flex-1 sm:flex-none"
               >
-                <SemanticBDIIcon semantic="analytics" size={14} className="mr-2" />
-                Timeline
+                <SemanticBDIIcon semantic="analytics" size={14} className="mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Timeline</span>
+                <span className="sm:hidden">List</span>
               </Button>
               <Button
                 variant={viewMode === 'calendar' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('calendar')}
-                className="px-3"
+                className="px-2 sm:px-3 flex-1 sm:flex-none"
               >
-                <SemanticBDIIcon semantic="calendar" size={14} className="mr-2" />
-                Calendar
+                <SemanticBDIIcon semantic="calendar" size={14} className="mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Calendar</span>
+                <span className="sm:hidden">Cal</span>
               </Button>
             </div>
           </div>
@@ -646,7 +648,7 @@ export default function ShipmentsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -773,23 +775,25 @@ export default function ShipmentsPage() {
                 const shippingIcon = getShippingIcon(forecast.shippingPreference);
                 
                 return (
-                  <div key={forecast.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors">
+                  <div key={forecast.id} className="border rounded-lg p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors">
                     {/* Shipment Header */}
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0 mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="font-semibold text-lg">
+                        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3 mb-3">
+                          <h3 className="font-semibold text-base sm:text-lg break-all">
                             {forecast.sku.sku} - {forecast.sku.name}
                           </h3>
-                          <Badge className="bg-blue-100 text-blue-800">
-                            {forecast.quantity.toLocaleString()} units
-                          </Badge>
-                          <Badge className="bg-purple-100 text-purple-800">
-                            {forecast.deliveryWeek}
-                          </Badge>
-                          <Badge className="bg-cyan-100 text-cyan-800">
-                            {shippingIcon} {forecast.shippingPreference}
-                          </Badge>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge className="bg-blue-100 text-blue-800 text-xs">
+                              {forecast.quantity.toLocaleString()} units
+                            </Badge>
+                            <Badge className="bg-purple-100 text-purple-800 text-xs">
+                              {forecast.deliveryWeek}
+                            </Badge>
+                            <Badge className="bg-cyan-100 text-cyan-800 text-xs">
+                              {shippingIcon} <span className="hidden sm:inline">{forecast.shippingPreference}</span>
+                            </Badge>
+                          </div>
                         </div>
                         
                         {/* Timeline Progress Bar */}
@@ -809,11 +813,12 @@ export default function ShipmentsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center justify-center sm:justify-end">
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => setSelectedShipment(forecast)}
+                          className="w-full sm:w-auto"
                         >
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
                           {(() => {
@@ -826,7 +831,7 @@ export default function ShipmentsPage() {
                     </div>
 
                     {/* AWESOME MILESTONE TIMELINE */}
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 sm:p-4 rounded-lg border">
                       <div className="flex items-center justify-between relative">
                         {/* Progress Line */}
                         <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-300"></div>
@@ -839,7 +844,7 @@ export default function ShipmentsPage() {
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <button
                             onClick={() => handleMilestoneClick('sales', forecast)}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                            className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
                               forecast.salesSignal === 'accepted' ? 'border-green-500' :
                               forecast.salesSignal === 'submitted' ? 'border-blue-500' :
                               'border-gray-300'
@@ -857,8 +862,9 @@ export default function ShipmentsPage() {
                             />
                           </button>
                           <div className="text-center">
-                            <p className="text-xs font-medium text-gray-800">Sales</p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs font-medium text-gray-800 hidden sm:block">Sales</p>
+                            <p className="text-xs font-medium text-gray-800 sm:hidden">S</p>
+                            <p className="text-xs text-gray-600 hidden sm:block">
                               {milestones.salesDate.toLocaleDateString()}
                             </p>
                             <Badge className={
@@ -875,7 +881,7 @@ export default function ShipmentsPage() {
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <button
                             onClick={() => handleMilestoneClick('factory', forecast)}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                            className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
                               forecast.factorySignal === 'accepted' ? 'border-green-500' :
                               forecast.factorySignal === 'submitted' ? 'border-orange-500' :
                               'border-gray-300'
@@ -893,8 +899,9 @@ export default function ShipmentsPage() {
                             />
                           </button>
                           <div className="text-center">
-                            <p className="text-xs font-medium text-gray-800">Factory EXW</p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs font-medium text-gray-800 hidden sm:block">Factory EXW</p>
+                            <p className="text-xs font-medium text-gray-800 sm:hidden">F</p>
+                            <p className="text-xs text-gray-600 hidden sm:block">
                               {milestones.exwDate.toLocaleDateString()}
                             </p>
                             <Badge className={
@@ -911,7 +918,7 @@ export default function ShipmentsPage() {
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <button
                             onClick={() => handleMilestoneClick('transit', forecast)}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                            className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
                               progress >= 3 ? 'border-blue-500' : 'border-gray-300'
                             }`}
                             title="Click to change transit status"
@@ -921,8 +928,9 @@ export default function ShipmentsPage() {
                             }`}>{shippingIcon}</span>
                           </button>
                           <div className="text-center">
-                            <p className="text-xs font-medium text-gray-800">In Transit</p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs font-medium text-gray-800 hidden sm:block">In Transit</p>
+                            <p className="text-xs font-medium text-gray-800 sm:hidden">T</p>
+                            <p className="text-xs text-gray-600 hidden sm:block">
                               {milestones.departureDate.toLocaleDateString()}
                             </p>
                             <Badge className={
@@ -962,8 +970,9 @@ export default function ShipmentsPage() {
                             />
                           </button>
                           <div className="text-center">
-                            <p className="text-xs font-medium text-gray-800">Warehouse</p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs font-medium text-gray-800 hidden sm:block">Warehouse</p>
+                            <p className="text-xs font-medium text-gray-800 sm:hidden">W</p>
+                            <p className="text-xs text-gray-600 hidden sm:block">
                               {milestones.arrivalDate.toLocaleDateString()}
                             </p>
                             <Badge className={
