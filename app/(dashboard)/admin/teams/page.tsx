@@ -13,88 +13,11 @@ import { User } from '@/lib/db/schema';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Mock data for cross-organizational teams
-const mockTeams = [
-  {
-    id: '1',
-    name: 'Q1 2024 CPFR Cycle',
-    description: 'Quarterly forecasting and replenishment planning for automotive components',
-    type: 'cpfr_cycle',
-    status: 'active',
-    organizations: [
-      { name: 'Boundless Devices Inc', code: 'BDI', type: 'internal' },
-      { name: 'ACME Manufacturing', code: 'ACME', type: 'oem_partner' },
-      { name: 'TechCorp Solutions', code: 'TECH', type: 'supplier' }
-    ],
-    members: [
-      { name: 'Steven Cistulli', email: 'scistulli@boundlessdevices.com', org: 'BDI', role: 'lead' },
-      { name: 'John Smith', email: 'john.smith@acme-mfg.com', org: 'ACME', role: 'member' },
-      { name: 'Mike Chen', email: 'mike.chen@techcorp.com', org: 'TECH', role: 'member' }
-    ],
-    alerts: {
-      forecastDeviations: true,
-      supplyShortages: true,
-      demandSpikes: true,
-      cycleDeadlines: true
-    },
-    createdAt: '2024-01-01',
-    lastActivity: '2024-01-15',
-    dataAccess: ['forecasts', 'supply_signals', 'inventory_levels']
-  },
-  {
-    id: '2',
-    name: 'Semiconductor Supply Chain',
-    description: 'Cross-company coordination for semiconductor component supply and demand',
-    type: 'supply_chain',
-    status: 'active',
-    organizations: [
-      { name: 'Boundless Devices Inc', code: 'BDI', type: 'internal' },
-      { name: 'Global Logistics Inc', code: 'GLOBAL', type: '3pl' },
-      { name: 'TechCorp Solutions', code: 'TECH', type: 'supplier' }
-    ],
-    members: [
-      { name: 'Dariush Zand', email: 'dzand@boundlessdevices.com', org: 'BDI', role: 'lead' },
-      { name: 'Lisa Wang', email: 'lisa.wang@globallogistics.com', org: 'GLOBAL', role: 'member' },
-      { name: 'Mike Chen', email: 'mike.chen@techcorp.com', org: 'TECH', role: 'member' }
-    ],
-    alerts: {
-      forecastDeviations: false,
-      supplyShortages: true,
-      demandSpikes: true,
-      cycleDeadlines: false
-    },
-    createdAt: '2023-12-01',
-    lastActivity: '2024-01-10',
-    dataAccess: ['inventory_levels', 'supply_signals', 'logistics_data']
-  },
-  {
-    id: '3',
-    name: 'Product Launch Team - Model X',
-    description: 'Cross-functional team for Model X product launch coordination',
-    type: 'product_launch',
-    status: 'pending',
-    organizations: [
-      { name: 'Boundless Devices Inc', code: 'BDI', type: 'internal' },
-      { name: 'ACME Manufacturing', code: 'ACME', type: 'oem_partner' }
-    ],
-    members: [
-      { name: 'Sarah Johnson', email: 'sarah.johnson@boundlessdevices.com', org: 'BDI', role: 'lead' },
-      { name: 'John Smith', email: 'john.smith@acme-mfg.com', org: 'ACME', role: 'member' }
-    ],
-    alerts: {
-      forecastDeviations: true,
-      supplyShortages: true,
-      demandSpikes: false,
-      cycleDeadlines: true
-    },
-    createdAt: '2024-01-20',
-    lastActivity: 'Never',
-    dataAccess: ['forecasts', 'product_specs']
-  }
-];
+// Real teams will be fetched from API - no more mock data
 
 export default function AdminTeamsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
+  const { data: teams, mutate: mutateTeams } = useSWR('/api/admin/teams', fetcher);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [filterType, setFilterType] = useState('all');
@@ -113,9 +36,11 @@ export default function AdminTeamsPage() {
     );
   }
 
+  // Filter teams based on type
+  const teamsArray = Array.isArray(teams) ? teams : [];
   const filteredTeams = filterType === 'all' 
-    ? mockTeams 
-    : mockTeams.filter(team => team.type === filterType);
+    ? teamsArray 
+    : teamsArray.filter((team: any) => team.type === filterType);
 
   return (
     <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto">
@@ -144,7 +69,7 @@ export default function AdminTeamsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-1">
-              {mockTeams.filter(team => team.status === 'active').length}
+              {teamsArray.filter((team: any) => team.status === 'active').length}
             </div>
             <p className="text-xs text-muted-foreground">Currently operational</p>
           </CardContent>
@@ -155,7 +80,7 @@ export default function AdminTeamsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-green-2">
-              {mockTeams.reduce((total, team) => total + team.members.length, 0)}
+              {teamsArray.reduce((total: number, team: any) => total + (team.members?.length || 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">Across all teams</p>
           </CardContent>
@@ -166,7 +91,7 @@ export default function AdminTeamsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-bdi-blue">
-              {new Set(mockTeams.flatMap(team => team.organizations.map(org => org.code))).size}
+              {new Set(teamsArray.flatMap((team: any) => (team.organizations || []).map((org: any) => org.code))).size}
             </div>
             <p className="text-xs text-muted-foreground">Participating companies</p>
           </CardContent>
@@ -221,8 +146,19 @@ export default function AdminTeamsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {filteredTeams.map((team) => (
+          {filteredTeams.length === 0 ? (
+            <div className="text-center py-12">
+              <SemanticBDIIcon semantic="collaboration" size={48} className="mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No Teams Yet</h3>
+              <p className="text-muted-foreground mb-4">Create your first cross-organizational team to start collaboration</p>
+              <Button onClick={() => setShowCreateModal(true)} className="bg-bdi-green-1 hover:bg-bdi-green-2">
+                <SemanticBDIIcon semantic="collaboration" size={16} className="mr-2 brightness-0 invert" />
+                Create First Team
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredTeams.map((team: any) => (
               <div key={team.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors">
                 {/* Team Header */}
                 <div className="flex items-start justify-between mb-4">
@@ -252,7 +188,7 @@ export default function AdminTeamsPage() {
                       {/* Participating Organizations */}
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="text-sm font-medium">Organizations:</span>
-                        {team.organizations.map((org, index) => (
+                        {(team.organizations || []).map((org: any, index: number) => (
                           <Badge key={index} variant="outline" className={
                             org.type === 'internal' ? 'border-bdi-green-1 text-bdi-green-1' :
                             org.type === 'oem_partner' ? 'border-bdi-blue text-bdi-blue' :
@@ -309,7 +245,7 @@ export default function AdminTeamsPage() {
                     Team Members
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {team.members.map((member, index) => (
+                    {(team.members || []).map((member: any, index: number) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center">
@@ -334,8 +270,9 @@ export default function AdminTeamsPage() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
