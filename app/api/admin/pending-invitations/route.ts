@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
 
     const isSuperAdmin = currentUser.role === 'super_admin';
     const userOrgCode = userOrgMembership.organizationCode;
+    
+    console.log(`📊 Pending Invitations Debug - User: ${currentUser.email}, Role: ${currentUser.role}, OrgCode: ${userOrgCode}, IsSuperAdmin: ${isSuperAdmin}`);
 
     // Get all recent organization activity (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -102,6 +104,8 @@ export async function GET(request: NextRequest) {
       .from(organizationInvitations)
       .where(orgInvitationWhere)
       .orderBy(desc(organizationInvitations.createdAt));
+
+    console.log(`📊 Found ${pendingOrgInvitations.length} organization invitations for ${isSuperAdmin ? 'Super Admin (all orgs)' : userOrgCode}`);
 
     // 2. Get recently created organizations (Add Organization flow)
     // Only show for super admin (BDI), external orgs don't see this
