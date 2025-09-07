@@ -509,7 +509,14 @@ export default function SettingsPage() {
                       <div className="font-medium">Session Management</div>
                       <div className="text-sm text-gray-500">Control session timeouts and policies</div>
                     </div>
-                    <Button variant="outline" size="sm">Configure</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={!isBDIUser}
+                      className={!isBDIUser ? 'opacity-50 cursor-not-allowed' : ''}
+                    >
+                      Configure
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -545,7 +552,12 @@ export default function SettingsPage() {
                       <div className="font-medium">Data Access Logs</div>
                       <div className="text-sm text-gray-500">Monitor CPFR data access patterns</div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={!isBDIUser}
+                      className={!isBDIUser ? 'opacity-50 cursor-not-allowed' : ''}
+                    >
                       <SemanticBDIIcon semantic="reports" size={14} className="mr-1" />
                       View Logs
                     </Button>
