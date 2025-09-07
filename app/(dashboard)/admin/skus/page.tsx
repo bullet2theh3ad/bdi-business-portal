@@ -522,12 +522,13 @@ export default function SKUsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedSku(sku)}
                         disabled={isLoading}
+                        className="w-full sm:w-auto"
                       >
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
@@ -537,9 +538,9 @@ export default function SKUsPage() {
                         size="sm"
                         onClick={() => handleDeleteSku(sku.id, sku.sku)}
                         disabled={isLoading}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
                       >
-                        <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
+                        <span className="mr-1 text-sm">🗑️</span>
                         Delete
                       </Button>
                     </div>
@@ -587,8 +588,9 @@ export default function SKUsPage() {
                               onClick={() => handleDeleteSku(sku.id, sku.sku)}
                               disabled={isLoading}
                               className="text-xs px-2 py-1 text-red-600 border-red-300 hover:bg-red-50"
+                              title="Delete SKU"
                             >
-                              <SemanticBDIIcon semantic="delete" size={12} />
+                              <span className="text-sm">🗑️</span>
                             </Button>
                           </div>
                         </div>
