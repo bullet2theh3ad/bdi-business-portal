@@ -946,17 +946,17 @@ export default function ShipmentsPage() {
                         <div className="flex flex-col items-center space-y-2 relative z-10">
                           <button
                             onClick={() => handleMilestoneClick('warehouse', forecast)}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.warehouseSignal === 'accepted' ? 'bg-green-500 border-green-500' :
-                              forecast.warehouseSignal === 'submitted' ? 'bg-orange-500 border-orange-500' :
-                              'bg-gray-300 border-gray-300'
+                            className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
+                              forecast.warehouseSignal === 'accepted' ? 'border-green-500' :
+                              forecast.warehouseSignal === 'submitted' ? 'border-orange-500' :
+                              'border-gray-300'
                             }`}
                             title="Click to change warehouse status"
                           >
                             <span className={`text-base sm:text-lg ${
-                              forecast.warehouseSignal === 'accepted' || forecast.warehouseSignal === 'submitted' 
-                                ? 'text-white' 
-                                : 'text-gray-600'
+                              forecast.warehouseSignal === 'accepted' ? 'text-green-600' :
+                              forecast.warehouseSignal === 'submitted' ? 'text-orange-600' :
+                              'text-gray-600'
                             }`}>🏢</span>
                           </button>
                           <div className="text-center">
