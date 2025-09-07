@@ -462,7 +462,7 @@ export default function PurchaseOrdersPage() {
                     
                     {/* Edit Button - Mobile: Below content, Desktop: Right side */}
                     <div className="flex items-center justify-center sm:justify-end">
-                      <div className="flex items-center space-x-2 w-full sm:w-auto">
+                      <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
                         <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
                         setSelectedPurchaseOrder(po);
                         setEditUploadedDocs([]);
@@ -518,12 +518,12 @@ export default function PurchaseOrdersPage() {
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeletePurchaseOrder(po.id)}
-                        className="text-red-600 hover:text-red-700 hover:border-red-300"
-                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeletePurchaseOrder(po.id)}
+                          className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
                         <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
                         Delete
                       </Button>
