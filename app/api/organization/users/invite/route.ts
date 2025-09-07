@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
 
               <!-- Footer -->
               <div style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px;">
-                <p style="margin: 0;">© 2024 Boundless Devices Inc. All rights reserved.</p>
+                <p style="margin: 0;">© 2025 Boundless Devices Inc. All rights reserved.</p>
                 <p style="margin: 5px 0 0 0;">BDI Business Portal - B2B Data Exchange & Collaboration Platform</p>
               </div>
             </div>
