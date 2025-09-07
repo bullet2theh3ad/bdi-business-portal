@@ -151,6 +151,7 @@ const navigationItems: NavItem[] = [
         title: 'Teams',
         href: '/organization/teams',
         icon: 'collaboration',
+        requiresBDI: true, // Not ready for non-BDI organizations yet
       },
     ],
   },
