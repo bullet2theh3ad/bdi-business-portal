@@ -362,7 +362,7 @@ export default function InvoicesPage() {
                             if (docsResponse.ok) {
                               const docs = await docsResponse.json();
                               setExistingDocs(docs);
-                              console.log('Loaded existing documents:', docs);
+                              // Documents loaded successfully
                             }
                           } catch (error) {
                             console.error('Error loading documents:', error);
@@ -371,13 +371,13 @@ export default function InvoicesPage() {
 
                           // Fetch existing line items for this invoice
                           try {
-                            console.log(`🔍 Fetching line items for invoice: ${invoice.id}`);
+                            // Fetching line items for invoice
                             const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
-                            console.log('Line items response status:', lineItemsResponse.status);
+                            // Line items response received
                             
                             if (lineItemsResponse.ok) {
                               const lineItems = await lineItemsResponse.json();
-                              console.log('Raw line items from API:', lineItems);
+                              // Raw line items received from API
                               
                               const mappedItems = lineItems.map((item: any) => ({
                                 id: item.id,
@@ -389,7 +389,7 @@ export default function InvoicesPage() {
                                 lineTotal: parseFloat(item.lineTotal)
                               }));
                               
-                              console.log('Mapped line items for UI:', mappedItems);
+                              // Line items mapped for UI
                               setEditLineItems(mappedItems);
                             } else {
                               const errorText = await lineItemsResponse.text();
@@ -793,7 +793,7 @@ export default function InvoicesPage() {
                         
                         // TODO: Implement real-time upload to Supabase
                         // For now, just add to local state for preview
-                        console.log('Files selected for upload:', files.map(f => f.name));
+                        // Files selected for upload
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
                     />
@@ -932,11 +932,11 @@ export default function InvoicesPage() {
 
                 if (response.ok) {
                   const result = await response.json();
-                  console.log('✅ Invoice updated:', result);
+                  // Invoice updated successfully
 
                   // Update line items
                   if (editLineItems.length > 0) {
-                    console.log(`🔄 Updating ${editLineItems.length} line items`);
+                    // Updating line items
                     try {
                       const lineItemsResponse = await fetch(`/api/cpfr/invoices/${selectedInvoice.id}/line-items`, {
                         method: 'PUT',
@@ -946,7 +946,7 @@ export default function InvoicesPage() {
 
                       if (lineItemsResponse.ok) {
                         const lineItemsResult = await lineItemsResponse.json();
-                        console.log('✅ Line items updated:', lineItemsResult);
+                        // Line items updated successfully
                       } else {
                         console.error('Failed to update line items');
                       }
@@ -957,7 +957,7 @@ export default function InvoicesPage() {
                   
                   // Upload new documents if any
                   if (editUploadedDocs.length > 0) {
-                    console.log(`🔄 Uploading ${editUploadedDocs.length} new documents`);
+                    // Uploading new documents
                     try {
                       const uploadFormData = new FormData();
                       editUploadedDocs.forEach(file => uploadFormData.append('files', file));
@@ -969,7 +969,7 @@ export default function InvoicesPage() {
                       
                       if (uploadResponse.ok) {
                         const uploadResult = await uploadResponse.json();
-                        console.log('✅ New files uploaded:', uploadResult);
+                        // New files uploaded successfully
                         alert(`Invoice updated with ${uploadResult.uploaded} new documents uploaded!`);
                       } else {
                         alert('Invoice updated but new file upload failed');
@@ -1301,7 +1301,7 @@ export default function InvoicesPage() {
                       onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         setEditUploadedDocs(prev => [...prev, ...files]);
-                        console.log('New files selected for upload:', files.map(f => f.name));
+                        // New files selected for upload
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
                     />
