@@ -539,11 +539,11 @@ export default function PurchaseOrdersPage() {
 
       {/* Create Purchase Order Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
-          <DialogHeader>
-            <DialogTitle>Create Purchase Order</DialogTitle>
+        <DialogContent className="w-[95vw] sm:w-[90vw] lg:w-[98vw] h-[95vh] sm:h-[90vh] lg:h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+          <DialogHeader className="px-3 sm:px-6">
+            <DialogTitle className="text-lg sm:text-xl">Create Purchase Order</DialogTitle>
           </DialogHeader>
-          <form className="space-y-12 p-8" onSubmit={(e) => {
+          <form className="space-y-6 sm:space-y-8 lg:space-y-12 p-3 sm:p-6 lg:p-8" onSubmit={(e) => {
             e.preventDefault();
             handleCreatePurchaseOrder(new FormData(e.currentTarget));
           }}>
@@ -741,9 +741,9 @@ export default function PurchaseOrdersPage() {
             </div>
 
             {/* Line Items Section */}
-            <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-blue-800 flex items-center">
+            <div className="bg-blue-50 p-3 sm:p-4 lg:p-6 rounded-lg border border-blue-200">
+              <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4">
+                <h4 className="font-semibold text-blue-800 flex items-center text-sm sm:text-base">
                   <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                   Line Items
                 </h4>
@@ -752,7 +752,7 @@ export default function PurchaseOrdersPage() {
                   onClick={addLineItem}
                   variant="outline"
                   size="sm"
-                  className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                  className="w-full sm:w-auto bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
                 >
                   <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
                   Add Item
@@ -925,12 +925,12 @@ export default function PurchaseOrdersPage() {
 
       {/* Edit Purchase Order Modal */}
       <Dialog open={!!selectedPurchaseOrder} onOpenChange={() => setSelectedPurchaseOrder(null)}>
-        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
-          <DialogHeader>
-            <DialogTitle>Edit Purchase Order #{selectedPurchaseOrder?.purchaseOrderNumber}</DialogTitle>
+        <DialogContent className="w-[95vw] sm:w-[90vw] lg:w-[98vw] h-[95vh] sm:h-[90vh] lg:h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+          <DialogHeader className="px-3 sm:px-6">
+            <DialogTitle className="text-lg sm:text-xl">Edit Purchase Order #{selectedPurchaseOrder?.purchaseOrderNumber}</DialogTitle>
           </DialogHeader>
           {selectedPurchaseOrder && (
-            <form className="space-y-12 p-8" onSubmit={async (e) => {
+            <form className="space-y-6 sm:space-y-8 lg:space-y-12 p-3 sm:p-6 lg:p-8" onSubmit={async (e) => {
               e.preventDefault();
               
               const formData = new FormData(e.currentTarget);
@@ -1089,9 +1089,9 @@ export default function PurchaseOrdersPage() {
               </div>
 
               {/* Line Items Section */}
-              <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-blue-800 flex items-center">
+              <div className="bg-blue-50 p-3 sm:p-4 lg:p-6 rounded-lg border border-blue-200">
+                <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4">
+                  <h4 className="font-semibold text-blue-800 flex items-center text-sm sm:text-base">
                     <SemanticBDIIcon semantic="inventory" size={16} className="mr-2" />
                     Line Items
                   </h4>
@@ -1111,7 +1111,7 @@ export default function PurchaseOrdersPage() {
                     }}
                     variant="outline"
                     size="sm"
-                    className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                    className="w-full sm:w-auto bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
                   >
                     <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
                     Add Item
