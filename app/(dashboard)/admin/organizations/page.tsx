@@ -2185,7 +2185,7 @@ ${result.email?.sent
 
                                   if (!response.ok) {
                                     const error = await response.json();
-                                    throw new Error(`Failed to add ${invite.email}: ${error.message}`);
+                                    throw new Error(`Failed to add ${invite.email}: ${error.error || error.message || 'Unknown error'}`);
                                   }
                                 }
 
