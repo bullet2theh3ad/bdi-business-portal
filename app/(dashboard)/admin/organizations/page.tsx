@@ -980,8 +980,82 @@ ${result.email?.sent
                               return;
                             }
 
-                            // Bulk invitations removed - use individual user invitations instead
-                            alert('Bulk invitations have been simplified. Please use the "Manage Users" feature for individual user invitations.');
+                            try {
+                              // Send invitations to the organization
+                              for (const invite of validInvites) {
+                                const response = await fetch('/api/organization/users/invite', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    name: invite.name,
+                                    email: invite.email,
+                                    role: invite.role,
+                                  })
+                                });
+
+                                if (!response.ok) {
+                                  const error = await response.json();
+                                  
+                                  // Handle user already exists scenario
+                                  if (response.status === 409 && error.existingUser) {
+                                    const shouldDelete = confirm(
+                                      `User ${invite.email} already exists in the system.\n\n` +
+                                      `Existing user details:\n` +
+                                      `Name: ${error.existingUser.name}\n` +
+                                      `Organization: ${error.existingUser.organization?.name || 'None'}\n` +
+                                      `Role: ${error.existingUser.role}\n\n` +
+                                      `Would you like to DELETE the existing user and send a new invitation?\n\n` +
+                                      `⚠️ WARNING: This will permanently delete the existing user account!`
+                                    );
+                                    
+                                    if (shouldDelete) {
+                                      // Delete existing user
+                                      const deleteResponse = await fetch('/api/admin/delete-user', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ email: invite.email })
+                                      });
+                                      
+                                      if (deleteResponse.ok) {
+                                        // Retry invitation after deletion
+                                        const retryResponse = await fetch('/api/organization/users/invite', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            name: invite.name,
+                                            email: invite.email,
+                                            role: invite.role,
+                                          })
+                                        });
+                                        
+                                        if (!retryResponse.ok) {
+                                          const retryError = await retryResponse.json();
+                                          throw new Error(`Failed to create invitation after deletion for ${invite.email}: ${retryError.error || 'Unknown error'}`);
+                                        }
+                                        
+                                        console.log(`✅ Successfully deleted existing user and created new invitation for ${invite.email}`);
+                                      } else {
+                                        const deleteError = await deleteResponse.json();
+                                        throw new Error(`Failed to delete existing user ${invite.email}: ${deleteError.error || 'Unknown error'}`);
+                                      }
+                                    } else {
+                                      throw new Error(`Invitation cancelled - ${invite.email} already exists`);
+                                    }
+                                  } else {
+                                    // Other error types
+                                    throw new Error(`Failed to add ${invite.email}: ${error.error || error.message || 'Unknown error'}`);
+                                  }
+                                }
+                              }
+
+                              alert(`Successfully sent ${validInvites.length} invitations!`);
+                              
+                              // Clear the invitation form
+                              setOrgUserInvites([{ name: '', email: '', role: 'member' }]);
+                            } catch (error) {
+                              console.error('Error sending invitations:', error);
+                              alert(`Error sending invitations: ${error}`);
+                            }
                           }}
                           disabled={!orgUserInvites.some(inv => inv.name && inv.email)}
                           className="bg-blue-600 hover:bg-blue-700"
