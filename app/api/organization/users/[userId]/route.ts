@@ -114,6 +114,41 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
     }
 
+    // Get current user's organization membership role
+    const [currentUserMembership] = await db
+      .select()
+      .from(organizationMembers)
+      .where(and(
+        eq(organizationMembers.userAuthId, currentUser.authId),
+        eq(organizationMembers.organizationUuid, userOrganization.id)
+      ))
+      .limit(1);
+
+    if (!currentUserMembership) {
+      return NextResponse.json({ error: 'Current user membership not found' }, { status: 403 });
+    }
+
+    // Role hierarchy protection: prevent lower roles from deleting higher roles
+    const roleHierarchy = ['member', 'admin', 'owner', 'super_admin'];
+    const currentUserRoleLevel = roleHierarchy.indexOf(currentUserMembership.role);
+    const targetUserRoleLevel = roleHierarchy.indexOf(userMembership.role);
+
+    // Only allow deletion if current user has higher or equal role level
+    if (currentUserRoleLevel < targetUserRoleLevel) {
+      return NextResponse.json({ 
+        error: `Cannot delete user with higher role. Your role: ${currentUserMembership.role}, Target role: ${userMembership.role}` 
+      }, { status: 403 });
+    }
+
+    // Additional protection: members cannot delete admins, even if they have admin system role
+    if (currentUserMembership.role === 'member' && userMembership.role === 'admin') {
+      return NextResponse.json({ 
+        error: 'Organization members cannot delete organization admins' 
+      }, { status: 403 });
+    }
+
+    console.log(`Permission check passed: ${currentUserMembership.role} deleting ${userMembership.role}`);
+
     console.log('Found user to delete:', userToDelete);
 
     // 1. Delete organization membership

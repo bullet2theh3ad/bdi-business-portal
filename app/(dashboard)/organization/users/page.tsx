@@ -132,6 +132,34 @@ export default function OrganizationUsersPage() {
     }
   };
 
+  // Helper function to check if current user can delete target user
+  const canDeleteUser = (targetUser: any) => {
+    if (!user || !targetUser) return false;
+    
+    // Cannot delete yourself
+    if (targetUser.email === user.email) return false;
+    
+    // Get current user's organization membership role
+    const currentUserData = orgUsers?.users?.find((u: any) => u.email === user.email);
+    const currentUserMembershipRole = currentUserData?.membershipRole || 'member';
+    const targetUserMembershipRole = targetUser.membershipRole || 'member';
+    
+    // Role hierarchy: member < admin < owner < super_admin
+    const roleHierarchy = ['member', 'admin', 'owner', 'super_admin'];
+    const currentUserRoleLevel = roleHierarchy.indexOf(currentUserMembershipRole);
+    const targetUserRoleLevel = roleHierarchy.indexOf(targetUserMembershipRole);
+    
+    // Only allow deletion if current user has higher or equal role level
+    if (currentUserRoleLevel < targetUserRoleLevel) return false;
+    
+    // Members cannot delete admins, even if they have admin system role
+    if (currentUserMembershipRole === 'member' && targetUserMembershipRole === 'admin') {
+      return false;
+    }
+    
+    return true;
+  };
+
   // Only organization admins can access this page
   if (!user || user.role !== 'admin' || (user as any).organization?.code === 'BDI') {
     return (
@@ -305,7 +333,7 @@ export default function OrganizationUsersPage() {
                           <span className="sm:hidden">Revoke Invitation</span>
                           <span className="hidden sm:inline">Revoke</span>
                         </Button>
-                      ) : orgUser.email !== user?.email && (
+                      ) : canDeleteUser(orgUser) && (
                         <Button 
                           variant="outline" 
                           size="sm" 
