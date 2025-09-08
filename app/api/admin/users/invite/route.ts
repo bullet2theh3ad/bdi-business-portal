@@ -100,10 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'BDI organization not found' }, { status: 404 });
     }
 
-    // Generate invitation token
-    const invitationToken = crypto.randomUUID();
-    
-    // Create pending user record
+    // Create pending user record first
     const [newUser] = await db
       .insert(users)
       .values({
@@ -115,10 +112,21 @@ export async function POST(request: NextRequest) {
         department: validatedData.department,
         passwordHash: 'invitation_pending',
         isActive: false, // Will be activated when they accept invitation
-        resetToken: invitationToken,
+        resetToken: crypto.randomUUID(), // Temporary placeholder
         resetTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       })
       .returning();
+
+    // Generate invitation token with organization info (Base64URL JSON format)
+    const invitationToken = Buffer.from(
+      JSON.stringify({
+        organizationId: bdiOrg.id,
+        organizationName: bdiOrg.name,
+        adminEmail: validatedData.email,
+        role: validatedData.role,
+        timestamp: Date.now()
+      })
+    ).toString('base64url');
 
     // Add user to BDI organization
     await db
