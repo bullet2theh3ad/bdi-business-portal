@@ -27,15 +27,21 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   let invitationOrgName = 'Loading...'; // fallback
   if (token) {
     try {
-      // Use atob for browser compatibility instead of Buffer.from with base64url
+      // Try Base64URL JSON format first (new format)
       const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
       const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
       const tokenData = JSON.parse(atob(padded));
-      console.log('Parsed invitation token:', tokenData);
+      console.log('Parsed Base64URL invitation token:', tokenData);
       invitationOrgName = tokenData.organizationName || 'Unknown Organization';
     } catch (error) {
-      console.error('Error parsing invitation token:', error);
-      invitationOrgName = 'Unknown Organization';
+      // If that fails, check if it's the old BDI-timestamp-random format
+      if (token.startsWith('BDI-') && token.includes('-')) {
+        console.log('Detected legacy BDI invitation token format:', token);
+        invitationOrgName = 'Boundless Devices Inc';
+      } else {
+        console.error('Error parsing invitation token:', error);
+        invitationOrgName = 'Unknown Organization';
+      }
     }
   }
 

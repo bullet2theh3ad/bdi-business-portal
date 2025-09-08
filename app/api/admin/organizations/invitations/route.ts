@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Send email invitation - use consistent token format
-        const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`
+        // Send email invitation - use invitation parameter for legacy BDI tokens
+        const inviteUrl = `https://www.bdibusinessportal.com/sign-up?invitation=${invitationToken}`
         
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

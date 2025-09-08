@@ -229,20 +229,86 @@ export async function signUp(prevState: any, formData: FormData) {
       }
 
       // Find the pending user by email and organization
-      const [pendingUser] = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.email, email),
-            eq(users.passwordHash, 'invitation_pending'),
-            eq(users.isActive, false)
+      let pendingUser = null;
+      
+      if (tokenData.isLegacyToken) {
+        // For legacy tokens, look up in organization_invitations table
+        // We'll need to create the user record during signup
+        console.log('Looking up legacy invitation token:', tokenData.legacyToken);
+        // For now, we'll create a temporary user structure
+        // In a full implementation, you'd query the organization_invitations table
+        pendingUser = {
+          email: email,
+          name: null, // Will be provided by user
+          role: tokenData.role || 'member',
+          passwordHash: 'invitation_pending',
+          isActive: false,
+          authId: null, // Will be set during signup
+          isLegacyInvitation: true
+        };
+      } else {
+        // For new tokens, look up in users table as before
+        [pendingUser] = await db
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.email, email),
+              eq(users.passwordHash, 'invitation_pending'),
+              eq(users.isActive, false)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
+      }
 
       if (pendingUser) {
-        // Get the organization from the user's membership
+        if ((pendingUser as any).isLegacyInvitation) {
+          // Handle legacy BDI invitations
+          console.log('Processing legacy BDI invitation for:', email);
+          
+          // Get BDI organization
+          const [bdiOrg] = await db
+            .select()
+            .from(organizations)
+            .where(eq(organizations.code, 'BDI'))
+            .limit(1);
+
+          if (!bdiOrg) {
+            return {
+              error: 'BDI organization not found.',
+              email,
+              password
+            };
+          }
+
+          targetOrganization = bdiOrg;
+          userRole = pendingUser.role;
+
+          // Create fresh user record with correct Supabase auth ID
+          [dbUser] = await db
+            .insert(users)
+            .values({
+              authId: supabaseUser.id,
+              email: supabaseUser.email!,
+              name: name || supabaseUser.email!.split('@')[0],
+              role: userRole,
+              passwordHash: 'supabase_managed',
+              isActive: true,
+            })
+            .returning();
+
+          // Create organization membership
+          await db
+            .insert(organizationMembers)
+            .values({
+              userAuthId: supabaseUser.id,
+              organizationUuid: targetOrganization.id,
+              role: userRole,
+            });
+
+          console.log('✅ Completed legacy invitation signup for:', dbUser?.email);
+        } else {
+          // Handle new invitation format - Get the organization from the user's membership
         const [membership] = await db
           .select({
             organization: {
@@ -254,7 +320,7 @@ export async function signUp(prevState: any, formData: FormData) {
           })
           .from(organizationMembers)
           .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
-          .where(eq(organizationMembers.userAuthId, pendingUser.authId))
+          .where(eq(organizationMembers.userAuthId, pendingUser.authId!))
           .limit(1);
 
         if (membership) {
@@ -264,11 +330,11 @@ export async function signUp(prevState: any, formData: FormData) {
           // Delete old membership and user records
           await db
             .delete(organizationMembers)
-            .where(eq(organizationMembers.userAuthId, pendingUser.authId));
+            .where(eq(organizationMembers.userAuthId, pendingUser.authId!));
 
           await db
             .delete(users)
-            .where(eq(users.id, pendingUser.id));
+            .where(eq(users.id, pendingUser.id!));
 
           // Create fresh user record with correct Supabase auth ID
           [dbUser] = await db
@@ -319,6 +385,13 @@ export async function signUp(prevState: any, formData: FormData) {
           } else {
             console.log('✅ User automatically signed in after invitation signup');
           }
+        } else {
+          return {
+            error: 'Invalid or expired invitation token.',
+            email,
+            password
+          };
+        }
         }
       } else {
         return {
