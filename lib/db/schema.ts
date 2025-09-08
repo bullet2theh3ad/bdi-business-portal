@@ -1007,10 +1007,79 @@ export type Shipment = typeof shipments.$inferSelect;
 export type NewShipment = typeof shipments.$inferInsert;
 export type ProductionFile = typeof productionFiles.$inferSelect;
 export type NewProductionFile = typeof productionFiles.$inferInsert;
+// EMG Inventory Tracking Tables
+export const emgInventoryTracking = pgTable('emg_inventory_tracking', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Warehouse Information
+  warehouseCode: varchar('warehouse_code', { length: 10 }).default('EMG'),
+  
+  // SKU Information from CSV
+  location: varchar('location', { length: 100 }),
+  upc: varchar('upc', { length: 50 }),
+  model: varchar('model', { length: 100 }),
+  description: text('description'),
+  
+  // Inventory Quantities
+  qtyOnHand: integer('qty_on_hand').default(0),
+  qtyAllocated: integer('qty_allocated').default(0),
+  qtyBackorder: integer('qty_backorder').default(0),
+  netStock: integer('net_stock').default(0),
+  
+  // Additional CSV columns (flexible JSON for future columns)
+  additionalData: jsonb('additional_data').default({}),
+  
+  // Upload tracking
+  sourceFileName: varchar('source_file_name', { length: 255 }),
+  uploadDate: timestamp('upload_date').defaultNow(),
+  uploadedBy: uuid('uploaded_by').references(() => users.authId),
+  
+  // History tracking
+  firstSeen: timestamp('first_seen').defaultNow(),
+  lastUpdated: timestamp('last_updated').defaultNow(),
+  updateCount: integer('update_count').default(1),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const emgInventoryHistory = pgTable('emg_inventory_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // SKU identification
+  upc: varchar('upc', { length: 50 }),
+  model: varchar('model', { length: 100 }).notNull(),
+  location: varchar('location', { length: 100 }),
+  
+  // Inventory snapshot
+  qtyOnHand: integer('qty_on_hand').default(0),
+  qtyAllocated: integer('qty_allocated').default(0),
+  qtyBackorder: integer('qty_backorder').default(0),
+  netStock: integer('net_stock').default(0),
+  
+  // Change tracking
+  qtyChange: integer('qty_change').default(0),
+  changeType: varchar('change_type', { length: 20 }), // 'increase', 'decrease', 'no_change'
+  
+  // Upload info
+  snapshotDate: timestamp('snapshot_date').defaultNow(),
+  sourceFileName: varchar('source_file_name', { length: 255 }),
+  uploadedBy: uuid('uploaded_by').references(() => users.authId),
+  
+  // Reference to main record
+  emgInventoryId: uuid('emg_inventory_id').references(() => emgInventoryTracking.id, { onDelete: 'cascade' }),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export type JjolmTracking = typeof jjolmTracking.$inferSelect;
 export type NewJjolmTracking = typeof jjolmTracking.$inferInsert;
 export type JjolmHistory = typeof jjolmHistory.$inferSelect;
 export type NewJjolmHistory = typeof jjolmHistory.$inferInsert;
+export type EmgInventoryTracking = typeof emgInventoryTracking.$inferSelect;
+export type NewEmgInventoryTracking = typeof emgInventoryTracking.$inferInsert;
+export type EmgInventoryHistory = typeof emgInventoryHistory.$inferSelect;
+export type NewEmgInventoryHistory = typeof emgInventoryHistory.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -78,6 +79,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function WarehousesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: warehouses, mutate: mutateWarehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
+  const { data: emgInventoryData, mutate: mutateEmgInventory } = useSWR('/api/inventory/emg-reports', fetcher);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
@@ -87,6 +89,13 @@ export default function WarehousesPage() {
   const [warehouseFiles, setWarehouseFiles] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [showExtraContact, setShowExtraContact] = useState(false);
+  
+  // EMG Inventory Modal State
+  const [showEmgInventoryModal, setShowEmgInventoryModal] = useState(false);
+  const [emgFile, setEmgFile] = useState<File | null>(null);
+  const [uploadingEmg, setUploadingEmg] = useState(false);
+  const [emgUploadResult, setEmgUploadResult] = useState<any>(null);
+  const [inventoryChartView, setInventoryChartView] = useState<'current' | 'trends'>('current');
 
   // Load existing files when opening edit modal
   useEffect(() => {
@@ -355,6 +364,51 @@ export default function WarehousesPage() {
 
   // Filter warehouses based on search and type
   // Ensure warehouses is an array before filtering
+  // EMG Inventory Functions
+  const handleEmgFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setEmgFile(file);
+      setEmgUploadResult(null);
+    }
+  };
+
+  const handleEmgUpload = async () => {
+    if (!emgFile) return;
+
+    setUploadingEmg(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', emgFile);
+
+      const response = await fetch('/api/inventory/emg-reports', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        setEmgUploadResult(result);
+        setEmgFile(null);
+        
+        // Refresh EMG inventory data
+        mutateEmgInventory();
+        
+        // Reset file input
+        const fileInput = document.getElementById('emg-file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      } else {
+        alert(`Upload failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('EMG upload error:', error);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploadingEmg(false);
+    }
+  };
+
   const warehousesArray = Array.isArray(warehouses) ? warehouses : [];
   const filteredWarehouses = warehousesArray.filter(warehouse => {
     const matchesSearch = warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -554,6 +608,17 @@ export default function WarehousesPage() {
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         Edit
                       </Button>
+                      {warehouse.warehouseCode === 'EMG' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowEmgInventoryModal(true)}
+                          className="w-full sm:w-auto bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                        >
+                          <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
+                          Inventory
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -1610,6 +1675,279 @@ export default function WarehousesPage() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* EMG Inventory Modal */}
+      <Dialog open={showEmgInventoryModal} onOpenChange={setShowEmgInventoryModal}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="analytics" size={20} />
+              EMG Warehouse Inventory
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Upload Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <SemanticBDIIcon semantic="plus" size={16} />
+                  Upload Inventory Report
+                </CardTitle>
+                <CardDescription>
+                  Upload CSV files with format: BOUNDLESS DEVICES, INC-Inventory Report.csv
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      id="emg-file-upload"
+                      type="file"
+                      accept=".csv"
+                      onChange={handleEmgFileSelect}
+                      disabled={uploadingEmg}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleEmgUpload}
+                    disabled={!emgFile || uploadingEmg}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {uploadingEmg ? (
+                      <>
+                        <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
+                        Upload Report
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {emgFile && (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2">
+                      <SemanticBDIIcon semantic="analytics" size={16} className="text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">
+                        Selected: {emgFile.name}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {(emgFile.size / 1024).toFixed(1)} KB
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {emgUploadResult && (
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-start gap-3">
+                      <SemanticBDIIcon semantic="check" size={20} className="text-green-600 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-green-800 mb-2">
+                          Upload Successful!
+                        </h4>
+                        <div className="text-sm text-green-700 space-y-1">
+                          <p><strong>File:</strong> {emgUploadResult.summary?.fileName}</p>
+                          <p><strong>Total Processed:</strong> {emgUploadResult.summary?.totalProcessed}</p>
+                          <p><strong>New Records:</strong> {emgUploadResult.summary?.newRecords}</p>
+                          <p><strong>Updated Records:</strong> {emgUploadResult.summary?.updatedRecords}</p>
+                          {emgUploadResult.summary?.errors > 0 && (
+                            <p><strong>Errors:</strong> {emgUploadResult.summary?.errors}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Inventory Summary */}
+            {emgInventoryData?.data?.summary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <SemanticBDIIcon semantic="inventory_analytics" size={16} />
+                    Inventory Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {emgInventoryData.data.summary.totalSkus.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-blue-700">Total SKUs</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {emgInventoryData.data.summary.totalOnHand.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-green-700">On Hand</div>
+                    </div>
+                    <div className="text-center p-4 bg-orange-50 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {emgInventoryData.data.summary.totalAllocated.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-orange-700">Allocated</div>
+                    </div>
+                    <div className="text-center p-4 bg-red-50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">
+                        {emgInventoryData.data.summary.totalBackorder.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-red-700">Backorder</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Charts Section */}
+            {emgInventoryData?.data?.currentInventory?.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <SemanticBDIIcon semantic="analytics" size={16} />
+                      Inventory Analysis
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={inventoryChartView === 'current' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setInventoryChartView('current')}
+                      >
+                        Current Levels
+                      </Button>
+                      <Button
+                        variant={inventoryChartView === 'trends' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setInventoryChartView('trends')}
+                      >
+                        Trends
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {inventoryChartView === 'current' ? (
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={emgInventoryData.data.currentInventory.slice(0, 20)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="model" 
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                            fontSize={10}
+                          />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="qtyOnHand" fill="#10b981" name="On Hand" />
+                          <Bar dataKey="qtyAllocated" fill="#f59e0b" name="Allocated" />
+                          <Bar dataKey="qtyBackorder" fill="#ef4444" name="Backorder" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={emgInventoryData.data.history?.slice(0, 50) || []}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="snapshotDate"
+                            tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                          />
+                          <YAxis />
+                          <Tooltip 
+                            labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="qtyOnHand" stroke="#10b981" name="On Hand" />
+                          <Line type="monotone" dataKey="qtyAllocated" stroke="#f59e0b" name="Allocated" />
+                          <Line type="monotone" dataKey="netStock" stroke="#3b82f6" name="Net Stock" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Current Inventory Table */}
+            {emgInventoryData?.data?.currentInventory?.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <SemanticBDIIcon semantic="inventory_items" size={16} />
+                    Current Inventory ({emgInventoryData.data.currentInventory.length} SKUs)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {emgInventoryData.data.currentInventory.slice(0, 50).map((item: any) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {item.model || item.upc}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.description}
+                            {item.location && <span> • Location: {item.location}</span>}
+                            {item.upc && <span> • UPC: {item.upc}</span>}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="text-center">
+                            <div className="font-medium text-green-600">{item.qtyOnHand || 0}</div>
+                            <div className="text-xs text-muted-foreground">On Hand</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-orange-600">{item.qtyAllocated || 0}</div>
+                            <div className="text-xs text-muted-foreground">Allocated</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-blue-600">{item.netStock || 0}</div>
+                            <div className="text-xs text-muted-foreground">Net Stock</div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.lastUpdated && new Date(item.lastUpdated).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {emgInventoryData.data.currentInventory.length > 50 && (
+                      <div className="text-center pt-4">
+                        <p className="text-sm text-muted-foreground">
+                          Showing first 50 of {emgInventoryData.data.currentInventory.length} items
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!emgInventoryData?.data?.currentInventory?.length && (
+              <div className="text-center py-8">
+                <SemanticBDIIcon semantic="inventory_items" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No inventory data found. Upload a CSV report to get started.</p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
