@@ -199,27 +199,26 @@ export async function signUp(prevState: any, formData: FormData) {
     if (token) {
       // Parse the invitation token to get organization info
       let tokenData;
-      try {
-        // Try Base64URL JSON format first (new format)
-        tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
-        console.log('Parsed Base64URL invitation token:', tokenData);
-      } catch (error) {
-        // If that fails, check if it's the old BDI-timestamp-random format
-        if (token.startsWith('BDI-') && token.includes('-')) {
-          console.log('Detected legacy BDI invitation token format:', token);
-          // For legacy tokens, we need to look up the invitation in the database
-          // For now, create a minimal tokenData structure
-          tokenData = {
-            organizationName: 'Boundless Devices Inc',
-            organizationId: null, // Will be looked up
-            adminEmail: email,
-            role: 'member',
-            timestamp: Date.now(),
-            isLegacyToken: true,
-            legacyToken: token
-          };
-        } else {
-          console.error('Invalid invitation token:', error);
+      // Check if it's the legacy BDI-timestamp-random format first
+      if (token.startsWith('BDI-') && token.includes('-')) {
+        console.log('Detected legacy BDI invitation token format:', token);
+        tokenData = {
+          organizationName: 'Boundless Devices Inc',
+          organizationId: null, // Will be looked up
+          adminEmail: email,
+          role: 'member',
+          timestamp: Date.now(),
+          isLegacyToken: true,
+          legacyToken: token
+        };
+      } else {
+        // Try Base64URL JSON format for new tokens
+        try {
+          tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
+          console.log('Parsed Base64URL invitation token:', tokenData);
+        } catch (error) {
+          console.error('Invalid invitation token format:', error);
+          console.error('Token received:', token);
           return {
             error: 'Invalid or expired invitation token.',
             email,
