@@ -86,6 +86,12 @@ export async function signUp(prevState: any, formData: FormData) {
   const name = formData.get('name') as string;
   const organizationName = formData.get('organizationName') as string;
   const token = formData.get('token') as string;
+  
+  // DEBUG: Log all form data received
+  console.log('🔍 FORM DEBUG - All form data:');
+  for (const [key, value] of formData.entries()) {
+    console.log(`🔍 FORM DEBUG - ${key}:`, value);
+  }
 
   // For invitation signups, organizationName is not required
   const validationData = token 
@@ -197,6 +203,12 @@ export async function signUp(prevState: any, formData: FormData) {
 
     // Check if this is an invitation-based signup using token
     if (token) {
+      // DEBUG: Log what token we received
+      console.log('🔍 SIGNUP DEBUG - Token received:', token);
+      console.log('🔍 SIGNUP DEBUG - Token type:', typeof token);
+      console.log('🔍 SIGNUP DEBUG - Token length:', token.length);
+      console.log('🔍 SIGNUP DEBUG - Starts with BDI-:', token.startsWith('BDI-'));
+      
       // Parse the invitation token to get organization info
       let tokenData;
       // Check if it's the legacy BDI-timestamp-random format first
