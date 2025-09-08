@@ -940,12 +940,77 @@ export const productionFiles = pgTable('production_files', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// JJOLM Tracking Tables
+export const jjolmTracking = pgTable('jjolm_tracking', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // JJOLM Reference Information
+  jjolmNumber: varchar('jjolm_number', { length: 100 }).notNull().unique(),
+  customerReferenceNumber: varchar('customer_reference_number', { length: 100 }),
+  mode: varchar('mode', { length: 50 }),
+  
+  // Shipment Details from Excel
+  origin: varchar('origin', { length: 100 }),
+  destination: varchar('destination', { length: 100 }),
+  carrier: varchar('carrier', { length: 100 }),
+  serviceType: varchar('service_type', { length: 100 }),
+  
+  // Dates from Excel (can be updated with new uploads)
+  pickupDate: date('pickup_date'),
+  deliveryDate: date('delivery_date'),
+  estimatedDeliveryDate: date('estimated_delivery_date'),
+  
+  // Status and tracking
+  status: varchar('status', { length: 50 }),
+  trackingNumber: varchar('tracking_number', { length: 100 }),
+  
+  // Additional Excel columns (flexible JSON for future columns)
+  additionalData: jsonb('additional_data').default({}),
+  
+  // Upload tracking
+  sourceFileName: varchar('source_file_name', { length: 255 }),
+  uploadDate: timestamp('upload_date').defaultNow(),
+  uploadedBy: uuid('uploaded_by').references(() => users.authId),
+  
+  // History tracking
+  firstSeen: timestamp('first_seen').defaultNow(),
+  lastUpdated: timestamp('last_updated').defaultNow(),
+  updateCount: integer('update_count').default(1),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const jjolmHistory = pgTable('jjolm_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  jjolmNumber: varchar('jjolm_number', { length: 100 }).notNull(),
+  
+  // What changed
+  fieldName: varchar('field_name', { length: 100 }).notNull(),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  
+  // When and by whom
+  changedAt: timestamp('changed_at').defaultNow(),
+  changedBy: uuid('changed_by').references(() => users.authId),
+  sourceFileName: varchar('source_file_name', { length: 255 }),
+  
+  // Reference to main record
+  jjolmTrackingId: uuid('jjolm_tracking_id').references(() => jjolmTracking.id, { onDelete: 'cascade' }),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export type Warehouse = typeof warehouses.$inferSelect;
 export type NewWarehouse = typeof warehouses.$inferInsert;
 export type Shipment = typeof shipments.$inferSelect;
 export type NewShipment = typeof shipments.$inferInsert;
 export type ProductionFile = typeof productionFiles.$inferSelect;
 export type NewProductionFile = typeof productionFiles.$inferInsert;
+export type JjolmTracking = typeof jjolmTracking.$inferSelect;
+export type NewJjolmTracking = typeof jjolmTracking.$inferInsert;
+export type JjolmHistory = typeof jjolmHistory.$inferSelect;
+export type NewJjolmHistory = typeof jjolmHistory.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;

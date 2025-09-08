@@ -54,6 +54,12 @@ const navigationItems: NavItem[] = [
         href: '/cpfr/shipments',
         icon: 'shipping',
       },
+      {
+        title: 'JJOLM Reports',
+        href: '/cpfr/jjolm-reports',
+        icon: 'analytics',
+        requiresRole: ['admin', 'super_admin'],
+      },
     ],
   },
   {

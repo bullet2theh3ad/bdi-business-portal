@@ -54,6 +54,7 @@ export default function ShipmentsPage() {
     }
   });
   const { data: actualShipments } = useSWR('/api/cpfr/shipments', fetcher);
+  const { data: jjolmData } = useSWR('/api/cpfr/jjolm-reports', fetcher);
 
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const [selectedShipment, setSelectedShipment] = useState<SalesForecast | null>(null);
@@ -1107,17 +1108,33 @@ export default function ShipmentsPage() {
                       </div>
 
                       <div>
-                        <Label htmlFor="shipperReference">Shipper Reference Number</Label>
-                        <Input
-                          id="shipperReference"
-                          type="text"
-                          value={shipmentForm.shipperReference}
-                          onChange={(e) => setShipmentForm(prev => ({ ...prev, shipperReference: e.target.value }))}
-                          placeholder="Enter shipper's reference number"
-                          className="mt-1"
-                        />
+                        <Label htmlFor="shipperReference">Shipper Reference Number (JJOLM)</Label>
+                        <div className="flex gap-2 mt-1">
+                          <select
+                            id="shipperReference"
+                            value={shipmentForm.shipperReference}
+                            onChange={(e) => setShipmentForm(prev => ({ ...prev, shipperReference: e.target.value }))}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Select JJOLM Number</option>
+                            {(jjolmData?.data || []).map((jjolm: any) => (
+                              <option key={jjolm.id} value={jjolm.jjolmNumber}>
+                                {jjolm.jjolmNumber} - {jjolm.customerReferenceNumber || 'No Customer Ref'} ({jjolm.mode || 'Unknown Mode'})
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open('/cpfr/jjolm-reports', '_blank')}
+                            className="px-3"
+                          >
+                            <SemanticBDIIcon semantic="plus" size={14} />
+                          </Button>
+                        </div>
                         <div className="text-xs text-gray-600 mt-1">
-                          Optional reference number from shipping partner
+                          Select from uploaded JJOLM tracking numbers. Click + to upload new reports.
                         </div>
                       </div>
 
