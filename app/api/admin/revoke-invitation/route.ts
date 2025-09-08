@@ -67,25 +67,8 @@ export async function POST(request: NextRequest) {
       actualToken = invitationId.replace('org-invite-', '');
     }
 
-    // Check if this is an organization invitation (contains MTN-, CBN-, etc.)
-    if (actualToken.includes('-') && actualToken.match(/^[A-Z]{2,3}-\d+/)) {
-      // This is an organization invitation token (format: MTN-timestamp-randomstring)
-      
-      // Delete from organization_invitations table
-      const deleteResult = await db
-        .execute(sql`DELETE FROM organization_invitations WHERE invitation_token = ${actualToken} RETURNING invited_email`);
-      
-      if ((deleteResult as any).length === 0) {
-        return NextResponse.json({ error: 'Organization invitation not found' }, { status: 404 });
-      }
-      
-      const deletedInvitation = (deleteResult as any)[0];
-      
-      return NextResponse.json({
-        success: true,
-        message: `Organization invitation for ${deletedInvitation.invited_email} has been revoked`
-      });
-    }
+    // Note: Legacy organization invitations are no longer supported
+    // All invitations now go through the unified user invitation system
 
     // Handle regular user invitations (existing logic)
     // First, check what user record exists

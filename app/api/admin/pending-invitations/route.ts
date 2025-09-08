@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, organizations, organizationMembers, organizationInvitations } from '@/lib/db/schema';
-import { eq, and, isNull, gte, ne, desc } from 'drizzle-orm';
+import { users, organizations, organizationMembers } from '@/lib/db/schema';
+import { eq, and, isNull, gte, ne, desc, sql } from 'drizzle-orm';
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -77,35 +77,7 @@ export async function GET(request: NextRequest) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // 1. Get pending organization invitations from organization_invitations table
-    // Filter by organization unless super admin
-    const orgInvitationWhere = isSuperAdmin 
-      ? and(
-          eq(organizationInvitations.status, 'pending'),
-          gte(organizationInvitations.createdAt, thirtyDaysAgo)
-        )
-      : and(
-          eq(organizationInvitations.status, 'pending'),
-          eq(organizationInvitations.organizationCode, userOrgCode || ''),
-          gte(organizationInvitations.createdAt, thirtyDaysAgo)
-        );
-
-    const pendingOrgInvitations = await db
-      .select({
-        id: organizationInvitations.invitationToken, // Use invitation token as ID for revocation
-        organizationCode: organizationInvitations.organizationCode,
-        email: organizationInvitations.invitedEmail,
-        name: organizationInvitations.invitedName,
-        role: organizationInvitations.invitedRole,
-        status: organizationInvitations.status,
-        createdAt: organizationInvitations.createdAt,
-        expiresAt: organizationInvitations.expiresAt,
-      })
-      .from(organizationInvitations)
-      .where(orgInvitationWhere)
-      .orderBy(desc(organizationInvitations.createdAt));
-
-    console.log(`📊 Found ${pendingOrgInvitations.length} organization invitations for ${isSuperAdmin ? 'Super Admin (all orgs)' : userOrgCode}`);
+    // Note: User invitations logic moved below to avoid duplication
 
     // 2. Get recently created organizations (Add Organization flow)
     // Only show for super admin (BDI), external orgs don't see this
@@ -232,21 +204,23 @@ export async function GET(request: NextRequest) {
 
     // Format all activities for the component
     const activities = [
-      // Organization invitations (pending)
-      ...pendingOrgInvitations.map(inv => ({
-        id: `org-invite-${inv.id}`,
-        type: 'organization_invitation',
+      // Pending user invitations (unified system)
+      ...pendingUserInvitations.map(inv => ({
+        id: inv.id,
+        type: 'user_invitation',
         email: inv.email,
         name: inv.name,
         role: inv.role,
         status: 'pending',
-        organizationName: inv.organizationCode, // Use code as name for now
+        organizationName: inv.organizationCode,
         organizationCode: inv.organizationCode,
         invitedAt: inv.createdAt?.toISOString(),
         expiresAt: inv.expiresAt?.toISOString(),
         invitedBy: currentUser.id,
         inviterName: currentUser.name,
         inviterEmail: currentUser.email,
+        title: inv.title,
+        department: inv.department,
       })),
       
       // Recently created organizations (active)
