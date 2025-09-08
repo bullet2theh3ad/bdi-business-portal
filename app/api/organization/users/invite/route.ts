@@ -181,8 +181,14 @@ export async function POST(request: NextRequest) {
     // Send invitation email
     const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
     
+    console.log('🔍 EMAIL DEBUG - Invitation URL generated:', inviteUrl);
+    console.log('🔍 EMAIL DEBUG - Resend configured:', !!resend);
+    console.log('🔍 EMAIL DEBUG - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+    
     if (resend) {
       try {
+        console.log('🔍 EMAIL DEBUG - Attempting to send email to:', validatedData.email);
+        
         const { data, error } = await resend.emails.send({
           from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
           to: [validatedData.email],
@@ -242,16 +248,21 @@ export async function POST(request: NextRequest) {
         });
 
         if (error) {
-          console.error('Resend error:', error);
+          console.error('🔍 EMAIL DEBUG - Resend API error:', error);
+          console.error('🔍 EMAIL DEBUG - Error details:', JSON.stringify(error));
         } else {
-          console.log('User invitation email sent successfully:', data);
+          console.log('🔍 EMAIL DEBUG - Email sent successfully!');
+          console.log('🔍 EMAIL DEBUG - Resend response data:', data);
+          console.log('🔍 EMAIL DEBUG - Email ID:', data?.id);
         }
       } catch (emailError) {
-        console.error('Email sending failed:', emailError);
+        console.error('🔍 EMAIL DEBUG - Email sending exception:', emailError);
+        console.error('🔍 EMAIL DEBUG - Exception type:', typeof emailError);
         // Don't fail the whole operation if email fails
       }
     } else {
-      console.log('Resend not configured. Invitation URL:', inviteUrl);
+      console.log('🔍 EMAIL DEBUG - Resend not configured. Invitation URL:', inviteUrl);
+      console.log('🔍 EMAIL DEBUG - Check RESEND_API_KEY environment variable');
     }
 
     return NextResponse.json({
