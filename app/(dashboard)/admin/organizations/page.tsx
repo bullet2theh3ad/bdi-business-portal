@@ -2185,7 +2185,63 @@ ${result.email?.sent
 
                                   if (!response.ok) {
                                     const error = await response.json();
-                                    throw new Error(`Failed to add ${invite.email}: ${error.error || error.message || 'Unknown error'}`);
+                                    
+                                    // Handle user already exists scenario
+                                    if (error.error === 'user_exists' && error.existingUser) {
+                                      const existingUser = error.existingUser;
+                                      const userInfo = `${existingUser.name} (${existingUser.email})`;
+                                      const orgInfo = existingUser.organization ? ` in ${existingUser.organization.name}` : '';
+                                      const statusInfo = existingUser.isActive ? 'Active User' : 'Pending Invitation';
+                                      
+                                      const shouldDelete = confirm(
+                                        `Email ${invite.email} is already in use by:\n\n` +
+                                        `👤 User: ${userInfo}\n` +
+                                        `🏢 Organization: ${orgInfo || 'None'}\n` +
+                                        `📊 Status: ${statusInfo}\n\n` +
+                                        `⚠️  Do you want to PERMANENTLY DELETE this existing user and send a new invitation?\n\n` +
+                                        `This action cannot be undone!`
+                                      );
+                                      
+                                      if (shouldDelete) {
+                                        // Delete the existing user first
+                                        const deleteResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users/delete`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            email: existingUser.email,
+                                            userAuthId: existingUser.authId
+                                          })
+                                        });
+                                        
+                                        if (deleteResponse.ok) {
+                                          // Now retry the invitation
+                                          const retryResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                              name: invite.name,
+                                              email: invite.email,
+                                              role: invite.role,
+                                            })
+                                          });
+                                          
+                                          if (!retryResponse.ok) {
+                                            const retryError = await retryResponse.json();
+                                            throw new Error(`Failed to add ${invite.email} after deletion: ${retryError.error || 'Unknown error'}`);
+                                          }
+                                          
+                                          console.log(`✅ Successfully deleted existing user and created new invitation for ${invite.email}`);
+                                        } else {
+                                          const deleteError = await deleteResponse.json();
+                                          throw new Error(`Failed to delete existing user ${invite.email}: ${deleteError.error || 'Unknown error'}`);
+                                        }
+                                      } else {
+                                        throw new Error(`Invitation cancelled - ${invite.email} already exists`);
+                                      }
+                                    } else {
+                                      // Other error types
+                                      throw new Error(`Failed to add ${invite.email}: ${error.error || error.message || 'Unknown error'}`);
+                                    }
                                   }
                                 }
 

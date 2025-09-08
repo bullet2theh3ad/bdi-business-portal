@@ -197,9 +197,36 @@ export async function POST(
       .limit(1);
 
     if (existingUser) {
+      // Get organization info for the existing user
+      const [existingUserOrg] = await db
+        .select({
+          orgCode: organizations.code,
+          orgName: organizations.name,
+        })
+        .from(organizationMembers)
+        .innerJoin(organizations, eq(organizationMembers.organizationUuid, organizations.id))
+        .where(eq(organizationMembers.userAuthId, existingUser.authId))
+        .limit(1);
+
       return NextResponse.json(
-        { error: 'A user with this email already exists' },
-        { status: 400 }
+        { 
+          error: 'user_exists',
+          message: `A user with email ${email} already exists`,
+          existingUser: {
+            id: existingUser.id,
+            authId: existingUser.authId,
+            email: existingUser.email,
+            name: existingUser.name,
+            role: existingUser.role,
+            isActive: existingUser.isActive,
+            passwordHash: existingUser.passwordHash,
+            organization: existingUserOrg ? {
+              code: existingUserOrg.orgCode,
+              name: existingUserOrg.orgName
+            } : null
+          }
+        },
+        { status: 409 } // 409 Conflict - more appropriate than 400
       );
     }
 
