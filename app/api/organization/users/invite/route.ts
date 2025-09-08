@@ -59,13 +59,26 @@ async function getCurrentUser() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 INVITE DEBUG - Starting user invitation process');
+    
     const currentUser = await getCurrentUser();
+    console.log('🔍 INVITE DEBUG - Current user:', currentUser ? {
+      id: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+      authId: currentUser.authId
+    } : 'null');
     
     if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+      console.log('🔍 INVITE DEBUG - Authorization failed - role:', currentUser?.role);
       return NextResponse.json({ error: 'Unauthorized - Organization Admin or Super Admin required' }, { status: 401 });
     }
+    
+    console.log('🔍 INVITE DEBUG - Authorization passed');
 
     // Get the user's organization
+    console.log('🔍 INVITE DEBUG - Looking up user organization for authId:', currentUser.authId);
+    
     const [userOrgMembership] = await db
       .select({
         organization: {
@@ -80,33 +93,48 @@ export async function POST(request: NextRequest) {
       .where(eq(organizationMembers.userAuthId, currentUser.authId))
       .limit(1);
 
+    console.log('🔍 INVITE DEBUG - User organization membership:', userOrgMembership);
+
     if (!userOrgMembership) {
+      console.log('🔍 INVITE DEBUG - No organization membership found');
       return NextResponse.json({ error: 'User not associated with any organization' }, { status: 403 });
     }
 
     const userOrganization = userOrgMembership.organization;
+    console.log('🔍 INVITE DEBUG - User organization:', userOrganization);
 
     const body = await request.json();
-    console.log('Received user invitation request:', body);
+    console.log('🔍 INVITE DEBUG - Request body received:', body);
     
     const validatedData = inviteUserSchema.parse(body);
-    console.log('Validated user invitation data:', validatedData);
+    console.log('🔍 INVITE DEBUG - Validation passed:', validatedData);
 
     // Check if user already exists
+    console.log('🔍 INVITE DEBUG - Checking if user exists:', validatedData.email);
     const existingUser = await db
       .select()
       .from(users)
       .where(eq(users.email, validatedData.email))
       .limit(1);
 
+    console.log('🔍 INVITE DEBUG - Existing user check result:', existingUser);
+
     if (existingUser.length > 0) {
+      console.log('🔍 INVITE DEBUG - User already exists, returning error');
       return NextResponse.json(
         { error: 'A user with this email already exists' },
         { status: 400 }
       );
     }
 
-    console.log('Creating user for organization:', userOrganization.name);
+    console.log('🔍 INVITE DEBUG - Creating user for organization:', userOrganization.name);
+    console.log('🔍 INVITE DEBUG - User data to insert:', {
+      name: validatedData.name,
+      email: validatedData.email,
+      role: validatedData.role,
+      title: validatedData.title,
+      department: validatedData.department,
+    });
 
     // Create the user (pending state)
     const [newUser] = await db
@@ -125,7 +153,7 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    console.log('Created user:', newUser);
+    console.log('🔍 INVITE DEBUG - User created successfully:', newUser);
 
     // Create organization membership
     await db
@@ -234,18 +262,25 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error creating user invitation:', error);
+    console.error('🔍 INVITE DEBUG - CATCH BLOCK - Error creating user invitation:', error);
+    console.error('🔍 INVITE DEBUG - Error type:', typeof error);
+    console.error('🔍 INVITE DEBUG - Error constructor:', error?.constructor?.name);
+    console.error('🔍 INVITE DEBUG - Error message:', error instanceof Error ? error.message : 'Not an Error object');
+    console.error('🔍 INVITE DEBUG - Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     
     if (error instanceof z.ZodError) {
-      console.error('Validation errors:', error.errors);
+      console.error('🔍 INVITE DEBUG - Zod validation errors:', error.errors);
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
         { status: 400 }
       );
     }
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('🔍 INVITE DEBUG - Returning error response:', errorMessage);
+    
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error', details: errorMessage, debugInfo: `Failed to add ${(error as any)?.email || 'unknown email'}` },
       { status: 500 }
     );
   }
