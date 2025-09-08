@@ -37,33 +37,49 @@ export default function AdminUsersPage() {
   });
 
   const handleCreateUser = async () => {
+    console.log('🔍 FRONTEND DEBUG - Starting handleCreateUser');
+    console.log('🔍 FRONTEND DEBUG - createForm:', createForm);
+    
     if (!createForm.name || !createForm.email || !createForm.title) {
+      console.log('🔍 FRONTEND DEBUG - Missing required fields');
       alert('Please fill in all required fields');
       return;
     }
 
     setIsCreating(true);
     try {
+      console.log('🔍 FRONTEND DEBUG - Making API request to /api/organization/users/invite');
+      console.log('🔍 FRONTEND DEBUG - Request body:', JSON.stringify(createForm));
+      
       const response = await fetch('/api/organization/users/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(createForm),
       });
 
+      console.log('🔍 FRONTEND DEBUG - Response status:', response.status);
+      console.log('🔍 FRONTEND DEBUG - Response ok:', response.ok);
+      
       const result = await response.json();
+      console.log('🔍 FRONTEND DEBUG - Response result:', result);
 
       if (result.success) {
+        console.log('🔍 FRONTEND DEBUG - Success - closing modal');
         setShowCreateModal(false);
         setCreateForm({ name: '', email: '', role: 'member', title: '', department: 'Operations' });
         mutateBdiUsers();
         alert('User invitation sent successfully!');
       } else {
-        alert(`Error: ${result.error}`);
+        console.log('🔍 FRONTEND DEBUG - API returned error:', result.error);
+        alert(`Error: ${result.error || 'Unknown error from API'}`);
       }
     } catch (error) {
-      console.error('Error creating user:', error);
-      alert('Failed to create user invitation');
+      console.error('🔍 FRONTEND DEBUG - CATCH BLOCK - Error creating user:', error);
+      console.error('🔍 FRONTEND DEBUG - Error type:', typeof error);
+      console.error('🔍 FRONTEND DEBUG - Error message:', error instanceof Error ? error.message : 'Not an Error object');
+      alert(`Failed to create user invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
+      console.log('🔍 FRONTEND DEBUG - Setting isCreating to false');
       setIsCreating(false);
     }
   };
