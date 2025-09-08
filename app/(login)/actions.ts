@@ -173,28 +173,58 @@ export async function signUp(prevState: any, formData: FormData) {
       }
     );
 
-    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      tokenData.supabaseUserId,
-      {
-        password: password,
-        user_metadata: {
-          name: name || null,
-          password_set: true,
+    // Check if this is an organization setup invitation (has supabaseUserId) or user invitation (no supabaseUserId)
+    if (tokenData.supabaseUserId) {
+      console.log('🔍 SIGNUP DEBUG - Organization setup invitation - updating existing Supabase user');
+      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        tokenData.supabaseUserId,
+        {
+          password: password,
+          user_metadata: {
+            name: name || null,
+            password_set: true,
+          }
         }
+      );
+
+      if (updateError || !updateData.user) {
+        console.error('Failed to update user password:', updateError);
+        return {
+          error: 'Failed to set password. Please try again.',
+          email,
+          password
+        };
       }
-    );
 
-    if (updateError || !updateData.user) {
-      console.error('Failed to update user password:', updateError);
-      return {
-        error: 'Failed to set password. Please try again.',
+      console.log('✅ Updated Supabase user password for invitation signup');
+      supabaseUser = updateData.user;
+    } else {
+      console.log('🔍 SIGNUP DEBUG - User invitation - creating new Supabase user');
+      // This is a user invitation - create new Supabase user
+      const { data, error } = await supabase.auth.signUp({
         email,
-        password
-      };
-    }
+        password,
+        options: {
+          emailRedirectTo: undefined,
+          data: {
+            name: name || null,
+            role: tokenData.role || 'member',
+          }
+        }
+      });
 
-    console.log('✅ Updated Supabase user password for invitation signup');
-    supabaseUser = updateData.user;
+      if (error || !data.user) {
+        console.error('Failed to create Supabase user:', error);
+        return {
+          error: error?.message || 'Failed to create user. Please try again.',
+          email,
+          password
+        };
+      }
+
+      console.log('✅ Created new Supabase user for invitation signup');
+      supabaseUser = data.user;
+    }
   }
 
   try {
