@@ -1884,7 +1884,7 @@ export default function ShipmentsPage() {
 
       {/* JJOLM Upload Modal */}
       <Dialog open={showJjolmModal} onOpenChange={setShowJjolmModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SemanticBDIIcon semantic="analytics" size={20} />
@@ -1895,17 +1895,29 @@ export default function ShipmentsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden space-y-6">
+          <div className="space-y-6 p-4 sm:p-6 lg:p-8">
             {/* Upload Section */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <SemanticBDIIcon semantic="plus" size={16} />
-                  Upload JJOLM Report
-                </CardTitle>
-                <CardDescription>
-                  Upload Excel files with format: BOUNDLESS-DEVICES-SHIPMENT-REPORT_[date].xlsx
-                </CardDescription>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-3 text-lg">
+                      <SemanticBDIIcon semantic="plus" size={20} />
+                      Upload JJOLM Report
+                    </CardTitle>
+                    <CardDescription>
+                      Upload Excel files with format: BOUNDLESS-DEVICES-SHIPMENT-REPORT_[date].xlsx
+                    </CardDescription>
+                  </div>
+                  {(jjolmData?.data || []).length > 0 && (
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Last Updated</div>
+                      <div className="text-sm font-medium">
+                        {new Date((jjolmData.data[0]?.lastUpdated || jjolmData.data[0]?.uploadDate)).toLocaleString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -1977,12 +1989,10 @@ export default function ShipmentsPage() {
 
             {/* JJOLM Records */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between text-base">
-                  <div className="flex items-center gap-2">
-                    <SemanticBDIIcon semantic="shipping" size={16} />
-                    Available JJOLM Numbers ({(jjolmData?.data || []).length})
-                  </div>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-3 text-lg">
+                  <SemanticBDIIcon semantic="shipping" size={20} />
+                  Available JJOLM Numbers ({(jjolmData?.data || []).length.toLocaleString()})
                 </CardTitle>
                 <CardDescription>
                   Click any JJOLM number to view its timeline and tracking history
@@ -1995,36 +2005,63 @@ export default function ShipmentsPage() {
                     <p className="text-muted-foreground">No JJOLM records found. Upload a report to get started.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
                     {(jjolmData?.data || []).slice(0, 20).map((record: any) => (
                       <div
                         key={record.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="p-3 sm:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                         onClick={() => handleViewJjolmTimeline(record.jjolmNumber)}
                       >
-                        <div className="flex-1">
-                          <div className="font-medium text-sm text-blue-600 hover:text-blue-800">
+                        {/* Mobile Layout */}
+                        <div className="block sm:hidden space-y-2">
+                          <div className="font-medium text-sm text-blue-600">
                             {record.jjolmNumber}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {record.customerReferenceNumber && (
-                              <span>Customer: {record.customerReferenceNumber} • </span>
+                              <div>Customer: {record.customerReferenceNumber}</div>
                             )}
-                            {record.mode && <span>Mode: {record.mode} • </span>}
-                            Updates: {record.updateCount}
+                            {record.mode && <div>Mode: {record.mode}</div>}
+                            <div>Updates: {record.updateCount}</div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            {record.status && (
+                              <Badge variant="outline" className="text-xs">
+                                {record.status}
+                              </Badge>
+                            )}
+                            <div className="text-xs text-muted-foreground">
+                              {record.lastUpdated && new Date(record.lastUpdated).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {record.status && (
-                            <Badge variant="outline" className="text-xs">
-                              {record.status}
-                            </Badge>
-                          )}
-                          <div className="text-xs text-muted-foreground">
-                            {record.lastUpdated && new Date(record.lastUpdated).toLocaleDateString()}
+
+                        {/* Desktop Layout */}
+                        <div className="hidden sm:flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm text-blue-600 hover:text-blue-800">
+                              {record.jjolmNumber}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {record.customerReferenceNumber && (
+                                <span>Customer: {record.customerReferenceNumber} • </span>
+                              )}
+                              {record.mode && <span>Mode: {record.mode} • </span>}
+                              Updates: {record.updateCount}
+                            </div>
                           </div>
-                          <SemanticBDIIcon semantic="analytics" size={16} className="text-blue-500" />
+                          
+                          <div className="flex items-center gap-4">
+                            {record.status && (
+                              <Badge variant="outline" className="text-xs">
+                                {record.status}
+                              </Badge>
+                            )}
+                            <div className="text-xs text-muted-foreground min-w-[80px]">
+                              {record.lastUpdated && new Date(record.lastUpdated).toLocaleDateString()}
+                            </div>
+                            <SemanticBDIIcon semantic="analytics" size={16} className="text-blue-500" />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -2038,7 +2075,7 @@ export default function ShipmentsPage() {
 
       {/* JJOLM Timeline Modal */}
       <Dialog open={showJjolmTimeline} onOpenChange={setShowJjolmTimeline}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SemanticBDIIcon semantic="analytics" size={20} />
@@ -2049,7 +2086,8 @@ export default function ShipmentsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {timelineLoading ? (
+          <div className="p-4 sm:p-6 lg:p-8">
+            {timelineLoading ? (
             <div className="flex items-center justify-center py-8">
               <SemanticBDIIcon semantic="sync" size={32} className="animate-spin text-blue-500" />
               <span className="ml-2">Loading timeline...</span>
@@ -2150,6 +2188,7 @@ export default function ShipmentsPage() {
               </div>
             </div>
           )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
