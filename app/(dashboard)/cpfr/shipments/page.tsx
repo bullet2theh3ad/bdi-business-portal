@@ -2038,7 +2038,7 @@ export default function ShipmentsPage() {
 
       {/* JJOLM Timeline Modal */}
       <Dialog open={showJjolmTimeline} onOpenChange={setShowJjolmTimeline}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SemanticBDIIcon semantic="analytics" size={20} />
@@ -2055,9 +2055,9 @@ export default function ShipmentsPage() {
               <span className="ml-2">Loading timeline...</span>
             </div>
           ) : timelineData?.data ? (
-            <div className="flex-1 overflow-hidden">
+            <div className="space-y-6">
               {/* Current Status Summary */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 className="font-semibold text-blue-800 mb-3">Current Status</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                   <div>
@@ -2100,7 +2100,7 @@ export default function ShipmentsPage() {
               </div>
 
               {/* Timeline Events */}
-              <div className="flex-1 overflow-y-auto">
+              <div>
                 <h3 className="font-semibold mb-4">Timeline ({timelineData.data.timeline.length} events)</h3>
                 <div className="space-y-4">
                   {timelineData.data.timeline.map((event: any, index: number) => (

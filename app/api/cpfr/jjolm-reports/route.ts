@@ -273,9 +273,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📍 Column mapping:', columnMapping);
+    
+    // Log which columns were found
+    const foundColumns = Object.entries(columnMapping).filter(([key, index]) => index !== -1);
+    console.log('✅ Found columns:', foundColumns.map(([key, index]) => `${key}: ${headers[index]} (col ${index})`));
 
     // Process data rows
     const dataRows = jsonData.slice(headerRowIndex + 1) as any[][];
+    console.log('📋 Sample first data row:', dataRows[0]);
     const processedRecords = [];
     const errors = [];
     let newRecords = 0;
@@ -342,6 +347,11 @@ export async function POST(request: NextRequest) {
           deliveryDate: parseDate(columnMapping.deliveryDate),
           estimatedDeliveryDate: parseDate(columnMapping.estimatedDeliveryDate) || parseDate(columnMapping.eta),
         };
+
+        // Log extracted data for first few records
+        if (i < 3) {
+          console.log(`📊 Row ${i + 1} extracted data for ${jjolmNumber}:`, extractedData);
+        }
 
         // Build additional data from remaining columns (not already mapped)
         const additionalData: any = {};
