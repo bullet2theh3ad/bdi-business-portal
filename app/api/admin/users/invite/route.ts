@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       });
 
     // Send invitation email using Resend (like WHEELS system)
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-up?token=${invitationToken}`;
+    const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
     
     if (resend) {
       try {

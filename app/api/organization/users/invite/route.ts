@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     ).toString('base64url');
 
     // Send invitation email
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-up?token=${invitationToken}`;
+    const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
     
     if (resend) {
       try {
