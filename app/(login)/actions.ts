@@ -10,6 +10,7 @@ import {
   organizationMembers,
   invitations,
   users,
+  organizationInvitations,
 } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -244,22 +245,53 @@ export async function signUp(prevState: any, formData: FormData) {
       
       if (tokenData.isLegacyToken) {
         // For legacy tokens, validate against organization_invitations table
-        console.log('Looking up legacy invitation token:', tokenData.legacyToken);
+        console.log('Looking up legacy invitation token in organization_invitations table:', tokenData.legacyToken);
         
         try {
-          // Check if the legacy token exists and is valid
-          // For now, we'll assume any BDI-timestamp-random token is valid
-          // In a full implementation, you'd query the organization_invitations table
-          console.log('Validating legacy token for email:', email);
+          // Look up the invitation in organization_invitations table
+          const [orgInvitation] = await db
+            .select()
+            .from(organizationInvitations)
+            .where(
+              and(
+                eq(organizationInvitations.invitationToken, tokenData.legacyToken),
+                eq(organizationInvitations.invitedEmail, email),
+                eq(organizationInvitations.status, 'pending')
+              )
+            )
+            .limit(1);
+
+          if (!orgInvitation) {
+            console.error('❌ Legacy invitation not found or already used');
+            return {
+              error: 'Invalid or expired invitation token.',
+              email,
+              password
+            };
+          }
+
+          // Check if invitation has expired
+          if (orgInvitation.expiresAt && new Date() > orgInvitation.expiresAt) {
+            console.error('❌ Legacy invitation has expired');
+            return {
+              error: 'This invitation has expired. Please request a new one.',
+              email,
+              password
+            };
+          }
+
+          console.log('✅ Found valid organization invitation:', orgInvitation.invitationToken);
           
           pendingUser = {
-            email: email,
-            name: null, // Will be provided by user
-            role: 'member', // Default role for legacy invitations
+            email: orgInvitation.invitedEmail,
+            name: orgInvitation.invitedName,
+            role: orgInvitation.invitedRole,
             passwordHash: 'invitation_pending',
             isActive: false,
             authId: null, // Will be set during signup
-            isLegacyInvitation: true
+            isLegacyInvitation: true,
+            orgInvitationId: orgInvitation.id,
+            organizationId: orgInvitation.organizationId
           };
           
           console.log('✅ Legacy token validated successfully');
