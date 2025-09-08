@@ -180,34 +180,99 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 Found headers at row ${headerRowIndex + 1}:`, headers);
 
-    // Find required columns
-    const requiredColumns = {
+    // Find all relevant columns
+    const columnMapping = {
+      // Required columns
       mode: -1,
       shipmentReferenceNumber: -1,
       customerReferenceNumber: -1,
+      
+      // Optional but important columns
+      origin: -1,
+      destination: -1,
+      carrier: -1,
+      serviceType: -1,
+      status: -1,
+      trackingNumber: -1,
+      
+      // Date columns
+      pickupDate: -1,
+      deliveryDate: -1,
+      estimatedDeliveryDate: -1,
+      shipDate: -1,
+      etd: -1,
+      eta: -1,
     };
 
-    // Map headers to column indexes (case-insensitive)
+    // Map headers to column indexes (case-insensitive, flexible matching)
     headers.forEach((header, index) => {
       const normalizedHeader = header.toLowerCase().trim();
       
+      // Mode column
       if (normalizedHeader.includes('mode')) {
-        requiredColumns.mode = index;
-      } else if (normalizedHeader.includes('shipment') && normalizedHeader.includes('reference')) {
-        requiredColumns.shipmentReferenceNumber = index;
-      } else if (normalizedHeader.includes('customer') && normalizedHeader.includes('reference')) {
-        requiredColumns.customerReferenceNumber = index;
+        columnMapping.mode = index;
+      }
+      // Shipment reference (JJOLM number)
+      else if (normalizedHeader.includes('shipment') && normalizedHeader.includes('reference')) {
+        columnMapping.shipmentReferenceNumber = index;
+      }
+      // Customer reference
+      else if (normalizedHeader.includes('customer') && normalizedHeader.includes('reference')) {
+        columnMapping.customerReferenceNumber = index;
+      }
+      // Origin/From
+      else if (normalizedHeader.includes('origin') || normalizedHeader.includes('from') || normalizedHeader.includes('pickup')) {
+        columnMapping.origin = index;
+      }
+      // Destination/To
+      else if (normalizedHeader.includes('destination') || normalizedHeader.includes('to') || normalizedHeader.includes('delivery location')) {
+        columnMapping.destination = index;
+      }
+      // Carrier/Shipping line
+      else if (normalizedHeader.includes('carrier') || normalizedHeader.includes('shipping') || normalizedHeader.includes('line')) {
+        columnMapping.carrier = index;
+      }
+      // Service type
+      else if (normalizedHeader.includes('service') && (normalizedHeader.includes('type') || normalizedHeader.includes('level'))) {
+        columnMapping.serviceType = index;
+      }
+      // Status
+      else if (normalizedHeader.includes('status') || normalizedHeader.includes('state')) {
+        columnMapping.status = index;
+      }
+      // Tracking number
+      else if (normalizedHeader.includes('tracking') && normalizedHeader.includes('number')) {
+        columnMapping.trackingNumber = index;
+      }
+      // Dates - pickup/ship
+      else if ((normalizedHeader.includes('pickup') || normalizedHeader.includes('ship')) && normalizedHeader.includes('date')) {
+        columnMapping.pickupDate = index;
+      }
+      // Dates - delivery
+      else if (normalizedHeader.includes('delivery') && normalizedHeader.includes('date')) {
+        columnMapping.deliveryDate = index;
+      }
+      // Dates - estimated delivery
+      else if (normalizedHeader.includes('estimated') && normalizedHeader.includes('delivery')) {
+        columnMapping.estimatedDeliveryDate = index;
+      }
+      // ETD/ETA
+      else if (normalizedHeader === 'etd' || normalizedHeader.includes('estimated departure')) {
+        columnMapping.etd = index;
+      }
+      else if (normalizedHeader === 'eta' || normalizedHeader.includes('estimated arrival')) {
+        columnMapping.eta = index;
       }
     });
 
     // Validate required columns found
-    if (requiredColumns.shipmentReferenceNumber === -1) {
+    if (columnMapping.shipmentReferenceNumber === -1) {
       return NextResponse.json({ 
         error: 'Required column "Shipment Reference Number" not found in Excel file' 
       }, { status: 400 });
     }
 
-    console.log('📍 Column mapping:', requiredColumns);
+    console.log('📍 Column mapping:', columnMapping);
 
     // Process data rows
     const dataRows = jsonData.slice(headerRowIndex + 1) as any[][];
@@ -222,22 +287,67 @@ export async function POST(request: NextRequest) {
 
       try {
         // Extract JJOLM number
-        const jjolmNumber = String(row[requiredColumns.shipmentReferenceNumber] || '').trim();
+        const jjolmNumber = String(row[columnMapping.shipmentReferenceNumber] || '').trim();
         if (!jjolmNumber) {
           continue; // Skip empty JJOLM numbers
         }
 
-        // Extract other data
-        const mode = requiredColumns.mode >= 0 ? String(row[requiredColumns.mode] || '').trim() : '';
-        const customerRef = requiredColumns.customerReferenceNumber >= 0 ? 
-          String(row[requiredColumns.customerReferenceNumber] || '').trim() : '';
+        // Helper function to extract and clean data
+        const extractData = (columnIndex: number) => {
+          if (columnIndex === -1) return null;
+          const value = row[columnIndex];
+          if (value === undefined || value === null || value === '') return null;
+          return String(value).trim();
+        };
 
-        // Build additional data from remaining columns
+        // Helper function to parse dates
+        const parseDate = (columnIndex: number) => {
+          const value = extractData(columnIndex);
+          if (!value) return null;
+          
+          try {
+            // Try parsing as Excel serial date first
+            if (!isNaN(Number(value))) {
+              const excelDate = new Date((Number(value) - 25569) * 86400 * 1000);
+              if (excelDate.getFullYear() > 1900) {
+                return excelDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+              }
+            }
+            
+            // Try parsing as regular date string
+            const parsedDate = new Date(value);
+            if (!isNaN(parsedDate.getTime())) {
+              return parsedDate.toISOString().split('T')[0];
+            }
+          } catch (error) {
+            console.warn(`Could not parse date: ${value}`);
+          }
+          
+          return value; // Return original value if parsing fails
+        };
+
+        // Extract all mapped data
+        const extractedData = {
+          mode: extractData(columnMapping.mode),
+          customerReferenceNumber: extractData(columnMapping.customerReferenceNumber),
+          origin: extractData(columnMapping.origin),
+          destination: extractData(columnMapping.destination),
+          carrier: extractData(columnMapping.carrier),
+          serviceType: extractData(columnMapping.serviceType),
+          status: extractData(columnMapping.status),
+          trackingNumber: extractData(columnMapping.trackingNumber),
+          
+          // Parse dates
+          pickupDate: parseDate(columnMapping.pickupDate) || parseDate(columnMapping.shipDate),
+          deliveryDate: parseDate(columnMapping.deliveryDate),
+          estimatedDeliveryDate: parseDate(columnMapping.estimatedDeliveryDate) || parseDate(columnMapping.eta),
+        };
+
+        // Build additional data from remaining columns (not already mapped)
         const additionalData: any = {};
+        const mappedColumns = Object.values(columnMapping);
         headers.forEach((header, colIndex) => {
-          if (colIndex !== requiredColumns.mode && 
-              colIndex !== requiredColumns.shipmentReferenceNumber && 
-              colIndex !== requiredColumns.customerReferenceNumber) {
+          if (!mappedColumns.includes(colIndex)) {
             const value = row[colIndex];
             if (value !== undefined && value !== null && value !== '') {
               additionalData[header] = value;
@@ -253,23 +363,45 @@ export async function POST(request: NextRequest) {
           .limit(1);
 
         if (existingRecord) {
-          // Update existing record
+          // Update existing record - track all changes for history
           const changes: any[] = [];
           
-          // Track what changed for history
-          if (existingRecord.mode !== mode) {
-            changes.push({ field: 'mode', oldValue: existingRecord.mode, newValue: mode });
-          }
-          if (existingRecord.customerReferenceNumber !== customerRef) {
-            changes.push({ field: 'customerReferenceNumber', oldValue: existingRecord.customerReferenceNumber, newValue: customerRef });
+          // Compare all fields and track changes
+          const fieldsToCheck = [
+            { field: 'mode', oldValue: existingRecord.mode, newValue: extractedData.mode },
+            { field: 'customerReferenceNumber', oldValue: existingRecord.customerReferenceNumber, newValue: extractedData.customerReferenceNumber },
+            { field: 'origin', oldValue: existingRecord.origin, newValue: extractedData.origin },
+            { field: 'destination', oldValue: existingRecord.destination, newValue: extractedData.destination },
+            { field: 'carrier', oldValue: existingRecord.carrier, newValue: extractedData.carrier },
+            { field: 'serviceType', oldValue: existingRecord.serviceType, newValue: extractedData.serviceType },
+            { field: 'status', oldValue: existingRecord.status, newValue: extractedData.status },
+            { field: 'trackingNumber', oldValue: existingRecord.trackingNumber, newValue: extractedData.trackingNumber },
+            { field: 'pickupDate', oldValue: existingRecord.pickupDate, newValue: extractedData.pickupDate },
+            { field: 'deliveryDate', oldValue: existingRecord.deliveryDate, newValue: extractedData.deliveryDate },
+            { field: 'estimatedDeliveryDate', oldValue: existingRecord.estimatedDeliveryDate, newValue: extractedData.estimatedDeliveryDate },
+          ];
+
+          for (const fieldCheck of fieldsToCheck) {
+            if (fieldCheck.oldValue !== fieldCheck.newValue && fieldCheck.newValue !== null) {
+              changes.push(fieldCheck);
+            }
           }
 
-          // Update record
+          // Update record with all new data
           await db
             .update(jjolmTracking)
             .set({
-              mode: mode || existingRecord.mode,
-              customerReferenceNumber: customerRef || existingRecord.customerReferenceNumber,
+              mode: extractedData.mode || existingRecord.mode,
+              customerReferenceNumber: extractedData.customerReferenceNumber || existingRecord.customerReferenceNumber,
+              origin: extractedData.origin || existingRecord.origin,
+              destination: extractedData.destination || existingRecord.destination,
+              carrier: extractedData.carrier || existingRecord.carrier,
+              serviceType: extractedData.serviceType || existingRecord.serviceType,
+              status: extractedData.status || existingRecord.status,
+              trackingNumber: extractedData.trackingNumber || existingRecord.trackingNumber,
+              pickupDate: extractedData.pickupDate || existingRecord.pickupDate,
+              deliveryDate: extractedData.deliveryDate || existingRecord.deliveryDate,
+              estimatedDeliveryDate: extractedData.estimatedDeliveryDate || existingRecord.estimatedDeliveryDate,
               additionalData,
               sourceFileName: fileName,
               uploadedBy: requestingUser.authId,
@@ -291,11 +423,20 @@ export async function POST(request: NextRequest) {
 
           updatedRecords++;
         } else {
-          // Create new record
+          // Create new record with all extracted data
           await db.insert(jjolmTracking).values({
             jjolmNumber,
-            mode,
-            customerReferenceNumber: customerRef,
+            mode: extractedData.mode,
+            customerReferenceNumber: extractedData.customerReferenceNumber,
+            origin: extractedData.origin,
+            destination: extractedData.destination,
+            carrier: extractedData.carrier,
+            serviceType: extractedData.serviceType,
+            status: extractedData.status,
+            trackingNumber: extractedData.trackingNumber,
+            pickupDate: extractedData.pickupDate,
+            deliveryDate: extractedData.deliveryDate,
+            estimatedDeliveryDate: extractedData.estimatedDeliveryDate,
             additionalData,
             sourceFileName: fileName,
             uploadedBy: requestingUser.authId,
@@ -304,7 +445,14 @@ export async function POST(request: NextRequest) {
           newRecords++;
         }
 
-        processedRecords.push({ jjolmNumber, mode, customerRef });
+        processedRecords.push({ 
+          jjolmNumber, 
+          mode: extractedData.mode,
+          customerRef: extractedData.customerReferenceNumber,
+          origin: extractedData.origin,
+          destination: extractedData.destination,
+          status: extractedData.status,
+        });
 
       } catch (rowError) {
         console.error(`Error processing row ${i + headerRowIndex + 2}:`, rowError);
