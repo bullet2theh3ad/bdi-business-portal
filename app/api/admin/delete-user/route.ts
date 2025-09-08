@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, organizationMembers } from '@/lib/db/schema';
+import { users, organizationMembers, organizationInvitations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 async function createSupabaseServerClient() {
@@ -38,7 +38,7 @@ async function getCurrentUser() {
   const [dbUser] = await db
     .select()
     .from(users)
-    .where(eq(users.email, authUser.email!))
+    .where(eq(users.authId, authUser.id))
     .limit(1);
 
   return dbUser;
@@ -46,78 +46,87 @@ async function getCurrentUser() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🗑️ DELETE USER - Starting delete process');
+    
     const currentUser = await getCurrentUser();
+    console.log('🗑️ DELETE USER - Current user:', currentUser?.email, currentUser?.role);
     
     if (!currentUser || !['super_admin', 'admin'].includes(currentUser.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('🗑️ DELETE USER - Authorization failed');
+      return NextResponse.json({ error: 'Unauthorized - Admin required' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { userEmail } = body;
+    console.log('🗑️ DELETE USER - Request body:', body);
+    
+    const { email } = body;
 
-    if (!userEmail) {
-      return NextResponse.json({ error: 'User email required' }, { status: 400 });
+    if (!email) {
+      console.log('🗑️ DELETE USER - Missing email');
+      return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
-    // Prevent self-deletion
-    if (currentUser.email === userEmail) {
-      return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 403 });
-    }
+    console.log('🗑️ DELETE USER - Looking up user to delete:', email);
 
-    console.log('Complete cleanup for:', userEmail);
-
-    // Step 1: Remove organization memberships first (to avoid foreign key constraints)
-    const deletedMemberships = await db
-      .delete(organizationMembers)
-      .where(eq(organizationMembers.userAuthId, 
-        db.select({ authId: users.authId }).from(users).where(eq(users.email, userEmail))
-      ))
-      .returning();
-
-    console.log('Deleted memberships:', deletedMemberships.length);
-
-    // Step 2: Get user info before deletion
+    // Find the user to delete
     const [userToDelete] = await db
       .select()
       .from(users)
-      .where(eq(users.email, userEmail))
+      .where(eq(users.email, email))
       .limit(1);
 
+    console.log('🗑️ DELETE USER - Found user:', userToDelete ? {
+      id: userToDelete.id,
+      email: userToDelete.email,
+      name: userToDelete.name,
+      authId: userToDelete.authId
+    } : 'null');
+
     if (!userToDelete) {
+      console.log('🗑️ DELETE USER - User not found');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Step 3: Completely remove the user record
-    const deletedUsers = await db
+    console.log('🗑️ DELETE USER - Step 1: Deleting organization memberships');
+    
+    // 1. Delete organization memberships first (foreign key constraint)
+    await db
+      .delete(organizationMembers)
+      .where(eq(organizationMembers.userAuthId, userToDelete.authId));
+
+    console.log('🗑️ DELETE USER - Step 2: Deleting user record');
+
+    // 2. Delete the user record
+    await db
       .delete(users)
-      .where(eq(users.email, userEmail))
-      .returning();
+      .where(eq(users.email, email));
 
-    console.log('Deleted users:', deletedUsers.length);
+    console.log('🗑️ DELETE USER - Step 3: Cleaning up legacy invitations');
 
-    // Step 4: Verify complete removal
-    const [remainingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, userEmail))
-      .limit(1);
+    // 3. Clean up any legacy invitation tokens
+    await db
+      .delete(organizationInvitations)
+      .where(eq(organizationInvitations.invitedEmail, email));
 
-    if (remainingUser) {
-      console.error('User still exists after deletion:', remainingUser);
-      return NextResponse.json({ error: 'Failed to completely remove user' }, { status: 500 });
-    }
-
-    console.log('✅ User completely removed:', userEmail);
+    console.log('🗑️ DELETE USER - ✅ Successfully deleted user:', email);
 
     return NextResponse.json({
       success: true,
-      message: `User ${userEmail} has been completely removed from the system`
+      message: `User ${email} has been permanently deleted`,
+      deletedUser: {
+        email: userToDelete.email,
+        name: userToDelete.name,
+        id: userToDelete.id
+      }
     });
     
   } catch (error) {
-    console.error('Error deleting user:', error);
+    console.error('🗑️ DELETE USER - ❌ Error:', error);
+    console.error('🗑️ DELETE USER - Error type:', typeof error);
+    console.error('🗑️ DELETE USER - Error details:', error instanceof Error ? error.message : 'Unknown error');
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

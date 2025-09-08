@@ -2203,13 +2203,24 @@ ${result.email?.sent
                                       );
                                       
                                       if (shouldDelete) {
-                                        // Delete the existing user first using the user ID endpoint
-                                        const deleteResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users/${existingUser.authId}`, {
-                                          method: 'DELETE',
-                                          headers: { 'Content-Type': 'application/json' }
+                                        console.log('🗑️ FRONTEND DELETE - Starting delete process for:', existingUser.email);
+                                        
+                                        // Delete the existing user using the simple delete endpoint
+                                        const deleteResponse = await fetch('/api/admin/delete-user', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ email: existingUser.email })
                                         });
                                         
+                                        console.log('🗑️ FRONTEND DELETE - Delete response status:', deleteResponse.status);
+                                        console.log('🗑️ FRONTEND DELETE - Delete response ok:', deleteResponse.ok);
+                                        
                                         if (deleteResponse.ok) {
+                                          const deleteResult = await deleteResponse.json();
+                                          console.log('🗑️ FRONTEND DELETE - Delete successful:', deleteResult);
+                                        
+                                          console.log('🔄 FRONTEND RETRY - Starting invitation retry for:', invite.email);
+                                          
                                           // Now retry the invitation
                                           const retryResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users`, {
                                             method: 'POST',
@@ -2221,11 +2232,17 @@ ${result.email?.sent
                                             })
                                           });
                                           
+                                          console.log('🔄 FRONTEND RETRY - Retry response status:', retryResponse.status);
+                                          console.log('🔄 FRONTEND RETRY - Retry response ok:', retryResponse.ok);
+                                          
                                           if (!retryResponse.ok) {
                                             const retryError = await retryResponse.json();
+                                            console.log('🔄 FRONTEND RETRY - Retry failed:', retryError);
                                             throw new Error(`Failed to add ${invite.email} after deletion: ${retryError.error || 'Unknown error'}`);
                                           }
                                           
+                                          const retryResult = await retryResponse.json();
+                                          console.log('🔄 FRONTEND RETRY - ✅ Retry successful:', retryResult);
                                           console.log(`✅ Successfully deleted existing user and created new invitation for ${invite.email}`);
                                         } else {
                                           const deleteError = await deleteResponse.json();

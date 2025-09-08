@@ -273,14 +273,16 @@ export async function POST(
 
     const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
     
-    console.log('🔍 EMAIL DEBUG - Invitation URL generated:', inviteUrl);
-    console.log('🔍 EMAIL DEBUG - Resend configured:', !!resend);
-    console.log('🔍 EMAIL DEBUG - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+    console.log('📧 EMAIL PROCESS - Invitation URL generated:', inviteUrl);
+    console.log('📧 EMAIL PROCESS - Resend configured:', !!resend);
+    console.log('📧 EMAIL PROCESS - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+    console.log('📧 EMAIL PROCESS - Environment:', process.env.NODE_ENV || 'development');
     
     // Send invitation email
     if (resend) {
       try {
-        console.log('🔍 EMAIL DEBUG - Attempting to send email to:', email);
+        console.log('📧 EMAIL PROCESS - Attempting to send email to:', email);
+        console.log('📧 EMAIL PROCESS - Email subject:', `Invitation to join ${targetOrganization.name} on BDI Business Portal`);
         
         const { data, error } = await resend.emails.send({
           from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
@@ -325,20 +327,26 @@ export async function POST(
         });
 
         if (error) {
-          console.error('🔍 EMAIL DEBUG - Resend API error:', error);
-          console.error('🔍 EMAIL DEBUG - Error details:', JSON.stringify(error));
+          console.error('📧 EMAIL PROCESS - ❌ Resend API error:', error);
+          console.error('📧 EMAIL PROCESS - Error details:', JSON.stringify(error));
+          console.error('📧 EMAIL PROCESS - Error type:', error?.name);
+          console.error('📧 EMAIL PROCESS - Error message:', error?.message);
         } else {
-          console.log('🔍 EMAIL DEBUG - Email sent successfully!');
-          console.log('🔍 EMAIL DEBUG - Resend response data:', data);
-          console.log('🔍 EMAIL DEBUG - Email ID:', data?.id);
+          console.log('📧 EMAIL PROCESS - ✅ Email sent successfully!');
+          console.log('📧 EMAIL PROCESS - Resend response data:', data);
+          console.log('📧 EMAIL PROCESS - Email ID:', data?.id);
+          console.log('📧 EMAIL PROCESS - Recipient:', email);
         }
       } catch (emailError) {
-        console.error('🔍 EMAIL DEBUG - Email sending exception:', emailError);
+        console.error('📧 EMAIL PROCESS - ❌ Email sending exception:', emailError);
+        console.error('📧 EMAIL PROCESS - Exception type:', typeof emailError);
+        console.error('📧 EMAIL PROCESS - Exception message:', emailError instanceof Error ? emailError.message : 'Unknown');
         // Don't fail the whole operation if email fails
       }
     } else {
-      console.log('🔍 EMAIL DEBUG - Resend not configured. Invitation URL:', inviteUrl);
-      console.log('🔍 EMAIL DEBUG - Check RESEND_API_KEY environment variable');
+      console.log('📧 EMAIL PROCESS - ❌ Resend not configured');
+      console.log('📧 EMAIL PROCESS - RESEND_API_KEY missing in environment');
+      console.log('📧 EMAIL PROCESS - Invitation URL (not emailed):', inviteUrl);
     }
     
     console.log(`Super Admin created user ${email} for organization ${targetOrganization.code}`);
