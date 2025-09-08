@@ -1771,37 +1771,37 @@ export default function WarehousesPage() {
             {/* Inventory Summary */}
             {emgInventoryData?.data?.summary && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <SemanticBDIIcon semantic="inventory_analytics" size={16} />
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    <SemanticBDIIcon semantic="inventory_analytics" size={20} />
                     Inventory Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="text-center p-4 sm:p-6 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">
                         {emgInventoryData.data.summary.totalSkus.toLocaleString()}
                       </div>
-                      <div className="text-sm text-blue-700">Total SKUs</div>
+                      <div className="text-xs sm:text-sm font-medium text-blue-700">Total SKUs</div>
                     </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">
+                    <div className="text-center p-4 sm:p-6 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">
                         {emgInventoryData.data.summary.totalOnHand.toLocaleString()}
                       </div>
-                      <div className="text-sm text-green-700">On Hand</div>
+                      <div className="text-xs sm:text-sm font-medium text-green-700">On Hand</div>
                     </div>
-                    <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">
+                    <div className="text-center p-4 sm:p-6 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-1">
                         {emgInventoryData.data.summary.totalAllocated.toLocaleString()}
                       </div>
-                      <div className="text-sm text-orange-700">Allocated</div>
+                      <div className="text-xs sm:text-sm font-medium text-orange-700">Allocated</div>
                     </div>
-                    <div className="text-center p-4 bg-red-50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">
+                    <div className="text-center p-4 sm:p-6 bg-red-50 rounded-lg border border-red-200">
+                      <div className="text-xl sm:text-2xl font-bold text-red-600 mb-1">
                         {emgInventoryData.data.summary.totalBackorder.toLocaleString()}
                       </div>
-                      <div className="text-sm text-red-700">Backorder</div>
+                      <div className="text-xs sm:text-sm font-medium text-red-700">Backorder</div>
                     </div>
                   </div>
                 </CardContent>
@@ -1811,17 +1811,18 @@ export default function WarehousesPage() {
             {/* Charts Section */}
             {emgInventoryData?.data?.currentInventory?.length > 0 && (
               <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <SemanticBDIIcon semantic="analytics" size={16} />
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <CardTitle className="flex items-center gap-3 text-lg">
+                      <SemanticBDIIcon semantic="analytics" size={20} />
                       Inventory Analysis
                     </CardTitle>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button
                         variant={inventoryChartView === 'current' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setInventoryChartView('current')}
+                        className="flex-1 sm:flex-none"
                       >
                         Current Levels
                       </Button>
@@ -1829,6 +1830,7 @@ export default function WarehousesPage() {
                         variant={inventoryChartView === 'trends' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setInventoryChartView('trends')}
+                        className="flex-1 sm:flex-none"
                       >
                         Trends
                       </Button>
@@ -1837,20 +1839,31 @@ export default function WarehousesPage() {
                 </CardHeader>
                 <CardContent>
                   {inventoryChartView === 'current' ? (
-                    <div className="h-80">
+                    <div className="h-64 sm:h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={emgInventoryData.data.currentInventory.slice(0, 20)}>
+                        <BarChart 
+                          data={emgInventoryData.data.currentInventory.slice(0, 15)} 
+                          margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="model" 
                             angle={-45}
                             textAnchor="end"
                             height={60}
-                            fontSize={10}
+                            fontSize={9}
+                            interval={0}
                           />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
+                          <YAxis fontSize={10} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: '#f8fafc', 
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '12px' }} />
                           <Bar dataKey="qtyOnHand" fill="#10b981" name="On Hand" />
                           <Bar dataKey="qtyAllocated" fill="#f59e0b" name="Allocated" />
                           <Bar dataKey="qtyBackorder" fill="#ef4444" name="Backorder" />
@@ -1858,22 +1871,32 @@ export default function WarehousesPage() {
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <div className="h-80">
+                    <div className="h-64 sm:h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={emgInventoryData.data.history?.slice(0, 50) || []}>
+                        <LineChart 
+                          data={emgInventoryData.data.history?.slice(0, 30) || []}
+                          margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="snapshotDate"
                             tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                            fontSize={9}
                           />
-                          <YAxis />
+                          <YAxis fontSize={10} />
                           <Tooltip 
                             labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                            contentStyle={{ 
+                              backgroundColor: '#f8fafc', 
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}
                           />
-                          <Legend />
-                          <Line type="monotone" dataKey="qtyOnHand" stroke="#10b981" name="On Hand" />
-                          <Line type="monotone" dataKey="qtyAllocated" stroke="#f59e0b" name="Allocated" />
-                          <Line type="monotone" dataKey="netStock" stroke="#3b82f6" name="Net Stock" />
+                          <Legend wrapperStyle={{ fontSize: '12px' }} />
+                          <Line type="monotone" dataKey="qtyOnHand" stroke="#10b981" name="On Hand" strokeWidth={2} />
+                          <Line type="monotone" dataKey="qtyAllocated" stroke="#f59e0b" name="Allocated" strokeWidth={2} />
+                          <Line type="monotone" dataKey="netStock" stroke="#3b82f6" name="Net Stock" strokeWidth={2} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -1885,45 +1908,79 @@ export default function WarehousesPage() {
             {/* Current Inventory Table */}
             {emgInventoryData?.data?.currentInventory?.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <SemanticBDIIcon semantic="inventory_items" size={16} />
-                    Current Inventory ({emgInventoryData.data.currentInventory.length} SKUs)
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    <SemanticBDIIcon semantic="inventory_items" size={20} />
+                    Current Inventory ({emgInventoryData.data.currentInventory.length.toLocaleString()} SKUs)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
                     {emgInventoryData.data.currentInventory.slice(0, 50).map((item: any) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                        className="p-3 sm:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        <div className="flex-1">
+                        {/* Mobile Layout */}
+                        <div className="block sm:hidden space-y-2">
                           <div className="font-medium text-sm">
                             {item.model || item.upc}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {item.description}
-                            {item.location && <span> • Location: {item.location}</span>}
-                            {item.upc && <span> • UPC: {item.upc}</span>}
+                          </div>
+                          {(item.location || item.upc) && (
+                            <div className="text-xs text-muted-foreground">
+                              {item.location && <span>Location: {item.location}</span>}
+                              {item.location && item.upc && <span> • </span>}
+                              {item.upc && <span>UPC: {item.upc}</span>}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-3 gap-2 pt-2">
+                            <div className="text-center p-2 bg-green-50 rounded">
+                              <div className="font-medium text-green-600 text-sm">{item.qtyOnHand || 0}</div>
+                              <div className="text-xs text-green-700">On Hand</div>
+                            </div>
+                            <div className="text-center p-2 bg-orange-50 rounded">
+                              <div className="font-medium text-orange-600 text-sm">{item.qtyAllocated || 0}</div>
+                              <div className="text-xs text-orange-700">Allocated</div>
+                            </div>
+                            <div className="text-center p-2 bg-blue-50 rounded">
+                              <div className="font-medium text-blue-600 text-sm">{item.netStock || 0}</div>
+                              <div className="text-xs text-blue-700">Net</div>
+                            </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="text-center">
-                            <div className="font-medium text-green-600">{item.qtyOnHand || 0}</div>
-                            <div className="text-xs text-muted-foreground">On Hand</div>
+                        {/* Desktop Layout */}
+                        <div className="hidden sm:flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">
+                              {item.model || item.upc}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {item.description}
+                              {item.location && <span> • Location: {item.location}</span>}
+                              {item.upc && <span> • UPC: {item.upc}</span>}
+                            </div>
                           </div>
-                          <div className="text-center">
-                            <div className="font-medium text-orange-600">{item.qtyAllocated || 0}</div>
-                            <div className="text-xs text-muted-foreground">Allocated</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-medium text-blue-600">{item.netStock || 0}</div>
-                            <div className="text-xs text-muted-foreground">Net Stock</div>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {item.lastUpdated && new Date(item.lastUpdated).toLocaleDateString()}
+                          
+                          <div className="flex items-center gap-6 text-sm">
+                            <div className="text-center">
+                              <div className="font-medium text-green-600">{item.qtyOnHand || 0}</div>
+                              <div className="text-xs text-muted-foreground">On Hand</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="font-medium text-orange-600">{item.qtyAllocated || 0}</div>
+                              <div className="text-xs text-muted-foreground">Allocated</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="font-medium text-blue-600">{item.netStock || 0}</div>
+                              <div className="text-xs text-muted-foreground">Net Stock</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground min-w-[80px]">
+                              {item.lastUpdated && new Date(item.lastUpdated).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1932,7 +1989,7 @@ export default function WarehousesPage() {
                     {emgInventoryData.data.currentInventory.length > 50 && (
                       <div className="text-center pt-4">
                         <p className="text-sm text-muted-foreground">
-                          Showing first 50 of {emgInventoryData.data.currentInventory.length} items
+                          Showing first 50 of {emgInventoryData.data.currentInventory.length.toLocaleString()} items
                         </p>
                       </div>
                     )}
