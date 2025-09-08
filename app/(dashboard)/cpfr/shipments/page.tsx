@@ -54,7 +54,85 @@ export default function ShipmentsPage() {
     }
   });
   const { data: actualShipments } = useSWR('/api/cpfr/shipments', fetcher);
-  const { data: jjolmData } = useSWR('/api/cpfr/jjolm-reports', fetcher);
+  const { data: jjolmData, mutate: mutateJjolm } = useSWR('/api/cpfr/jjolm-reports', fetcher);
+
+  // JJOLM Upload Functions
+  const handleJjolmFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setJjolmFile(file);
+      setJjolmUploadResult(null);
+    }
+  };
+
+  const handleJjolmUpload = async () => {
+    if (!jjolmFile) return;
+
+    setUploadingJjolm(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', jjolmFile);
+
+      const response = await fetch('/api/cpfr/jjolm-reports', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        setJjolmUploadResult(result);
+        setJjolmFile(null);
+        
+        // Refresh JJOLM data for dropdown
+        mutateJjolm();
+        
+        // Reset file input
+        const fileInput = document.getElementById('jjolm-file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      } else {
+        alert(`Upload failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('JJOLM upload error:', error);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploadingJjolm(false);
+    }
+  };
+
+  const handleViewJjolmTimeline = (jjolmNumber: string) => {
+    setSelectedJjolmForTimeline(jjolmNumber);
+    setShowJjolmTimeline(true);
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getEventIcon = (icon: string) => {
+    const iconMap: { [key: string]: string } = {
+      plus: 'plus',
+      sync: 'sync',
+      shipping: 'shipping',
+      calendar: 'calendar',
+      check: 'check',
+    };
+    return iconMap[icon] || 'sync';
+  };
+
+  const getEventColor = (color: string) => {
+    const colorMap: { [key: string]: string } = {
+      green: 'text-green-600 bg-green-100',
+      blue: 'text-blue-600 bg-blue-100',
+      purple: 'text-purple-600 bg-purple-100',
+      orange: 'text-orange-600 bg-orange-100',
+      yellow: 'text-yellow-600 bg-yellow-100',
+      indigo: 'text-indigo-600 bg-indigo-100',
+    };
+    return colorMap[color] || 'text-gray-600 bg-gray-100';
+  };
 
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const [selectedShipment, setSelectedShipment] = useState<SalesForecast | null>(null);
@@ -92,6 +170,20 @@ export default function ShipmentsPage() {
   const [shipmentDocuments, setShipmentDocuments] = useState<Map<string, File[]>>(new Map());
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createdShipments, setCreatedShipments] = useState<Map<string, any>>(new Map());
+  
+  // JJOLM Upload Modal State
+  const [showJjolmModal, setShowJjolmModal] = useState(false);
+  const [jjolmFile, setJjolmFile] = useState<File | null>(null);
+  const [uploadingJjolm, setUploadingJjolm] = useState(false);
+  const [jjolmUploadResult, setJjolmUploadResult] = useState<any>(null);
+  const [selectedJjolmForTimeline, setSelectedJjolmForTimeline] = useState<string | null>(null);
+  const [showJjolmTimeline, setShowJjolmTimeline] = useState(false);
+  
+  // Timeline data for selected JJOLM
+  const { data: timelineData, isLoading: timelineLoading } = useSWR(
+    selectedJjolmForTimeline ? `/api/cpfr/jjolm-reports/${selectedJjolmForTimeline}/timeline` : null,
+    fetcher
+  );
   const [uploadedDocumentsFromDB, setUploadedDocumentsFromDB] = useState<Map<string, any[]>>(new Map());
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [documentsForCurrentShipment, setDocumentsForCurrentShipment] = useState<any[]>([]);
@@ -1127,8 +1219,9 @@ export default function ShipmentsPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open('/cpfr/jjolm-reports', '_blank')}
+                            onClick={() => setShowJjolmModal(true)}
                             className="px-3"
+                            title="Upload JJOLM Reports"
                           >
                             <SemanticBDIIcon semantic="plus" size={14} />
                           </Button>
@@ -1786,6 +1879,277 @@ export default function ShipmentsPage() {
               Update Status
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* JJOLM Upload Modal */}
+      <Dialog open={showJjolmModal} onOpenChange={setShowJjolmModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="analytics" size={20} />
+              JJOLM Shipment Reports
+            </DialogTitle>
+            <DialogDescription>
+              Upload BOUNDLESS-DEVICES-SHIPMENT-REPORT Excel files to manage JJOLM tracking numbers
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden space-y-6">
+            {/* Upload Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <SemanticBDIIcon semantic="plus" size={16} />
+                  Upload JJOLM Report
+                </CardTitle>
+                <CardDescription>
+                  Upload Excel files with format: BOUNDLESS-DEVICES-SHIPMENT-REPORT_[date].xlsx
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      id="jjolm-file-upload"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleJjolmFileSelect}
+                      disabled={uploadingJjolm}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleJjolmUpload}
+                    disabled={!jjolmFile || uploadingJjolm}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {uploadingJjolm ? (
+                      <>
+                        <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
+                        Upload Report
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {jjolmFile && (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2">
+                      <SemanticBDIIcon semantic="analytics" size={16} className="text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">
+                        Selected: {jjolmFile.name}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {(jjolmFile.size / 1024).toFixed(1)} KB
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {jjolmUploadResult && (
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-start gap-3">
+                      <SemanticBDIIcon semantic="check" size={20} className="text-green-600 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-green-800 mb-2">
+                          Upload Successful!
+                        </h4>
+                        <div className="text-sm text-green-700 space-y-1">
+                          <p><strong>File:</strong> {jjolmUploadResult.summary?.fileName}</p>
+                          <p><strong>Total Processed:</strong> {jjolmUploadResult.summary?.totalProcessed}</p>
+                          <p><strong>New Records:</strong> {jjolmUploadResult.summary?.newRecords}</p>
+                          <p><strong>Updated Records:</strong> {jjolmUploadResult.summary?.updatedRecords}</p>
+                          {jjolmUploadResult.summary?.errors > 0 && (
+                            <p><strong>Errors:</strong> {jjolmUploadResult.summary?.errors}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* JJOLM Records */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-base">
+                  <div className="flex items-center gap-2">
+                    <SemanticBDIIcon semantic="shipping" size={16} />
+                    Available JJOLM Numbers ({(jjolmData?.data || []).length})
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  Click any JJOLM number to view its timeline and tracking history
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(jjolmData?.data || []).length === 0 ? (
+                  <div className="text-center py-8">
+                    <SemanticBDIIcon semantic="shipping" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No JJOLM records found. Upload a report to get started.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {(jjolmData?.data || []).slice(0, 20).map((record: any) => (
+                      <div
+                        key={record.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => handleViewJjolmTimeline(record.jjolmNumber)}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-blue-600 hover:text-blue-800">
+                            {record.jjolmNumber}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {record.customerReferenceNumber && (
+                              <span>Customer: {record.customerReferenceNumber} • </span>
+                            )}
+                            {record.mode && <span>Mode: {record.mode} • </span>}
+                            Updates: {record.updateCount}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {record.status && (
+                            <Badge variant="outline" className="text-xs">
+                              {record.status}
+                            </Badge>
+                          )}
+                          <div className="text-xs text-muted-foreground">
+                            {record.lastUpdated && new Date(record.lastUpdated).toLocaleDateString()}
+                          </div>
+                          <SemanticBDIIcon semantic="analytics" size={16} className="text-blue-500" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* JJOLM Timeline Modal */}
+      <Dialog open={showJjolmTimeline} onOpenChange={setShowJjolmTimeline}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="analytics" size={20} />
+              JJOLM Timeline: {selectedJjolmForTimeline}
+            </DialogTitle>
+            <DialogDescription>
+              Shipment tracking history and status progression
+            </DialogDescription>
+          </DialogHeader>
+
+          {timelineLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <SemanticBDIIcon semantic="sync" size={32} className="animate-spin text-blue-500" />
+              <span className="ml-2">Loading timeline...</span>
+            </div>
+          ) : timelineData?.data ? (
+            <div className="flex-1 overflow-hidden">
+              {/* Current Status Summary */}
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-3">Current Status</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-blue-700">Customer Ref:</span>
+                    <span className="ml-1">{timelineData.data.currentStatus.customerReferenceNumber || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Mode:</span>
+                    <span className="ml-1">{timelineData.data.currentStatus.mode || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Status:</span>
+                    <span className="ml-1">{timelineData.data.currentStatus.status || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Origin:</span>
+                    <span className="ml-1">{timelineData.data.currentStatus.origin || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Destination:</span>
+                    <span className="ml-1">{timelineData.data.currentStatus.destination || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Carrier:</span>
+                    <span className="ml-1">{timelineData.data.currentStatus.carrier || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Pickup Date:</span>
+                    <span className="ml-1">{formatDate(timelineData.data.currentStatus.pickupDate)}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Delivery Date:</span>
+                    <span className="ml-1">{formatDate(timelineData.data.currentStatus.deliveryDate)}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Est. Delivery:</span>
+                    <span className="ml-1">{formatDate(timelineData.data.currentStatus.estimatedDeliveryDate)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Events */}
+              <div className="flex-1 overflow-y-auto">
+                <h3 className="font-semibold mb-4">Timeline ({timelineData.data.timeline.length} events)</h3>
+                <div className="space-y-4">
+                  {timelineData.data.timeline.map((event: any, index: number) => (
+                    <div key={event.id} className="flex items-start gap-4">
+                      {/* Timeline line */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getEventColor(event.color)}`}>
+                          <SemanticBDIIcon semantic={getEventIcon(event.icon)} size={14} />
+                        </div>
+                        {index < timelineData.data.timeline.length - 1 && (
+                          <div className="w-0.5 h-8 bg-gray-200 mt-2"></div>
+                        )}
+                      </div>
+
+                      {/* Event content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{event.title}</h4>
+                            <p className="text-sm text-muted-foreground">{event.description}</p>
+                            {event.user && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                by {event.user.name} ({event.user.email})
+                              </p>
+                            )}
+                            {event.data?.sourceFileName && (
+                              <p className="text-xs text-muted-foreground">
+                                Source: {event.data.sourceFileName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground ml-4">
+                            {new Date(event.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <SemanticBDIIcon semantic="analytics" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No timeline data available</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
