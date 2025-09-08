@@ -212,160 +212,35 @@ export async function signUp(prevState: any, formData: FormData) {
       
       // Parse the invitation token to get organization info
       let tokenData;
-      // Check if it's the legacy BDI-timestamp-random format first
-      if (token.startsWith('BDI-') && token.includes('-')) {
-        console.log('Detected legacy BDI invitation token format:', token);
-        tokenData = {
-          organizationName: 'Boundless Devices Inc',
-          organizationId: null, // Will be looked up
-          adminEmail: email,
-          role: 'member',
-          timestamp: Date.now(),
-          isLegacyToken: true,
-          legacyToken: token
+      // Parse Base64URL JSON token (unified format)
+      try {
+        tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
+        console.log('Parsed invitation token:', tokenData);
+      } catch (error) {
+        console.error('Invalid invitation token format:', error);
+        console.error('Token received:', token);
+        return {
+          error: 'Invalid or expired invitation token.',
+          email,
+          password
         };
-      } else {
-        // Try Base64URL JSON format for new tokens
-        try {
-          tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
-          console.log('Parsed Base64URL invitation token:', tokenData);
-        } catch (error) {
-          console.error('Invalid invitation token format:', error);
-          console.error('Token received:', token);
-          return {
-            error: 'Invalid or expired invitation token.',
-            email,
-            password
-          };
-        }
       }
 
-      // Find the pending user by email and organization
-      let pendingUser = null;
-      
-      if (tokenData.isLegacyToken) {
-        // For legacy tokens, validate against organization_invitations table
-        console.log('Looking up legacy invitation token in organization_invitations table:', tokenData.legacyToken);
-        
-        try {
-          // Look up the invitation in organization_invitations table
-          const [orgInvitation] = await db
-            .select()
-            .from(organizationInvitations)
-            .where(
-              and(
-                eq(organizationInvitations.invitationToken, tokenData.legacyToken),
-                eq(organizationInvitations.invitedEmail, email),
-                eq(organizationInvitations.status, 'pending')
-              )
-            )
-            .limit(1);
-
-          if (!orgInvitation) {
-            console.error('❌ Legacy invitation not found or already used');
-            return {
-              error: 'Invalid or expired invitation token.',
-              email,
-              password
-            };
-          }
-
-          // Check if invitation has expired
-          if (orgInvitation.expiresAt && new Date() > orgInvitation.expiresAt) {
-            console.error('❌ Legacy invitation has expired');
-            return {
-              error: 'This invitation has expired. Please request a new one.',
-              email,
-              password
-            };
-          }
-
-          console.log('✅ Found valid organization invitation:', orgInvitation.invitationToken);
-          
-          pendingUser = {
-            email: orgInvitation.invitedEmail,
-            name: orgInvitation.invitedName,
-            role: orgInvitation.invitedRole,
-            passwordHash: 'invitation_pending',
-            isActive: false,
-            authId: null, // Will be set during signup
-            isLegacyInvitation: true,
-            orgInvitationId: orgInvitation.id,
-            organizationId: orgInvitation.organizationId
-          };
-          
-          console.log('✅ Legacy token validated successfully');
-        } catch (error) {
-          console.error('❌ Legacy token validation failed:', error);
-          return {
-            error: 'Invalid or expired invitation token.',
-            email,
-            password
-          };
-        }
-      } else {
-        // For new tokens, look up in users table as before
-        [pendingUser] = await db
-          .select()
-          .from(users)
-          .where(
-            and(
-              eq(users.email, email),
-              eq(users.passwordHash, 'invitation_pending'),
-              eq(users.isActive, false)
-            )
+      // Find the pending user by email (unified approach)
+      const [pendingUser] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.email, email),
+            eq(users.passwordHash, 'invitation_pending'),
+            eq(users.isActive, false)
           )
-          .limit(1);
-      }
+        )
+        .limit(1);
 
       if (pendingUser) {
-        if ((pendingUser as any).isLegacyInvitation) {
-          // Handle legacy BDI invitations
-          console.log('Processing legacy BDI invitation for:', email);
-          
-          // Get BDI organization
-          const [bdiOrg] = await db
-            .select()
-            .from(organizations)
-            .where(eq(organizations.code, 'BDI'))
-            .limit(1);
-
-          if (!bdiOrg) {
-            return {
-              error: 'BDI organization not found.',
-              email,
-              password
-            };
-          }
-
-          targetOrganization = bdiOrg;
-          userRole = pendingUser.role;
-
-          // Create fresh user record with correct Supabase auth ID
-          [dbUser] = await db
-            .insert(users)
-            .values({
-              authId: supabaseUser.id,
-              email: supabaseUser.email!,
-              name: name || supabaseUser.email!.split('@')[0],
-              role: userRole,
-              passwordHash: 'supabase_managed',
-              isActive: true,
-            })
-            .returning();
-
-          // Create organization membership
-          await db
-            .insert(organizationMembers)
-            .values({
-              userAuthId: supabaseUser.id,
-              organizationUuid: targetOrganization.id,
-              role: userRole,
-            });
-
-          console.log('✅ Completed legacy invitation signup for:', dbUser?.email);
-        } else {
-          // Handle new invitation format - Get the organization from the user's membership
+        // Get the organization from the user's membership
         const [membership] = await db
           .select({
             organization: {
@@ -448,7 +323,6 @@ export async function signUp(prevState: any, formData: FormData) {
             email,
             password
           };
-        }
         }
       } else {
         return {

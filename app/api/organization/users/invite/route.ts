@@ -86,11 +86,6 @@ export async function POST(request: NextRequest) {
 
     const userOrganization = userOrgMembership.organization;
 
-    // Prevent BDI users from using this endpoint
-    if (userOrganization.code === 'BDI' || userOrganization.type === 'internal') {
-      return NextResponse.json({ error: 'BDI users should use admin endpoints' }, { status: 403 });
-    }
-
     const body = await request.json();
     console.log('Received user invitation request:', body);
     
