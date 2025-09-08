@@ -2203,14 +2203,10 @@ ${result.email?.sent
                                       );
                                       
                                       if (shouldDelete) {
-                                        // Delete the existing user first
-                                        const deleteResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users/delete`, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            email: existingUser.email,
-                                            userAuthId: existingUser.authId
-                                          })
+                                        // Delete the existing user first using the user ID endpoint
+                                        const deleteResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users/${existingUser.authId}`, {
+                                          method: 'DELETE',
+                                          headers: { 'Content-Type': 'application/json' }
                                         });
                                         
                                         if (deleteResponse.ok) {
