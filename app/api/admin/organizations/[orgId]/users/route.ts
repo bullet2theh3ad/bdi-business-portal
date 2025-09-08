@@ -5,6 +5,9 @@ import { db } from '@/lib/db/drizzle';
 import { users, organizations, organizationMembers, organizationInvitations } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import crypto from 'crypto';
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -257,14 +260,92 @@ export async function POST(
         joinedAt: new Date(),
       });
 
-    // TODO: Send invitation email to the new user
-    // For now, return success with user details
+    // Generate invitation token and send email
+    const invitationToken = Buffer.from(
+      JSON.stringify({
+        organizationId: targetOrganization.id,
+        organizationName: targetOrganization.name,
+        adminEmail: email,
+        role: role,
+        timestamp: Date.now()
+      })
+    ).toString('base64url');
+
+    const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
+    
+    console.log('🔍 EMAIL DEBUG - Invitation URL generated:', inviteUrl);
+    console.log('🔍 EMAIL DEBUG - Resend configured:', !!resend);
+    console.log('🔍 EMAIL DEBUG - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+    
+    // Send invitation email
+    if (resend) {
+      try {
+        console.log('🔍 EMAIL DEBUG - Attempting to send email to:', email);
+        
+        const { data, error } = await resend.emails.send({
+          from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
+          to: [email],
+          subject: `Invitation to join ${targetOrganization.name} on BDI Business Portal`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+              <!-- Header -->
+              <div style="text-align: center; margin-bottom: 30px; background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h1 style="color: #1D897A; font-size: 32px; margin: 0; font-weight: bold;">BDI Business Portal</h1>
+                <p style="color: #1F295A; font-size: 18px; margin: 10px 0 0 0; font-weight: 500;">Boundless Devices Inc</p>
+                <div style="width: 80px; height: 4px; background: linear-gradient(135deg, #1D897A, #6BC06F); margin: 15px auto 0 auto; border-radius: 2px;"></div>
+              </div>
+
+              <!-- Main Content -->
+              <div style="background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h2 style="color: #1F295A; margin-bottom: 20px; font-size: 24px;">You're invited to join ${targetOrganization.name}!</h2>
+                
+                <p style="color: #6b7280; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  You've been invited to join <strong>${targetOrganization.name}</strong> on the BDI Business Portal. 
+                  Click the button below to create your account and get started with our CPFR supply chain management platform.
+                </p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                  <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #1D897A, #6BC06F); color: white; text-decoration: none; padding: 15px 35px; border-radius: 25px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(29, 137, 122, 0.3);">
+                    Join ${targetOrganization.name}
+                  </a>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; line-height: 1.5; margin: 25px 0 0 0; text-align: center;">
+                  This invitation will expire in 7 days. If you have any questions, please contact your organization administrator.
+                </p>
+              </div>
+
+              <!-- Footer -->
+              <div style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px;">
+                <p style="margin: 0;">© 2025 Boundless Devices Inc. All rights reserved.</p>
+                <p style="margin: 5px 0 0 0;">BDI Business Portal - B2B Data Exchange & Collaboration Platform</p>
+              </div>
+            </div>
+          `,
+        });
+
+        if (error) {
+          console.error('🔍 EMAIL DEBUG - Resend API error:', error);
+          console.error('🔍 EMAIL DEBUG - Error details:', JSON.stringify(error));
+        } else {
+          console.log('🔍 EMAIL DEBUG - Email sent successfully!');
+          console.log('🔍 EMAIL DEBUG - Resend response data:', data);
+          console.log('🔍 EMAIL DEBUG - Email ID:', data?.id);
+        }
+      } catch (emailError) {
+        console.error('🔍 EMAIL DEBUG - Email sending exception:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+    } else {
+      console.log('🔍 EMAIL DEBUG - Resend not configured. Invitation URL:', inviteUrl);
+      console.log('🔍 EMAIL DEBUG - Check RESEND_API_KEY environment variable');
+    }
     
     console.log(`Super Admin created user ${email} for organization ${targetOrganization.code}`);
     
     return NextResponse.json({
       success: true,
-      message: 'User added to organization successfully',
+      message: resend ? 'User added and invitation email sent successfully' : 'User added successfully (email not configured)',
       user: {
         id: newUser.id,
         name: newUser.name,
@@ -274,6 +355,8 @@ export async function POST(
         department: newUser.department,
         isActive: newUser.isActive,
       },
+      invitationToken,
+      inviteUrl: resend ? 'Email sent' : inviteUrl,
       organization: {
         id: targetOrganization.id,
         name: targetOrganization.name,
