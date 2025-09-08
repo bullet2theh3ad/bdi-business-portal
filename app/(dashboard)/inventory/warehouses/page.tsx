@@ -1692,13 +1692,25 @@ export default function WarehousesPage() {
             {/* Upload Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <SemanticBDIIcon semantic="plus" size={16} />
-                  Upload Inventory Report
-                </CardTitle>
-                <CardDescription>
-                  Upload CSV files with format: BOUNDLESS DEVICES, INC-Inventory Report.csv
-                </CardDescription>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <SemanticBDIIcon semantic="plus" size={16} />
+                      Upload Inventory Report
+                    </CardTitle>
+                    <CardDescription>
+                      Upload CSV files with format: BOUNDLESS DEVICES, INC-Inventory Report.csv
+                    </CardDescription>
+                  </div>
+                  {emgInventoryData?.data?.currentInventory?.length > 0 && (
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Last Updated</div>
+                      <div className="text-sm font-medium">
+                        {new Date(emgInventoryData.data.currentInventory[0]?.lastUpdated || emgInventoryData.data.currentInventory[0]?.uploadDate).toLocaleString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -1754,6 +1766,7 @@ export default function WarehousesPage() {
                         </h4>
                         <div className="text-sm text-green-700 space-y-1">
                           <p><strong>File:</strong> {emgUploadResult.summary?.fileName}</p>
+                          <p><strong>Uploaded:</strong> {new Date().toLocaleString()}</p>
                           <p><strong>Total Processed:</strong> {emgUploadResult.summary?.totalProcessed}</p>
                           <p><strong>New Records:</strong> {emgUploadResult.summary?.newRecords}</p>
                           <p><strong>Updated Records:</strong> {emgUploadResult.summary?.updatedRecords}</p>
