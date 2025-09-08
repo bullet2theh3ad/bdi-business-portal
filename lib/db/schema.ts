@@ -116,6 +116,18 @@ export const organizations = pgTable('organizations', {
   isActive: boolean('is_active').default(true),
   settings: jsonb('settings'), // JSON for org-specific settings
   
+  // Page access control - which pages this organization can access
+  enabledPages: jsonb('enabled_pages').default({
+    cpfr_forecasts: true,
+    cpfr_shipments: true,
+    cpfr_invoices: true,
+    cpfr_purchase_orders: true,
+    inventory_production_files: true,
+    inventory_warehouses: true,
+    organization_users: true,
+    organization_analytics: false, // Requires connections for external orgs
+  }),
+  
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),

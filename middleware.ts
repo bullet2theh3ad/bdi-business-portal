@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { db } from '@/lib/db/drizzle';
-import { users, organizationMembers } from '@/lib/db/schema';
+import { users, organizationMembers, organizations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 const protectedRoutes = '/dashboard';
@@ -57,20 +57,63 @@ export async function middleware(request: NextRequest) {
         return response;
       }
 
-      // Check if user has at least one organization membership
-      const [membership] = await db
-        .select()
+      // Check if user has organization membership and get organization details
+      const [membershipWithOrg] = await db
+        .select({
+          membership: {
+            role: organizationMembers.role,
+            organizationUuid: organizationMembers.organizationUuid,
+          },
+          organization: {
+            id: organizations.id,
+            code: organizations.code,
+            name: organizations.name,
+            type: organizations.type,
+            enabledPages: organizations.enabledPages,
+          }
+        })
         .from(organizationMembers)
+        .innerJoin(organizations, eq(organizationMembers.organizationUuid, organizations.id))
         .where(eq(organizationMembers.userAuthId, dbUser.authId))
         .limit(1);
 
-      if (!membership) {
-        console.log('User has no organization membership:', user.email);
+      if (!membershipWithOrg) {
+        console.log('User has no organization membership');
         // Force logout and redirect to sign-in
         const response = NextResponse.redirect(new URL('/sign-in', request.url));
         response.cookies.delete('sb-access-token');
         response.cookies.delete('sb-refresh-token');
         return response;
+      }
+
+      // Page access control for non-BDI organizations
+      const userOrg = membershipWithOrg.organization;
+      const isBDIUser = userOrg.code === 'BDI' && userOrg.type === 'internal';
+      const isSuperAdmin = dbUser.role === 'super_admin';
+
+      // BDI Super Admins have access to everything
+      if (!isBDIUser && !isSuperAdmin) {
+        const enabledPages = userOrg.enabledPages as any || {};
+        
+        // Map routes to page permissions
+        const pagePermissions: Record<string, string> = {
+          '/cpfr/forecasts': 'cpfr_forecasts',
+          '/cpfr/shipments': 'cpfr_shipments',
+          '/cpfr/invoices': 'cpfr_invoices', 
+          '/cpfr/purchase-orders': 'cpfr_purchase_orders',
+          '/inventory/production-files': 'inventory_production_files',
+          '/inventory/warehouses': 'inventory_warehouses',
+          '/organization/users': 'organization_users',
+          '/organization/analytics': 'organization_analytics',
+        };
+
+        // Check if current page is restricted
+        for (const [route, permission] of Object.entries(pagePermissions)) {
+          if (pathname.startsWith(route) && !enabledPages[permission]) {
+            console.log(`Page access denied for ${userOrg.code}: ${route} (${permission} not enabled)`);
+            return NextResponse.redirect(new URL('/dashboard?error=page_access_denied', request.url));
+          }
+        }
       }
 
     } catch (dbError) {
