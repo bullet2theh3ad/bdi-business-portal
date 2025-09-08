@@ -980,31 +980,8 @@ ${result.email?.sent
                               return;
                             }
 
-                            try {
-                              const response = await fetch('/api/admin/organizations/invitations', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  organizationId: selectedOrg.id,
-                                  organizationCode: selectedOrg.code,
-                                  organizationName: selectedOrg.name,
-                                  invitations: validInvites
-                                })
-                              });
-
-                              if (response.ok) {
-                                const result = await response.json();
-                                alert(`Successfully sent ${result.sentCount} invitations for ${selectedOrg.code}!`);
-                                // Clear the invitation form
-                                setOrgUserInvites([{ name: '', email: '', role: 'member' }]);
-                              } else {
-                                const error = await response.json();
-                                alert(`Error sending invitations: ${error.message}`);
-                              }
-                            } catch (error) {
-                              console.error('Error sending invitations:', error);
-                              alert('Failed to send invitations. Please try again.');
-                            }
+                            // Bulk invitations removed - use individual user invitations instead
+                            alert('Bulk invitations have been simplified. Please use the "Manage Users" feature for individual user invitations.');
                           }}
                           disabled={!orgUserInvites.some(inv => inv.name && inv.email)}
                           className="bg-blue-600 hover:bg-blue-700"

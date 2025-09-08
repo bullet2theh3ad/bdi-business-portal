@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
 
     setIsCreating(true);
     try {
-      const response = await fetch('/api/admin/users/invite', {
+      const response = await fetch('/api/organization/users/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(createForm),
