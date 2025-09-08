@@ -54,7 +54,7 @@ export default function PurchaseOrdersPage() {
 
   // Fetch line items for all purchase orders when purchase orders are loaded
   useEffect(() => {
-    if (purchaseOrders && purchaseOrders.length > 0) {
+    if (Array.isArray(purchaseOrders) && purchaseOrders.length > 0) {
       const fetchAllLineItems = async () => {
         const lineItemsData: Record<string, Array<{
           skuCode: string;
@@ -305,12 +305,14 @@ export default function PurchaseOrdersPage() {
   };
 
   // Filter purchase orders based on search and status
-  const filteredPurchaseOrders = purchaseOrders?.filter(po => {
+  // Ensure purchaseOrders is an array before filtering
+  const purchaseOrdersArray = Array.isArray(purchaseOrders) ? purchaseOrders : [];
+  const filteredPurchaseOrders = purchaseOrdersArray.filter(po => {
     const matchesSearch = po.purchaseOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          po.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
     return matchesSearch && matchesStatus;
-  }) || [];
+  });
 
   const getStatusColor = (status: string) => {
     const colors = {

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Badge } from '@/components/ui/badge';
@@ -146,12 +146,14 @@ export default function OrganizationSettingsPage() {
                         {page.description}
                       </p>
                     </div>
-                    <Switch
+                    <input
+                      type="checkbox"
                       id={page.key}
                       checked={pageSettings[page.key as keyof PageAccessSettings]}
-                      onCheckedChange={(checked) => 
-                        setPageSettings(prev => ({ ...prev, [page.key]: checked }))
+                      onChange={(e) => 
+                        setPageSettings(prev => ({ ...prev, [page.key]: e.target.checked }))
                       }
+                      className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                     />
                   </div>
                 ))}

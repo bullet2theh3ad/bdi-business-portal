@@ -354,7 +354,9 @@ export default function WarehousesPage() {
   };
 
   // Filter warehouses based on search and type
-  const filteredWarehouses = warehouses?.filter(warehouse => {
+  // Ensure warehouses is an array before filtering
+  const warehousesArray = Array.isArray(warehouses) ? warehouses : [];
+  const filteredWarehouses = warehousesArray.filter(warehouse => {
     const matchesSearch = warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          warehouse.warehouseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          warehouse.city.toLowerCase().includes(searchTerm.toLowerCase());
