@@ -14,7 +14,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
   const priceId = searchParams.get('priceId');
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || searchParams.get('invitation'); // Support both formats
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     mode === 'signin' ? signIn : signUp,
     { error: '' }

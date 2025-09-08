@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Send email invitation
-        const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/sign-up?invitation=${invitationToken}&org=${organizationCode}`
+        // Send email invitation - use consistent token format
+        const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`
         
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
