@@ -148,6 +148,11 @@ const navigationItems: NavItem[] = [
         icon: 'users',
       },
       {
+        title: 'Settings',
+        href: '/organization/settings',
+        icon: 'settings',
+      },
+      {
         title: 'Teams',
         href: '/organization/teams',
         icon: 'collaboration',

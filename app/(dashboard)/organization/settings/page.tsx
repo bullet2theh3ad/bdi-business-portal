@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ interface PageAccessSettings {
 
 export default function OrganizationSettingsPage() {
   const { data: user } = useSWR('/api/user', fetcher);
+  const { data: orgSettings } = useSWR('/api/organization/settings', fetcher);
   const [isUpdating, setIsUpdating] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageAccessSettings>({
     cpfr_forecasts: true,
@@ -35,6 +36,13 @@ export default function OrganizationSettingsPage() {
     organization_users: true,
     organization_analytics: false,
   });
+
+  // Load current settings when available
+  useEffect(() => {
+    if (orgSettings?.enabledPages) {
+      setPageSettings(prev => ({ ...prev, ...orgSettings.enabledPages }));
+    }
+  }, [orgSettings]);
 
   // Only organization admins can access settings
   if (!user || !['admin', 'super_admin'].includes(user.role)) {
@@ -63,6 +71,7 @@ export default function OrganizationSettingsPage() {
         alert('Page access settings updated successfully!');
       } else {
         const error = await response.json();
+        console.error('Settings update error:', error);
         alert(`Error: ${error.error || 'Failed to update settings'}`);
       }
     } catch (error) {
