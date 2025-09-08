@@ -2203,7 +2203,7 @@ ${result.email?.sent
                                       );
                                       
                                       if (shouldDelete) {
-                                        console.log('🗑️ FRONTEND DELETE - Starting delete process for:', existingUser.email);
+                                        console.log('🗑️ FRONTEND DELETE - Starting delete process');
                                         
                                         // Delete the existing user using the simple delete endpoint
                                         const deleteResponse = await fetch('/api/admin/delete-user', {
@@ -2219,7 +2219,7 @@ ${result.email?.sent
                                           const deleteResult = await deleteResponse.json();
                                           console.log('🗑️ FRONTEND DELETE - Delete successful:', deleteResult);
                                         
-                                          console.log('🔄 FRONTEND RETRY - Starting invitation retry for:', invite.email);
+                                          console.log('🔄 FRONTEND RETRY - Starting invitation retry');
                                           
                                           // Now retry the invitation
                                           const retryResponse = await fetch(`/api/admin/organizations/${selectedOrgUsers.organization.id}/users`, {
@@ -2243,7 +2243,7 @@ ${result.email?.sent
                                           
                                           const retryResult = await retryResponse.json();
                                           console.log('🔄 FRONTEND RETRY - ✅ Retry successful:', retryResult);
-                                          console.log(`✅ Successfully deleted existing user and created new invitation for ${invite.email}`);
+                                          console.log(`✅ Successfully deleted existing user and created new invitation`);
                                         } else {
                                           const deleteError = await deleteResponse.json();
                                           throw new Error(`Failed to delete existing user ${invite.email}: ${deleteError.error || 'Unknown error'}`);

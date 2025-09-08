@@ -273,16 +273,15 @@ export async function POST(
 
     const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
     
-    console.log('📧 EMAIL PROCESS - Invitation URL generated:', inviteUrl);
+    console.log('📧 EMAIL PROCESS - Invitation URL generated');
     console.log('📧 EMAIL PROCESS - Resend configured:', !!resend);
-    console.log('📧 EMAIL PROCESS - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
     console.log('📧 EMAIL PROCESS - Environment:', process.env.NODE_ENV || 'development');
     
     // Send invitation email
     if (resend) {
       try {
-        console.log('📧 EMAIL PROCESS - Attempting to send email to:', email);
-        console.log('📧 EMAIL PROCESS - Email subject:', `Invitation to join ${targetOrganization.name} on BDI Business Portal`);
+        console.log('📧 EMAIL PROCESS - Attempting to send email');
+        console.log('📧 EMAIL PROCESS - Target organization:', targetOrganization.name);
         
         const { data, error } = await resend.emails.send({
           from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
@@ -333,9 +332,7 @@ export async function POST(
           console.error('📧 EMAIL PROCESS - Error message:', error?.message);
         } else {
           console.log('📧 EMAIL PROCESS - ✅ Email sent successfully!');
-          console.log('📧 EMAIL PROCESS - Resend response data:', data);
           console.log('📧 EMAIL PROCESS - Email ID:', data?.id);
-          console.log('📧 EMAIL PROCESS - Recipient:', email);
         }
       } catch (emailError) {
         console.error('📧 EMAIL PROCESS - ❌ Email sending exception:', emailError);
@@ -346,10 +343,9 @@ export async function POST(
     } else {
       console.log('📧 EMAIL PROCESS - ❌ Resend not configured');
       console.log('📧 EMAIL PROCESS - RESEND_API_KEY missing in environment');
-      console.log('📧 EMAIL PROCESS - Invitation URL (not emailed):', inviteUrl);
     }
     
-    console.log(`Super Admin created user ${email} for organization ${targetOrganization.code}`);
+    console.log(`Super Admin created user for organization ${targetOrganization.code}`);
     
     return NextResponse.json({
       success: true,

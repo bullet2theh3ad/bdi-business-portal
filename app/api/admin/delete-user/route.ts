@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     console.log('🗑️ DELETE USER - Starting delete process');
     
     const currentUser = await getCurrentUser();
-    console.log('🗑️ DELETE USER - Current user:', currentUser?.email, currentUser?.role);
+    console.log('🗑️ DELETE USER - Current user role:', currentUser?.role);
     
     if (!currentUser || !['super_admin', 'admin'].includes(currentUser.role)) {
       console.log('🗑️ DELETE USER - Authorization failed');
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('🗑️ DELETE USER - Request body:', body);
+    console.log('🗑️ DELETE USER - Processing delete request');
     
     const { email } = body;
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
-    console.log('🗑️ DELETE USER - Looking up user to delete:', email);
+    console.log('🗑️ DELETE USER - Looking up user to delete');
 
     // Find the user to delete
     const [userToDelete] = await db
@@ -75,12 +75,7 @@ export async function POST(request: NextRequest) {
       .where(eq(users.email, email))
       .limit(1);
 
-    console.log('🗑️ DELETE USER - Found user:', userToDelete ? {
-      id: userToDelete.id,
-      email: userToDelete.email,
-      name: userToDelete.name,
-      authId: userToDelete.authId
-    } : 'null');
+    console.log('🗑️ DELETE USER - Found user:', !!userToDelete);
 
     if (!userToDelete) {
       console.log('🗑️ DELETE USER - User not found');
@@ -108,7 +103,7 @@ export async function POST(request: NextRequest) {
       .delete(organizationInvitations)
       .where(eq(organizationInvitations.invitedEmail, email));
 
-    console.log('🗑️ DELETE USER - ✅ Successfully deleted user:', email);
+    console.log('🗑️ DELETE USER - ✅ Successfully deleted user');
 
     return NextResponse.json({
       success: true,
