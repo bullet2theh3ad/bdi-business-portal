@@ -60,3 +60,4 @@ FROM users
 WHERE email = 'alec.deangelo@ol-usa.com';
 
 COMMIT;
+

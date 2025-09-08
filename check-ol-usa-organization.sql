@@ -14,3 +14,4 @@ WHERE code = 'OL-USA'
    OR name ILIKE '%OL-USA%' 
    OR name ILIKE '%OL%USA%'
    OR legal_name ILIKE '%OL%USA%';
+
