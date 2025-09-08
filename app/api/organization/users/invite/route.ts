@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     
-    if (!currentUser || currentUser.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized - Organization Admin required' }, { status: 401 });
+    if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+      return NextResponse.json({ error: 'Unauthorized - Organization Admin or Super Admin required' }, { status: 401 });
     }
 
     // Get the user's organization
