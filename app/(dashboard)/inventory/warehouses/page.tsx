@@ -1680,7 +1680,7 @@ export default function WarehousesPage() {
 
       {/* EMG Inventory Modal */}
       <Dialog open={showEmgInventoryModal} onOpenChange={setShowEmgInventoryModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SemanticBDIIcon semantic="analytics" size={20} />
@@ -1688,7 +1688,7 @@ export default function WarehousesPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-6 p-4 sm:p-6 lg:p-8">
             {/* Upload Section */}
             <Card>
               <CardHeader>
