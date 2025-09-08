@@ -208,17 +208,20 @@ export async function signUp(prevState: any, formData: FormData) {
       console.log('🔍 SIGNUP DEBUG - Token received:', token);
       console.log('🔍 SIGNUP DEBUG - Token type:', typeof token);
       console.log('🔍 SIGNUP DEBUG - Token length:', token.length);
-      console.log('🔍 SIGNUP DEBUG - Starts with BDI-:', token.startsWith('BDI-'));
+      console.log('🔍 SIGNUP DEBUG - Email from form:', email);
       
       // Parse the invitation token to get organization info
       let tokenData;
       // Parse Base64URL JSON token (unified format)
       try {
         tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
-        console.log('Parsed invitation token:', tokenData);
+        console.log('🔍 SIGNUP DEBUG - Parsed invitation token successfully:', tokenData);
+        console.log('🔍 SIGNUP DEBUG - Token organizationId:', tokenData.organizationId);
+        console.log('🔍 SIGNUP DEBUG - Token adminEmail:', tokenData.adminEmail);
+        console.log('🔍 SIGNUP DEBUG - Email match check:', email === tokenData.adminEmail);
       } catch (error) {
-        console.error('Invalid invitation token format:', error);
-        console.error('Token received:', token);
+        console.error('🔍 SIGNUP DEBUG - Token parsing failed:', error);
+        console.error('🔍 SIGNUP DEBUG - Token received:', token);
         return {
           error: 'Invalid or expired invitation token.',
           email,
@@ -227,6 +230,8 @@ export async function signUp(prevState: any, formData: FormData) {
       }
 
       // Find the pending user by email (unified approach)
+      console.log('🔍 SIGNUP DEBUG - Looking for pending user with email:', email);
+      
       const [pendingUser] = await db
         .select()
         .from(users)
@@ -238,6 +243,14 @@ export async function signUp(prevState: any, formData: FormData) {
           )
         )
         .limit(1);
+        
+      console.log('🔍 SIGNUP DEBUG - Found pending user:', pendingUser ? {
+        id: pendingUser.id,
+        email: pendingUser.email,
+        name: pendingUser.name,
+        isActive: pendingUser.isActive,
+        passwordHash: pendingUser.passwordHash
+      } : 'null');
 
       if (pendingUser) {
         // Get the organization from the user's membership
