@@ -7,13 +7,19 @@
     "shipments": "Envíos",
     "warehouses": "Almacenes",
     "productionFiles": "Archivos de Producción",
+    "inventory": "Inventario",
     "analytics": "Analíticas",
     "users": "Usuarios",
     "settings": "Configuración",
     "organizations": "Organizaciones",
     "connections": "Conexiones",
     "skus": "SKUs",
-    "apiKeys": "Claves API"
+    "apiKeys": "Claves API",
+    "admin": "Administrador",
+    "organization": "Organización",
+    "account": "Cuenta",
+    "profile": "Perfil",
+    "userGuide": "Guía del Usuario del Portal"
   },
   "common": {
     "save": "Guardar",

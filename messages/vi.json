@@ -7,13 +7,19 @@
     "shipments": "Vận chuyển",
     "warehouses": "Kho",
     "productionFiles": "Tệp sản xuất",
+    "inventory": "Hàng tồn kho",
     "analytics": "Phân tích",
     "users": "Người dùng",
     "settings": "Cài đặt",
     "organizations": "Tổ chức",
     "connections": "Kết nối",
     "skus": "Mã SKU",
-    "apiKeys": "Khóa API"
+    "apiKeys": "Khóa API",
+    "admin": "Quản trị",
+    "organization": "Tổ chức",
+    "account": "Tài khoản",
+    "profile": "Hồ sơ",
+    "userGuide": "Hướng dẫn sử dụng Portal"
   },
   "common": {
     "save": "Lưu",
