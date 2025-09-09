@@ -913,11 +913,7 @@ export default function ShipmentsPage() {
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
-                              className={`h-2 rounded-full transition-all duration-500 ${
-                                forecast.salesSignal === 'rejected' || forecast.factorySignal === 'rejected' || forecast.shippingSignal === 'rejected'
-                                  ? 'bg-red-500' // Red for rejected
-                                  : 'bg-gradient-to-r from-blue-500 to-green-500' // Normal gradient
-                              }`}
+                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
                               style={{ width: `${(progress / 4) * 100}%` }}
                             ></div>
                           </div>
@@ -947,11 +943,7 @@ export default function ShipmentsPage() {
                         {/* Progress Line */}
                         <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-300"></div>
                         <div 
-                          className={`absolute top-6 left-0 h-0.5 transition-all duration-1000 ${
-                            forecast.salesSignal === 'rejected' || forecast.factorySignal === 'rejected' || forecast.shippingSignal === 'rejected'
-                              ? 'bg-red-500' // Red for rejected
-                              : 'bg-gradient-to-r from-blue-500 to-green-500' // Normal gradient
-                          }`}
+                          className="absolute top-6 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000"
                           style={{ width: `${(progress / 4) * 100}%` }}
                         ></div>
 
@@ -960,13 +952,15 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => handleMilestoneClick('sales', forecast)}
                             className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.salesSignal === 'confirmed' ? 'border-green-500' :
-                              forecast.salesSignal === 'submitted' ? 'border-blue-500' :
+                              forecast.salesSignal === 'rejected' ? 'border-red-500 bg-red-50' :
+                              forecast.salesSignal === 'confirmed' ? 'border-green-500 bg-green-50' :
+                              forecast.salesSignal === 'submitted' ? 'border-blue-500 bg-blue-50' :
                               'border-gray-300'
                             }`}
                             title="Click to change sales status"
                           >
                             <span className={`text-base sm:text-lg ${
+                              forecast.salesSignal === 'rejected' ? 'text-red-600' :
                               forecast.salesSignal === 'confirmed' ? 'text-green-600' :
                               forecast.salesSignal === 'submitted' ? 'text-blue-600' :
                               'text-gray-600'
@@ -979,6 +973,7 @@ export default function ShipmentsPage() {
                               {milestones.salesDate.toLocaleDateString()}
                             </p>
                             <Badge className={
+                              forecast.salesSignal === 'rejected' ? 'bg-red-100 text-red-800' :
                               forecast.salesSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
                               forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
                               'bg-gray-100 text-gray-600'
@@ -993,13 +988,15 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => handleMilestoneClick('factory', forecast)}
                             className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.factorySignal === 'confirmed' ? 'border-green-500' :
-                              forecast.factorySignal === 'reviewing' ? 'border-orange-500' :
+                              forecast.factorySignal === 'rejected' ? 'border-red-500 bg-red-50' :
+                              forecast.factorySignal === 'confirmed' ? 'border-green-500 bg-green-50' :
+                              forecast.factorySignal === 'reviewing' ? 'border-orange-500 bg-orange-50' :
                               'border-gray-300'
                             }`}
                             title="Click to change factory status"
                           >
                             <span className={`text-base sm:text-lg ${
+                              forecast.factorySignal === 'rejected' ? 'text-red-600' :
                               forecast.factorySignal === 'confirmed' ? 'text-green-600' :
                               forecast.factorySignal === 'reviewing' ? 'text-orange-600' :
                               'text-gray-600'
@@ -1012,6 +1009,7 @@ export default function ShipmentsPage() {
                               {milestones.exwDate.toLocaleDateString()}
                             </p>
                             <Badge className={
+                              forecast.factorySignal === 'rejected' ? 'bg-red-100 text-red-800' :
                               forecast.factorySignal === 'confirmed' ? 'bg-green-100 text-green-800' :
                               forecast.factorySignal === 'reviewing' ? 'bg-orange-100 text-orange-800' :
                               'bg-gray-100 text-gray-600'
