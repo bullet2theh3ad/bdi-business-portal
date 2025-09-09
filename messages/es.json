@@ -67,7 +67,17 @@
     "organizationUsersTitle": "Usuarios de Organización",
     "organizationUsersDescription": "Gestionar miembros del equipo y acceso de usuarios",
     "organizationSettingsTitle": "Configuración de Organización",
-    "organizationSettingsDescription": "Configurar preferencias y ajustes de organización"
+    "organizationSettingsDescription": "Configurar preferencias y ajustes de organización",
+    "editButton": "Editar",
+    "createButton": "Crear",
+    "deleteButton": "Eliminar",
+    "refreshButton": "Actualizar",
+    "enterInvoiceButton": "Ingresar Factura",
+    "enterPurchaseOrderButton": "Ingresar Orden de Compra",
+    "addWarehouseButton": "Agregar Almacén",
+    "uploadFilesButton": "Subir Archivos",
+    "saveButton": "Guardar",
+    "cancelButton": "Cancelar"
   },
   "cpfr": {
     "signals": {

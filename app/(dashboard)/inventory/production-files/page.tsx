@@ -305,7 +305,7 @@ export default function ProductionFilesPage() {
           </div>
           <Button onClick={() => setShowUploadModal(true)} className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto">
             <SemanticBDIIcon semantic="upload" size={16} className="mr-2" />
-            Upload Files
+            {tc('uploadFilesButton', 'Upload Files')}
           </Button>
         </div>
       </div>

@@ -73,7 +73,17 @@
     "organizationUsersTitle": "Organization Users",
     "organizationUsersDescription": "Manage team members and user access",
     "organizationSettingsTitle": "Organization Settings",
-    "organizationSettingsDescription": "Configure organization preferences and settings"
+    "organizationSettingsDescription": "Configure organization preferences and settings",
+    "editButton": "Edit",
+    "createButton": "Create",
+    "deleteButton": "Delete",
+    "refreshButton": "Refresh",
+    "enterInvoiceButton": "Enter Invoice",
+    "enterPurchaseOrderButton": "Enter Purchase Order",
+    "addWarehouseButton": "Add Warehouse",
+    "uploadFilesButton": "Upload Files",
+    "saveButton": "Save",
+    "cancelButton": "Cancel"
   },
   "cpfr": {
     "signals": {

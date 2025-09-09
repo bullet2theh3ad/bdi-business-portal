@@ -353,7 +353,7 @@ export default function PurchaseOrdersPage() {
               className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
             >
               <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
-              Refresh
+              {tc('refreshButton', 'Refresh')}
             </Button>
             <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => {
               // Clear all form state for a fresh purchase order
@@ -363,7 +363,7 @@ export default function PurchaseOrdersPage() {
               setShowCreateModal(true);
             }}>
               <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-              Enter Purchase Order
+              {tc('enterPurchaseOrderButton', 'Enter Purchase Order')}
             </Button>
           </div>
         </div>
@@ -418,7 +418,7 @@ export default function PurchaseOrdersPage() {
                   className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
                 >
                   <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
-                  Refresh
+                  {tc('refreshButton', 'Refresh')}
                 </Button>
                 <Button onClick={() => {
                   // Clear all form state for a fresh purchase order

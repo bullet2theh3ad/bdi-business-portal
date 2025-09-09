@@ -67,7 +67,17 @@
     "organizationUsersTitle": "Người dùng Tổ chức",
     "organizationUsersDescription": "Quản lý thành viên nhóm và quyền truy cập",
     "organizationSettingsTitle": "Cài đặt Tổ chức",
-    "organizationSettingsDescription": "Cấu hình tùy chọn và cài đặt tổ chức"
+    "organizationSettingsDescription": "Cấu hình tùy chọn và cài đặt tổ chức",
+    "editButton": "Chỉnh sửa",
+    "createButton": "Tạo",
+    "deleteButton": "Xóa",
+    "refreshButton": "Làm mới",
+    "enterInvoiceButton": "Nhập Hóa đơn",
+    "enterPurchaseOrderButton": "Nhập Đơn đặt hàng",
+    "addWarehouseButton": "Thêm Kho",
+    "uploadFilesButton": "Tải lên Tệp",
+    "saveButton": "Lưu",
+    "cancelButton": "Hủy"
   },
   "cpfr": {
     "signals": {

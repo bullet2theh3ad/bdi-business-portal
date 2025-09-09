@@ -462,7 +462,7 @@ export default function WarehousesPage() {
           </div>
           <Button className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            Add Warehouse
+            {tc('addWarehouseButton', 'Add Warehouse')}
           </Button>
         </div>
       </div>

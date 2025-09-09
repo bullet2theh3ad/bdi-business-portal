@@ -284,7 +284,7 @@ export default function InvoicesPage() {
             setShowCreateModal(true);
           }}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            Enter Invoice
+            {tc('enterInvoiceButton', 'Enter Invoice')}
           </Button>
         </div>
       </div>
@@ -407,7 +407,7 @@ export default function InvoicesPage() {
                           }
                         }}>
                           <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                          Edit
+                          {tc('editButton', 'Edit')}
                         </Button>
                         <Button 
                           variant="outline" 
@@ -436,7 +436,7 @@ export default function InvoicesPage() {
                           }}
                         >
                           <span className="mr-1 text-sm">🗑️</span>
-                          Delete
+                          {tc('deleteButton', 'Delete')}
                         </Button>
                       </div>
                       
@@ -876,7 +876,7 @@ export default function InvoicesPage() {
                   onClick={() => setShowCreateModal(false)}
                   disabled={isLoading}
                 >
-                  Cancel
+                  {tc('cancelButton', 'Cancel')}
                 </Button>
                 <Button 
                   type="submit" 
@@ -891,7 +891,7 @@ export default function InvoicesPage() {
                   ) : (
                     <>
                       <SemanticBDIIcon semantic="orders" size={16} className="mr-2 brightness-0 invert" />
-                      Enter Invoice
+                      {tc('enterInvoiceButton', 'Enter Invoice')}
                     </>
                   )}
                 </Button>
@@ -1385,7 +1385,7 @@ export default function InvoicesPage() {
 
               <div className="flex justify-end space-x-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => setSelectedInvoice(null)}>
-                  Cancel
+                  {tc('cancelButton', 'Cancel')}
                 </Button>
                 <Button type="submit" className="bg-green-600 hover:bg-green-700">
                   Update Invoice
