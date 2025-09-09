@@ -58,6 +58,8 @@
     "warehousesDescription": "Manage warehouse locations and inventory",
     "shipmentsTitle": "Shipments",
     "shipmentsDescription": "Track cargo shipments and delivery status",
+    "productionFilesTitle": "Production Files",
+    "productionFilesDescription": "Manage manufacturing documents and templates",
     "analyticsTitle": "Analytics",
     "analyticsDescription": "Business intelligence and performance metrics",
     "organizationsTitle": "Organizations", 

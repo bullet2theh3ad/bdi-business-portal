@@ -57,7 +57,9 @@
     "warehousesTitle": "Almacenes", 
     "warehousesDescription": "Gestionar ubicaciones de almacenes e inventario",
     "shipmentsTitle": "Envíos",
-    "shipmentsDescription": "Rastrear envíos de carga y estado de entrega"
+    "shipmentsDescription": "Rastrear envíos de carga y estado de entrega",
+    "productionFilesTitle": "Archivos de Producción",
+    "productionFilesDescription": "Gestionar documentos de manufactura y plantillas"
   },
   "cpfr": {
     "signals": {

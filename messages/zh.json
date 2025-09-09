@@ -58,6 +58,8 @@
     "warehousesDescription": "管理仓库位置和库存",
     "shipmentsTitle": "货运",
     "shipmentsDescription": "跟踪货物运输和交付状态",
+    "productionFilesTitle": "生产文件",
+    "productionFilesDescription": "管理制造文档和模板",
     "analyticsTitle": "分析",
     "analyticsDescription": "商业智能和性能指标",
     "organizationsTitle": "组织",

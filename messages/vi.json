@@ -57,7 +57,9 @@
     "warehousesTitle": "Kho",
     "warehousesDescription": "Quản lý vị trí kho và hàng tồn kho",
     "shipmentsTitle": "Vận chuyển",
-    "shipmentsDescription": "Theo dõi lô hàng và trạng thái giao hàng"
+    "shipmentsDescription": "Theo dõi lô hàng và trạng thái giao hàng",
+    "productionFilesTitle": "Tệp Sản xuất",
+    "productionFilesDescription": "Quản lý tài liệu sản xuất và mẫu"
   },
   "cpfr": {
     "signals": {
