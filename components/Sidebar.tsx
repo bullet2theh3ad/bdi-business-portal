@@ -11,7 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { User as UserType } from '@/lib/db/schema';
-// import { useNavigationTranslations } from '@/lib/i18n/utils'; // TODO: Enable after i18n setup complete
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -25,9 +25,12 @@ interface NavItem {
   requiresNonBDI?: boolean; // Only show for non-BDI organization users
 }
 
-const navigationItems: NavItem[] = [
+// 🌍 DYNAMIC: Navigation items will be created inside component for translations
+// const navigationItems: NavItem[] = [ // TODO: Remove static version
+
+const getNavigationItems = (tn: (key: string, fallback?: string) => string): NavItem[] => [
   {
-    title: 'Dashboard',
+    title: tn('dashboard', 'Dashboard'), // 🌍 TRANSLATED
     href: '/dashboard',
     icon: 'dashboard',
   },
@@ -162,11 +165,11 @@ const navigationItems: NavItem[] = [
     ],
   },
   {
-    title: 'Portal User Guide',
+    title: 'Portal User Guide', // TODO: Translate
     href: '/user-guide',
     icon: 'help',
   },
-];
+]; // 🌍 END: Dynamic navigation items
 
 interface SidebarProps {
   className?: string;
@@ -177,8 +180,9 @@ export function Sidebar({ className }: SidebarProps) {
   const { data: user } = useSWR<UserType>('/api/user', fetcher);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   
-  // 🌍 TODO: Translation hook (will enable after i18n setup complete)
-  // const tn = useNavigationTranslations();
+  // 🌍 SAFE: Simple translation functions (no routing changes)
+  const userLocale = getUserLocale();
+  const { tn, tc } = useSimpleTranslations(userLocale);
 
   const toggleExpanded = (title: string) => {
     setExpandedItems(prev => 
@@ -289,7 +293,7 @@ export function Sidebar({ className }: SidebarProps) {
       </div>
       
       <nav className="flex-1 px-4 py-4 space-y-2">
-        {navigationItems.map(item => renderNavItem(item))}
+        {getNavigationItems(tn).map(item => renderNavItem(item))}
       </nav>
       
       {user && (
