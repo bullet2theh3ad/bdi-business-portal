@@ -54,6 +54,9 @@ export default function ShipmentsPage() {
     }
   });
   const { data: actualShipments } = useSWR('/api/cpfr/shipments', fetcher);
+  
+  // Ensure actualShipments is an array before using
+  const actualShipmentsArray = Array.isArray(actualShipments) ? actualShipments : [];
   const { data: jjolmData, mutate: mutateJjolm } = useSWR('/api/cpfr/jjolm-reports', fetcher);
 
   // JJOLM Upload Functions
@@ -196,7 +199,7 @@ export default function ShipmentsPage() {
       console.log('🔍 Local shipments:', Array.from(createdShipments.entries()));
       
       // Check if this forecast already has a shipment created
-      const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
+      const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
       const localShipment = createdShipments.get(selectedShipment.id);
       
       console.log('🔍 Found existing shipment:', existingShipment);
@@ -429,7 +432,7 @@ export default function ShipmentsPage() {
     setIsCreatingShipment(true);
     try {
       // Check if shipment already exists for this forecast
-      const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
+      const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
       const localShipment = createdShipments.get(selectedShipment.id);
       const isUpdate = existingShipment || localShipment;
       const shipmentId = existingShipment?.id || localShipment?.id;
@@ -523,7 +526,7 @@ export default function ShipmentsPage() {
     const shippingData = calculateShippingData(selectedShipment.sku, quantity, shipmentForm.unitsPerCarton);
     
     // Get the current shipment data for configuration fields
-    const currentShipment = actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id);
+    const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
     const linkedWarehouse = warehouses?.find((w: any) => w.id === shipmentForm.factoryWarehouseId);
     
     const csvData = [
@@ -919,7 +922,7 @@ export default function ShipmentsPage() {
                         >
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
                           {(() => {
-                            const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === forecast.id);
+                            const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === forecast.id);
                             const localShipment = createdShipments.get(forecast.id);
                             return (existingShipment || localShipment) ? 'Edit' : 'Create';
                           })()}
@@ -1120,7 +1123,7 @@ export default function ShipmentsPage() {
               <SemanticBDIIcon semantic="shipping" size={24} className="text-blue-600" />
               <span>
                 {(() => {
-                  const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
+                  const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
                   const localShipment = createdShipments.get(selectedShipment?.id || '');
                   return (existingShipment || localShipment) 
                     ? `Edit Shipment: ${selectedShipment?.sku.sku}` 
@@ -1296,7 +1299,7 @@ export default function ShipmentsPage() {
                                         <button
                                           onClick={() => {
                                             const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                                             actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                                                             actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
                                             if (shipmentId) {
                                               window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
                                             } else {
@@ -1687,7 +1690,7 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => {
                               const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                               actualShipments?.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
+                                               actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
                               if (shipmentId) {
                                 window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
                               }
@@ -1718,7 +1721,7 @@ export default function ShipmentsPage() {
                       <>
                         <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin" />
                         {(() => {
-                          const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
+                          const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
                           const localShipment = createdShipments.get(selectedShipment?.id || '');
                           return (existingShipment || localShipment) ? 'Updating Shipment...' : 'Creating Shipment...';
                         })()}
@@ -1727,7 +1730,7 @@ export default function ShipmentsPage() {
                       <>
                         <SemanticBDIIcon semantic="shipping" size={16} className="mr-2" />
                         {(() => {
-                          const existingShipment = actualShipments?.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
+                          const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
                           const localShipment = createdShipments.get(selectedShipment?.id || '');
                           return (existingShipment || localShipment) ? 'Update Shipment' : 'Create Shipment';
                         })()}
