@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
         incoterms_location,
         total_value,
         notes,
+        organization_id,
         created_by,
         created_at,
         updated_at
@@ -108,20 +109,23 @@ export async function GET(request: NextRequest) {
       incotermsLocation: row.incoterms_location,
       totalValue: parseFloat(row.total_value || '0'),
       notes: row.notes,
+      organizationId: row.organization_id,
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
 
     console.log(`📋 Fetching purchase orders - returning ${transformedPurchaseOrders.length} purchase orders`);
-    console.log(`🔍 User org: ${userOrganization.code} - looking for POs where:`);
-    console.log(`   - organization_id = ${userOrganization.id} (buyer)`);
+    console.log(`🔍 User org: ${userOrganization.code} (ID: ${userOrganization.id}) - looking for POs where:`);
+    console.log(`   - organization_id = ${userOrganization.id} (buyer) OR`);
     console.log(`   - supplier_name = '${userOrganization.code}' (supplier)`);
+    console.log(`🔍 Query: organization_id.eq.${userOrganization.id},supplier_name.eq.${userOrganization.code}`);
     
     if (transformedPurchaseOrders.length > 0) {
-      console.log('📦 Found POs:', transformedPurchaseOrders.map(po => `${po.purchaseOrderNumber} (supplier: ${po.supplierName})`));
+      console.log('📦 Found POs:', transformedPurchaseOrders.map(po => `${po.purchaseOrderNumber} (supplier: ${po.supplierName}, org_id: ${po.organizationId || 'N/A'})`));
     } else {
       console.log('❌ No POs found - check if POs exist with correct supplier_name or organization_id');
+      console.log('🔍 Raw query result:', purchaseOrdersData);
     }
     return NextResponse.json(transformedPurchaseOrders);
 
