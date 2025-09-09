@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 import Link from 'next/link';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -70,6 +71,11 @@ export default function SettingsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   const { data: allApiKeys } = useSWR('/api/admin/api-keys', fetcher);
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   
   // Only show Quick Actions for BDI users (Super Admin)
   const isBDIUser = user?.role === 'super_admin';
@@ -175,6 +181,59 @@ export default function SettingsPage() {
                   <SemanticBDIIcon semantic="sync" size={24} className="mx-auto mb-2" />
                   <div className="text-2xl font-bold text-bdi-green-1">0</div>
                   <div className="text-sm text-gray-600">Integrations</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 🌍 Language Preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <SemanticBDIIcon semantic="globe" size={20} className="mr-2" />
+                {tc('language', 'Language Preferences')}
+              </CardTitle>
+              <CardDescription>Choose your preferred language for the interface</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="language-select">Interface Language</Label>
+                  <select
+                    id="language-select"
+                    value={user?.preferredLanguage || 'en'}
+                    onChange={async (e) => {
+                      const newLanguage = e.target.value;
+                      setSelectedLanguage(newLanguage);
+                      
+                      try {
+                        const response = await fetch('/api/user/language', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ preferredLanguage: newLanguage })
+                        });
+                        
+                        if (response.ok) {
+                          // Refresh user data to update UI
+                          window.location.reload();
+                        } else {
+                          alert('Failed to update language preference');
+                        }
+                      } catch (error) {
+                        console.error('Error updating language:', error);
+                        alert('Failed to update language preference');
+                      }
+                    }}
+                    className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="en">🇺🇸 English</option>
+                    <option value="zh">🇨🇳 中文 (Chinese)</option>
+                    <option value="vi">🇻🇳 Tiếng Việt (Vietnamese)</option>
+                    <option value="es">🇪🇸 Español (Spanish)</option>
+                  </select>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Current: <Badge variant="outline">{user?.preferredLanguage === 'zh' ? '🇨🇳 中文' : user?.preferredLanguage === 'vi' ? '🇻🇳 Tiếng Việt' : user?.preferredLanguage === 'es' ? '🇪🇸 Español' : '🇺🇸 English'}</Badge>
+                  </div>
                 </div>
               </div>
             </CardContent>

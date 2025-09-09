@@ -60,18 +60,13 @@ export function useSimpleTranslations(locale: Locale = 'en') {
   };
 }
 
-// Get user's preferred locale from user data
+// Get user's preferred locale from user data (per USER, not organization)
 export function getUserLocale(user?: any): Locale {
-  // Get from user's preferred_language field
+  // ONLY use user's personal language preference
   if (user?.preferredLanguage && locales.includes(user.preferredLanguage)) {
     return user.preferredLanguage as Locale;
   }
   
-  // Fallback to organization-based default
-  if (user?.supplierCode === 'MTN') {
-    return 'zh'; // Chinese for MTN
-  }
-  
-  // Default to English
+  // Default to English if no preference set
   return 'en';
 }

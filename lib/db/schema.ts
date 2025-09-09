@@ -46,6 +46,9 @@ export const users = pgTable('users', {
   dataExchangeFormats: jsonb('data_exchange_formats').default(['JSON']),
   frequencyPreference: varchar('frequency_preference', { length: 20 }).default('daily'),
   
+  // 🌍 Language preference for i18n
+  preferredLanguage: varchar('preferred_language', { length: 5 }).default('en'),
+  
   // Contact information
   primaryContactName: varchar('primary_contact_name', { length: 100 }),
   primaryContactEmail: varchar('primary_contact_email', { length: 255 }),
