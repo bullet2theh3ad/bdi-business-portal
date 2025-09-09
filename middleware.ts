@@ -19,16 +19,17 @@ const intlMiddleware = createIntlMiddleware({
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Skip i18n for API routes and static files
-  if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.includes('.')) {
-    // Continue with existing auth logic for API routes
-  } else {
-    // For non-API routes, apply i18n middleware first
+  // 🌍 TEMPORARILY DISABLED: i18n middleware (will enable after testing)
+  // Skip i18n for now to avoid breaking existing functionality
+  // TODO: Enable after proper app directory restructuring
+  /*
+  if (!pathname.startsWith('/api') && !pathname.startsWith('/_next') && !pathname.includes('.')) {
     const intlResponse = intlMiddleware(request);
     if (intlResponse) {
       return intlResponse;
     }
   }
+  */
   const isProtectedRoute = pathname.startsWith(protectedRoutes);
 
   // Create Supabase client for middleware

@@ -11,6 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { User as UserType } from '@/lib/db/schema';
+// import { useNavigationTranslations } from '@/lib/i18n/utils'; // TODO: Enable after i18n setup complete
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -175,6 +176,9 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const { data: user } = useSWR<UserType>('/api/user', fetcher);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  
+  // 🌍 TODO: Translation hook (will enable after i18n setup complete)
+  // const tn = useNavigationTranslations();
 
   const toggleExpanded = (title: string) => {
     setExpandedItems(prev => 

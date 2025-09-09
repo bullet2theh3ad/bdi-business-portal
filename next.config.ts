@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
-import createNextIntlPlugin from 'next-intl/plugin';
+// import createNextIntlPlugin from 'next-intl/plugin'; // TODO: Enable after proper setup
 
-const withNextIntl = createNextIntlPlugin('./i18n.ts');
+// const withNextIntl = createNextIntlPlugin('./i18n.ts'); // TODO: Enable after proper setup
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -19,4 +19,4 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 };
 
-export default withNextIntl(nextConfig);
+export default nextConfig; // TODO: Change to withNextIntl(nextConfig) after proper setup
