@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, shipments, organizations, organizationMembers } from '@/lib/db/schema';
+import { users, shipments, organizations, organizationMembers, invoices, invoiceLineItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -75,16 +75,20 @@ export async function GET(request: NextRequest) {
       console.log(`🚢 Partner org ${dbUser.organization.code} - fetching shipments for their SKUs`);
       
       // Use same logic as forecasts API - get SKUs this partner can see via invoices
-      const { data: partnerSkus, error: skuError } = await supabase
-        .from('invoice_line_items')
-        .select(`
-          sku_id,
-          invoices!inner(customer_name)
-        `)
-        .eq('invoices.customer_name', dbUser.organization.code);
+      // Use Drizzle for the complex join query
+      const partnerSkuIds = await db
+        .select({
+          skuId: invoiceLineItems.skuId
+        })
+        .from(invoiceLineItems)
+        .innerJoin(invoices, eq(invoices.id, invoiceLineItems.invoiceId))
+        .where(eq(invoices.customerName, dbUser.organization.code));
       
-      if (partnerSkus && partnerSkus.length > 0) {
-        const allowedSkuIds = partnerSkus.map(item => item.sku_id);
+      const allowedSkuIds = partnerSkuIds.map(item => item.skuId);
+      
+      console.log(`🔍 Found ${allowedSkuIds.length} SKU IDs for ${dbUser.organization.code}:`, allowedSkuIds);
+      
+      if (allowedSkuIds.length > 0) {
         
         // Get forecasts for these SKUs, then get shipments for those forecasts
         const { data: allowedForecasts, error: forecastError } = await supabase
