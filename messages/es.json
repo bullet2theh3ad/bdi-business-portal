@@ -49,7 +49,13 @@
     "dashboardTitle": "Panel de Control del Portal de Negocios BDI",
     "salesForecasts": "Pronósticos de Ventas",
     "forecastsDescription": "Crear pronósticos de demanda para planificación CPFR",
-    "createSalesForecast": "Crear Pronóstico de Ventas"
+    "createSalesForecast": "Crear Pronóstico de Ventas",
+    "invoicesTitle": "Facturas",
+    "invoicesDescription": "Gestionar facturas de clientes y facturación",
+    "purchaseOrdersTitle": "Órdenes de Compra",
+    "purchaseOrdersDescription": "Gestionar órdenes de compra de proveedores",
+    "warehousesTitle": "Almacenes", 
+    "warehousesDescription": "Gestionar ubicaciones de almacenes e inventario"
   },
   "cpfr": {
     "signals": {

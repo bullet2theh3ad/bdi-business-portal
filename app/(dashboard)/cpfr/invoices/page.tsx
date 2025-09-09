@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -42,6 +43,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function InvoicesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: invoices, mutate: mutateInvoices } = useSWR<Invoice[]>('/api/cpfr/invoices', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
 
@@ -267,8 +272,8 @@ export default function InvoicesPage() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="orders" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Invoices</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Manage supplier orders and delivery terms</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">{tc('invoicesTitle', 'Invoices')}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">{tc('invoicesDescription', 'Manage customer invoices and billing')}</p>
             </div>
           </div>
           <Button className="bg-green-600 hover:bg-green-700" onClick={() => {

@@ -48,8 +48,14 @@
     "welcome": "Welcome",
     "dashboardTitle": "BDI Business Portal Dashboard",
     "salesForecasts": "Sales Forecasts",
-    "forecastsDescription": "Create demand forecasts for CPFR planning",
-    "createSalesForecast": "Create Sales Forecast"
+    "forecastsDescription": "Create demand forecasts for CPFR planning", 
+    "createSalesForecast": "Create Sales Forecast",
+    "invoicesTitle": "Invoices",
+    "invoicesDescription": "Manage customer invoices and billing",
+    "purchaseOrdersTitle": "Purchase Orders",
+    "purchaseOrdersDescription": "Manage supplier purchase orders",
+    "warehousesTitle": "Warehouses",
+    "warehousesDescription": "Manage warehouse locations and inventory"
   },
   "cpfr": {
     "signals": {

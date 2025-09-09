@@ -49,7 +49,13 @@
     "dashboardTitle": "BDI商业门户仪表板",
     "salesForecasts": "销售预测",
     "forecastsDescription": "为CPFR规划创建需求预测",
-    "createSalesForecast": "创建销售预测"
+    "createSalesForecast": "创建销售预测",
+    "invoicesTitle": "发票",
+    "invoicesDescription": "管理客户发票和账单",
+    "purchaseOrdersTitle": "采购订单", 
+    "purchaseOrdersDescription": "管理供应商采购订单",
+    "warehousesTitle": "仓库",
+    "warehousesDescription": "管理仓库位置和库存"
   },
   "cpfr": {
     "signals": {
