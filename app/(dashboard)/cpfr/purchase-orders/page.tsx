@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
 
 interface UserWithOrganization extends User {
@@ -41,6 +42,11 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function PurchaseOrdersPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
+  
   const { data: purchaseOrders, mutate: mutatePurchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher, {
     refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
     revalidateOnFocus: true, // Refresh when user returns to tab
@@ -336,8 +342,8 @@ export default function PurchaseOrdersPage() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="orders" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Purchase Orders</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Manage supplier orders and delivery terms</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">{tc('purchaseOrdersTitle', 'Purchase Orders')}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">{tc('purchaseOrdersDescription', 'Manage supplier purchase orders')}</p>
             </div>
           </div>
           <div className="flex gap-2">
