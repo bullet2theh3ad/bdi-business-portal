@@ -135,8 +135,18 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(sf.quantity), 0)::int as total_units
         FROM shipments s
         LEFT JOIN sales_forecasts sf ON s.forecast_id = sf.id
-      `).then(result => (result as any)[0] || { count: 0, total_units: 0 })
+      `).then(result => {
+        const shipmentData = (result as any)[0] || { count: 0, total_units: 0 };
+        console.log('📊 Shipment Analytics Debug:', shipmentData);
+        return shipmentData;
+      })
     ])
+
+    console.log('📊 Analytics Debug - Shipment Stats:', {
+      raw: shipmentStats,
+      count: Number(shipmentStats?.count || 0),
+      totalUnits: Number(shipmentStats?.total_units || 0)
+    });
 
     // Fetch simplified time series data using actual tables
     const timeSeriesResult = await db.execute(sql`

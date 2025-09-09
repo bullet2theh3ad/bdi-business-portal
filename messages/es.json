@@ -1,0 +1,59 @@
+{
+  "navigation": {
+    "dashboard": "Panel de Control",
+    "forecasts": "Pronósticos", 
+    "invoices": "Facturas",
+    "purchaseOrders": "Órdenes de Compra",
+    "shipments": "Envíos",
+    "warehouses": "Almacenes",
+    "productionFiles": "Archivos de Producción",
+    "analytics": "Analíticas",
+    "users": "Usuarios",
+    "settings": "Configuración",
+    "organizations": "Organizaciones",
+    "connections": "Conexiones",
+    "skus": "SKUs",
+    "apiKeys": "Claves API"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar", 
+    "edit": "Editar",
+    "create": "Crear",
+    "delete": "Eliminar",
+    "confirm": "Confirmar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "refresh": "Actualizar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "import": "Importar",
+    "upload": "Subir",
+    "download": "Descargar"
+  },
+  "cpfr": {
+    "signals": {
+      "unknown": "Desconocido",
+      "draft": "Borrador", 
+      "submitted": "Enviado",
+      "confirmed": "Confirmado",
+      "rejected": "Rechazado",
+      "reviewing": "Revisando"
+    },
+    "milestones": {
+      "sales": "Ventas",
+      "factory": "Fábrica",
+      "shipping": "Envío", 
+      "transit": "En Tránsito",
+      "warehouse": "Almacén"
+    }
+  },
+  "status": {
+    "active": "Activo",
+    "inactive": "Inactivo", 
+    "pending": "Pendiente",
+    "completed": "Completado"
+  }
+}

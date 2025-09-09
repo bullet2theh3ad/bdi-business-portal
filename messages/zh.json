@@ -1,0 +1,59 @@
+{
+  "navigation": {
+    "dashboard": "仪表板",
+    "forecasts": "预测", 
+    "invoices": "发票",
+    "purchaseOrders": "采购订单",
+    "shipments": "货运",
+    "warehouses": "仓库",
+    "productionFiles": "生产文件",
+    "analytics": "分析",
+    "users": "用户",
+    "settings": "设置",
+    "organizations": "组织",
+    "connections": "连接",
+    "skus": "产品编号",
+    "apiKeys": "API密钥"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消", 
+    "edit": "编辑",
+    "create": "创建",
+    "delete": "删除",
+    "confirm": "确认",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "refresh": "刷新",
+    "search": "搜索",
+    "filter": "筛选",
+    "export": "导出",
+    "import": "导入",
+    "upload": "上传",
+    "download": "下载"
+  },
+  "cpfr": {
+    "signals": {
+      "unknown": "未知",
+      "draft": "草稿", 
+      "submitted": "已提交",
+      "confirmed": "已确认",
+      "rejected": "已拒绝",
+      "reviewing": "审核中"
+    },
+    "milestones": {
+      "sales": "销售",
+      "factory": "工厂",
+      "shipping": "运输", 
+      "transit": "运输中",
+      "warehouse": "仓库"
+    }
+  },
+  "status": {
+    "active": "活跃",
+    "inactive": "不活跃", 
+    "pending": "待处理",
+    "completed": "已完成"
+  }
+}

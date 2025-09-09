@@ -4,11 +4,31 @@ import { createServerClient } from '@supabase/ssr';
 import { db } from '@/lib/db/drizzle';
 import { users, organizationMembers, organizations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import createIntlMiddleware from 'next-intl/middleware';
+import { locales, defaultLocale } from './i18n';
 
 const protectedRoutes = '/dashboard';
 
+// Create the intl middleware
+const intlMiddleware = createIntlMiddleware({
+  locales,
+  defaultLocale,
+  localeDetection: false // We'll handle this manually based on user preferences
+});
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Skip i18n for API routes and static files
+  if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.includes('.')) {
+    // Continue with existing auth logic for API routes
+  } else {
+    // For non-API routes, apply i18n middleware first
+    const intlResponse = intlMiddleware(request);
+    if (intlResponse) {
+      return intlResponse;
+    }
+  }
   const isProtectedRoute = pathname.startsWith(protectedRoutes);
 
   // Create Supabase client for middleware

@@ -1,32 +1,22 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   experimental: {
     ppr: true,
-    clientSegmentCache: true,
-    nodeMiddleware: true
+    nodeMiddleware: true,
+    clientSegmentCache: true
   },
-  // Optimize image loading and prevent unnecessary preloading
   images: {
-    // Disable automatic image optimization for SVGs to prevent preloading
+    domains: ['localhost'],
     dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  // Configure resource hints
-  async headers() {
-    return [
-      {
-        source: '/iconography/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-    ];
-  },
+  // Enable static exports for better performance
+  output: 'standalone',
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

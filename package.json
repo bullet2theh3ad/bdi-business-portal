@@ -42,6 +42,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.511.0",
     "next": "15.4.0-canary.47",
+    "next-intl": "^4.3.7",
     "postcss": "^8.5.3",
     "postgres": "^3.4.5",
     "radix-ui": "^1.4.2",

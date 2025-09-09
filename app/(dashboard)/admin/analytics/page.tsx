@@ -794,7 +794,7 @@ export default function AnalyticsPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Units in Transit</span>
                     <Badge variant="outline">
-                      {analyticsData?.shipments.totalUnits.toLocaleString() || '0'}
+                      {(analyticsData?.shipments.totalUnits || 0).toLocaleString()}
                     </Badge>
                   </div>
                 </div>

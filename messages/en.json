@@ -1,0 +1,59 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "forecasts": "Forecasts", 
+    "invoices": "Invoices",
+    "purchaseOrders": "Purchase Orders",
+    "shipments": "Shipments",
+    "warehouses": "Warehouses",
+    "productionFiles": "Production Files",
+    "analytics": "Analytics",
+    "users": "Users",
+    "settings": "Settings",
+    "organizations": "Organizations",
+    "connections": "Connections",
+    "skus": "SKUs",
+    "apiKeys": "API Keys"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel", 
+    "edit": "Edit",
+    "create": "Create",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "refresh": "Refresh",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "upload": "Upload",
+    "download": "Download"
+  },
+  "cpfr": {
+    "signals": {
+      "unknown": "Unknown",
+      "draft": "Draft", 
+      "submitted": "Submitted",
+      "confirmed": "Confirmed",
+      "rejected": "Rejected",
+      "reviewing": "Reviewing"
+    },
+    "milestones": {
+      "sales": "Sales",
+      "factory": "Factory",
+      "shipping": "Shipping", 
+      "transit": "In Transit",
+      "warehouse": "Warehouse"
+    }
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive", 
+    "pending": "Pending",
+    "completed": "Completed"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "navigation": {
+    "dashboard": "Bảng điều khiển",
+    "forecasts": "Dự báo", 
+    "invoices": "Hóa đơn",
+    "purchaseOrders": "Đơn đặt hàng",
+    "shipments": "Vận chuyển",
+    "warehouses": "Kho",
+    "productionFiles": "Tệp sản xuất",
+    "analytics": "Phân tích",
+    "users": "Người dùng",
+    "settings": "Cài đặt",
+    "organizations": "Tổ chức",
+    "connections": "Kết nối",
+    "skus": "Mã SKU",
+    "apiKeys": "Khóa API"
+  },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy", 
+    "edit": "Chỉnh sửa",
+    "create": "Tạo",
+    "delete": "Xóa",
+    "confirm": "Xác nhận",
+    "loading": "Đang tải...",
+    "error": "Lỗi",
+    "success": "Thành công",
+    "refresh": "Làm mới",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "export": "Xuất",
+    "import": "Nhập",
+    "upload": "Tải lên",
+    "download": "Tải xuống"
+  },
+  "cpfr": {
+    "signals": {
+      "unknown": "Không rõ",
+      "draft": "Bản nháp", 
+      "submitted": "Đã gửi",
+      "confirmed": "Đã xác nhận",
+      "rejected": "Đã từ chối",
+      "reviewing": "Đang xem xét"
+    },
+    "milestones": {
+      "sales": "Bán hàng",
+      "factory": "Nhà máy",
+      "shipping": "Vận chuyển", 
+      "transit": "Đang vận chuyển",
+      "warehouse": "Kho"
+    }
+  },
+  "status": {
+    "active": "Hoạt động",
+    "inactive": "Không hoạt động", 
+    "pending": "Đang chờ",
+    "completed": "Hoàn thành"
+  }
+}
