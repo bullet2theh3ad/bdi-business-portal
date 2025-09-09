@@ -68,23 +68,22 @@ export async function GET(request: NextRequest) {
     
     console.log(`🏭 Fetching warehouses - User org: ${userOrganization.code} (${userOrganization.type}), isBDI: ${isBDIUser}`);
 
-    let warehousesData: any[] = [];
-    let warehousesError: any = null;
-
+    // Use Drizzle ORM like forecasts API - this bypasses Supabase RLS issues
+    console.log(`🔍 Using Drizzle ORM for warehouse queries (like forecasts API)`);
+    
+    let warehousesList;
+    
     if (isBDIUser) {
-      // BDI users can see all warehouses (their own + partner warehouses for CPFR)
-      const result = await supabase
-        .from('warehouses')
-        .select(`*`)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
-      warehousesData = result.data || [];
-      warehousesError = result.error;
+      // BDI users can see all warehouses
+      console.log(`🔓 BDI user can see all warehouses`);
+      warehousesList = await db
+        .select()
+        .from(warehouses)
+        .orderBy(desc(warehouses.createdAt));
     } else {
-      // Partner users (MTN, etc.) can see:
-      // 1. Their own organization's warehouses
-      // 2. BDI warehouses (like EMG) for CPFR coordination
+      // Partner users can see their own warehouses + BDI warehouses (for CPFR)
+      console.log(`🔒 Partner user ${userOrganization.code} - can see own + BDI warehouses`);
+      
       const bdiOrgResult = await db
         .select({ id: organizations.id })
         .from(organizations)
@@ -92,99 +91,62 @@ export async function GET(request: NextRequest) {
         .limit(1);
       
       const bdiOrgId = bdiOrgResult[0]?.id;
+      console.log(`🔍 BDI org ID found:`, bdiOrgId);
       
       if (bdiOrgId) {
-        console.log(`🔍 Partner org ${userOrganization.code} can see warehouses where:`);
-        console.log(`   - organization_id = ${userOrganization.id} (own warehouses) OR`);
-        console.log(`   - organization_id = ${bdiOrgId} (BDI warehouses like EMG)`);
-        
-        // Try separate queries instead of complex .in() query
-        console.log(`🔍 Running separate warehouse queries:`);
-        console.log(`   Query 1: organization_id = '${userOrganization.id}' AND is_active = true`);
-        console.log(`   Query 2: organization_id = '${bdiOrgId}' AND is_active = true`);
-        
-        // Create service role client to bypass RLS for cross-organization queries
-        const serviceSupabase = createServerClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          {
-            cookies: {
-              getAll() {
-                return cookieStore.getAll();
-              },
-              setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value, options }) =>
-                  cookieStore.set(name, value, options)
-                );
-              },
-            },
-          }
-        );
-
         const [ownWarehouses, bdiWarehouses] = await Promise.all([
-          supabase
-            .from('warehouses')
-            .select(`*`)
-            .eq('organization_id', userOrganization.id)
-            .eq('is_active', true),
-          serviceSupabase
-            .from('warehouses')
-            .select(`*`)
-            .eq('organization_id', bdiOrgId)
-            .eq('is_active', true)
+          db.select()
+            .from(warehouses)
+            .where(eq(warehouses.organizationId, userOrganization.id))
+            .orderBy(desc(warehouses.createdAt)),
+          db.select()
+            .from(warehouses)
+            .where(eq(warehouses.organizationId, bdiOrgId))
+            .orderBy(desc(warehouses.createdAt))
         ]);
-
-        console.log(`🔍 Own warehouses result:`, ownWarehouses);
-        console.log(`🔍 BDI warehouses result:`, bdiWarehouses);
-
-        const combinedWarehouses = [
-          ...(ownWarehouses.data || []),
-          ...(bdiWarehouses.data || [])
-        ];
-
-        console.log(`🔍 Own warehouses: ${ownWarehouses.data?.length || 0}`);
-        console.log(`🔍 BDI warehouses: ${bdiWarehouses.data?.length || 0}`);
-        console.log(`🔍 Combined warehouses: ${combinedWarehouses.length}`);
-
-        warehousesData = combinedWarehouses;
-        warehousesError = ownWarehouses.error || bdiWarehouses.error;
-      } else {
-        console.log(`🔍 No BDI org found - ${userOrganization.code} can only see own warehouses`);
-        const result = await supabase
-          .from('warehouses')
-          .select(`*`)
-          .eq('organization_id', userOrganization.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
         
-        warehousesData = result.data || [];
-        warehousesError = result.error;
+        console.log(`🔍 Own warehouses (Drizzle): ${ownWarehouses.length}`);
+        console.log(`🔍 BDI warehouses (Drizzle): ${bdiWarehouses.length}`);
+        
+        // Combine warehouses
+        warehousesList = [...ownWarehouses, ...bdiWarehouses];
+        console.log(`🔍 Combined warehouses: ${warehousesList.length}`);
+      } else {
+        console.log(`🔍 No BDI org found - only own warehouses`);
+        warehousesList = await db
+          .select()
+          .from(warehouses)
+          .where(eq(warehouses.organizationId, userOrganization.id))
+          .orderBy(desc(warehouses.createdAt));
       }
     }
+
+    const warehousesData = warehousesList;
+    const warehousesError = null;
 
     if (warehousesError) {
       console.error('Database error:', warehousesError);
       return NextResponse.json([]);
     }
 
-    // Transform data to match frontend interface
+    // Transform data to match frontend interface (Drizzle returns camelCase)
     const transformedWarehouses = (warehousesData || []).map((row: any) => ({
       id: row.id,
-      warehouseCode: row.warehouse_code,
+      warehouseCode: row.warehouseCode,
       name: row.name,
       type: row.type,
       address: row.address,
       city: row.city,
       state: row.state,
       country: row.country,
-      postalCode: row.postal_code,
+      postalCode: row.postalCode,
       timezone: row.timezone,
       capabilities: row.capabilities,
       mainCapabilities: (() => {
         try {
-          return row.main_capabilities && row.main_capabilities !== '' ? JSON.parse(row.main_capabilities) : [];
+          return row.mainCapabilities && row.mainCapabilities !== '' ? JSON.parse(row.mainCapabilities) : [];
         } catch (e) {
-          console.warn('Invalid main_capabilities JSON:', row.main_capabilities);
+          console.warn('Invalid mainCapabilities JSON:', row.mainCapabilities);
           return [];
         }
       })(),
@@ -203,19 +165,19 @@ export async function GET(request: NextRequest) {
           return [];
         }
       })(),
-      operatingHours: row.operating_hours,
-      contactName: row.contact_name,
-      contactEmail: row.contact_email,
-      contactPhone: row.contact_phone,
-      maxPalletHeight: row.max_pallet_height_cm,
-      maxPalletWeight: row.max_pallet_weight_kg,
-      loadingDockCount: row.loading_dock_count,
-      storageCapacity: row.storage_capacity_sqm,
-      isActive: row.is_active,
+      operatingHours: row.operatingHours,
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      contactPhone: row.contactPhone,
+      maxPalletHeight: row.maxPalletHeightCm,
+      maxPalletWeight: row.maxPalletWeightKg,
+      loadingDockCount: row.loadingDockCount,
+      storageCapacity: row.storageCapacitySqm,
+      isActive: row.isActive,
       notes: row.notes,
-      createdBy: row.created_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     }));
 
     console.log(`🏭 Fetching warehouses - returning ${transformedWarehouses.length} warehouses`);

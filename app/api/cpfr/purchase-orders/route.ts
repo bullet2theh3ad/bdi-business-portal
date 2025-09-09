@@ -63,80 +63,76 @@ export async function GET(request: NextRequest) {
 
     const userOrganization = userOrgMembership[0].organization;
 
-    // Try separate queries instead of complex .or() query
-    console.log(`🔍 Trying separate PO queries:`);
+    // Use Drizzle ORM like forecasts API - this bypasses Supabase RLS issues
+    console.log(`🔍 Using Drizzle ORM for PO queries (like forecasts API):`);
     console.log(`   1. POs where MTN is buyer: organization_id = ${userOrganization.id}`);
     console.log(`   2. POs where MTN is supplier: supplier_name = '${userOrganization.code}'`);
     
-    // Create service role client to bypass RLS for cross-organization queries
-    const serviceSupabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const isBDIUser = userOrganization.code === 'BDI' && userOrganization.type === 'internal';
+    
+    let purchaseOrdersList;
+    
+    if (isBDIUser) {
+      // BDI users can see all purchase orders
+      console.log(`🔓 BDI user can see all purchase orders`);
+      purchaseOrdersList = await db
+        .select()
+        .from(purchaseOrders)
+        .orderBy(desc(purchaseOrders.createdAt));
+    } else {
+      // Partner users see POs where they are buyer OR supplier
+      console.log(`🔒 Partner user ${userOrganization.code} - filtering POs`);
+      
+      const [buyerPOs, supplierPOs] = await Promise.all([
+        db.select()
+          .from(purchaseOrders)
+          .where(eq(purchaseOrders.organizationId, userOrganization.id))
+          .orderBy(desc(purchaseOrders.createdAt)),
+        db.select()
+          .from(purchaseOrders)
+          .where(eq(purchaseOrders.supplierName, userOrganization.code || ''))
+          .orderBy(desc(purchaseOrders.createdAt))
+      ]);
+      
+      console.log(`🔍 Buyer POs (Drizzle): ${buyerPOs.length}`);
+      console.log(`🔍 Supplier POs (Drizzle): ${supplierPOs.length}`);
+      
+      // Combine and deduplicate
+      const combinedPOs = [...buyerPOs, ...supplierPOs];
+      const uniquePOs = combinedPOs.filter((po, index, arr) => 
+        arr.findIndex(p => p.id === po.id) === index
+      );
+      
+      purchaseOrdersList = uniquePOs;
+      console.log(`🔍 Combined unique POs: ${purchaseOrdersList.length}`);
+    }
 
-    const [buyerPOs, supplierPOs] = await Promise.all([
-      supabase
-        .from('purchase_orders')
-        .select(`*`)
-        .eq('organization_id', userOrganization.id)
-        .order('created_at', { ascending: false }),
-      serviceSupabase
-        .from('purchase_orders')
-        .select(`*`)
-        .eq('supplier_name', userOrganization.code)
-        .order('created_at', { ascending: false })
-    ]);
-
-    console.log(`🔍 Buyer POs result:`, buyerPOs);
-    console.log(`🔍 Supplier POs result:`, supplierPOs);
-
-    const combinedPOs = [
-      ...(buyerPOs.data || []),
-      ...(supplierPOs.data || [])
-    ];
-
-    console.log(`🔍 Buyer POs: ${buyerPOs.data?.length || 0}`);
-    console.log(`🔍 Supplier POs: ${supplierPOs.data?.length || 0}`);
-    console.log(`🔍 Combined POs: ${combinedPOs.length}`);
-
-    const purchaseOrdersData = combinedPOs;
-    const purchaseOrdersError = buyerPOs.error || supplierPOs.error;
+    const purchaseOrdersData = purchaseOrdersList;
+    const purchaseOrdersError = null;
 
     if (purchaseOrdersError) {
       console.error('Database error:', purchaseOrdersError);
       return NextResponse.json([]);
     }
 
-    // Transform data to match frontend interface
+    // Transform data to match frontend interface (Drizzle returns camelCase)
     const transformedPurchaseOrders = (purchaseOrdersData || []).map((row: any) => ({
       id: row.id,
-      purchaseOrderNumber: row.purchase_order_number,
-      supplierName: row.supplier_name,
-      customSupplierName: row.custom_supplier_name,
-      purchaseOrderDate: row.purchase_order_date,
-      requestedDeliveryDate: row.requested_delivery_date,
+      purchaseOrderNumber: row.purchaseOrderNumber,
+      supplierName: row.supplierName,
+      customSupplierName: row.customSupplierName,
+      purchaseOrderDate: row.purchaseOrderDate,
+      requestedDeliveryDate: row.requestedDeliveryDate,
       status: row.status,
       terms: row.terms,
       incoterms: row.incoterms,
-      incotermsLocation: row.incoterms_location,
-      totalValue: parseFloat(row.total_value || '0'),
+      incotermsLocation: row.incotermsLocation,
+      totalValue: parseFloat(row.totalValue || '0'),
       notes: row.notes,
-      organizationId: row.organization_id,
-      createdBy: row.created_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      organizationId: row.organizationId,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     }));
 
     console.log(`📋 Fetching purchase orders - returning ${transformedPurchaseOrders.length} purchase orders`);
