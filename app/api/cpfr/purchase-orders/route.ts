@@ -114,6 +114,15 @@ export async function GET(request: NextRequest) {
     }));
 
     console.log(`📋 Fetching purchase orders - returning ${transformedPurchaseOrders.length} purchase orders`);
+    console.log(`🔍 User org: ${userOrganization.code} - looking for POs where:`);
+    console.log(`   - organization_id = ${userOrganization.id} (buyer)`);
+    console.log(`   - supplier_name = '${userOrganization.code}' (supplier)`);
+    
+    if (transformedPurchaseOrders.length > 0) {
+      console.log('📦 Found POs:', transformedPurchaseOrders.map(po => `${po.purchaseOrderNumber} (supplier: ${po.supplierName})`));
+    } else {
+      console.log('❌ No POs found - check if POs exist with correct supplier_name or organization_id');
+    }
     return NextResponse.json(transformedPurchaseOrders);
 
   } catch (error) {
