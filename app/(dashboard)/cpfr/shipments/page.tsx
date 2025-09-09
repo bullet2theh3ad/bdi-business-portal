@@ -670,8 +670,15 @@ export default function ShipmentsPage() {
     
     let completedMilestones = 0;
     
-    // Only count as completed if forecast status is 'submitted' (not draft)
-    if (forecast.status === 'submitted' && forecast.salesSignal === 'submitted') completedMilestones = 1;
+    // Check for rejected status first - overrides everything
+    if (forecast.salesSignal === 'rejected' || forecast.factorySignal === 'rejected' || forecast.shippingSignal === 'rejected') {
+      return 0; // Rejected = 0 milestones (red bar)
+    }
+    
+    // Sales milestone: submitted or confirmed counts as completed
+    if (forecast.salesSignal === 'submitted' || forecast.salesSignal === 'confirmed') completedMilestones = 1;
+    
+    // Factory milestone: confirmed counts as completed (reviewing doesn't)
     if (forecast.factorySignal === 'confirmed') completedMilestones = 2;
     if (forecast.factorySignal === 'confirmed' && now >= milestones.departureDate) completedMilestones = 3;
     
@@ -906,7 +913,11 @@ export default function ShipmentsPage() {
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
-                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
+                              className={`h-2 rounded-full transition-all duration-500 ${
+                                forecast.salesSignal === 'rejected' || forecast.factorySignal === 'rejected' || forecast.shippingSignal === 'rejected'
+                                  ? 'bg-red-500' // Red for rejected
+                                  : 'bg-gradient-to-r from-blue-500 to-green-500' // Normal gradient
+                              }`}
                               style={{ width: `${(progress / 4) * 100}%` }}
                             ></div>
                           </div>
@@ -936,7 +947,11 @@ export default function ShipmentsPage() {
                         {/* Progress Line */}
                         <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-300"></div>
                         <div 
-                          className="absolute top-6 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000"
+                          className={`absolute top-6 left-0 h-0.5 transition-all duration-1000 ${
+                            forecast.salesSignal === 'rejected' || forecast.factorySignal === 'rejected' || forecast.shippingSignal === 'rejected'
+                              ? 'bg-red-500' // Red for rejected
+                              : 'bg-gradient-to-r from-blue-500 to-green-500' // Normal gradient
+                          }`}
                           style={{ width: `${(progress / 4) * 100}%` }}
                         ></div>
 
