@@ -63,32 +63,35 @@ export async function GET(request: NextRequest) {
 
     const userOrganization = userOrgMembership[0].organization;
 
-    // Fetch purchase orders from database using Supabase client
-    // Users can see POs where they are either:
-    // 1. The buyer (their organization created the PO)
-    // 2. The supplier (their organization code matches supplier_name)
-    const { data: purchaseOrdersData, error: purchaseOrdersError } = await supabase
-      .from('purchase_orders')
-      .select(`
-        id,
-        purchase_order_number,
-        supplier_name,
-        custom_supplier_name,
-        purchase_order_date,
-        requested_delivery_date,
-        status,
-        terms,
-        incoterms,
-        incoterms_location,
-        total_value,
-        notes,
-        organization_id,
-        created_by,
-        created_at,
-        updated_at
-      `)
-      .or(`organization_id.eq.${userOrganization.id},supplier_name.eq.${userOrganization.code}`)
-      .order('created_at', { ascending: false });
+    // Try separate queries instead of complex .or() query
+    console.log(`🔍 Trying separate PO queries:`);
+    console.log(`   1. POs where MTN is buyer: organization_id = ${userOrganization.id}`);
+    console.log(`   2. POs where MTN is supplier: supplier_name = '${userOrganization.code}'`);
+    
+    const [buyerPOs, supplierPOs] = await Promise.all([
+      supabase
+        .from('purchase_orders')
+        .select(`*`)
+        .eq('organization_id', userOrganization.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('purchase_orders')
+        .select(`*`)
+        .eq('supplier_name', userOrganization.code)
+        .order('created_at', { ascending: false })
+    ]);
+
+    const combinedPOs = [
+      ...(buyerPOs.data || []),
+      ...(supplierPOs.data || [])
+    ];
+
+    console.log(`🔍 Buyer POs: ${buyerPOs.data?.length || 0}`);
+    console.log(`🔍 Supplier POs: ${supplierPOs.data?.length || 0}`);
+    console.log(`🔍 Combined POs: ${combinedPOs.length}`);
+
+    const purchaseOrdersData = combinedPOs;
+    const purchaseOrdersError = buyerPOs.error || supplierPOs.error;
 
     if (purchaseOrdersError) {
       console.error('Database error:', purchaseOrdersError);

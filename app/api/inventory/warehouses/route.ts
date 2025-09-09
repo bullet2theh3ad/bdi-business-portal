@@ -68,41 +68,19 @@ export async function GET(request: NextRequest) {
     
     console.log(`🏭 Fetching warehouses - User org: ${userOrganization.code} (${userOrganization.type}), isBDI: ${isBDIUser}`);
 
-    // Fetch warehouses from database using Supabase client
-    let warehousesQuery = supabase
-      .from('warehouses')
-      .select(`
-        id,
-        warehouse_code,
-        name,
-        type,
-        address,
-        city,
-        state,
-        country,
-        postal_code,
-        timezone,
-        capabilities,
-        main_capabilities,
-        contacts,
-        operating_hours,
-        contact_name,
-        contact_email,
-        contact_phone,
-        max_pallet_height_cm,
-        max_pallet_weight_kg,
-        loading_dock_count,
-        storage_capacity_sqm,
-        is_active,
-        notes,
-        created_by,
-        created_at,
-        updated_at
-      `);
+    let warehousesData: any[] = [];
+    let warehousesError: any = null;
 
     if (isBDIUser) {
       // BDI users can see all warehouses (their own + partner warehouses for CPFR)
-      warehousesQuery = warehousesQuery.eq('is_active', true);
+      const result = await supabase
+        .from('warehouses')
+        .select(`*`)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      warehousesData = result.data || [];
+      warehousesError = result.error;
     } else {
       // Partner users (MTN, etc.) can see:
       // 1. Their own organization's warehouses
@@ -119,19 +97,45 @@ export async function GET(request: NextRequest) {
         console.log(`🔍 Partner org ${userOrganization.code} can see warehouses where:`);
         console.log(`   - organization_id = ${userOrganization.id} (own warehouses) OR`);
         console.log(`   - organization_id = ${bdiOrgId} (BDI warehouses like EMG)`);
-        warehousesQuery = warehousesQuery
-          .in('organization_id', [userOrganization.id, bdiOrgId])
-          .eq('is_active', true);
+        
+        // Try separate queries instead of complex .in() query
+        const [ownWarehouses, bdiWarehouses] = await Promise.all([
+          supabase
+            .from('warehouses')
+            .select(`*`)
+            .eq('organization_id', userOrganization.id)
+            .eq('is_active', true),
+          supabase
+            .from('warehouses')
+            .select(`*`)
+            .eq('organization_id', bdiOrgId)
+            .eq('is_active', true)
+        ]);
+
+        const combinedWarehouses = [
+          ...(ownWarehouses.data || []),
+          ...(bdiWarehouses.data || [])
+        ];
+
+        console.log(`🔍 Own warehouses: ${ownWarehouses.data?.length || 0}`);
+        console.log(`🔍 BDI warehouses: ${bdiWarehouses.data?.length || 0}`);
+        console.log(`🔍 Combined warehouses: ${combinedWarehouses.length}`);
+
+        warehousesData = combinedWarehouses;
+        warehousesError = ownWarehouses.error || bdiWarehouses.error;
       } else {
         console.log(`🔍 No BDI org found - ${userOrganization.code} can only see own warehouses`);
-        warehousesQuery = warehousesQuery
+        const result = await supabase
+          .from('warehouses')
+          .select(`*`)
           .eq('organization_id', userOrganization.id)
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        
+        warehousesData = result.data || [];
+        warehousesError = result.error;
       }
     }
-
-    const { data: warehousesData, error: warehousesError } = await warehousesQuery
-      .order('created_at', { ascending: false });
 
     if (warehousesError) {
       console.error('Database error:', warehousesError);
