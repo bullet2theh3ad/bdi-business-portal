@@ -7,13 +7,18 @@
     "shipments": "Shipments",
     "warehouses": "Warehouses",
     "productionFiles": "Production Files",
+    "inventory": "Inventory",
     "analytics": "Analytics",
     "users": "Users",
     "settings": "Settings",
     "organizations": "Organizations",
     "connections": "Connections",
     "skus": "SKUs",
-    "apiKeys": "API Keys"
+    "apiKeys": "API Keys",
+    "admin": "Admin",
+    "organization": "Organization",
+    "account": "Account",
+    "profile": "Profile"
   },
   "common": {
     "save": "Save",

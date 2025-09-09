@@ -7,13 +7,18 @@
     "shipments": "货运",
     "warehouses": "仓库",
     "productionFiles": "生产文件",
+    "inventory": "库存",
     "analytics": "分析",
     "users": "用户",
     "settings": "设置",
     "organizations": "组织",
     "connections": "连接",
     "skus": "产品编号",
-    "apiKeys": "API密钥"
+    "apiKeys": "API密钥",
+    "admin": "管理",
+    "organization": "组织",
+    "account": "账户",
+    "profile": "个人资料"
   },
   "common": {
     "save": "保存",

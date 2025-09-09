@@ -35,7 +35,7 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     icon: 'dashboard',
   },
   {
-    title: 'CPFR', // TODO: Translate
+    title: 'CPFR', // Keep as acronym (international standard)
     icon: 'cpfr',
     children: [
       {
@@ -54,30 +54,30 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         icon: 'orders',
       },
       {
-        title: 'Shipments',
+        title: tn('shipments', 'Shipments'), // 🌍 TRANSLATED
         href: '/cpfr/shipments',
         icon: 'shipping',
       },
     ],
   },
   {
-    title: 'Inventory',
+    title: tn('inventory', 'Inventory'), // 🌍 TRANSLATED
     icon: 'inventory_analytics',
     children: [
       {
-        title: 'SKUs',
+        title: tn('skus', 'SKUs'), // 🌍 TRANSLATED
         href: '/admin/skus',
         icon: 'inventory_items',
         requiresRole: ['super_admin', 'admin'],
         requiresBDI: true,
       },
       {
-        title: 'Warehouses',
+        title: tn('warehouses', 'Warehouses'), // 🌍 TRANSLATED
         href: '/inventory/warehouses',
         icon: 'sites',
       },
       {
-        title: 'Production Files',
+        title: tn('productionFiles', 'Production Files'), // 🌍 TRANSLATED
         href: '/inventory/production-files',
         icon: 'analytics',
         requiresRole: ['super_admin', 'admin', 'operations', 'sales', 'member'],
@@ -85,50 +85,50 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     ],
   },
   {
-    title: 'My Account',
+    title: tn('account', 'My Account'), // 🌍 TRANSLATED
     icon: 'profile',
     children: [
       {
-        title: 'Profile',
+        title: tn('profile', 'Profile'), // 🌍 TRANSLATED
         href: '/account/profile',
         icon: 'profile',
       },
       {
-        title: 'Settings',
+        title: `${tn('settings', 'Settings')} 🌍`, // 🌍 TRANSLATED + Language indicator
         href: '/account/settings',
         icon: 'settings',
       },
     ],
   },
   {
-    title: 'Admin',
+    title: tn('admin', 'Admin'), // 🌍 TRANSLATED
     icon: 'settings',
     requiresRole: ['super_admin', 'admin'],
     requiresBDI: true, // Only show Admin menu for BDI users
     children: [
       {
-        title: 'Analytics',
+        title: tn('analytics', 'Analytics'), // 🌍 TRANSLATED
         href: '/admin/analytics',
         icon: 'analytics',
       },
       {
-        title: 'Organizations',
+        title: tn('organizations', 'Organizations'), // 🌍 TRANSLATED
         href: '/admin/organizations',
         icon: 'collaboration',
       },
       {
-        title: 'API Keys',
+        title: tn('apiKeys', 'API Keys'), // 🌍 TRANSLATED
         href: '/admin/api-keys',
         icon: 'connect',
         requiresRole: ['super_admin'], // Super Admin only
       },
       {
-        title: 'Connections',
+        title: tn('connections', 'Connections'), // 🌍 TRANSLATED
         href: '/admin/connections',
         icon: 'connections',
       },
       {
-        title: 'Users',
+        title: tn('users', 'Users'), // 🌍 TRANSLATED
         href: '/admin/users',
         icon: 'users',
       },
