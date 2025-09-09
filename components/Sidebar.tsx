@@ -35,21 +35,21 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     icon: 'dashboard',
   },
   {
-    title: 'CPFR',
+    title: 'CPFR', // TODO: Translate
     icon: 'cpfr',
     children: [
       {
-        title: 'Invoices',
+        title: tn('invoices', 'Invoices'), // 🌍 TRANSLATED
         href: '/cpfr/invoices',
         icon: 'orders',
       },
       {
-        title: 'Forecasts',
+        title: tn('forecasts', 'Forecasts'), // 🌍 TRANSLATED
         href: '/cpfr/forecasts',
         icon: 'forecasts',
       },
       {
-        title: 'Purchase Orders',
+        title: tn('purchaseOrders', 'Purchase Orders'), // 🌍 TRANSLATED
         href: '/cpfr/purchase-orders',
         icon: 'orders',
       },
