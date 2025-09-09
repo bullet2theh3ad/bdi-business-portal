@@ -99,18 +99,43 @@ export async function GET(request: NextRequest) {
         console.log(`   - organization_id = ${bdiOrgId} (BDI warehouses like EMG)`);
         
         // Try separate queries instead of complex .in() query
+        console.log(`🔍 Running separate warehouse queries:`);
+        console.log(`   Query 1: organization_id = '${userOrganization.id}' AND is_active = true`);
+        console.log(`   Query 2: organization_id = '${bdiOrgId}' AND is_active = true`);
+        
+        // Create service role client to bypass RLS for cross-organization queries
+        const serviceSupabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            cookies: {
+              getAll() {
+                return cookieStore.getAll();
+              },
+              setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  cookieStore.set(name, value, options)
+                );
+              },
+            },
+          }
+        );
+
         const [ownWarehouses, bdiWarehouses] = await Promise.all([
           supabase
             .from('warehouses')
             .select(`*`)
             .eq('organization_id', userOrganization.id)
             .eq('is_active', true),
-          supabase
+          serviceSupabase
             .from('warehouses')
             .select(`*`)
             .eq('organization_id', bdiOrgId)
             .eq('is_active', true)
         ]);
+
+        console.log(`🔍 Own warehouses result:`, ownWarehouses);
+        console.log(`🔍 BDI warehouses result:`, bdiWarehouses);
 
         const combinedWarehouses = [
           ...(ownWarehouses.data || []),

@@ -68,18 +68,39 @@ export async function GET(request: NextRequest) {
     console.log(`   1. POs where MTN is buyer: organization_id = ${userOrganization.id}`);
     console.log(`   2. POs where MTN is supplier: supplier_name = '${userOrganization.code}'`);
     
+    // Create service role client to bypass RLS for cross-organization queries
+    const serviceSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
     const [buyerPOs, supplierPOs] = await Promise.all([
       supabase
         .from('purchase_orders')
         .select(`*`)
         .eq('organization_id', userOrganization.id)
         .order('created_at', { ascending: false }),
-      supabase
+      serviceSupabase
         .from('purchase_orders')
         .select(`*`)
         .eq('supplier_name', userOrganization.code)
         .order('created_at', { ascending: false })
     ]);
+
+    console.log(`🔍 Buyer POs result:`, buyerPOs);
+    console.log(`🔍 Supplier POs result:`, supplierPOs);
 
     const combinedPOs = [
       ...(buyerPOs.data || []),
