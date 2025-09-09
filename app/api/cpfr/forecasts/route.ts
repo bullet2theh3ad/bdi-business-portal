@@ -458,6 +458,37 @@ export async function PUT(request: NextRequest) {
 
       console.log('✅ Forecast updated:', updatedForecast);
       
+      // 🔄 BI-DIRECTIONAL SYNC: Update linked shipment signals
+      console.log('🔄 Syncing shipment signals with forecast...');
+      
+      const { data: linkedShipments, error: shipmentQueryError } = await supabase
+        .from('shipments')
+        .select('id')
+        .eq('forecast_id', forecastId);
+      
+      if (linkedShipments && linkedShipments.length > 0) {
+        const shipmentUpdateData: any = {
+          sales_signal: body.salesSignal,
+          factory_signal: body.factorySignal,
+          shipping_signal: body.shippingSignal,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Update all linked shipments with the forecast signals
+        const { error: shipmentUpdateError } = await supabase
+          .from('shipments')
+          .update(shipmentUpdateData)
+          .in('id', linkedShipments.map(s => s.id));
+        
+        if (shipmentUpdateError) {
+          console.error('⚠️ Failed to sync shipment signals:', shipmentUpdateError);
+        } else {
+          console.log(`✅ Synced ${linkedShipments.length} shipment(s) with forecast signals`);
+        }
+      } else {
+        console.log('ℹ️ No linked shipments found for forecast:', forecastId);
+      }
+      
       // 🚀 TRIGGER CPFR EMAIL ON ANY SIGNAL CHANGE
       let emailTriggered = false;
       

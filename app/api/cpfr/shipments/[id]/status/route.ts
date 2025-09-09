@@ -22,7 +22,7 @@ export async function PUT(
     }
 
     // Validate milestone type
-    if (!['sales', 'factory', 'transit', 'warehouse'].includes(milestone)) {
+    if (!['sales', 'factory', 'shipping', 'transit', 'warehouse'].includes(milestone)) {
       return NextResponse.json(
         { error: 'Invalid milestone type' },
         { status: 400 }
@@ -32,9 +32,9 @@ export async function PUT(
     // Map milestone to database column
     const signalColumn = milestone === 'sales' ? 'sales_signal' :
                         milestone === 'factory' ? 'factory_signal' :
+                        milestone === 'shipping' ? 'shipping_signal' :
                         milestone === 'transit' ? 'transit_signal' :
-                        milestone === 'warehouse' ? 'warehouse_signal' :
-                        'shipping_signal'; // fallback
+                        'warehouse_signal';
 
     // Prepare update data
     const updateData: any = {
@@ -42,24 +42,15 @@ export async function PUT(
       updated_at: new Date().toISOString()
     };
 
-    // If updating sales status, also update the main status field
-    if (milestone === 'sales') {
-      updateData.status = status === 'confirmed' ? 'submitted' : 
-                          status === 'submitted' ? 'submitted' :
-                         'draft';
-    }
-
-    // Add notes if provided (we'll need to add a notes field to track status change history)
+    // Add notes if provided
     if (notes) {
-      // For now, we'll store notes in the existing notes field
-      // Later we might want a separate status_change_history table
-      const { data: currentForecast } = await supabase
-        .from('sales_forecasts')
+      const { data: currentShipment } = await supabase
+        .from('shipments')
         .select('notes')
         .eq('id', id)
         .single();
 
-      const existingNotes = currentForecast?.notes || '';
+      const existingNotes = currentShipment?.notes || '';
       const timestamp = new Date().toISOString().split('T')[0];
       const newNote = `[${timestamp}] ${milestone.toUpperCase()} → ${status}: ${notes}`;
       
@@ -68,16 +59,16 @@ export async function PUT(
         newNote;
     }
 
-    console.log('🔄 Updating forecast status:', {
-      forecastId: id,
+    console.log('🔄 Updating shipment status:', {
+      shipmentId: id,
       milestone,
       status,
       updateData
     });
 
-    // Update the forecast
-    const { data, error } = await supabase
-      .from('sales_forecasts')
+    // Update the shipment
+    const { data: updatedShipment, error } = await supabase
+      .from('shipments')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -86,50 +77,42 @@ export async function PUT(
     if (error) {
       console.error('❌ Database error:', error);
       return NextResponse.json(
-        { error: 'Failed to update forecast status' },
+        { error: 'Failed to update shipment status' },
         { status: 500 }
       );
     }
 
-    console.log('✅ Forecast status updated successfully:', data);
+    console.log('✅ Shipment status updated successfully:', updatedShipment);
 
-    // 🔄 BI-DIRECTIONAL SYNC: Update linked shipment signals
-    console.log('🔄 Syncing shipment signals with forecast...');
+    // 🔄 BI-DIRECTIONAL SYNC: Update linked forecast signals
+    console.log('🔄 Syncing forecast signals with shipment...');
     
-    const { data: linkedShipments, error: shipmentQueryError } = await supabase
-      .from('shipments')
-      .select('id')
-      .eq('forecast_id', id);
-    
-    if (linkedShipments && linkedShipments.length > 0) {
-      const shipmentUpdateData: any = {
+    if (updatedShipment.forecast_id) {
+      const forecastUpdateData: any = {
         [signalColumn]: status,
         updated_at: new Date().toISOString()
       };
       
-      // Update all linked shipments with the same signal change
-      const { error: shipmentUpdateError } = await supabase
-        .from('shipments')
-        .update(shipmentUpdateData)
-        .in('id', linkedShipments.map(s => s.id));
+      // Update the linked forecast with the same signal change
+      const { error: forecastUpdateError } = await supabase
+        .from('sales_forecasts')
+        .update(forecastUpdateData)
+        .eq('id', updatedShipment.forecast_id);
       
-      if (shipmentUpdateError) {
-        console.error('⚠️ Failed to sync shipment signals:', shipmentUpdateError);
+      if (forecastUpdateError) {
+        console.error('⚠️ Failed to sync forecast signals:', forecastUpdateError);
       } else {
-        console.log(`✅ Synced ${linkedShipments.length} shipment(s) with forecast signal: ${milestone} → ${status}`);
+        console.log(`✅ Synced forecast with shipment signal: ${milestone} → ${status}`);
       }
     } else {
-      console.log('ℹ️ No linked shipments found for forecast:', id);
+      console.log('ℹ️ No linked forecast found for shipment:', id);
     }
-
-    // TODO: Add email notification logic here
-    // await sendStatusChangeEmail(data, milestone, status, notes);
 
     return NextResponse.json({
       success: true,
-      forecast: data,
+      shipment: updatedShipment,
       message: `${milestone} status updated to ${status}`,
-      syncedShipments: linkedShipments?.length || 0
+      syncedForecast: !!updatedShipment.forecast_id
     });
 
   } catch (error) {

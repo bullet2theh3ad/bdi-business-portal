@@ -52,7 +52,11 @@ export async function PUT(
         estimated_departure: estimatedDeparture,
         estimated_arrival: estimatedArrival,
         notes: body.notes || null,
-        status: 'planning', // Keep status as planning for quote requests
+        status: 'draft', // Use standardized status
+        // Update signals if provided
+        sales_signal: body.salesSignal || null,
+        factory_signal: body.factorySignal || null,
+        shipping_signal: body.shippingSignal || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', shipmentId)
@@ -66,10 +70,38 @@ export async function PUT(
 
     console.log('🔧 Updated shipment in database:', updatedShipment);
 
+    // 🔄 BI-DIRECTIONAL SYNC: Update linked forecast signals if signals were changed
+    if (body.salesSignal || body.factorySignal || body.shippingSignal) {
+      console.log('🔄 Syncing forecast signals with shipment...');
+      
+      if (updatedShipment.forecast_id) {
+        const forecastUpdateData: any = {
+          updated_at: new Date().toISOString()
+        };
+        
+        // Only update signals that were provided
+        if (body.salesSignal) forecastUpdateData.sales_signal = body.salesSignal;
+        if (body.factorySignal) forecastUpdateData.factory_signal = body.factorySignal;
+        if (body.shippingSignal) forecastUpdateData.shipping_signal = body.shippingSignal;
+        
+        const { error: forecastUpdateError } = await supabase
+          .from('sales_forecasts')
+          .update(forecastUpdateData)
+          .eq('id', updatedShipment.forecast_id);
+        
+        if (forecastUpdateError) {
+          console.error('⚠️ Failed to sync forecast signals:', forecastUpdateError);
+        } else {
+          console.log(`✅ Synced forecast with shipment signals`);
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Shipment updated successfully in database!',
-      shipment: updatedShipment
+      shipment: updatedShipment,
+      syncedForecast: !!(body.salesSignal || body.factorySignal || body.shippingSignal)
     });
 
   } catch (error) {

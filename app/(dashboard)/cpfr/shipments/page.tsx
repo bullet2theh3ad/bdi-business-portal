@@ -53,7 +53,7 @@ export default function ShipmentsPage() {
       }
     }
   });
-  const { data: actualShipments } = useSWR('/api/cpfr/shipments', fetcher);
+  const { data: actualShipments, mutate: mutateShipments } = useSWR('/api/cpfr/shipments', fetcher);
   
   // Ensure actualShipments is an array before using
   const actualShipmentsArray = Array.isArray(actualShipments) ? actualShipments : [];
@@ -1848,26 +1848,57 @@ export default function ShipmentsPage() {
                 if (!statusChangeModal.forecast || !statusChangeModal.milestone) return;
 
                 try {
-                  const response = await fetch(`/api/cpfr/forecasts/${statusChangeModal.forecast.id}/status`, {
-                    method: 'PUT',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      milestone: statusChangeModal.milestone,
-                      status: newStatus,
-                      notes: notes || undefined
-                    }),
-                  });
-
-                  const result = await response.json();
+                  // 🔄 NEW: Update shipment status (which will sync to forecast)
+                  // First, find the shipment for this forecast
+                  const shipment = actualShipmentsArray.find(s => s.forecast_id === statusChangeModal.forecast?.id);
                   
-                  if (result.success) {
-                    alert(`✅ ${statusChangeModal.milestone} status updated to ${newStatus}!`);
-                    // Refresh the forecasts data to update the timeline
-                    mutateForecasts();
+                  let response;
+                  
+                  if (shipment) {
+                    console.log(`🔄 Updating shipment ${shipment.id} signal: ${statusChangeModal.milestone} → ${newStatus}`);
+                    
+                    response = await fetch(`/api/cpfr/shipments/${shipment.id}/status`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        milestone: statusChangeModal.milestone,
+                        status: newStatus,
+                        notes: notes || undefined
+                      }),
+                    });
                   } else {
-                    alert(`❌ Error: ${result.error}`);
+                    // Fallback: Update forecast directly if no shipment exists
+                    console.log(`🔄 No shipment found, updating forecast ${statusChangeModal.forecast.id} directly`);
+                    
+                    response = await fetch(`/api/cpfr/forecasts/${statusChangeModal.forecast.id}/status`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        milestone: statusChangeModal.milestone,
+                        status: newStatus,
+                        notes: notes || undefined
+                      }),
+                    });
+                  }
+
+                  if (response) {
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                      const syncMessage = result.syncedShipments ? ` (synced ${result.syncedShipments} shipments)` : 
+                                         result.syncedForecast ? ' (synced forecast)' : '';
+                      alert(`✅ ${statusChangeModal.milestone} status updated to ${newStatus}!${syncMessage}`);
+                      
+                      // Refresh both forecasts and shipments data
+                      mutateForecasts();
+                      mutateShipments();
+                    } else {
+                      alert(`❌ Error: ${result.error}`);
+                    }
                   }
                 } catch (error) {
                   console.error('Status update error:', error);
