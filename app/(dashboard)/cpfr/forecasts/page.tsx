@@ -61,7 +61,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function SalesForecastsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
-  const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
+  const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher, {
+    refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
+    revalidateOnFocus: true, // Refresh when user returns to tab
+  });
   const { data: purchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
   const { data: inventoryData } = useSWR('/api/cpfr/inventory/availability', fetcher);
   
@@ -303,6 +306,12 @@ export default function SalesForecastsPage() {
     );
   }
 
+  // Determine user organization type for permissions
+  const isBDIUser = user.organization?.code === 'BDI' && user.organization?.type === 'internal';
+  const isPartnerUser = !isBDIUser && user.organization?.code;
+  const canCreateForecasts = isBDIUser; // Only BDI can create new forecasts
+  const canRespondToForecasts = isPartnerUser; // Partners can respond to existing forecasts
+
   const handleCreateForecast = async (formData: FormData) => {
     setIsLoading(true);
     try {
@@ -432,10 +441,22 @@ export default function SalesForecastsPage() {
               <p className="text-sm sm:text-base text-muted-foreground">Create demand forecasts for CPFR planning</p>
             </div>
           </div>
-          <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
-            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            New Forecast
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => mutateForecasts()}
+              className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+            >
+              <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
+              Refresh
+            </Button>
+            {canCreateForecasts && (
+              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
+                <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+                New Forecast
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -751,17 +772,19 @@ export default function SalesForecastsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Button 
-                        variant="outline" 
-                        className="w-full text-xs mb-3"
-                        onClick={() => {
-                          setSelectedDate(week.isoWeek);
-                          setShowCreateModal(true);
-                        }}
-                      >
-                        <SemanticBDIIcon semantic="plus" size={12} className="mr-1" />
-                        Add Forecast
-                      </Button>
+                      {canCreateForecasts && (
+                        <Button 
+                          variant="outline" 
+                          className="w-full text-xs mb-3"
+                          onClick={() => {
+                            setSelectedDate(week.isoWeek);
+                            setShowCreateModal(true);
+                          }}
+                        >
+                          <SemanticBDIIcon semantic="plus" size={12} className="mr-1" />
+                          Add Forecast
+                        </Button>
+                      )}
                       
                       {/* Week Forecasts with Signals */}
                       <div className="space-y-2">
@@ -829,11 +852,28 @@ export default function SalesForecastsPage() {
             {forecastsArray.length === 0 ? (
               <div className="text-center py-12">
                 <SemanticBDIIcon semantic="forecasts" size={48} className="mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No Forecasts Yet</h3>
-                <p className="text-muted-foreground mb-4">Create your first demand forecast to start CPFR planning</p>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
-                  Create First Forecast
+                <h3 className="text-lg font-semibold mb-2">
+                  {canCreateForecasts ? 'No Forecasts Yet' : 'No Forecasts Available'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {canCreateForecasts 
+                    ? 'Create your first demand forecast to start CPFR planning'
+                    : 'Waiting for BDI to create forecasts for your organization'
+                  }
+                </p>
+                {canCreateForecasts && (
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
+                    Create First Forecast
+                  </Button>
+                )}
+                <Button 
+                  variant="outline"
+                  onClick={() => mutateForecasts()}
+                  className="ml-2"
+                >
+                  <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
+                  Refresh
                 </Button>
               </div>
             ) : (
@@ -897,11 +937,11 @@ export default function SalesForecastsPage() {
                         )}
                       </div>
                       
-                      {/* Edit Button - Mobile: Below content, Desktop: Right side */}
+                      {/* Action Button - Mobile: Below content, Desktop: Right side */}
                       <div className="flex items-center justify-center sm:justify-end">
                         <Button variant="outline" size="sm" className="w-full sm:w-auto">
                           <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                          Edit
+                          {canCreateForecasts ? 'Edit' : 'Respond'}
                         </Button>
                       </div>
                     </div>
@@ -913,8 +953,8 @@ export default function SalesForecastsPage() {
         </Card>
       )}
 
-      {/* Create Forecast Modal */}
-      {showCreateModal && (
+      {/* Create Forecast Modal - Only for BDI users */}
+      {showCreateModal && canCreateForecasts && (
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
             <DialogHeader>
