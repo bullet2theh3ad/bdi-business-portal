@@ -63,8 +63,13 @@ export async function GET(request: NextRequest) {
 
     const userOrganization = userOrgMembership[0].organization;
 
+    // Determine warehouse access based on organization type
+    const isBDIUser = userOrganization.code === 'BDI' && userOrganization.type === 'internal';
+    
+    console.log(`🏭 Fetching warehouses - User org: ${userOrganization.code} (${userOrganization.type}), isBDI: ${isBDIUser}`);
+
     // Fetch warehouses from database using Supabase client
-    const { data: warehousesData, error: warehousesError } = await supabase
+    let warehousesQuery = supabase
       .from('warehouses')
       .select(`
         id,
@@ -93,8 +98,35 @@ export async function GET(request: NextRequest) {
         created_by,
         created_at,
         updated_at
-      `)
-      .eq('organization_id', userOrganization.id)
+      `);
+
+    if (isBDIUser) {
+      // BDI users can see all warehouses (their own + partner warehouses for CPFR)
+      warehousesQuery = warehousesQuery.eq('is_active', true);
+    } else {
+      // Partner users (MTN, etc.) can see:
+      // 1. Their own organization's warehouses
+      // 2. BDI warehouses (like EMG) for CPFR coordination
+      const bdiOrgResult = await db
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.code, 'BDI'))
+        .limit(1);
+      
+      const bdiOrgId = bdiOrgResult[0]?.id;
+      
+      if (bdiOrgId) {
+        warehousesQuery = warehousesQuery
+          .or(`organization_id.eq.${userOrganization.id},organization_id.eq.${bdiOrgId}`)
+          .eq('is_active', true);
+      } else {
+        warehousesQuery = warehousesQuery
+          .eq('organization_id', userOrganization.id)
+          .eq('is_active', true);
+      }
+    }
+
+    const { data: warehousesData, error: warehousesError } = await warehousesQuery
       .order('created_at', { ascending: false });
 
     if (warehousesError) {
@@ -154,6 +186,8 @@ export async function GET(request: NextRequest) {
     }));
 
     console.log(`🏭 Fetching warehouses - returning ${transformedWarehouses.length} warehouses`);
+    console.log('📍 Warehouse codes:', transformedWarehouses.map(w => `${w.warehouseCode} (${w.name})`));
+    
     return NextResponse.json(transformedWarehouses);
 
   } catch (error) {
