@@ -442,8 +442,8 @@ export default function SalesForecastsPage() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="forecasts" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Sales Forecasts</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Create demand forecasts for CPFR planning</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">{tc('salesForecasts', 'Sales Forecasts')}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">{tc('forecastsDescription', 'Create demand forecasts for CPFR planning')}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -965,7 +965,7 @@ export default function SalesForecastsPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
-                Create Sales Forecast
+                {tc('createSalesForecast', 'Create Sales Forecast')}
               </DialogTitle>
             </DialogHeader>
             <form className="space-y-12 p-8" onSubmit={(e) => {

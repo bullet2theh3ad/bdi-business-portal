@@ -46,7 +46,10 @@
     "submit": "Submit",
     "respond": "Respond",
     "welcome": "Welcome",
-    "dashboardTitle": "BDI Business Portal Dashboard"
+    "dashboardTitle": "BDI Business Portal Dashboard",
+    "salesForecasts": "Sales Forecasts",
+    "forecastsDescription": "Create demand forecasts for CPFR planning",
+    "createSalesForecast": "Create Sales Forecast"
   },
   "cpfr": {
     "signals": {

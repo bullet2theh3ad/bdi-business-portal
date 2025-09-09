@@ -46,7 +46,10 @@
     "submit": "Enviar",
     "respond": "Responder",
     "welcome": "Bienvenido",
-    "dashboardTitle": "Panel de Control del Portal de Negocios BDI"
+    "dashboardTitle": "Panel de Control del Portal de Negocios BDI",
+    "salesForecasts": "Pronósticos de Ventas",
+    "forecastsDescription": "Crear pronósticos de demanda para planificación CPFR",
+    "createSalesForecast": "Crear Pronóstico de Ventas"
   },
   "cpfr": {
     "signals": {

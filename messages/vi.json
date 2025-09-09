@@ -46,7 +46,10 @@
     "submit": "Gửi",
     "respond": "Phản hồi",
     "welcome": "Chào mừng",
-    "dashboardTitle": "Bảng điều khiển Cổng thông tin Kinh doanh BDI"
+    "dashboardTitle": "Bảng điều khiển Cổng thông tin Kinh doanh BDI",
+    "salesForecasts": "Dự báo Bán hàng",
+    "forecastsDescription": "Tạo dự báo nhu cầu cho kế hoạch CPFR",
+    "createSalesForecast": "Tạo Dự báo Bán hàng"
   },
   "cpfr": {
     "signals": {
