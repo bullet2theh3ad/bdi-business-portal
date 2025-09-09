@@ -676,7 +676,7 @@ export default function ShipmentsPage() {
     if (forecast.factorySignal === 'accepted' && now >= milestones.departureDate) completedMilestones = 3;
     
     // Check if shipment has been created for this forecast (from database or local state)
-    const hasShipmentInDB = actualShipments?.some((shipment: any) => shipment.forecast_id === forecast.id);
+    const hasShipmentInDB = actualShipmentsArray.some((shipment: any) => shipment.forecast_id === forecast.id);
     const hasShipmentLocal = createdShipments.has(forecast.id);
     
     if (hasShipmentInDB || hasShipmentLocal) {
