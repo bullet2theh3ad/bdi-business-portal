@@ -120,12 +120,15 @@ export async function GET(request: NextRequest) {
     console.log(`   - organization_id = ${userOrganization.id} (buyer) OR`);
     console.log(`   - supplier_name = '${userOrganization.code}' (supplier)`);
     console.log(`🔍 Query: organization_id.eq.${userOrganization.id},supplier_name.eq.${userOrganization.code}`);
+    console.log(`🔍 User org ID type:`, typeof userOrganization.id, userOrganization.id);
+    console.log(`🔍 User org code type:`, typeof userOrganization.code, userOrganization.code);
     
     if (transformedPurchaseOrders.length > 0) {
       console.log('📦 Found POs:', transformedPurchaseOrders.map(po => `${po.purchaseOrderNumber} (supplier: ${po.supplierName}, org_id: ${po.organizationId || 'N/A'})`));
     } else {
       console.log('❌ No POs found - check if POs exist with correct supplier_name or organization_id');
       console.log('🔍 Raw query result:', purchaseOrdersData);
+      console.log('🔍 Expected: supplier_name = "MTN" OR organization_id = "54aa0aeb-eda2-41f6-958d-c37fa89ae86d"');
     }
     return NextResponse.json(transformedPurchaseOrders);
 

@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         console.log(`   - organization_id = ${userOrganization.id} (own warehouses) OR`);
         console.log(`   - organization_id = ${bdiOrgId} (BDI warehouses like EMG)`);
         warehousesQuery = warehousesQuery
-          .or(`organization_id.eq.${userOrganization.id},organization_id.eq.${bdiOrgId}`)
+          .in('organization_id', [userOrganization.id, bdiOrgId])
           .eq('is_active', true);
       } else {
         console.log(`🔍 No BDI org found - ${userOrganization.code} can only see own warehouses`);
