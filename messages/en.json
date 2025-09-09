@@ -44,7 +44,9 @@
     "updateStatus": "Update Status",
     "close": "Close",
     "submit": "Submit",
-    "respond": "Respond"
+    "respond": "Respond",
+    "welcome": "Welcome",
+    "dashboardTitle": "BDI Business Portal Dashboard"
   },
   "cpfr": {
     "signals": {

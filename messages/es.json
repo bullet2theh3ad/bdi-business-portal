@@ -44,7 +44,9 @@
     "updateStatus": "Actualizar Estado",
     "close": "Cerrar",
     "submit": "Enviar",
-    "respond": "Responder"
+    "respond": "Responder",
+    "welcome": "Bienvenido",
+    "dashboardTitle": "Panel de Control del Portal de Negocios BDI"
   },
   "cpfr": {
     "signals": {

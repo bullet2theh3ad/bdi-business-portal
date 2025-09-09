@@ -44,7 +44,9 @@
     "updateStatus": "更新状态",
     "close": "关闭",
     "submit": "提交",
-    "respond": "响应"
+    "respond": "响应",
+    "welcome": "欢迎",
+    "dashboardTitle": "BDI商业门户仪表板"
   },
   "cpfr": {
     "signals": {

@@ -44,7 +44,9 @@
     "updateStatus": "Cập nhật trạng thái",
     "close": "Đóng",
     "submit": "Gửi",
-    "respond": "Phản hồi"
+    "respond": "Phản hồi",
+    "welcome": "Chào mừng",
+    "dashboardTitle": "Bảng điều khiển Cổng thông tin Kinh doanh BDI"
   },
   "cpfr": {
     "signals": {

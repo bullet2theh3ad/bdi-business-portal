@@ -20,6 +20,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { User } from '@/lib/db/schema';
 import { PendingInvitations } from '@/components/PendingInvitations';
 import UserActivity from '@/components/UserActivity';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 // Extended user type with organization data
 interface UserWithOrganization extends User {
@@ -36,14 +37,18 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 function WelcomeCard() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
+  
   return (
     <Card className="mb-8">
       <CardHeader>
         <CardTitle className="text-xl sm:text-2xl">
-          {user ? `Welcome ${user.name || user.email}` : 'Welcome'}
+          {user ? `${tc('welcome', 'Welcome')} ${user.name || user.email}` : tc('welcome', 'Welcome')}
         </CardTitle>
         <CardDescription>
-          BDI Business Portal Dashboard
+          {tc('dashboardTitle', 'BDI Business Portal Dashboard')}
         </CardDescription>
       </CardHeader>
       <CardContent>
