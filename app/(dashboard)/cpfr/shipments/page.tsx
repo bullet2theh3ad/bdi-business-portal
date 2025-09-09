@@ -610,7 +610,9 @@ export default function ShipmentsPage() {
 
   // Get shipment data from forecasts (Forecasts ARE Shipments!)
   // Show ALL forecasts - drafts will show 0/4 milestones, submitted will show progress
-  const shipmentForecasts = forecasts || [];
+  // Ensure forecasts is an array before using
+  const forecastsArray = Array.isArray(forecasts) ? forecasts : [];
+  const shipmentForecasts = forecastsArray;
 
   // Helper functions for timeline calculations
   const getShippingIcon = (shippingMethod: string) => {

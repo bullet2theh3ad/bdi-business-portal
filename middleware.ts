@@ -91,6 +91,11 @@ export async function middleware(request: NextRequest) {
       const isBDIUser = userOrg.code === 'BDI' && userOrg.type === 'internal';
       const isSuperAdmin = dbUser.role === 'super_admin';
 
+      console.log(`🔍 MIDDLEWARE DEBUG - User: ${dbUser.email}`);
+      console.log(`🔍 MIDDLEWARE DEBUG - Organization: ${userOrg.code} (${userOrg.type})`);
+      console.log(`🔍 MIDDLEWARE DEBUG - isBDIUser: ${isBDIUser}, isSuperAdmin: ${isSuperAdmin}`);
+      console.log(`🔍 MIDDLEWARE DEBUG - User role: ${dbUser.role}, Supplier code: ${dbUser.supplierCode}`);
+
       // BDI Super Admins have access to everything
       if (!isBDIUser && !isSuperAdmin) {
         const enabledPages = userOrg.enabledPages as any || {};
