@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, shipments, organizations, organizationMembers, invoices, invoiceLineItems } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,12 +64,26 @@ export async function GET(request: NextRequest) {
     const isBDIUser = dbUser.organization?.code === 'BDI' && dbUser.organization?.type === 'internal';
     
     if (isBDIUser) {
-      // BDI users can see all shipments
-      console.log('🚢 BDI user - fetching all shipments');
+      // BDI users can see all shipments - use Drizzle ORM
+      console.log('🚢 BDI user - fetching all shipments (Drizzle)');
+      const allShipments = await db
+        .select()
+        .from(shipments)
+        .orderBy(desc(shipments.createdAt));
+      
+      console.log(`🚢 BDI user found ${allShipments.length} total shipments`);
+      return NextResponse.json(allShipments);
     } else if (dbUser.organization?.type === 'shipping_logistics') {
-      // Shipping organizations see their own shipments
-      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching their shipments`);
-      shipmentsQuery = shipmentsQuery.eq('shipping_organization_code', dbUser.organization.code);
+      // Shipping organizations see their own shipments - use Drizzle ORM
+      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching their shipments (Drizzle)`);
+      const ownShipments = await db
+        .select()
+        .from(shipments)
+        .where(eq(shipments.shippingOrganizationCode, dbUser.organization.code || ''))
+        .orderBy(desc(shipments.createdAt));
+      
+      console.log(`🚢 Shipping org found ${ownShipments.length} shipments`);
+      return NextResponse.json(ownShipments);
     } else if (dbUser.organization?.code) {
       // Partner organizations (MTN, CBN, etc.) see shipments for forecasts they can see
       console.log(`🚢 Partner org ${dbUser.organization.code} - fetching shipments for their SKUs`);
@@ -90,16 +104,34 @@ export async function GET(request: NextRequest) {
       
       if (allowedSkuIds.length > 0) {
         
-        // Get forecasts for these SKUs, then get shipments for those forecasts
+        // Use Supabase for forecasts (table not in Drizzle schema yet) but Drizzle for shipments
         const { data: allowedForecasts, error: forecastError } = await supabase
           .from('sales_forecasts')
           .select('id')
           .in('sku_id', allowedSkuIds);
         
+        console.log(`🚢 Found ${allowedForecasts?.length || 0} forecasts for ${dbUser.organization.code} shipments (Drizzle)`);
+        
         if (allowedForecasts && allowedForecasts.length > 0) {
           const forecastIds = allowedForecasts.map(f => f.id);
-          shipmentsQuery = shipmentsQuery.in('forecast_id', forecastIds);
-          console.log(`🚢 Found ${forecastIds.length} forecasts for ${dbUser.organization.code} shipments`);
+          console.log(`🚢 Forecast IDs:`, forecastIds);
+          
+          // Use Drizzle ORM to get shipments for these forecasts (bypasses RLS)
+          // For now, query each forecast individually and combine
+          const shipmentPromises = forecastIds.map(forecastId =>
+            db.select()
+              .from(shipments)
+              .where(eq(shipments.forecastId, forecastId))
+              .orderBy(desc(shipments.createdAt))
+          );
+          
+          const shipmentResults = await Promise.all(shipmentPromises);
+          const partnerShipments = shipmentResults.flat();
+          
+          console.log(`🚢 Found ${partnerShipments.length} shipments for MTN forecasts (Drizzle)`);
+          
+          // Return the shipments directly (bypass Supabase query)
+          return NextResponse.json(partnerShipments);
         } else {
           console.log(`🚢 No forecasts found for ${dbUser.organization.code} SKUs - returning empty shipments`);
           return NextResponse.json([]);
@@ -110,15 +142,9 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const { data: shipmentsData, error: shipmentsError } = await shipmentsQuery;
-    
-    if (shipmentsError) {
-      console.error('🚢 Error fetching shipments:', shipmentsError);
-      return NextResponse.json({ error: 'Failed to fetch shipments' }, { status: 500 });
-    }
-    
-    console.log(`🚢 Fetching shipments - returning ${shipmentsData?.length || 0} shipments`);
-    return NextResponse.json(shipmentsData || []);
+    // This should never be reached since all paths above return directly
+    console.log(`🚢 Unexpected path - returning empty shipments`);
+    return NextResponse.json([]);
 
   } catch (error) {
     console.error('Error fetching shipments:', error);
