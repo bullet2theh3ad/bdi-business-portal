@@ -61,9 +61,49 @@ export async function GET(request: NextRequest) {
     // Fetch shipments based on user organization using Supabase client
     let shipmentsQuery = supabase.from('shipments').select('*');
     
-    // If user is from a shipping organization, only show their shipments
-    if (dbUser.organization?.type === 'shipping_logistics' && dbUser.organization.code) {
+    const isBDIUser = dbUser.organization?.code === 'BDI' && dbUser.organization?.type === 'internal';
+    
+    if (isBDIUser) {
+      // BDI users can see all shipments
+      console.log('🚢 BDI user - fetching all shipments');
+    } else if (dbUser.organization?.type === 'shipping_logistics') {
+      // Shipping organizations see their own shipments
+      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching their shipments`);
       shipmentsQuery = shipmentsQuery.eq('shipping_organization_code', dbUser.organization.code);
+    } else if (dbUser.organization?.code) {
+      // Partner organizations (MTN, CBN, etc.) see shipments for forecasts they can see
+      console.log(`🚢 Partner org ${dbUser.organization.code} - fetching shipments for their SKUs`);
+      
+      // Use same logic as forecasts API - get SKUs this partner can see via invoices
+      const { data: partnerSkus, error: skuError } = await supabase
+        .from('invoice_line_items')
+        .select(`
+          sku_id,
+          invoices!inner(customer_name)
+        `)
+        .eq('invoices.customer_name', dbUser.organization.code);
+      
+      if (partnerSkus && partnerSkus.length > 0) {
+        const allowedSkuIds = partnerSkus.map(item => item.sku_id);
+        
+        // Get forecasts for these SKUs, then get shipments for those forecasts
+        const { data: allowedForecasts, error: forecastError } = await supabase
+          .from('sales_forecasts')
+          .select('id')
+          .in('sku_id', allowedSkuIds);
+        
+        if (allowedForecasts && allowedForecasts.length > 0) {
+          const forecastIds = allowedForecasts.map(f => f.id);
+          shipmentsQuery = shipmentsQuery.in('forecast_id', forecastIds);
+          console.log(`🚢 Found ${forecastIds.length} forecasts for ${dbUser.organization.code} shipments`);
+        } else {
+          console.log(`🚢 No forecasts found for ${dbUser.organization.code} SKUs - returning empty shipments`);
+          return NextResponse.json([]);
+        }
+      } else {
+        console.log(`🚢 No SKUs found for ${dbUser.organization.code} - returning empty shipments`);
+        return NextResponse.json([]);
+      }
     }
     
     const { data: shipmentsData, error: shipmentsError } = await shipmentsQuery;
