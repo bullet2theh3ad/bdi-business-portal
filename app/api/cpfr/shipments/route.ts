@@ -64,26 +64,36 @@ export async function GET(request: NextRequest) {
     const isBDIUser = dbUser.organization?.code === 'BDI' && dbUser.organization?.type === 'internal';
     
     if (isBDIUser) {
-      // BDI users can see all shipments - use Drizzle ORM
-      console.log('🚢 BDI user - fetching all shipments (Drizzle)');
-      const allShipments = await db
-        .select()
-        .from(shipments)
-        .orderBy(desc(shipments.createdAt));
+      // BDI users can see all shipments - use Supabase (like POST method)
+      console.log('🚢 BDI user - fetching all shipments (Supabase)');
+      const { data: allShipments, error: shipmentsError } = await supabase
+        .from('shipments')
+        .select('*')
+        .order('created_at', { ascending: false });
       
-      console.log(`🚢 BDI user found ${allShipments.length} total shipments`);
-      return NextResponse.json(allShipments);
+      if (shipmentsError) {
+        console.error('🚢 BDI shipments error:', shipmentsError);
+        return NextResponse.json([]);
+      }
+      
+      console.log(`🚢 BDI user found ${allShipments?.length || 0} total shipments`);
+      return NextResponse.json(allShipments || []);
     } else if (dbUser.organization?.type === 'shipping_logistics') {
-      // Shipping organizations see their own shipments - use Drizzle ORM
-      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching their shipments (Drizzle)`);
-      const ownShipments = await db
-        .select()
-        .from(shipments)
-        .where(eq(shipments.shippingOrganizationCode, dbUser.organization.code || ''))
-        .orderBy(desc(shipments.createdAt));
+      // Shipping organizations see their own shipments - use Supabase (like BDI)
+      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching their shipments (Supabase)`);
+      const { data: ownShipments, error: shipmentsError } = await supabase
+        .from('shipments')
+        .select('*')
+        .eq('organization_id', dbUser.organization.id)
+        .order('created_at', { ascending: false });
       
-      console.log(`🚢 Shipping org found ${ownShipments.length} shipments`);
-      return NextResponse.json(ownShipments);
+      if (shipmentsError) {
+        console.error('🚢 Shipping org shipments error:', shipmentsError);
+        return NextResponse.json([]);
+      }
+      
+      console.log(`🚢 Shipping org found ${ownShipments?.length || 0} shipments`);
+      return NextResponse.json(ownShipments || []);
     } else if (dbUser.organization?.code) {
       // Partner organizations (MTN, CBN, etc.) see shipments for forecasts they can see
       console.log(`🚢 Partner org ${dbUser.organization.code} - fetching shipments for their SKUs`);
@@ -104,11 +114,23 @@ export async function GET(request: NextRequest) {
       
       if (allowedSkuIds.length > 0) {
         
-        // Use Supabase for forecasts (table not in Drizzle schema yet) but Drizzle for shipments
-        const { data: allowedForecasts, error: forecastError } = await supabase
+        // Use EXACT same query as forecasts API to get ALL forecasts, then filter
+        const { data: allForecasts, error: forecastError } = await supabase
           .from('sales_forecasts')
-          .select('id')
-          .in('sku_id', allowedSkuIds);
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (forecastError) {
+          console.error('🚢 Forecast query error:', forecastError);
+          return NextResponse.json([]);
+        }
+        
+        // Filter forecasts using SAME logic as forecasts API
+        const allowedForecasts = (allForecasts || []).filter(forecast => 
+          allowedSkuIds.includes(forecast.sku_id)
+        );
+        
+        console.log(`🚢 All forecasts: ${allForecasts?.length || 0}, MTN forecasts: ${allowedForecasts.length}`);
         
         console.log(`🚢 Found ${allowedForecasts?.length || 0} forecasts for ${dbUser.organization.code} shipments (Drizzle)`);
         
@@ -116,22 +138,40 @@ export async function GET(request: NextRequest) {
           const forecastIds = allowedForecasts.map(f => f.id);
           console.log(`🚢 Forecast IDs:`, forecastIds);
           
-          // Use Drizzle ORM to get shipments for these forecasts (bypasses RLS)
-          // For now, query each forecast individually and combine
-          const shipmentPromises = forecastIds.map(forecastId =>
-            db.select()
-              .from(shipments)
-              .where(eq(shipments.forecastId, forecastId))
-              .orderBy(desc(shipments.createdAt))
+          // Use service role client to bypass RLS for shipments (same as warehouses fix)
+          console.log(`🚢 Querying shipments for forecast IDs:`, forecastIds);
+          
+          const serviceSupabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+              cookies: {
+                getAll() {
+                  return cookieStore.getAll();
+                },
+                setAll(cookiesToSet) {
+                  cookiesToSet.forEach(({ name, value, options }) =>
+                    cookieStore.set(name, value, options)
+                  );
+                },
+              },
+            }
           );
           
-          const shipmentResults = await Promise.all(shipmentPromises);
-          const partnerShipments = shipmentResults.flat();
+          const { data: partnerShipments, error: shipmentsError } = await serviceSupabase
+            .from('shipments')
+            .select('*')
+            .in('forecast_id', forecastIds);
           
-          console.log(`🚢 Found ${partnerShipments.length} shipments for MTN forecasts (Drizzle)`);
+          if (shipmentsError) {
+            console.error(`🚢 Shipments query error:`, shipmentsError);
+            return NextResponse.json([]);
+          }
           
-          // Return the shipments directly (bypass Supabase query)
-          return NextResponse.json(partnerShipments);
+          console.log(`🚢 Found ${partnerShipments?.length || 0} shipments for MTN forecasts (Raw SQL)`);
+          
+          // Return the shipments directly 
+          return NextResponse.json(partnerShipments || []);
         } else {
           console.log(`🚢 No forecasts found for ${dbUser.organization.code} SKUs - returning empty shipments`);
           return NextResponse.json([]);

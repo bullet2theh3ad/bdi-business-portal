@@ -1,33 +1,14 @@
--- Check the actual shipments table structure
--- Run this in Supabase SQL Editor
-
--- 1. Check if the shipments table exists and its columns
-SELECT column_name, data_type, is_nullable, column_default
-FROM information_schema.columns
-WHERE table_name = 'shipments'
-  AND table_schema = 'public'
+-- Check actual shipments table structure
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'shipments' 
 ORDER BY ordinal_position;
 
--- 2. If shipments table exists, check for the specific forecast
-SELECT 
-  id,
-  forecast_id,
-  created_at
+-- Check if there are any shipments in the database
+SELECT 'SHIPMENT COUNT' as check, COUNT(*) as total_shipments
+FROM shipments;
+
+-- Check sample shipment data (use only basic columns)
+SELECT 'SAMPLE SHIPMENTS' as check, id, created_at
 FROM shipments 
-WHERE forecast_id = '512daf0c-defa-405c-bf2d-f293dc04a987'
-LIMIT 5;
-
--- 3. Check if the forecast exists in sales_forecasts table
-SELECT 
-  id,
-  sku_id,
-  delivery_week,
-  quantity,
-  status,
-  created_at
-FROM sales_forecasts 
-WHERE id = '512daf0c-defa-405c-bf2d-f293dc04a987';
-
--- 4. Try to manually delete the forecast to see the exact error
--- DELETE FROM sales_forecasts WHERE id = '512daf0c-defa-405c-bf2d-f293dc04a987';
--- (Uncomment the line above to test, but be careful!)
+LIMIT 3;
