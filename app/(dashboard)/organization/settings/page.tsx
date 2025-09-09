@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Badge } from '@/components/ui/badge';
 import useSWR from 'swr';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -24,6 +25,11 @@ interface PageAccessSettings {
 
 export default function OrganizationSettingsPage() {
   const { data: user } = useSWR('/api/user', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
+  
   const { data: orgSettings } = useSWR('/api/organization/settings', fetcher);
   const [isUpdating, setIsUpdating] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageAccessSettings>({
@@ -121,8 +127,8 @@ export default function OrganizationSettingsPage() {
         <div className="flex items-center space-x-4 mb-2">
           <SemanticBDIIcon semantic="settings" size={32} />
           <div>
-            <h1 className="text-3xl font-bold">Organization Settings</h1>
-            <p className="text-muted-foreground">Configure page access and permissions for your organization</p>
+            <h1 className="text-3xl font-bold">{tc('organizationSettingsTitle', 'Organization Settings')}</h1>
+            <p className="text-muted-foreground">{tc('organizationSettingsDescription', 'Configure organization preferences and settings')}</p>
           </div>
         </div>
         {user?.organization && (

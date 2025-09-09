@@ -65,7 +65,15 @@
     "organizationsTitle": "组织",
     "organizationsDescription": "管理合作伙伴组织和连接",
     "usersTitle": "用户",
-    "usersDescription": "管理用户账户和权限"
+    "usersDescription": "管理用户账户和权限",
+    "accountProfileTitle": "账户资料",
+    "accountProfileDescription": "管理您的个人资料和偏好设置",
+    "accountSettingsTitle": "账户设置",
+    "accountSettingsDescription": "配置您的账户偏好和安全设置",
+    "organizationUsersTitle": "组织用户",
+    "organizationUsersDescription": "管理团队成员和用户访问权限",
+    "organizationSettingsTitle": "组织设置",
+    "organizationSettingsDescription": "配置组织偏好和设置"
   },
   "cpfr": {
     "signals": {

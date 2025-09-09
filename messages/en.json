@@ -65,7 +65,15 @@
     "organizationsTitle": "Organizations", 
     "organizationsDescription": "Manage partner organizations and connections",
     "usersTitle": "Users",
-    "usersDescription": "Manage user accounts and permissions"
+    "usersDescription": "Manage user accounts and permissions",
+    "accountProfileTitle": "Account Profile",
+    "accountProfileDescription": "Manage your personal profile and preferences",
+    "accountSettingsTitle": "Account Settings",
+    "accountSettingsDescription": "Configure your account preferences and security",
+    "organizationUsersTitle": "Organization Users",
+    "organizationUsersDescription": "Manage team members and user access",
+    "organizationSettingsTitle": "Organization Settings",
+    "organizationSettingsDescription": "Configure organization preferences and settings"
   },
   "cpfr": {
     "signals": {

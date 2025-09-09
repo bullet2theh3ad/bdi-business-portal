@@ -9,9 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
 import useSWR from 'swr';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { User } from '@/lib/db/schema';
 import Link from 'next/link';
-import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -69,13 +69,14 @@ const mockApiKeys = [
 
 export default function SettingsPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
-  const { data: allApiKeys } = useSWR('/api/admin/api-keys', fetcher);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
   
   // 🌍 Translation hooks
   const userLocale = getUserLocale(user);
   const { tc } = useSimpleTranslations(userLocale);
+  
+  const { data: allApiKeys } = useSWR('/api/admin/api-keys', fetcher);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
   
   // Only show Quick Actions for BDI users (Super Admin)
   const isBDIUser = user?.role === 'super_admin';
@@ -102,8 +103,8 @@ export default function SettingsPage() {
         <div className="flex items-center space-x-3 sm:space-x-4">
           <SemanticBDIIcon semantic="settings" size={24} className="sm:w-8 sm:h-8" />
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Manage organizations, API keys, and system administration</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">{tc('accountSettingsTitle', 'Account Settings')}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">{tc('accountSettingsDescription', 'Configure your account preferences and security')}</p>
           </div>
         </div>
       </div>

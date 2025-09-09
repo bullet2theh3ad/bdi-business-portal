@@ -11,6 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
 import FileUpload from '@/components/FileUpload';
 import useSWR from 'swr';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { User } from '@/lib/db/schema';
 
 // Extended user type that includes organization data
@@ -35,6 +36,11 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ProfilePage() {
   const { data: user, mutate } = useSWR<UserWithOrganization>('/api/user', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -309,8 +315,8 @@ export default function ProfilePage() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="profile" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">My Account Profile</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Manage your personal and business information for B2B data exchange</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">{tc('accountProfileTitle', 'Account Profile')}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">{tc('accountProfileDescription', 'Manage your personal profile and preferences')}</p>
             </div>
           </div>
           <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">

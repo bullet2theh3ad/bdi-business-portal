@@ -59,7 +59,15 @@
     "shipmentsTitle": "Envíos",
     "shipmentsDescription": "Rastrear envíos de carga y estado de entrega",
     "productionFilesTitle": "Archivos de Producción",
-    "productionFilesDescription": "Gestionar documentos de manufactura y plantillas"
+    "productionFilesDescription": "Gestionar documentos de manufactura y plantillas",
+    "accountProfileTitle": "Perfil de Cuenta",
+    "accountProfileDescription": "Gestionar su perfil personal y preferencias",
+    "accountSettingsTitle": "Configuración de Cuenta",
+    "accountSettingsDescription": "Configurar preferencias de cuenta y seguridad",
+    "organizationUsersTitle": "Usuarios de Organización",
+    "organizationUsersDescription": "Gestionar miembros del equipo y acceso de usuarios",
+    "organizationSettingsTitle": "Configuración de Organización",
+    "organizationSettingsDescription": "Configurar preferencias y ajustes de organización"
   },
   "cpfr": {
     "signals": {

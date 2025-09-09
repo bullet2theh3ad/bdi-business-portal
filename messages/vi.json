@@ -59,7 +59,15 @@
     "shipmentsTitle": "Vận chuyển",
     "shipmentsDescription": "Theo dõi lô hàng và trạng thái giao hàng",
     "productionFilesTitle": "Tệp Sản xuất",
-    "productionFilesDescription": "Quản lý tài liệu sản xuất và mẫu"
+    "productionFilesDescription": "Quản lý tài liệu sản xuất và mẫu",
+    "accountProfileTitle": "Hồ sơ Tài khoản",
+    "accountProfileDescription": "Quản lý hồ sơ cá nhân và tùy chọn của bạn",
+    "accountSettingsTitle": "Cài đặt Tài khoản",
+    "accountSettingsDescription": "Cấu hình tùy chọn tài khoản và bảo mật",
+    "organizationUsersTitle": "Người dùng Tổ chức",
+    "organizationUsersDescription": "Quản lý thành viên nhóm và quyền truy cập",
+    "organizationSettingsTitle": "Cài đặt Tổ chức",
+    "organizationSettingsDescription": "Cấu hình tùy chọn và cài đặt tổ chức"
   },
   "cpfr": {
     "signals": {

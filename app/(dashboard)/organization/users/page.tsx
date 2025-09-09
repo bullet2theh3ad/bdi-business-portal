@@ -8,12 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { User } from '@/lib/db/schema';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function OrganizationUsersPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
+  
   const { data: orgUsers, mutate: mutateOrgUsers } = useSWR('/api/organization/users', fetcher);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -182,8 +188,8 @@ export default function OrganizationUsersPage() {
           <div className="flex items-center space-x-4">
             <SemanticBDIIcon semantic="users" size={32} />
             <div>
-              <h1 className="text-3xl font-bold">{(user as any).organization?.name} Users</h1>
-              <p className="text-muted-foreground">Manage your organization's team members and access</p>
+              <h1 className="text-3xl font-bold">{tc('organizationUsersTitle', 'Organization Users')}</h1>
+              <p className="text-muted-foreground">{tc('organizationUsersDescription', 'Manage team members and user access')}</p>
             </div>
           </div>
           <Button className="bg-bdi-green-1 hover:bg-bdi-green-2" onClick={() => setShowInviteModal(true)}>
