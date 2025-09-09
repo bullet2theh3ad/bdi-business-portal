@@ -5,6 +5,7 @@ import enMessages from '@/messages/en.json';
 import zhMessages from '@/messages/zh.json';
 import viMessages from '@/messages/vi.json';
 import esMessages from '@/messages/es.json';
+import { locales } from '@/i18n';
 
 const messages = {
   en: enMessages,
@@ -59,9 +60,18 @@ export function useSimpleTranslations(locale: Locale = 'en') {
   };
 }
 
-// Get user's preferred locale (will implement user preferences later)
-export function getUserLocale(): Locale {
-  // TODO: Get from user preferences in database
-  // For now, return English as default
+// Get user's preferred locale from user data
+export function getUserLocale(user?: any): Locale {
+  // Get from user's preferred_language field
+  if (user?.preferredLanguage && locales.includes(user.preferredLanguage)) {
+    return user.preferredLanguage as Locale;
+  }
+  
+  // Fallback to organization-based default
+  if (user?.supplierCode === 'MTN') {
+    return 'zh'; // Chinese for MTN
+  }
+  
+  // Default to English
   return 'en';
 }

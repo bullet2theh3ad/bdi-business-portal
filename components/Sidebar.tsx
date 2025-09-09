@@ -181,7 +181,7 @@ export function Sidebar({ className }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   
   // 🌍 SAFE: Simple translation functions (no routing changes)
-  const userLocale = getUserLocale();
+  const userLocale = getUserLocale(user);
   const { tn, tc } = useSimpleTranslations(userLocale);
 
   const toggleExpanded = (title: string) => {
