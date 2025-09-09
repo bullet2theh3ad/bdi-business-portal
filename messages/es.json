@@ -37,7 +37,14 @@
     "export": "Exportar",
     "import": "Importar",
     "upload": "Subir",
-    "download": "Descargar"
+    "download": "Descargar",
+    "shipment": "Envío",
+    "forecast": "Pronóstico",
+    "language": "Idioma", 
+    "updateStatus": "Actualizar Estado",
+    "close": "Cerrar",
+    "submit": "Enviar",
+    "respond": "Responder"
   },
   "cpfr": {
     "signals": {

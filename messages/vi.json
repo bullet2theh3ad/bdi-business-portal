@@ -37,7 +37,14 @@
     "export": "Xuất",
     "import": "Nhập",
     "upload": "Tải lên",
-    "download": "Tải xuống"
+    "download": "Tải xuống",
+    "shipment": "Vận chuyển",
+    "forecast": "Dự báo", 
+    "language": "Ngôn ngữ",
+    "updateStatus": "Cập nhật trạng thái",
+    "close": "Đóng",
+    "submit": "Gửi",
+    "respond": "Phản hồi"
   },
   "cpfr": {
     "signals": {

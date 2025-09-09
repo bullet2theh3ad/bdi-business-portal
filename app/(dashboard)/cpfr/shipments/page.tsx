@@ -1728,7 +1728,7 @@ export default function ShipmentsPage() {
                     variant="outline"
                     onClick={() => setSelectedShipment(null)}
                   >
-                    Cancel
+                    {tc('cancel', 'Cancel')}
                   </Button>
                   <Button
                     onClick={handleCreateShipment}
@@ -1928,7 +1928,7 @@ export default function ShipmentsPage() {
               className="bg-blue-600 hover:bg-blue-700"
             >
               <SemanticBDIIcon semantic="check" size={16} className="mr-2" />
-              Update Status
+              {tc('updateStatus', 'Update Status')}
             </Button>
           </div>
         </DialogContent>

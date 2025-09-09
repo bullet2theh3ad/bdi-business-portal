@@ -40,7 +40,11 @@
     "download": "Download",
     "shipment": "Shipment",
     "forecast": "Forecast",
-    "language": "Language"
+    "language": "Language",
+    "updateStatus": "Update Status",
+    "close": "Close",
+    "submit": "Submit",
+    "respond": "Respond"
   },
   "cpfr": {
     "signals": {

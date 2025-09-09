@@ -40,7 +40,11 @@
     "download": "下载",
     "shipment": "货运",
     "forecast": "预测",
-    "language": "语言"
+    "language": "语言",
+    "updateStatus": "更新状态",
+    "close": "关闭",
+    "submit": "提交",
+    "respond": "响应"
   },
   "cpfr": {
     "signals": {
