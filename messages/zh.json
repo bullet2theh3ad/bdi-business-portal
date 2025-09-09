@@ -31,7 +31,10 @@
     "export": "导出",
     "import": "导入",
     "upload": "上传",
-    "download": "下载"
+    "download": "下载",
+    "shipment": "货运",
+    "forecast": "预测",
+    "language": "语言"
   },
   "cpfr": {
     "signals": {

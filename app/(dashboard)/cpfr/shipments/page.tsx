@@ -11,6 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useDropzone } from 'react-dropzone';
 import useSWR from 'swr';
 import { User, ProductSku, Warehouse } from '@/lib/db/schema';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -43,6 +44,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function ShipmentsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc, tcpfr } = useSimpleTranslations(userLocale);
   const { data: warehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher, {
@@ -931,7 +936,7 @@ export default function ShipmentsPage() {
                           {(() => {
                             const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === forecast.id);
                             const localShipment = createdShipments.get(forecast.id);
-                            return (existingShipment || localShipment) ? 'Edit' : 'Create';
+                            return (existingShipment || localShipment) ? tc('edit', 'Edit') : tc('create', 'Create');
                           })()}
                         </Button>
                       </div>
@@ -1139,8 +1144,8 @@ export default function ShipmentsPage() {
                   const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
                   const localShipment = createdShipments.get(selectedShipment?.id || '');
                   return (existingShipment || localShipment) 
-                    ? `Edit Shipment: ${selectedShipment?.sku.sku}` 
-                    : `Create Shipment: ${selectedShipment?.sku.sku}`;
+                    ? `${tc('edit', 'Edit')} ${tc('shipment', 'Shipment')}: ${selectedShipment?.sku.sku}` 
+                    : `${tc('create', 'Create')} ${tc('shipment', 'Shipment')}: ${selectedShipment?.sku.sku}`;
                 })()}
               </span>
             </DialogTitle>
@@ -1799,19 +1804,19 @@ export default function ShipmentsPage() {
               >
                 {statusChangeModal.milestone === 'sales' && (
                   <>
-                    <option value="unknown">Unknown</option>
-                    <option value="draft">Draft</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="unknown">{tcpfr('signals.unknown', 'Unknown')}</option>
+                    <option value="draft">{tcpfr('signals.draft', 'Draft')}</option>
+                    <option value="submitted">{tcpfr('signals.submitted', 'Submitted')}</option>
+                    <option value="confirmed">{tcpfr('signals.confirmed', 'Confirmed')}</option>
+                    <option value="rejected">{tcpfr('signals.rejected', 'Rejected')}</option>
                   </>
                 )}
                 {statusChangeModal.milestone === 'factory' && (
                   <>
-                    <option value="unknown">Unknown</option>
-                    <option value="reviewing">Reviewing</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="unknown">{tcpfr('signals.unknown', 'Unknown')}</option>
+                    <option value="reviewing">{tcpfr('signals.reviewing', 'Reviewing')}</option>
+                    <option value="confirmed">{tcpfr('signals.confirmed', 'Confirmed')}</option>
+                    <option value="rejected">{tcpfr('signals.rejected', 'Rejected')}</option>
                   </>
                 )}
                 {statusChangeModal.milestone === 'transit' && (
