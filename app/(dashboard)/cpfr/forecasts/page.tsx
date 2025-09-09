@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User, ProductSku } from '@/lib/db/schema';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -61,6 +62,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function SalesForecastsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
+  
+  // 🌍 Translation hooks
+  const userLocale = getUserLocale(user);
+  const { tc, tn, tcpfr } = useSimpleTranslations(userLocale);
   const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher, {
     refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
     revalidateOnFocus: true, // Refresh when user returns to tab
