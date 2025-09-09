@@ -41,7 +41,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function PurchaseOrdersPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: purchaseOrders, mutate: mutatePurchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
+  const { data: purchaseOrders, mutate: mutatePurchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher, {
+    refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
+    revalidateOnFocus: true, // Refresh when user returns to tab
+  });
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=false', fetcher, {
     onError: (error) => {
@@ -337,16 +340,26 @@ export default function PurchaseOrdersPage() {
               <p className="text-sm sm:text-base text-muted-foreground">Manage supplier orders and delivery terms</p>
             </div>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => {
-            // Clear all form state for a fresh purchase order
-            setLineItems([]);
-            setUploadedDocs([]);
-            setCustomTerms(false);
-            setShowCreateModal(true);
-          }}>
-            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            Enter Purchase Order
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => mutatePurchaseOrders()}
+              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+            >
+              <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
+              Refresh
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => {
+              // Clear all form state for a fresh purchase order
+              setLineItems([]);
+              setUploadedDocs([]);
+              setCustomTerms(false);
+              setShowCreateModal(true);
+            }}>
+              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+              Enter Purchase Order
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -392,16 +405,26 @@ export default function PurchaseOrdersPage() {
               <SemanticBDIIcon semantic="orders" size={48} className="mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
               <p className="text-muted-foreground mb-4">Enter your first Purchase Order to start managing supplier orders</p>
-              <Button onClick={() => {
-                // Clear all form state for a fresh purchase order
-                setLineItems([]);
-                setUploadedDocs([]);
-                setCustomTerms(false);
-                setShowCreateModal(true);
-              }}>
-                <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
-                Enter First Purchase Order
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => mutatePurchaseOrders()}
+                  className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                >
+                  <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
+                  Refresh
+                </Button>
+                <Button onClick={() => {
+                  // Clear all form state for a fresh purchase order
+                  setLineItems([]);
+                  setUploadedDocs([]);
+                  setCustomTerms(false);
+                  setShowCreateModal(true);
+                }}>
+                  <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
+                  Enter First Purchase Order
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

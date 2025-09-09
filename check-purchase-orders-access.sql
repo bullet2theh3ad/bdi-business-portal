@@ -51,7 +51,7 @@ WHERE po.supplier_name = 'MTN';
 -- Show supplier name variations that might exist
 SELECT 
     'SUPPLIER NAME VARIATIONS' as status,
-    DISTINCT supplier_name,
+    supplier_name,
     COUNT(*) as po_count
 FROM purchase_orders
 GROUP BY supplier_name
