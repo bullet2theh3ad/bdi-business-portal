@@ -55,7 +55,9 @@
     "purchaseOrdersTitle": "Đơn đặt hàng",
     "purchaseOrdersDescription": "Quản lý đơn đặt hàng nhà cung cấp",
     "warehousesTitle": "Kho",
-    "warehousesDescription": "Quản lý vị trí kho và hàng tồn kho"
+    "warehousesDescription": "Quản lý vị trí kho và hàng tồn kho",
+    "shipmentsTitle": "Vận chuyển",
+    "shipmentsDescription": "Theo dõi lô hàng và trạng thái giao hàng"
   },
   "cpfr": {
     "signals": {

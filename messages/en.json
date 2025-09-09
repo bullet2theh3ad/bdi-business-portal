@@ -55,7 +55,15 @@
     "purchaseOrdersTitle": "Purchase Orders",
     "purchaseOrdersDescription": "Manage supplier purchase orders",
     "warehousesTitle": "Warehouses",
-    "warehousesDescription": "Manage warehouse locations and inventory"
+    "warehousesDescription": "Manage warehouse locations and inventory",
+    "shipmentsTitle": "Shipments",
+    "shipmentsDescription": "Track cargo shipments and delivery status",
+    "analyticsTitle": "Analytics",
+    "analyticsDescription": "Business intelligence and performance metrics",
+    "organizationsTitle": "Organizations", 
+    "organizationsDescription": "Manage partner organizations and connections",
+    "usersTitle": "Users",
+    "usersDescription": "Manage user accounts and permissions"
   },
   "cpfr": {
     "signals": {

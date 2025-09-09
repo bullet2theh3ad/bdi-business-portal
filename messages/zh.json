@@ -55,7 +55,15 @@
     "purchaseOrdersTitle": "采购订单", 
     "purchaseOrdersDescription": "管理供应商采购订单",
     "warehousesTitle": "仓库",
-    "warehousesDescription": "管理仓库位置和库存"
+    "warehousesDescription": "管理仓库位置和库存",
+    "shipmentsTitle": "货运",
+    "shipmentsDescription": "跟踪货物运输和交付状态",
+    "analyticsTitle": "分析",
+    "analyticsDescription": "商业智能和性能指标",
+    "organizationsTitle": "组织",
+    "organizationsDescription": "管理合作伙伴组织和连接",
+    "usersTitle": "用户",
+    "usersDescription": "管理用户账户和权限"
   },
   "cpfr": {
     "signals": {

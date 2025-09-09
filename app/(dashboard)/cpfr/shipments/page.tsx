@@ -43,11 +43,12 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ShipmentsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
   
   // 🌍 Translation hooks
   const userLocale = getUserLocale(user);
   const { tc, tcpfr } = useSimpleTranslations(userLocale);
+  
+  const { data: forecasts, mutate: mutateForecasts } = useSWR<SalesForecast[]>('/api/cpfr/forecasts', fetcher);
   const { data: warehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher, {
@@ -728,8 +729,8 @@ export default function ShipmentsPage() {
             <div className="flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold">Shipments</h1>
-                  <p className="text-sm sm:text-base text-muted-foreground">Global logistics tracking from forecasts to delivery</p>
+                  <h1 className="text-2xl sm:text-3xl font-bold">{tc('shipmentsTitle', 'Shipments')}</h1>
+                  <p className="text-sm sm:text-base text-muted-foreground">{tc('shipmentsDescription', 'Track cargo shipments and delivery status')}</p>
                 </div>
                 <div className="flex items-center space-x-2 mt-2 sm:mt-0">
                   <div className="flex bg-gray-100 rounded-lg p-1">

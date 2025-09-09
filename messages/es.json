@@ -55,7 +55,9 @@
     "purchaseOrdersTitle": "Órdenes de Compra",
     "purchaseOrdersDescription": "Gestionar órdenes de compra de proveedores",
     "warehousesTitle": "Almacenes", 
-    "warehousesDescription": "Gestionar ubicaciones de almacenes e inventario"
+    "warehousesDescription": "Gestionar ubicaciones de almacenes e inventario",
+    "shipmentsTitle": "Envíos",
+    "shipmentsDescription": "Rastrear envíos de carga y estado de entrega"
   },
   "cpfr": {
     "signals": {
