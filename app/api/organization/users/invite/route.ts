@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
         role: validatedData.role,
         title: validatedData.title,
         department: validatedData.department,
+        supplierCode: userOrganization.code, // Set supplier_code to organization code
         authId: crypto.randomUUID(), // Generate a temporary UUID for now
         isActive: false, // Will be activated when they complete signup
         createdAt: new Date(),

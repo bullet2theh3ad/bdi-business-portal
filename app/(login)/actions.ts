@@ -315,6 +315,7 @@ export async function signUp(prevState: any, formData: FormData) {
               role: userRole,
               title: pendingUser.title,
               department: pendingUser.department,
+              supplierCode: targetOrganization.code, // Set supplier_code to organization code
               passwordHash: 'supabase_managed',
               isActive: true,
             })
