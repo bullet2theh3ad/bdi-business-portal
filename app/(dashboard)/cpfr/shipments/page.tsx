@@ -28,11 +28,11 @@ interface SalesForecast {
   deliveryWeek: string;
   quantity: number;
   status: 'draft' | 'submitted';
-  salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
-  factorySignal: 'unknown' | 'submitted' | 'rejected' | 'accepted';
-  shippingSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted'; // Legacy - keeping for compatibility
-  transitSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'accepted';
-  warehouseSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'accepted';
+  salesSignal: 'unknown' | 'draft' | 'submitted' | 'confirmed' | 'rejected';
+  factorySignal: 'unknown' | 'reviewing' | 'confirmed' | 'rejected';
+  shippingSignal: 'unknown' | 'submitted' | 'rejected' | 'confirmed'; // Legacy - keeping for compatibility
+  transitSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'confirmed';
+  warehouseSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'confirmed';
   shippingPreference: string;
   notes?: string;
   createdAt: string;
@@ -299,12 +299,12 @@ export default function ShipmentsPage() {
   }, [uploadedDocumentsFromDB, selectedShipment]);
 
   // Drag and drop for cost documents (shipment-specific)
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback((confirmedFiles: File[]) => {
     if (selectedShipment) {
       setShipmentDocuments(prev => {
         const newMap = new Map(prev);
         const existingDocs = newMap.get(selectedShipment.id) || [];
-        newMap.set(selectedShipment.id, [...existingDocs, ...acceptedFiles]);
+        newMap.set(selectedShipment.id, [...existingDocs, ...confirmedFiles]);
         return newMap;
       });
     }
@@ -672,8 +672,8 @@ export default function ShipmentsPage() {
     
     // Only count as completed if forecast status is 'submitted' (not draft)
     if (forecast.status === 'submitted' && forecast.salesSignal === 'submitted') completedMilestones = 1;
-    if (forecast.factorySignal === 'accepted') completedMilestones = 2;
-    if (forecast.factorySignal === 'accepted' && now >= milestones.departureDate) completedMilestones = 3;
+    if (forecast.factorySignal === 'confirmed') completedMilestones = 2;
+    if (forecast.factorySignal === 'confirmed' && now >= milestones.departureDate) completedMilestones = 3;
     
     // Check if shipment has been created for this forecast (from database or local state)
     const hasShipmentInDB = actualShipmentsArray.some((shipment: any) => shipment.forecast_id === forecast.id);
@@ -684,7 +684,7 @@ export default function ShipmentsPage() {
       if (completedMilestones >= 2) completedMilestones = 3; // Transport shows "awaiting"
     }
     
-    if (forecast.shippingSignal === 'accepted') completedMilestones = 4;
+    if (forecast.shippingSignal === 'confirmed') completedMilestones = 4;
     
     return completedMilestones;
   };
@@ -698,7 +698,7 @@ export default function ShipmentsPage() {
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'planning' && forecast.shippingSignal === 'unknown') ||
       (statusFilter === 'in_transit' && forecast.shippingSignal === 'submitted') ||
-      (statusFilter === 'delivered' && forecast.shippingSignal === 'accepted');
+      (statusFilter === 'delivered' && forecast.shippingSignal === 'confirmed');
     
     const matchesMethod = methodFilter === 'all' || 
       forecast.shippingPreference.includes(methodFilter);
@@ -780,7 +780,7 @@ export default function ShipmentsPage() {
               <div>
                 <p className="text-sm text-gray-600">Delivered</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {shipmentForecasts.filter(f => f.shippingSignal === 'accepted').length}
+                  {shipmentForecasts.filter(f => f.shippingSignal === 'confirmed').length}
                 </p>
               </div>
             </div>
@@ -945,14 +945,14 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => handleMilestoneClick('sales', forecast)}
                             className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.salesSignal === 'accepted' ? 'border-green-500' :
+                              forecast.salesSignal === 'confirmed' ? 'border-green-500' :
                               forecast.salesSignal === 'submitted' ? 'border-blue-500' :
                               'border-gray-300'
                             }`}
                             title="Click to change sales status"
                           >
                             <span className={`text-base sm:text-lg ${
-                              forecast.salesSignal === 'accepted' ? 'text-green-600' :
+                              forecast.salesSignal === 'confirmed' ? 'text-green-600' :
                               forecast.salesSignal === 'submitted' ? 'text-blue-600' :
                               'text-gray-600'
                             }`}>👤</span>
@@ -964,7 +964,7 @@ export default function ShipmentsPage() {
                               {milestones.salesDate.toLocaleDateString()}
                             </p>
                             <Badge className={
-                              forecast.salesSignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.salesSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
                               forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
                               'bg-gray-100 text-gray-600'
                             }>
@@ -978,15 +978,15 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => handleMilestoneClick('factory', forecast)}
                             className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.factorySignal === 'accepted' ? 'border-green-500' :
-                              forecast.factorySignal === 'submitted' ? 'border-orange-500' :
+                              forecast.factorySignal === 'confirmed' ? 'border-green-500' :
+                              forecast.factorySignal === 'reviewing' ? 'border-orange-500' :
                               'border-gray-300'
                             }`}
                             title="Click to change factory status"
                           >
                             <span className={`text-base sm:text-lg ${
-                              forecast.factorySignal === 'accepted' ? 'text-green-600' :
-                              forecast.factorySignal === 'submitted' ? 'text-orange-600' :
+                              forecast.factorySignal === 'confirmed' ? 'text-green-600' :
+                              forecast.factorySignal === 'reviewing' ? 'text-orange-600' :
                               'text-gray-600'
                             }`}>🏭</span>
                           </button>
@@ -997,8 +997,8 @@ export default function ShipmentsPage() {
                               {milestones.exwDate.toLocaleDateString()}
                             </p>
                             <Badge className={
-                              forecast.factorySignal === 'accepted' ? 'bg-green-100 text-green-800' :
-                              forecast.factorySignal === 'submitted' ? 'bg-orange-100 text-orange-800' :
+                              forecast.factorySignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              forecast.factorySignal === 'reviewing' ? 'bg-orange-100 text-orange-800' :
                               'bg-gray-100 text-gray-600'
                             }>
                               {forecast.factorySignal}
@@ -1026,12 +1026,12 @@ export default function ShipmentsPage() {
                               {milestones.departureDate.toLocaleDateString()}
                             </p>
                             <Badge className={
-                              forecast.transitSignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.transitSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
                               forecast.transitSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
                               forecast.transitSignal === 'rejected' ? 'bg-red-100 text-red-800' :
                               'bg-gray-100 text-gray-600'
                             }>
-                              {forecast.transitSignal === 'accepted' ? 'delivered' :
+                              {forecast.transitSignal === 'confirmed' ? 'delivered' :
                                forecast.transitSignal === 'submitted' ? 'in transit' :
                                forecast.transitSignal === 'rejected' ? 'delayed' :
                                forecast.transitSignal === 'pending' ? 'pending' :
@@ -1045,14 +1045,14 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => handleMilestoneClick('warehouse', forecast)}
                             className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.warehouseSignal === 'accepted' ? 'border-green-500' :
+                              forecast.warehouseSignal === 'confirmed' ? 'border-green-500' :
                               forecast.warehouseSignal === 'submitted' ? 'border-orange-500' :
                               'border-gray-300'
                             }`}
                             title="Click to change warehouse status"
                           >
                             <span className={`text-base sm:text-lg ${
-                              forecast.warehouseSignal === 'accepted' ? 'text-green-600' :
+                              forecast.warehouseSignal === 'confirmed' ? 'text-green-600' :
                               forecast.warehouseSignal === 'submitted' ? 'text-orange-600' :
                               'text-gray-600'
                             }`}>🏢</span>
@@ -1064,7 +1064,7 @@ export default function ShipmentsPage() {
                               {milestones.arrivalDate.toLocaleDateString()}
                             </p>
                             <Badge className={
-                              forecast.warehouseSignal === 'accepted' ? 'bg-green-100 text-green-800' :
+                              forecast.warehouseSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
                               forecast.warehouseSignal === 'submitted' ? 'bg-orange-100 text-orange-800' :
                               'bg-gray-100 text-gray-600'
                             }>
@@ -1789,17 +1789,15 @@ export default function ShipmentsPage() {
                     <option value="unknown">Unknown</option>
                     <option value="draft">Draft</option>
                     <option value="submitted">Submitted</option>
-                    <option value="accepted">Confirmed</option>
+                    <option value="confirmed">Confirmed</option>
                     <option value="rejected">Rejected</option>
                   </>
                 )}
                 {statusChangeModal.milestone === 'factory' && (
                   <>
                     <option value="unknown">Unknown</option>
-                    <option value="pending">Pending</option>
-                    <option value="in_production">In Production</option>
-                    <option value="ready_to_ship">Ready to Ship</option>
-                    <option value="accepted">Shipped</option>
+                    <option value="reviewing">Reviewing</option>
+                    <option value="confirmed">Confirmed</option>
                     <option value="rejected">Rejected</option>
                   </>
                 )}
@@ -1808,7 +1806,7 @@ export default function ShipmentsPage() {
                     <option value="unknown">Unknown</option>
                     <option value="pending">Pending</option>
                     <option value="submitted">In Transit</option>
-                    <option value="accepted">Delivered</option>
+                    <option value="confirmed">Delivered</option>
                     <option value="rejected">Delayed/Issues</option>
                   </>
                 )}
@@ -1816,7 +1814,7 @@ export default function ShipmentsPage() {
                   <>
                     <option value="unknown">Unknown</option>
                     <option value="pending">Scheduled</option>
-                    <option value="accepted">Received</option>
+                    <option value="confirmed">Received</option>
                     <option value="processing">Processing</option>
                     <option value="completed">Complete</option>
                   </>

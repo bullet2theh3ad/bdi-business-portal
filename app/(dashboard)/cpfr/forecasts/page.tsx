@@ -46,9 +46,9 @@ interface SalesForecast {
   quantity: number;
   
   // CPFR Supply Chain Signals
-  salesSignal: 'unknown' | 'submitted' | 'rejected' | 'accepted'; // Sales team status
-  factorySignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted'; // Factory/ODM status  
-  shippingSignal: 'unknown' | 'awaiting' | 'rejected' | 'accepted'; // Shipping/logistics status
+  salesSignal: 'unknown' | 'draft' | 'submitted' | 'confirmed' | 'rejected'; // Sales team status
+  factorySignal: 'unknown' | 'reviewing' | 'confirmed' | 'rejected'; // Factory/ODM status  
+  shippingSignal: 'unknown' | 'draft' | 'submitted' | 'confirmed' | 'rejected'; // Shipping/logistics status
   
   shippingPreference: string; // AIR_EXPRESS, SEA_STANDARD, etc.
   notes?: string;
@@ -105,36 +105,36 @@ export default function SalesForecastsPage() {
 
 
   // CPFR Supply Chain Signal Icons
-  const getSignalIcon = (status: 'unknown' | 'submitted' | 'awaiting' | 'rejected' | 'accepted') => {
+  const getSignalIcon = (status: 'unknown' | 'draft' | 'submitted' | 'reviewing' | 'confirmed' | 'rejected') => {
     switch (status) {
       case 'unknown':
         return '❓'; // Question mark for unknown status
       case 'submitted':
-        return '⏳'; // Sand clock for submitted/awaiting status
-      case 'awaiting':
-        return '⏳'; // Sand clock for awaiting status
+        return '⏳'; // Sand clock for submitted/reviewing status
+      case 'reviewing':
+        return '⏳'; // Sand clock for reviewing status
       case 'rejected':
         return '❌'; // X for rejected status
-      case 'accepted':
-        return '✅'; // Green check for accepted status
+      case 'confirmed':
+        return '✅'; // Green check for confirmed status
       default:
         return '❓';
     }
   };
 
   // Get signal color for status
-  const getSignalColor = (status: 'unknown' | 'submitted' | 'awaiting' | 'rejected' | 'accepted') => {
+  const getSignalColor = (status: 'unknown' | 'draft' | 'submitted' | 'reviewing' | 'confirmed' | 'rejected') => {
     switch (status) {
       case 'unknown':
         return 'text-gray-500'; // Gray for unknown
       case 'submitted':
         return 'text-blue-500'; // Blue for submitted
-      case 'awaiting':
-        return 'text-yellow-500'; // Yellow for awaiting
+      case 'reviewing':
+        return 'text-yellow-500'; // Yellow for reviewing
       case 'rejected':
         return 'text-red-500'; // Red for rejected
-      case 'accepted':
-        return 'text-green-500'; // Green for accepted
+      case 'confirmed':
+        return 'text-green-500'; // Green for confirmed
       default:
         return 'text-gray-500';
     }
@@ -148,18 +148,18 @@ export default function SalesForecastsPage() {
     
     // CPFR Signal Priority Logic:
     // 🔴 RED: Any rejected OR incomplete process (submitted but others unknown)
-    // 🟡 YELLOW: All submitted/awaiting (actively in process)  
-    // 🟢 GREEN: All three accepted (complete success)
+    // 🟡 YELLOW: All submitted/reviewing (actively in process)  
+    // 🟢 GREEN: All three confirmed (complete success)
     // ⚪ GRAY: All unknown (no activity yet)
     
     if (sales === 'rejected' || factory === 'rejected' || shipping === 'rejected') {
       return 'bg-red-50 border-red-300'; // Any rejection = red
-    } else if (sales === 'accepted' && factory === 'accepted' && shipping === 'accepted') {
-      return 'bg-green-50 border-green-300'; // All accepted = green
+                    } else if (sales === 'confirmed' && factory === 'confirmed' && shipping === 'confirmed') {
+                      return 'bg-green-50 border-green-300'; // All confirmed = green
     } else if (
-      (sales === 'submitted' || sales === 'awaiting') && 
-      (factory === 'awaiting') && 
-      (shipping === 'awaiting')
+      (sales === 'submitted' || sales === 'draft') && 
+      (factory === 'reviewing') && 
+      (shipping === 'submitted')
     ) {
       return 'bg-yellow-50 border-yellow-300'; // All actively in process = yellow
     } else if (
@@ -658,8 +658,8 @@ export default function SalesForecastsPage() {
                               let overallStatus = 'activity'; // Default red dot
                               
                               // CPFR Signal Priority Logic for Calendar Dots:
-                              // 🟢 GREEN: All three accepted (complete success)
-                              if (sales === 'accepted' && factory === 'accepted' && shipping === 'accepted') {
+                              // 🟢 GREEN: All three confirmed (complete success)
+                              if (sales === 'confirmed' && factory === 'confirmed' && shipping === 'confirmed') {
                                 overallStatus = 'confirmed';
                               }
                               // 🔴 RED: Any rejected OR incomplete process (submitted but others unknown)
@@ -669,13 +669,13 @@ export default function SalesForecastsPage() {
                               else if (sales === 'submitted' && (factory === 'unknown' || shipping === 'unknown')) {
                                 overallStatus = 'rejected'; // Red - submitted but incomplete
                               }
-                              // 🟡 YELLOW: All actively in process (sales submitted, others awaiting)
+                              // 🟡 YELLOW: All actively in process (sales submitted, others reviewing)
                               else if (
                                 sales === 'submitted' && 
-                                factory === 'awaiting' && 
-                                shipping === 'awaiting'
+                                factory === 'reviewing' && 
+                                shipping === 'submitted'
                               ) {
-                                overallStatus = 'awaiting';
+                                overallStatus = 'reviewing';
                               }
                               
                               activeDates.set(weekDate.getDate(), overallStatus);
@@ -694,8 +694,8 @@ export default function SalesForecastsPage() {
                           // Get dot color based on CPFR status
                           const getDotColor = (status: string | null) => {
                             switch (status) {
-                              case 'confirmed': return 'bg-green-400'; // All three signals accepted
-                              case 'awaiting': return 'bg-yellow-400'; // Some signals awaiting
+                              case 'confirmed': return 'bg-green-400'; // All three signals confirmed
+                              case 'reviewing': return 'bg-yellow-400'; // Some signals reviewing
                               case 'rejected': return 'bg-red-400'; // Any signal rejected
                               case 'activity': return 'bg-red-400'; // Default activity (unknown/submitted)
                               default: return null;
@@ -1907,7 +1907,7 @@ export default function SalesForecastsPage() {
                   >
                     <option value="draft">📝 Draft - Not submitted</option>
                     <option value="submitted">📤 Submitted - Awaiting ODM response</option>
-                    <option value="confirmed">✅ Confirmed - ODM accepted forecast</option>
+                    <option value="confirmed">✅ Confirmed - ODM confirmed forecast</option>
                     <option value="rejected">❌ Rejected - ODM declined forecast</option>
                   </select>
                   <div className="mt-1 text-xs text-gray-600">
@@ -1997,13 +1997,13 @@ export default function SalesForecastsPage() {
                     if (sales === 'submitted' && (factory === 'unknown' || shipping === 'unknown')) {
                       hasIncomplete = true;
                     }
-                    if (!(sales === 'accepted' && factory === 'accepted' && shipping === 'accepted')) {
+                    if (!(sales === 'confirmed' && factory === 'confirmed' && shipping === 'confirmed')) {
                       allAccepted = false;
                     }
                     if (!(
                       sales === 'submitted' && 
-                      factory === 'awaiting' && 
-                      shipping === 'awaiting'
+                      factory === 'reviewing' && 
+                      shipping === 'submitted'
                     )) {
                       allInProcess = false;
                     }
@@ -2013,7 +2013,7 @@ export default function SalesForecastsPage() {
                   if (hasRejected || hasIncomplete) {
                     dotColor = 'bg-red-400'; // Red for rejected or incomplete
                   } else if (allAccepted) {
-                    dotColor = 'bg-green-400'; // Green for all accepted
+                    dotColor = 'bg-green-400'; // Green for all confirmed
                   } else if (allInProcess) {
                     dotColor = 'bg-yellow-400'; // Yellow for all in process
                   }
@@ -2189,7 +2189,7 @@ export default function SalesForecastsPage() {
                             >
                               <option value="unknown">❓ Unknown</option>
                               <option value="submitted">⏳ Submitted</option>
-                              <option value="accepted">✅ Accepted</option>
+                              <option value="confirmed">✅ Accepted</option>
                               <option value="rejected">❌ Rejected</option>
                             </select>
                           ) : (
@@ -2215,8 +2215,8 @@ export default function SalesForecastsPage() {
                               className="w-full px-2 py-1 text-xs border rounded"
                             >
                               <option value="unknown">❓ Unknown</option>
-                              <option value="awaiting">⏳ Awaiting</option>
-                              <option value="accepted">✅ Accepted</option>
+                              <option value="reviewing">⏳ Awaiting</option>
+                              <option value="confirmed">✅ Accepted</option>
                               <option value="rejected">❌ Rejected</option>
                             </select>
                           ) : (
@@ -2242,8 +2242,8 @@ export default function SalesForecastsPage() {
                               className="w-full px-2 py-1 text-xs border rounded"
                             >
                               <option value="unknown">❓ Unknown</option>
-                              <option value="awaiting">⏳ Awaiting</option>
-                              <option value="accepted">✅ Accepted</option>
+                              <option value="reviewing">⏳ Awaiting</option>
+                              <option value="confirmed">✅ Accepted</option>
                               <option value="rejected">❌ Rejected</option>
                             </select>
                           ) : (
