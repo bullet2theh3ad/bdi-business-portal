@@ -141,18 +141,18 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     ],
   },
   {
-    title: 'Organization',
+    title: tn('organization', 'Organization'), // 🌍 TRANSLATED
     icon: 'collaboration',
     requiresRole: ['admin'],
     requiresNonBDI: true, // Only show for non-BDI organizations
     children: [
       {
-        title: 'Users',
+        title: tn('users', 'Users'), // 🌍 TRANSLATED
         href: '/organization/users',
         icon: 'users',
       },
       {
-        title: 'Settings',
+        title: `${tn('settings', 'Settings')} 🌍`, // 🌍 TRANSLATED + Language indicator
         href: '/organization/settings',
         icon: 'settings',
       },
