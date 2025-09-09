@@ -18,7 +18,8 @@
     "admin": "管理",
     "organization": "组织",
     "account": "账户",
-    "profile": "个人资料"
+    "profile": "个人资料",
+    "userGuide": "门户用户指南"
   },
   "common": {
     "save": "保存",

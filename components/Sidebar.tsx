@@ -165,7 +165,7 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     ],
   },
   {
-    title: 'Portal User Guide', // TODO: Translate
+    title: tn('userGuide', 'Portal User Guide'), // 🌍 TRANSLATED
     href: '/user-guide',
     icon: 'help',
   },

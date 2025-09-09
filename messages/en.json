@@ -18,7 +18,8 @@
     "admin": "Admin",
     "organization": "Organization",
     "account": "Account",
-    "profile": "Profile"
+    "profile": "Profile",
+    "userGuide": "Portal User Guide"
   },
   "common": {
     "save": "Save",
