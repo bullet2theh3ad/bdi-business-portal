@@ -21,6 +21,7 @@ import { User } from '@/lib/db/schema';
 import { PendingInvitations } from '@/components/PendingInvitations';
 import UserActivity from '@/components/UserActivity';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 
 // Extended user type with organization data
 interface UserWithOrganization extends User {
@@ -54,11 +55,15 @@ function WelcomeCard() {
       <CardContent>
         <div className="bg-bdi-green-1/10 border border-bdi-green-1/20 rounded-lg p-4">
           <p className="text-xs text-bdi-green-1 font-medium mb-1">
-            🔒 Boundless Devices Inc - Proprietary & Confidential
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              🔒 Boundless Devices Inc - Proprietary & Confidential
+            </DynamicTranslation>
           </p>
           <p className="text-xs text-bdi-blue">
-            By using this portal, you agree to our Terms and Conditions of Use. 
-            All data and processes are confidential and proprietary to Boundless Devices Inc.
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              By using this portal, you agree to our Terms and Conditions of Use. 
+              All data and processes are confidential and proprietary to Boundless Devices Inc.
+            </DynamicTranslation>
           </p>
         </div>
       </CardContent>
@@ -67,36 +72,63 @@ function WelcomeCard() {
 }
 
 function QuickActions() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
+
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
-        <CardDescription>Get started with common tasks</CardDescription>
+        <CardTitle>
+          <DynamicTranslation userLanguage={userLocale} context="business">
+            Quick Actions
+          </DynamicTranslation>
+        </CardTitle>
+        <CardDescription>
+          <DynamicTranslation userLanguage={userLocale} context="business">
+            Get started with common tasks
+          </DynamicTranslation>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Link href="/cpfr/forecasts">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="forecasts" size={24} />
-              <span className="text-xs sm:text-sm">View Forecasts</span>
+              <span className="text-xs sm:text-sm">
+                <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                  View Forecasts
+                </DynamicTranslation>
+              </span>
             </Button>
           </Link>
           <Link href="/cpfr/supply-signals">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="supply" size={24} />
-              <span className="text-xs sm:text-sm">Supply Signals</span>
+              <span className="text-xs sm:text-sm">
+                <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                  Supply Signals
+                </DynamicTranslation>
+              </span>
             </Button>
           </Link>
           <Link href="/inventory">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="inventory_analytics" size={24} />
-              <span className="text-xs sm:text-sm">Inventory</span>
+              <span className="text-xs sm:text-sm">
+                <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                  Inventory
+                </DynamicTranslation>
+              </span>
             </Button>
           </Link>
           <Link href="/teams">
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="users" size={24} />
-              <span className="text-xs sm:text-sm">Manage Teams</span>
+              <span className="text-xs sm:text-sm">
+                <DynamicTranslation userLanguage={userLocale} context="business">
+                  Manage Teams
+                </DynamicTranslation>
+              </span>
             </Button>
           </Link>
         </div>
@@ -107,6 +139,7 @@ function QuickActions() {
 
 function CPFRMetrics() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
   // Only call admin organizations API for super_admin/admin roles
   const { data: organizations } = useSWR(
     user && ['super_admin', 'admin'].includes(user.role) ? '/api/admin/organizations?includeInternal=true' : null, 
@@ -147,15 +180,28 @@ function CPFRMetrics() {
     
   const activeForecastsCount = (Array.isArray(forecasts) ? forecasts : []).length;
   
+  // Helper function for translatable status messages
+  const getStatusMessage = (messageKey: string) => {
+    const messages = {
+      'No active forecasts': 'No active forecasts',
+      'No active orders': 'No active orders',
+      'Orders without shipping status': 'Orders without shipping status',
+      'Shipping delays detected': 'Shipping delays detected',
+      'All shipments on track': 'All shipments on track',
+      'Shipping status needs attention': 'Shipping status needs attention'
+    };
+    return messages[messageKey as keyof typeof messages] || messageKey;
+  };
+
   // Calculate shipment status/alarms based on proper CPFR logic
   const shipmentStatus = (() => {
-    if (!forecasts || !Array.isArray(forecasts) || forecasts.length === 0) return { status: 'green', count: 0, message: 'No active forecasts' };
+    if (!forecasts || !Array.isArray(forecasts) || forecasts.length === 0) return { status: 'green', count: 0, message: getStatusMessage('No active forecasts') };
     
     const activeForecasts = forecasts.filter((f: any) => 
       f.salesSignal === 'submitted' || f.factorySignal === 'awaiting' || f.factorySignal === 'accepted'
     );
     
-    if (activeForecasts.length === 0) return { status: 'green', count: 0, message: 'No active orders' };
+    if (activeForecasts.length === 0) return { status: 'green', count: 0, message: getStatusMessage('No active orders') };
     
     // RED: Active orders with unknown/rejected shipping status
     const redAlarms = activeForecasts.filter((f: any) => 
@@ -173,13 +219,13 @@ function CPFRMetrics() {
     ).length;
     
     if (redAlarms > 0) {
-      return { status: 'red', count: redAlarms, message: 'Orders without shipping status' };
+      return { status: 'red', count: redAlarms, message: getStatusMessage('Orders without shipping status') };
     } else if (yellowWarnings > 0) {
-      return { status: 'yellow', count: yellowWarnings, message: 'Shipping delays detected' };
+      return { status: 'yellow', count: yellowWarnings, message: getStatusMessage('Shipping delays detected') };
     } else if (greenTracked === activeForecasts.length) {
-      return { status: 'green', count: greenTracked, message: 'All shipments on track' };
+      return { status: 'green', count: greenTracked, message: getStatusMessage('All shipments on track') };
     } else {
-      return { status: 'red', count: activeForecasts.length, message: 'Shipping status needs attention' };
+      return { status: 'red', count: activeForecasts.length, message: getStatusMessage('Shipping status needs attention') };
     }
   })();
   
@@ -187,7 +233,11 @@ function CPFRMetrics() {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
       <Card className="border-blue-200 bg-blue-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-blue-800">{firstMetric.label}</CardTitle>
+          <CardTitle className="text-sm font-medium text-blue-800">
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              {firstMetric.label}
+            </DynamicTranslation>
+          </CardTitle>
           <SemanticBDIIcon 
             semantic={isBDIUser ? "collaboration" : "users"} 
             size={16} 
@@ -197,20 +247,28 @@ function CPFRMetrics() {
         <CardContent>
           <div className="text-3xl font-bold text-blue-900">{firstMetric.value}</div>
           <p className="text-xs text-blue-700">
-            {firstMetric.description}
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              {firstMetric.description}
+            </DynamicTranslation>
           </p>
         </CardContent>
       </Card>
       
       <Card className="border-green-200 bg-green-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-green-800">Active Forecasts</CardTitle>
+          <CardTitle className="text-sm font-medium text-green-800">
+            <DynamicTranslation userLanguage={userLocale} context="cpfr">
+              Active Forecasts
+            </DynamicTranslation>
+          </CardTitle>
           <SemanticBDIIcon semantic="forecasts" size={16} className="text-green-600" />
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold text-green-900">{activeForecastsCount}</div>
           <p className="text-xs text-green-700">
-            Current CPFR forecasts in system
+            <DynamicTranslation userLanguage={userLocale} context="cpfr">
+              Current CPFR forecasts in system
+            </DynamicTranslation>
           </p>
         </CardContent>
       </Card>
@@ -226,7 +284,9 @@ function CPFRMetrics() {
             shipmentStatus.status === 'yellow' ? 'text-yellow-800' :
             'text-green-800'
           }`}>
-            Shipment Status
+            <DynamicTranslation userLanguage={userLocale} context="cpfr">
+              Shipment Status
+            </DynamicTranslation>
           </CardTitle>
           <SemanticBDIIcon 
             semantic="shipping" 
@@ -253,7 +313,9 @@ function CPFRMetrics() {
             shipmentStatus.status === 'yellow' ? 'text-yellow-700' :
             'text-green-700'
           }`}>
-            {shipmentStatus.message}
+            <DynamicTranslation userLanguage={userLocale} context="cpfr">
+              {shipmentStatus.message}
+            </DynamicTranslation>
           </p>
         </CardContent>
       </Card>

@@ -1,10 +1,14 @@
 // Dynamic Translation Component
 // Automatically translates untranslated HTML content using OpenAI
+// Production-ready with caching, error handling, and performance optimizations
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { translateWithAI } from '@/lib/i18n/simple-translator';
+
+// Simple in-memory cache for translations
+const translationCache = new Map<string, string>();
 
 interface DynamicTranslationProps {
   children: React.ReactNode;
@@ -34,14 +38,23 @@ export function DynamicTranslation({
     return '';
   };
 
-  useEffect(() => {
+  // Memoize the original text extraction
+  const originalText = useMemo(() => {
+    return extractTextContent(children);
+  }, [children]);
+
+  // Create cache key
+  const cacheKey = useMemo(() => {
+    return `${originalText.trim()}-${userLanguage}-${context}`;
+  }, [originalText, userLanguage, context]);
+
+  // Translation function with caching
+  const translateContent = useCallback(async () => {
     // Only translate if user language is not English
     if (userLanguage === 'en' || !userLanguage) {
       return;
     }
 
-    const originalText = extractTextContent(children);
-    
     // Skip if no text content or already very short
     if (!originalText.trim() || originalText.trim().length < 3) {
       return;
@@ -52,33 +65,41 @@ export function DynamicTranslation({
       return;
     }
 
-    const translateContent = async () => {
-      setIsTranslating(true);
-      setError(null);
+    // Check cache first
+    const cached = translationCache.get(cacheKey);
+    if (cached) {
+      setTranslatedContent(cached);
+      return;
+    }
 
-      try {
-        const translated = await translateWithAI(
-          originalText.trim(), 
-          userLanguage as any, 
-          context
-        );
-        
-        if (translated && translated !== originalText) {
-          setTranslatedContent(translated);
-        }
-      } catch (err: any) {
-        console.error('Dynamic translation error:', err);
-        setError(err.message);
-      } finally {
-        setIsTranslating(false);
+    setIsTranslating(true);
+    setError(null);
+
+    try {
+      const translated = await translateWithAI(
+        originalText.trim(), 
+        userLanguage as any, 
+        context
+      );
+      
+      if (translated && translated !== originalText.trim()) {
+        // Cache the translation
+        translationCache.set(cacheKey, translated);
+        setTranslatedContent(translated);
       }
-    };
+    } catch (err: any) {
+      console.error('Dynamic translation error:', err);
+      setError(err.message);
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [originalText, userLanguage, context, cacheKey]);
 
+  useEffect(() => {
     // Debounce translation requests
-    const timeoutId = setTimeout(translateContent, 100);
+    const timeoutId = setTimeout(translateContent, 300);
     return () => clearTimeout(timeoutId);
-
-  }, [children, userLanguage, context]);
+  }, [translateContent]);
 
   // Show loading state while translating
   if (isTranslating) {
