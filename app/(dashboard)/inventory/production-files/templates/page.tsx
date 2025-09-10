@@ -3,6 +3,12 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
+import useSWR from 'swr';
+import { User } from '@/lib/db/schema';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const FILE_TYPES = [
   { value: 'PRODUCTION_FILE', label: 'Production File', icon: 'analytics', active: true },
@@ -32,6 +38,9 @@ const getFileTypeDescription = (fileType: string): string => {
 };
 
 export default function ProductionFileTemplatesPage() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   const handleDownloadSample = async (fileType: string) => {
     try {
       if (fileType === 'PRODUCTION_FILE') {
@@ -135,9 +144,11 @@ export default function ProductionFileTemplatesPage() {
           <div className="flex items-center space-x-4">
             <SemanticBDIIcon semantic="help" size={32} className="text-green-600" />
             <div>
-              <h1 className="text-3xl font-bold">Production File Templates</h1>
+              <h1 className="text-3xl font-bold">{tc('productionFileTemplates', 'Production File Templates')}</h1>
               <p className="text-muted-foreground">
-                Download sample files to understand the format and structure for each production file type
+                <DynamicTranslation userLanguage={userLocale} context="technical">
+                  Download sample files to understand the format and structure for each production file type
+                </DynamicTranslation>
               </p>
             </div>
           </div>
@@ -147,7 +158,7 @@ export default function ProductionFileTemplatesPage() {
             className="border-green-200 text-green-700 hover:bg-green-50"
           >
             <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
-            Back to Files
+            {tc('backToFiles', 'Back to Files')}
           </Button>
         </div>
       </div>
