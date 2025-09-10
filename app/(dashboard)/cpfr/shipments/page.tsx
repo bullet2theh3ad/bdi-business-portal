@@ -165,11 +165,20 @@ export default function ShipmentsPage() {
     forecast: null
   });
   
-  // Shipment form state
+  // Shipment form state - Updated for 3-step flow
   const [shipmentForm, setShipmentForm] = useState({
-    shippingOrganization: '',
+    // Step 1: Origin Factory
+    originFactoryId: '',
+    
+    // Step 2: Shipping Partner  
+    shippingOrganizationId: '',
+    
+    // Step 3: Final Destination
+    destinationWarehouseId: '',
+    
+    // Additional fields
     shipperReference: '',
-    factoryWarehouseId: '',
+    factoryWarehouseId: '', // Keep for backward compatibility
     unitsPerCarton: 5,
     requestedQuantity: 0,
     notes: '',
@@ -222,7 +231,16 @@ export default function ShipmentsPage() {
         console.log('🔍 Using shipment data:', shipmentData);
         
         const formData = {
-          shippingOrganization: shipmentData.shipping_organization_code || shipmentData.shippingOrganizationCode || 'OLM',
+          // Step 1: Origin Factory (from organization_id or derive from factory_warehouse)
+          originFactoryId: shipmentData.organization_id || '',
+          
+          // Step 2: Shipping Partner (from new shipper_organization_id field)
+          shippingOrganizationId: shipmentData.shipper_organization_id || '',
+          
+          // Step 3: Final Destination (from destination_warehouse_id)
+          destinationWarehouseId: shipmentData.destination_warehouse_id || '',
+          
+          // Legacy/Additional fields
           shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
           factoryWarehouseId: shipmentData.factory_warehouse_id || shipmentData.factoryWarehouseId || '',
           unitsPerCarton: shipmentData.units_per_carton || shipmentData.unitsPerCarton || 5,
@@ -274,7 +292,16 @@ export default function ShipmentsPage() {
         console.log('🔍 No existing shipment found - creating new');
         // Reset form for new shipment
         setShipmentForm({
-          shippingOrganization: '',
+          // Step 1: Origin Factory
+          originFactoryId: '',
+          
+          // Step 2: Shipping Partner  
+          shippingOrganizationId: '',
+          
+          // Step 3: Final Destination
+          destinationWarehouseId: '',
+          
+          // Additional fields
           shipperReference: '',
           factoryWarehouseId: '',
           unitsPerCarton: 5,
@@ -428,15 +455,43 @@ export default function ShipmentsPage() {
     };
   };
 
-  // Get shipping/logistics organizations
+  // Get organizations by type for 3-step flow
+  const manufacturingOrganizations = Array.isArray(organizations) 
+    ? organizations.filter((org: any) => ['contractor', 'oem_partner'].includes(org.type))
+    : [];
+    
   const shippingOrganizations = Array.isArray(organizations) 
     ? organizations.filter((org: any) => org.type === 'shipping_logistics')
     : (user?.organization?.type === 'shipping_logistics' ? [user.organization] : []);
+    
+  const allWarehouses = Array.isArray(warehouses) ? warehouses : [];
 
   // Handle shipment form submission (Create OR Update)
   const handleCreateShipment = async () => {
-    if (!selectedShipment || !shipmentForm.shippingOrganization) {
-      alert('Please select a shipping organization');
+    if (!selectedShipment) {
+      alert('No shipment selected');
+      return;
+    }
+    
+    // Validate 3-step flow
+    if (!shipmentForm.originFactoryId) {
+      alert('Please select an origin factory (Step 1)');
+      return;
+    }
+    
+    if (!shipmentForm.shippingOrganizationId) {
+      alert('Please select a shipping partner (Step 2)');
+      return;
+    }
+    
+    if (!shipmentForm.destinationWarehouseId) {
+      alert('Please select a destination warehouse (Step 3)');
+      return;
+    }
+    
+    // Validate organizations are different
+    if (shipmentForm.originFactoryId === shipmentForm.shippingOrganizationId) {
+      alert('Origin factory and shipping partner must be different organizations');
       return;
     }
 
@@ -458,8 +513,25 @@ export default function ShipmentsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             forecastId: selectedShipment.id,
-            shippingOrganizationCode: shipmentForm.shippingOrganization,
-            ...shipmentForm,
+            // New 3-step flow data
+            organizationId: shipmentForm.originFactoryId, // Step 1: Origin Factory
+            shipperOrganizationId: shipmentForm.shippingOrganizationId, // Step 2: Shipping Partner
+            destinationWarehouseId: shipmentForm.destinationWarehouseId, // Step 3: Final Destination
+            // Legacy fields for backward compatibility
+            shippingOrganizationCode: shipmentForm.shippingOrganizationId, // Map to legacy field
+            // Include other form fields (excluding the ones we already set above)
+            shipperReference: shipmentForm.shipperReference,
+            factoryWarehouseId: shipmentForm.factoryWarehouseId,
+            unitsPerCarton: shipmentForm.unitsPerCarton,
+            requestedQuantity: shipmentForm.requestedQuantity,
+            notes: shipmentForm.notes,
+            priority: shipmentForm.priority,
+            incoterms: shipmentForm.incoterms,
+            pickupLocation: shipmentForm.pickupLocation,
+            deliveryLocation: shipmentForm.deliveryLocation,
+            estimatedShipDate: shipmentForm.estimatedShipDate,
+            requestedDeliveryDate: shipmentForm.requestedDeliveryDate,
+            overrideDefaults: shipmentForm.overrideDefaults,
             calculatedData: calculateShippingData(
               selectedShipment.sku, 
               shipmentForm.requestedQuantity || selectedShipment.quantity, 
@@ -538,6 +610,14 @@ export default function ShipmentsPage() {
     
     // Get the current shipment data for configuration fields
     const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
+    
+    // Get details for all three steps
+    const originFactory = manufacturingOrganizations.find((o: any) => o.id === shipmentForm.originFactoryId);
+    const shippingPartner = shippingOrganizations.find((o: any) => o.id === shipmentForm.shippingOrganizationId) || 
+                           (user?.organization?.type === 'shipping_logistics' ? user.organization : null);
+    const destinationWarehouse = allWarehouses.find((w: any) => w.id === shipmentForm.destinationWarehouseId);
+    
+    // Legacy warehouse for backward compatibility
     const linkedWarehouse = warehouses?.find((w: any) => w.id === shipmentForm.factoryWarehouseId);
     
     const csvData = [
@@ -563,12 +643,18 @@ export default function ShipmentsPage() {
       ['Cost per Unit (SEA)', shippingData.costPerUnitSEA, '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
+      // 3-Step Shipment Route Summary
+      ['=== SHIPMENT ROUTE SUMMARY ===', '', '', '', '', '', ''],
+      ['Origin Factory', originFactory?.name || 'Not Set', '', '', '', '', ''],
+      ['Shipping Partner', shippingPartner?.name || 'Not Set', '', '', '', '', ''],
+      ['Final Destination', destinationWarehouse?.name || 'Not Set', '', '', '', '', ''],
+      ['Route Flow', `${originFactory?.code || 'Factory'} → ${shippingPartner?.code || 'Shipper'} → ${destinationWarehouse?.name || 'Warehouse'}`, '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      
       // Shipment Configuration Section
       ['=== SHIPMENT CONFIGURATION ===', '', '', '', '', '', ''],
-      ['Shipping Organization', shipmentForm.shippingOrganization || 'Not Set', '', '', '', '', ''],
       ['Shipper Reference Number', shipmentForm.shipperReference || 'Not Set', '', '', '', '', ''],
       ['Shipment Priority', shipmentForm.priority || 'Standard', '', '', '', '', ''],
-      ['Factory/Origin Warehouse', linkedWarehouse?.name || 'Not Selected', '', '', '', '', ''],
       ['Incoterms', currentShipment?.incoterms || shipmentForm.incoterms || 'Not Set', '', '', '', ''],
       ['Estimated Ship Date', currentShipment?.estimated_departure ? new Date(currentShipment.estimated_departure).toLocaleDateString() : 'Not Set', '', '', '', '', ''],
       ['Requested Delivery Date', currentShipment?.estimated_arrival ? new Date(currentShipment.estimated_arrival).toLocaleDateString() : 'Not Set', '', '', '', '', ''],
@@ -576,17 +662,39 @@ export default function ShipmentsPage() {
       ['Special Instructions', currentShipment?.notes || selectedShipment.notes || 'None', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
-      // Factory/Origin Warehouse Details Section
-      ['=== FACTORY/ORIGIN WAREHOUSE ===', '', '', '', '', '', ''],
-      ['Warehouse Code', linkedWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Name', linkedWarehouse?.name || 'Not Available', '', '', '', '', ''],
-      ['Address', linkedWarehouse?.address || 'Not Available', '', '', '', '', ''],
-      ['City', linkedWarehouse?.city || 'Not Available', '', '', '', '', ''],
-      ['State/Province', linkedWarehouse?.state || 'Not Available', '', '', '', '', ''],
-      ['Country', linkedWarehouse?.country || 'Not Available', '', '', '', '', ''],
-      ['Postal Code', linkedWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
-      ['Time Zone', linkedWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
-      ['Operating Hours', linkedWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
+      // Origin Factory Details
+      ['=== ORIGIN FACTORY DETAILS ===', '', '', '', '', '', ''],
+      ['Factory Name', originFactory?.name || 'Not Available', '', '', '', '', ''],
+      ['Factory Code', originFactory?.code || 'Not Available', '', '', '', '', ''],
+      ['Factory Type', originFactory?.type || 'Not Available', '', '', '', '', ''],
+      ['Factory Email', originFactory?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Factory Phone', originFactory?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Factory Address', originFactory?.address || 'Not Available', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      
+      // Shipping Partner Details  
+      ['=== SHIPPING PARTNER DETAILS ===', '', '', '', '', '', ''],
+      ['Shipper Name', shippingPartner?.name || 'Not Available', '', '', '', '', ''],
+      ['Shipper Code', shippingPartner?.code || 'Not Available', '', '', '', '', ''],
+      ['Shipper Type', shippingPartner?.type || 'Not Available', '', '', '', '', ''],
+      ['Shipper Email', shippingPartner?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Shipper Phone', shippingPartner?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Shipper Address', shippingPartner?.address || 'Not Available', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      
+      // Destination Warehouse Details
+      ['=== DESTINATION WAREHOUSE DETAILS ===', '', '', '', '', '', ''],
+      ['Warehouse Name', destinationWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Code', destinationWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Address', destinationWarehouse?.address || 'Not Available', '', '', '', '', ''],
+      ['Warehouse City', destinationWarehouse?.city || 'Not Available', '', '', '', '', ''],
+      ['Warehouse State', destinationWarehouse?.state || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Country', destinationWarehouse?.country || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Postal Code', destinationWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Time Zone', destinationWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Operating Hours', destinationWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Contact Email', destinationWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Contact Phone', destinationWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
       ['Primary Contact Name', linkedWarehouse?.contactName || 'Not Available', '', '', '', '', ''],
       ['Primary Contact Email', linkedWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
       ['Primary Contact Phone', linkedWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
@@ -1200,35 +1308,109 @@ export default function ShipmentsPage() {
                   <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <SemanticBDIIcon semantic="settings" size={20} className="mr-2 text-blue-600" />
-                      Shipment Configuration
+                      Shipment Route Configuration
                     </h3>
                     
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="shippingOrg">Shipping Organization *</Label>
-                        <select
-                          id="shippingOrg"
-                          value={shipmentForm.shippingOrganization}
-                          onChange={(e) => setShipmentForm(prev => ({ ...prev, shippingOrganization: e.target.value }))}
-                          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                        >
-                          <option value="">Select Shipping Partner</option>
-                          {Array.isArray(shippingOrganizations) && shippingOrganizations.map((org: any) => (
-                            <option key={org.id} value={org.code}>
-                              {org.code} - {org.name}
-                            </option>
-                          ))}
-                          {(!Array.isArray(shippingOrganizations) || shippingOrganizations.length === 0) && user?.organization?.type === 'shipping_logistics' && (
-                            <option value={user.organization.code}>
-                              {user.organization.code} - {user.organization.name}
-                            </option>
-                          )}
-                        </select>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Select OLM or other approved shipping partner
+                    <div className="space-y-6">
+                      {/* Step 1: Origin Factory */}
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                          🏭 Step 1: Origin Factory
+                        </h4>
+                        <div>
+                          <Label htmlFor="originFactory">Manufacturing Partner *</Label>
+                          <select
+                            id="originFactory"
+                            value={shipmentForm.originFactoryId}
+                            onChange={(e) => setShipmentForm(prev => ({ ...prev, originFactoryId: e.target.value }))}
+                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          >
+                            <option value="">Select manufacturing partner...</option>
+                            {manufacturingOrganizations.map((org: any) => (
+                              <option key={org.id} value={org.id}>
+                                🏭 {org.name} ({org.code})
+                              </option>
+                            ))}
+                          </select>
+                          <div className="text-xs text-gray-600 mt-1">
+                            Select the factory/manufacturer (MTN, CBN, etc.)
+                          </div>
                         </div>
                       </div>
+
+                      {/* Step 2: Shipping Partner */}
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                          🚚 Step 2: Shipping Partner
+                        </h4>
+                        <div>
+                          <Label htmlFor="shippingPartner">Logistics Organization *</Label>
+                          <select
+                            id="shippingPartner"
+                            value={shipmentForm.shippingOrganizationId}
+                            onChange={(e) => setShipmentForm(prev => ({ ...prev, shippingOrganizationId: e.target.value }))}
+                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                            required
+                          >
+                            <option value="">Select logistics partner...</option>
+                            {shippingOrganizations.map((org: any) => (
+                              <option key={org.id} value={org.id}>
+                                📦 {org.name} ({org.code})
+                              </option>
+                            ))}
+                            {(!Array.isArray(shippingOrganizations) || shippingOrganizations.length === 0) && user?.organization?.type === 'shipping_logistics' && (
+                              <option value={user.organization.id}>
+                                📦 {user.organization.name} ({user.organization.code})
+                              </option>
+                            )}
+                          </select>
+                          <div className="text-xs text-gray-600 mt-1">
+                            This gives the shipping partner full CPFR visibility
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Final Destination */}
+                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
+                          📦 Step 3: Final Destination
+                        </h4>
+                        <div>
+                          <Label htmlFor="destinationWarehouse">Destination Warehouse *</Label>
+                          <select
+                            id="destinationWarehouse"
+                            value={shipmentForm.destinationWarehouseId}
+                            onChange={(e) => setShipmentForm(prev => ({ ...prev, destinationWarehouseId: e.target.value }))}
+                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            required
+                          >
+                            <option value="">Select destination warehouse...</option>
+                            {allWarehouses.map((warehouse: any) => (
+                              <option key={warehouse.id} value={warehouse.id}>
+                                🏢 {warehouse.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="text-xs text-gray-600 mt-1">
+                            Select the final destination warehouse (EMG, Complete CATV, etc.)
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Visual Flow Summary */}
+                      {shipmentForm.originFactoryId && shipmentForm.shippingOrganizationId && shipmentForm.destinationWarehouseId && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h4 className="font-semibold mb-2 text-gray-700">📋 Shipment Route Summary:</h4>
+                          <div className="text-center text-lg font-medium text-gray-800">
+                            🏭 {manufacturingOrganizations.find((o: any) => o.id === shipmentForm.originFactoryId)?.code || 'Factory'} 
+                            {' ──🚚──> '}
+                            📦 {shippingOrganizations.find((o: any) => o.id === shipmentForm.shippingOrganizationId)?.code || user?.organization?.code || 'Shipper'} 
+                            {' ──📦──> '}
+                            🏢 {allWarehouses.find((w: any) => w.id === shipmentForm.destinationWarehouseId)?.name || 'Warehouse'}
+                          </div>
+                        </div>
+                      )}
 
                       <div>
                         <Label htmlFor="shipperReference">Shipper Reference Number (JJOLM)</Label>
@@ -1273,7 +1455,7 @@ export default function ShipmentsPage() {
                             <div><strong>Shipment ID:</strong> {createdShipments.get(selectedShipment.id)?.id}</div>
                             <div><strong>Shipment Number:</strong> {createdShipments.get(selectedShipment.id)?.shipment_number}</div>
                             <div><strong>Status:</strong> Pending Shipper Confirmation</div>
-                            <div><strong>Organization:</strong> {shipmentForm.shippingOrganization}</div>
+                            <div><strong>Organization:</strong> {shippingOrganizations.find((o: any) => o.id === shipmentForm.shippingOrganizationId)?.name || 'Shipping Partner'}</div>
                             {shipmentForm.factoryWarehouseId && (
                               <div><strong>Factory/Origin:</strong> {
                                 (() => {
@@ -1388,27 +1570,6 @@ export default function ShipmentsPage() {
                             </select>
                           </div>
 
-                          <div>
-                            <Label htmlFor="factoryWarehouse">Factory/Origin Warehouse</Label>
-                            <select
-                              id="factoryWarehouse"
-                              value={shipmentForm.factoryWarehouseId}
-                              onChange={(e) => setShipmentForm(prev => ({ ...prev, factoryWarehouseId: e.target.value }))}
-                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select Factory Warehouse</option>
-                              {Array.isArray(warehouses) && warehouses
-                                .filter(warehouse => warehouse.isActive)
-                                .map(warehouse => (
-                                  <option key={warehouse.id} value={warehouse.id}>
-                                    {warehouse.name} - {warehouse.city || 'Location TBD'}
-                                  </option>
-                                ))}
-                            </select>
-                            <div className="text-xs text-gray-600 mt-1">
-                              Select the factory/origin warehouse for contact details and pickup location
-                            </div>
-                          </div>
 
                           {/* Override Section */}
                           <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
@@ -1740,7 +1901,7 @@ export default function ShipmentsPage() {
                   </Button>
                   <Button
                     onClick={handleCreateShipment}
-                    disabled={isCreatingShipment || !shipmentForm.shippingOrganization}
+                    disabled={isCreatingShipment || !shipmentForm.originFactoryId || !shipmentForm.shippingOrganizationId || !shipmentForm.destinationWarehouseId}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {isCreatingShipment ? (

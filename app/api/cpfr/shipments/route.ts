@@ -79,21 +79,37 @@ export async function GET(request: NextRequest) {
       console.log(`🚢 BDI user found ${allShipments?.length || 0} total shipments`);
       return NextResponse.json(allShipments || []);
     } else if (dbUser.organization?.type === 'shipping_logistics') {
-      // Shipping organizations see their own shipments - use Supabase (like BDI)
-      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching their shipments (Supabase)`);
-      const { data: ownShipments, error: shipmentsError } = await supabase
+      // Shipping organizations (OLM, etc.) see shipments they're assigned to handle as shipper
+      console.log(`🚢 Shipping org ${dbUser.organization.code} - fetching shipments where they are the shipper`);
+      
+      const { data: shipperShipments, error: shipmentsError } = await supabase
         .from('shipments')
         .select('*')
-        .eq('organization_id', dbUser.organization.id)
+        .eq('shipper_organization_id', dbUser.organization.id)
         .order('created_at', { ascending: false });
       
       if (shipmentsError) {
         console.error('🚢 Shipping org shipments error:', shipmentsError);
-        return NextResponse.json([]);
+        console.log('🚢 Trying legacy organization_id filter as fallback...');
+        
+        // Fallback to legacy logic if new field fails
+        const { data: legacyShipments, error: legacyError } = await supabase
+          .from('shipments')
+          .select('*')
+          .eq('organization_id', dbUser.organization.id)
+          .order('created_at', { ascending: false });
+          
+        if (legacyError) {
+          console.error('🚢 Legacy shipments error:', legacyError);
+          return NextResponse.json([]);
+        }
+        
+        console.log(`🚢 Shipping org found ${legacyShipments?.length || 0} shipments (legacy)`);
+        return NextResponse.json(legacyShipments || []);
       }
       
-      console.log(`🚢 Shipping org found ${ownShipments?.length || 0} shipments`);
-      return NextResponse.json(ownShipments || []);
+      console.log(`🚢 Shipping org found ${shipperShipments?.length || 0} shipments as shipper`);
+      return NextResponse.json(shipperShipments || []);
     } else if (dbUser.organization?.code) {
       // Partner organizations (MTN, CBN, etc.) see shipments for forecasts they can see
       console.log(`🚢 Partner org ${dbUser.organization.code} - fetching shipments for their SKUs`);
@@ -259,6 +275,11 @@ export async function POST(request: NextRequest) {
       .insert({
         shipment_number: shipmentNumber,
         forecast_id: body.forecastId,
+        // 3-step flow data
+        organization_id: body.organizationId || dbUser.organization?.id || null, // Step 1: Origin Factory
+        shipper_organization_id: body.shipperOrganizationId || null, // Step 2: Shipping Partner
+        destination_warehouse_id: body.destinationWarehouseId || null, // Step 3: Final Destination
+        // Legacy/additional fields
         priority: body.priority || 'standard',
         shipper_reference: body.shipperReference || null,
         factory_warehouse_id: body.factoryWarehouseId || null,
@@ -272,7 +293,6 @@ export async function POST(request: NextRequest) {
         estimated_arrival: estimatedArrival,
         notes: body.notes || null,
         status: 'planning',
-        organization_id: dbUser.organization?.id || null, // Required for RLS
         created_by: dbUser.authId // Use authId, not id (foreign key to users.auth_id)
       })
       .select()

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, productSkus, invoices, invoiceLineItems, organizations, organizationMembers } from '@/lib/db/schema';
+import { users, productSkus, invoices, invoiceLineItems, organizations, organizationMembers, shipments } from '@/lib/db/schema';
 import { eq, sql, inArray } from 'drizzle-orm';
 import { sendCPFRNotification, generateCPFRPortalLink, logCPFRNotification, CPFRNotificationData } from '@/lib/email/cpfr-notifications';
 
@@ -84,13 +84,17 @@ export async function GET(request: NextRequest) {
       
     const isPartnerUser = userOrgMembership.length > 0 && 
       userOrgMembership[0].organization.type !== 'internal';
+      
+    const isShippingUser = userOrgMembership.length > 0 && 
+      userOrgMembership[0].organization.type === 'shipping_logistics';
 
-    if (!isBDIUser && !isPartnerUser) {
+    if (!isBDIUser && !isPartnerUser && !isShippingUser) {
       return NextResponse.json({ error: 'Forbidden - Organization access required' }, { status: 403 });
     }
 
     const userOrgCode = userOrgMembership[0]?.organization.code;
-    console.log(`🔐 CPFR Access: ${isBDIUser ? 'BDI (full access)' : `Partner ${userOrgCode} (filtered)`}`);
+    const userOrgId = userOrgMembership[0]?.organization.id;
+    console.log(`🔐 CPFR Access: ${isBDIUser ? 'BDI (full access)' : isShippingUser ? `Shipper ${userOrgCode} (shipper-filtered)` : `Partner ${userOrgCode} (invoice-filtered)`}`);
 
     // Query forecasts from database table using Supabase client
     try {
@@ -186,7 +190,40 @@ export async function GET(request: NextRequest) {
       // Filter forecasts based on user organization
       let filteredForecasts = allForecasts;
       
-      if (isPartnerUser && userOrgCode) {
+      if (isShippingUser && userOrgId) {
+        console.log(`🚚 Filtering forecasts for shipping organization: ${userOrgCode}`);
+        
+        // For shipping organizations (OLM, etc.), show forecasts for shipments they handle
+        // Get forecast IDs from shipments where this org is the shipper
+        const shipperForecastIds = await db
+          .select({
+            forecastId: shipments.forecastId
+          })
+          .from(shipments)
+          .where(eq(shipments.shipperOrganizationId, userOrgId));
+        
+        const allowedForecastIds = shipperForecastIds
+          .map(item => item.forecastId)
+          .filter(Boolean); // Remove null values
+        
+        console.log(`🚚 Found ${allowedForecastIds.length} forecast IDs for shipper ${userOrgCode}:`, allowedForecastIds);
+        
+        // Filter forecasts to only show those they ship
+        filteredForecasts = allForecasts.filter(forecast => 
+          allowedForecastIds.includes(forecast.id)
+        );
+        
+        console.log(`🔒 Shipper ${userOrgCode} can see ${filteredForecasts.length} of ${allForecasts.length} forecasts`);
+        
+        // Enhanced debug info
+        if (filteredForecasts.length === 0) {
+          console.log(`⚠️ DEBUG INFO for shipper ${userOrgCode}:`);
+          console.log(`   - Allowed Forecast IDs: ${allowedForecastIds.join(', ')}`);
+          console.log(`   - All Forecast IDs: ${allForecasts.map(f => f.id).join(', ')}`);
+          console.log(`   - Shipments with shipper_organization_id = '${userOrgId}': ${allowedForecastIds.length > 0 ? 'YES' : 'NO'}`);
+        }
+        
+      } else if (isPartnerUser && userOrgCode) {
         console.log(`🔍 Filtering forecasts for partner organization: ${userOrgCode}`);
         
         // For partner organizations (TC1, etc.), show forecasts where:

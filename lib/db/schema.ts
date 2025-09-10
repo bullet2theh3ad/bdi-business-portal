@@ -858,8 +858,11 @@ export const shipments = pgTable('shipments', {
   // Link to forecast that initiated this shipment (optional since sales_forecasts table may not exist yet)
   forecastId: varchar('forecast_id', { length: 100 }),
   
-  // Shipping Organization (OLM, etc.)
-  shippingOrganizationCode: varchar('shipping_organization_code', { length: 10 }).notNull(),
+  // 3-Step Flow: Origin Factory, Shipper, Destination
+  shipperOrganizationId: uuid('shipper_organization_id').references(() => organizations.id),
+  
+  // Legacy: Shipping Organization (OLM, etc.) - keeping for backward compatibility
+  shippingOrganizationCode: varchar('shipping_organization_code', { length: 10 }),
   
   // Shipment Details
   requestedQuantity: integer('requested_quantity').notNull(),
