@@ -112,6 +112,12 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         icon: 'analytics',
       },
       {
+        title: '🤖 Ask BDI', // Keep as emoji for now
+        href: '/admin/ask-bdi',
+        icon: 'query',
+        requiresRole: ['super_admin'], // Super Admin only
+      },
+      {
         title: tn('organizations', 'Organizations'), // 🌍 TRANSLATED
         href: '/admin/organizations',
         icon: 'collaboration',

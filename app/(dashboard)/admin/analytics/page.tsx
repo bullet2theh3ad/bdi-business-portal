@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,42 +115,75 @@ export default function AnalyticsPage() {
   const [showAskBdiModal, setShowAskBdiModal] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{id: string, type: 'user' | 'assistant', content: string, timestamp: Date}>>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [localAskBdiQuery, setLocalAskBdiQuery] = useState(''); // Local state for input to prevent chart re-renders
 
-  // Handle Ask BDI question submission
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 3); // Default to 3 months ago
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  // Organization colors for consistent branding
+  const orgColors: { [key: string]: string } = {
+    'BDI': '#1e3a8a', // Blue
+    'MTN': '#059669', // Green  
+    'TC1': '#dc2626', // Red
+    'OLM': '#7c3aed', // Purple
+    'EMG': '#ea580c', // Orange
+    'GPN': '#0891b2', // Cyan
+    'HSN': '#be185d', // Pink
+    'QVC': '#65a30d', // Lime
+  };
+
+  // Handle Ask BDI question submission - stable version
   const handleAskBDI = async () => {
-    if (!askBdiQuery.trim()) return;
+    if (!localAskBdiQuery.trim() || isThinking) return;
     
-    const userMessage = {
-      id: Date.now().toString(),
-      type: 'user' as const,
-      content: askBdiQuery,
-      timestamp: new Date()
-    };
+    const currentQuestion = localAskBdiQuery; // Capture the question before clearing
     
-    setChatHistory(prev => [...prev, userMessage]);
-    setIsThinking(true);
+    // Open modal and set up initial state
     setShowAskBdiModal(true);
-    setAskBdiQuery('');
     
+    // Use setTimeout to ensure modal is rendered before updating other state
+    setTimeout(() => {
+      const userMessage = {
+        id: Date.now().toString(),
+        type: 'user' as const,
+        content: currentQuestion,
+        timestamp: new Date()
+      };
+      
+      setLocalAskBdiQuery(''); // Clear input
+      setChatHistory(prev => [...prev, userMessage]);
+      setIsThinking(true);
+      
+      // Process the question
+      processAskBDIQuestion(currentQuestion);
+    }, 100);
+  };
+  
+  // Separate function to process the question
+  const processAskBDIQuestion = async (question: string) => {
     try {
-      // Gather business context
+      // Simple business context to avoid dependency issues
       const businessContext = {
         currentPage: 'analytics',
         dateRange: { startDate, endDate },
-        totalForecasts: forecastDeliveries.length,
-        totalInvoices: invoicesByOrg.reduce((sum, org) => sum + Object.values(org.organizations).reduce((orgSum, orgData) => orgSum + orgData.count, 0), 0),
-        organizations: invoicesByOrg.map(org => org.month),
         selectedPeriod,
-        selectedMetric
+        selectedMetric,
+        timestamp: new Date().toISOString()
       };
       
       const response = await fetch('/api/admin/ask-bdi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: askBdiQuery,
+          question: question, // Use the passed question parameter
           context: businessContext,
-          chatHistory: chatHistory.slice(-10) // Last 10 messages for context
+          chatHistory: []
         })
       });
       
@@ -179,25 +212,9 @@ export default function AnalyticsPage() {
     }
   };
 
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 3); // Default to 3 months ago
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
-  });
-
-  // Organization colors for consistent branding
-  const orgColors: { [key: string]: string } = {
-    'BDI': '#1e3a8a', // Blue
-    'MTN': '#059669', // Green  
-    'TC1': '#dc2626', // Red
-    'OLM': '#7c3aed', // Purple
-    'EMG': '#ea580c', // Orange
-    'GPN': '#0891b2', // Cyan
-    'HSN': '#be185d', // Pink
-    'QVC': '#65a30d', // Lime
+  // Simple function to test modal opening
+  const testModalOpen = () => {
+    setShowAskBdiModal(true);
   };
 
   // Fetch user data
@@ -575,13 +592,13 @@ export default function AnalyticsPage() {
             <div className="flex-1">
               <Input
                 placeholder="e.g., 'What are our top performing SKUs this month?' or 'Show me invoice trends by organization'"
-                value={askBdiQuery}
-                onChange={(e) => setAskBdiQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAskBDI()}
+                value={localAskBdiQuery}
+                onChange={(e) => setLocalAskBdiQuery(e.target.value)}
+                disabled
                 className="bg-white"
               />
             </div>
-            <Button onClick={handleAskBDI} disabled={!askBdiQuery.trim()} className="bg-blue-600 hover:bg-blue-700">
+            <Button disabled className="bg-blue-600 hover:bg-blue-700">
               <SemanticBDIIcon semantic="query" size={16} className="mr-2" />
               <DynamicTranslation userLanguage={userLocale} context="business">
                 Ask BDI
@@ -889,100 +906,6 @@ export default function AnalyticsPage() {
         </>
       )}
 
-      {/* Ask BDI Modal */}
-      <Dialog open={showAskBdiModal} onOpenChange={setShowAskBdiModal}>
-        <DialogContent className="w-[98vw] h-[98vh] overflow-hidden flex flex-col" style={{ maxWidth: 'none' }}>
-          <DialogHeader className="border-b pb-4">
-            <DialogTitle className="flex items-center space-x-3">
-              <SemanticBDIIcon semantic="query" size={24} className="text-blue-600" />
-              <span>🤖 Ask BDI - Business Intelligence Assistant</span>
-            </DialogTitle>
-            <DialogDescription>
-              AI-powered analysis of your CPFR data, supply chain metrics, and business insights
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Chat History */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-              {chatHistory.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <SemanticBDIIcon semantic="query" size={48} className="mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium">Welcome to Ask BDI!</p>
-                  <p className="text-sm">Ask me anything about your business data, supply chain, or analytics.</p>
-                  <div className="mt-4 text-xs space-y-1">
-                    <p>💡 Try asking: "What are our top performing SKUs?"</p>
-                    <p>📊 Or: "Show me invoice trends by organization"</p>
-                    <p>🚢 Or: "How are our shipments performing?"</p>
-                  </div>
-                </div>
-              ) : (
-                chatHistory.map((message) => (
-                  <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-lg p-3 ${
-                      message.type === 'user' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-white border border-gray-200 text-gray-900'
-                    }`}>
-                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                      <div className={`text-xs mt-1 ${
-                        message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                        {message.timestamp.toLocaleTimeString()}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              
-              {/* Thinking indicator */}
-              {isThinking && (
-                <div className="flex justify-start">
-                  <div className="bg-white border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center space-x-2">
-                      <SemanticBDIIcon semantic="loading" size={16} className="animate-spin text-blue-600" />
-                      <span className="text-sm text-gray-600">BDI is analyzing your data...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* New Question Input */}
-            <div className="border-t bg-white p-4">
-              <div className="flex space-x-3">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Ask a follow-up question..."
-                    value={askBdiQuery}
-                    onChange={(e) => setAskBdiQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAskBDI()}
-                    className="bg-white"
-                    disabled={isThinking}
-                  />
-                </div>
-                <Button 
-                  onClick={handleAskBDI} 
-                  disabled={!askBdiQuery.trim() || isThinking}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isThinking ? (
-                    <SemanticBDIIcon semantic="loading" size={16} className="animate-spin" />
-                  ) : (
-                    <SemanticBDIIcon semantic="query" size={16} />
-                  )}
-                </Button>
-              </div>
-              
-              {/* Context Info */}
-              <div className="mt-2 text-xs text-gray-500 flex items-center space-x-4">
-                <span>📊 Context: {forecastDeliveries.length} forecasts, {invoicesByOrg.reduce((sum, org) => sum + Object.values(org.organizations).reduce((orgSum, orgData) => orgSum + orgData.count, 0), 0)} invoices</span>
-                <span>📅 Period: {startDate} to {endDate}</span>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

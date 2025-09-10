@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
 - CPFR Optimization: Signal analysis, collaboration effectiveness, demand planning
 - Risk Management: Supply chain resilience, bottleneck identification, contingency planning
 - Performance KPIs: OTD (On-Time Delivery), forecast accuracy, inventory turns, cost per unit
+- Manufacturer Analysis: SKU breakdown by manufacturer (MTN, CBN, etc.), performance by supplier
+- Product Portfolio: Category analysis, lifecycle management, discontinuation planning
 
 🎯 YOUR ANALYSIS APPROACH:
 1. **Data-Driven**: Always cite specific numbers and trends from the provided data
@@ -196,10 +198,11 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
         requested_delivery_week, terms, created_at
       `),
       
-      // All SKUs with details
+      // All SKUs with manufacturer details
       serviceSupabase.from('product_skus').select(`
         id, sku, name, description, category, subcategory,
-        moq, lead_time_days, unit_cost, box_weight_kg, created_at
+        mfg, moq, lead_time_days, unit_cost, box_weight_kg, 
+        is_active, is_discontinued, hts_code, created_at
       `),
       
       // Organizations
@@ -276,9 +279,25 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
         total: skusResult.data?.length || 0,
         byCategory: groupBy(skusResult.data || [], 'category'),
         bySubcategory: groupBy(skusResult.data || [], 'subcategory'),
+        byManufacturer: groupBy(skusResult.data || [], 'mfg'), // KEY: Breakdown by manufacturer
+        active: (skusResult.data || []).filter((sku: any) => sku.is_active).length,
+        discontinued: (skusResult.data || []).filter((sku: any) => sku.is_discontinued).length,
         withMOQ: (skusResult.data || []).filter((sku: any) => sku.moq && sku.moq > 0).length,
         avgLeadTime: skusResult.data?.length ?
-          (skusResult.data.reduce((sum: number, sku: any) => sum + (sku.lead_time_days || 0), 0) / skusResult.data.length).toFixed(1) : 0
+          (skusResult.data.reduce((sum: number, sku: any) => sum + (sku.lead_time_days || 0), 0) / skusResult.data.length).toFixed(1) : 0,
+        // Detailed manufacturer analysis
+        manufacturerDetails: (skusResult.data || []).reduce((mfgData: any, sku: any) => {
+          const mfg = sku.mfg || 'unknown';
+          if (!mfgData[mfg]) {
+            mfgData[mfg] = { count: 0, active: 0, discontinued: 0, categories: {} };
+          }
+          mfgData[mfg].count++;
+          if (sku.is_active) mfgData[mfg].active++;
+          if (sku.is_discontinued) mfgData[mfg].discontinued++;
+          const category = sku.category || 'uncategorized';
+          mfgData[mfg].categories[category] = (mfgData[mfg].categories[category] || 0) + 1;
+          return mfgData;
+        }, {})
       },
       
       organizations: {
