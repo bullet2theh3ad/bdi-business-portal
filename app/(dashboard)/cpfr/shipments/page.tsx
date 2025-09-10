@@ -772,7 +772,7 @@ export default function ShipmentsPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="forecasts" size={20} className="text-blue-600" />
               <div>
-                <p className="text-sm text-gray-600">Total Shipments</p>
+                <p className="text-sm text-gray-600">{tc('totalShipments', 'Total Shipments')}</p>
                 <p className="text-2xl font-bold text-blue-600">{shipmentForecasts.length}</p>
               </div>
             </div>
@@ -783,7 +783,7 @@ export default function ShipmentsPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="shipping" size={20} className="text-orange-600" />
               <div>
-                <p className="text-sm text-gray-600">In Transit</p>
+                <p className="text-sm text-gray-600">{tc('inTransit', 'In Transit')}</p>
                 <p className="text-2xl font-bold text-orange-600">
                   {shipmentForecasts.filter(f => f.shippingSignal === 'submitted').length}
                 </p>
@@ -796,7 +796,7 @@ export default function ShipmentsPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="sites" size={20} className="text-green-600" />
               <div>
-                <p className="text-sm text-gray-600">Delivered</p>
+                <p className="text-sm text-gray-600">{tc('delivered', 'Delivered')}</p>
                 <p className="text-2xl font-bold text-green-600">
                   {shipmentForecasts.filter(f => f.shippingSignal === 'confirmed').length}
                 </p>
@@ -809,7 +809,7 @@ export default function ShipmentsPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="analytics" size={20} className="text-purple-600" />
               <div>
-                <p className="text-sm text-gray-600">Total Units</p>
+                <p className="text-sm text-gray-600">{tc('totalUnits', 'Total Units')}</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {shipmentForecasts.reduce((sum, f) => sum + f.quantity, 0).toLocaleString()}
                 </p>
@@ -823,7 +823,7 @@ export default function ShipmentsPage() {
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search by SKU, product name, or delivery week..."
+            placeholder={tc('searchShipmentPlaceholder', 'Search by SKU, product name, or delivery week...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -831,28 +831,28 @@ export default function ShipmentsPage() {
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <Label htmlFor="status-filter">Status:</Label>
+            <Label htmlFor="status-filter">{tc('status', 'Status')}:</Label>
             <select
               id="status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All Statuses</option>
+              <option value="all">{tc('allStatus', 'All Status')}</option>
               <option value="planning">Planning</option>
               <option value="in_transit">In Transit</option>
               <option value="delivered">Delivered</option>
             </select>
           </div>
           <div className="flex items-center space-x-2">
-            <Label htmlFor="method-filter">Method:</Label>
+            <Label htmlFor="method-filter">{tc('method', 'Method')}:</Label>
             <select
               id="method-filter"
               value={methodFilter}
               onChange={(e) => setMethodFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All Methods</option>
+              <option value="all">{tc('allMethods', 'All Methods')}</option>
               <option value="SEA">🚢 Sea Freight</option>
               <option value="AIR">✈️ Air Freight</option>
               <option value="TRUCK">🚛 Ground</option>
