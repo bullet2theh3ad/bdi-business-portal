@@ -256,6 +256,32 @@
     "dateFormat": "Date Format",
     "timeFormat": "Time Format"
   },
+  "tableHeaders": {
+    "invoiceNumber": "Invoice #",
+    "purchaseOrderNumber": "PO #",
+    "dateCreated": "Date Created",
+    "status": "Status",
+    "totalAmount": "Total Amount",
+    "organization": "Organization",
+    "quantity": "Quantity",
+    "unitPrice": "Unit Price",
+    "lineTotal": "Line Total",
+    "sku": "SKU",
+    "userName": "User Name",
+    "email": "Email",
+    "role": "Role",
+    "lastLogin": "Last Login",
+    "actions": "Actions",
+    "warehouseName": "Warehouse",
+    "location": "Location",
+    "capacity": "Capacity",
+    "fileName": "File Name",
+    "fileSize": "File Size",
+    "uploadDate": "Upload Date",
+    "fileType": "Type",
+    "createdBy": "Created By",
+    "description": "Description"
+  },
   "cpfr": {
     "signals": {
       "unknown": "Unknown",

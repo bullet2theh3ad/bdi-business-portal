@@ -503,7 +503,7 @@ export default function InvoicesPage() {
             }}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
                 <div>
-                  <Label htmlFor="poNumber">Invoice Number *</Label>
+                  <Label htmlFor="poNumber">{tc('formLabels.invoiceNumber', 'Invoice Number')} *</Label>
                   <Input
                     id="poNumber"
                     name="poNumber"
@@ -1006,7 +1006,7 @@ export default function InvoicesPage() {
             }}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                 <div>
-                  <Label htmlFor="editInvoiceNumber">Invoice Number</Label>
+                  <Label htmlFor="editInvoiceNumber">{tc('formLabels.invoiceNumber', 'Invoice Number')}</Label>
                   <Input
                     id="editInvoiceNumber"
                     defaultValue={selectedInvoice.invoiceNumber}

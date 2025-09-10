@@ -250,6 +250,32 @@
     "dateFormat": "Formato de fecha",
     "timeFormat": "Formato de hora"
   },
+  "tableHeaders": {
+    "invoiceNumber": "# Factura",
+    "purchaseOrderNumber": "# OC",
+    "dateCreated": "Fecha creación",
+    "status": "Estado",
+    "totalAmount": "Monto total",
+    "organization": "Organización",
+    "quantity": "Cantidad",
+    "unitPrice": "Precio unit.",
+    "lineTotal": "Total línea",
+    "sku": "SKU",
+    "userName": "Nombre usuario",
+    "email": "Correo",
+    "role": "Rol",
+    "lastLogin": "Último acceso",
+    "actions": "Acciones",
+    "warehouseName": "Almacén",
+    "location": "Ubicación",
+    "capacity": "Capacidad",
+    "fileName": "Nombre archivo",
+    "fileSize": "Tamaño archivo",
+    "uploadDate": "Fecha subida",
+    "fileType": "Tipo",
+    "createdBy": "Creado por",
+    "description": "Descripción"
+  },
   "cpfr": {
     "signals": {
       "unknown": "Desconocido",

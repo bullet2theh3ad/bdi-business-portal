@@ -250,6 +250,32 @@
     "dateFormat": "Định dạng ngày",
     "timeFormat": "Định dạng thời gian"
   },
+  "tableHeaders": {
+    "invoiceNumber": "Số HĐ",
+    "purchaseOrderNumber": "Số ĐĐH",
+    "dateCreated": "Ngày tạo",
+    "status": "Trạng thái",
+    "totalAmount": "Tổng tiền",
+    "organization": "Tổ chức",
+    "quantity": "Số lượng",
+    "unitPrice": "Đơn giá",
+    "lineTotal": "Tổng dòng",
+    "sku": "SKU",
+    "userName": "Tên người dùng",
+    "email": "Email",
+    "role": "Vai trò",
+    "lastLogin": "Đăng nhập cuối",
+    "actions": "Hành động",
+    "warehouseName": "Kho",
+    "location": "Vị trí",
+    "capacity": "Công suất",
+    "fileName": "Tên tệp",
+    "fileSize": "Kích thước tệp",
+    "uploadDate": "Ngày tải lên",
+    "fileType": "Loại",
+    "createdBy": "Tạo bởi",
+    "description": "Mô tả"
+  },
   "cpfr": {
     "signals": {
       "unknown": "Không rõ",

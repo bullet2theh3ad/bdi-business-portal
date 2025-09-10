@@ -580,7 +580,7 @@ export default function PurchaseOrdersPage() {
           }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div>
-                <Label htmlFor="poNumber">Purchase Order Number *</Label>
+                <Label htmlFor="poNumber">{tc('formLabels.purchaseOrderNumber', 'Purchase Order Number')} *</Label>
                 <Input
                   id="poNumber"
                   name="poNumber"
@@ -629,7 +629,7 @@ export default function PurchaseOrdersPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div>
-                <Label htmlFor="orderDate">Purchase Order Date *</Label>
+                <Label htmlFor="orderDate">{tc('formLabels.dateCreated', 'Date Created')} *</Label>
                 <Input
                   id="orderDate"
                   name="orderDate"

@@ -856,7 +856,7 @@ export default function WarehousesPage() {
                   <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                     <div>
-                      <Label htmlFor="contactName1">Contact Name *</Label>
+                      <Label htmlFor="contactName1">{tc('formLabels.contactPerson', 'Contact Person')} *</Label>
                       <Input
                         id="contactName1"
                         name="contactName1"
@@ -866,7 +866,7 @@ export default function WarehousesPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="contactEmail1">Contact Email *</Label>
+                      <Label htmlFor="contactEmail1">{tc('formLabels.email', 'Email')} *</Label>
                       <Input
                         id="contactEmail1"
                         name="contactEmail1"

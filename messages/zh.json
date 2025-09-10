@@ -256,6 +256,32 @@
     "dateFormat": "日期格式",
     "timeFormat": "时间格式"
   },
+  "tableHeaders": {
+    "invoiceNumber": "发票号",
+    "purchaseOrderNumber": "采购单号",
+    "dateCreated": "创建日期",
+    "status": "状态",
+    "totalAmount": "总金额",
+    "organization": "组织",
+    "quantity": "数量",
+    "unitPrice": "单价",
+    "lineTotal": "行总计",
+    "sku": "SKU",
+    "userName": "用户名",
+    "email": "邮箱",
+    "role": "角色",
+    "lastLogin": "最后登录",
+    "actions": "操作",
+    "warehouseName": "仓库",
+    "location": "位置",
+    "capacity": "容量",
+    "fileName": "文件名",
+    "fileSize": "文件大小",
+    "uploadDate": "上传日期",
+    "fileType": "类型",
+    "createdBy": "创建者",
+    "description": "描述"
+  },
   "cpfr": {
     "signals": {
       "unknown": "未知",
