@@ -321,7 +321,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
             <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="bg-bdi-green-1 text-white text-xs sm:text-sm">
-              {user.role.replace('_', ' ').toUpperCase()}
+              {tc(`status.${user.role}`, user.role.replace('_', ' ').toUpperCase())}
             </Badge>
             {!isEditing ? (
               <Button onClick={() => setIsEditing(true)} className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto">

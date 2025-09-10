@@ -102,6 +102,17 @@
     "active": "Activo",
     "inactive": "Inactivo", 
     "pending": "Pendiente",
-    "completed": "Completado"
+    "completed": "Completado",
+    "processing": "Procesando",
+    "shipped": "Enviado",
+    "delivered": "Entregado",
+    "cancelled": "Cancelado",
+    "approved": "Aprobado",
+    "ready": "Listo",
+    "inProgress": "En Progreso",
+    "super_admin": "Super Administrador",
+    "admin": "Administrador",
+    "user": "Usuario",
+    "developer": "Desarrollador"
   }
 }

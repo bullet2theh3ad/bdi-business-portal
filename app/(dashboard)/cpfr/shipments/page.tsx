@@ -1171,7 +1171,7 @@ export default function ShipmentsPage() {
                       <div className="text-sm"><span className="font-medium">Shipping:</span> {selectedShipment.shippingPreference}</div>
                       <div className="text-sm"><span className="font-medium">Status:</span> 
                         <Badge variant={selectedShipment.status === 'submitted' ? 'default' : 'secondary'} className="ml-1">
-                          {selectedShipment.status}
+                          {tcpfr(`signals.${selectedShipment.status}`, selectedShipment.status)}
                         </Badge>
                       </div>
                     </div>

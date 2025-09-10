@@ -389,7 +389,7 @@ export default function OrganizationUsersPage() {
                           {invitation.invitedRole?.toUpperCase()}
                         </Badge>
                         <Badge variant="outline" className="text-blue-600 border-blue-300">
-                          {invitation.status?.toUpperCase()}
+                          {tc(`status.${invitation.status?.toLowerCase()}`, invitation.status?.toUpperCase())}
                         </Badge>
                       </div>
                       <div className="text-sm text-gray-600 space-y-1">

@@ -102,6 +102,17 @@
     "active": "Hoạt động",
     "inactive": "Không hoạt động", 
     "pending": "Đang chờ",
-    "completed": "Hoàn thành"
+    "completed": "Hoàn thành",
+    "processing": "Đang xử lý",
+    "shipped": "Đã gửi",
+    "delivered": "Đã giao",
+    "cancelled": "Đã hủy",
+    "approved": "Đã phê duyệt",
+    "ready": "Sẵn sàng",
+    "inProgress": "Đang thực hiện",
+    "super_admin": "Quản trị viên Cấp cao",
+    "admin": "Quản trị viên",
+    "user": "Người dùng",
+    "developer": "Nhà phát triển"
   }
 }

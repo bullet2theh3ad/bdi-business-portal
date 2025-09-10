@@ -106,8 +106,19 @@
   },
   "status": {
     "active": "活跃",
-    "inactive": "不活跃", 
+    "inactive": "不活跃",
     "pending": "待处理",
-    "completed": "已完成"
+    "completed": "已完成",
+    "processing": "处理中",
+    "shipped": "已发货",
+    "delivered": "已交付",
+    "cancelled": "已取消",
+    "approved": "已批准",
+    "ready": "就绪",
+    "inProgress": "进行中",
+    "super_admin": "超级管理员",
+    "admin": "管理员",
+    "user": "用户",
+    "developer": "开发者"
   }
 }
