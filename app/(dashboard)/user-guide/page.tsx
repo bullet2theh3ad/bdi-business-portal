@@ -8,18 +8,30 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
+import useSWR from 'swr';
+import { User } from '@/lib/db/schema';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function UserGuidePage() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
+
   return (
     <section className="flex-1 p-3 sm:p-4 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             <SemanticBDIIcon semantic="help" size={32} className="text-blue-600 sm:w-10 sm:h-10" />
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Portal User Guide</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">{tc('portalUserGuide', 'Portal User Guide')}</h1>
           </div>
           <p className="text-base sm:text-lg lg:text-xl text-gray-600 px-2">
-            Complete guide to the Boundless Devices Inc. Business Portal
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              Complete guide to the Boundless Devices Inc. Business Portal
+            </DynamicTranslation>
           </p>
           <p className="text-xs sm:text-sm text-gray-500 mt-2 px-2">
             Last Updated: {new Date().toLocaleDateString('en-US', { 
@@ -37,14 +49,16 @@ export default function UserGuidePage() {
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
                 <SemanticBDIIcon semantic="dashboard" size={24} className="text-blue-600 flex-shrink-0" />
-                <span>Getting Started</span>
+                <span>{tc('gettingStarted', 'Getting Started')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
               <p className="text-sm sm:text-base lg:text-lg text-gray-700 leading-relaxed">
-                Welcome to the <strong className="text-blue-600">BDI Business Portal</strong> - your comprehensive 
-                <strong className="text-green-600"> CPFR (Collaborative Planning, Forecasting & Replenishment)</strong> 
-                supply chain management platform with full API integration capabilities.
+                <DynamicTranslation userLanguage={userLocale} context="business">
+                  Welcome to the <strong className="text-blue-600">BDI Business Portal</strong> - your comprehensive 
+                  <strong className="text-green-600"> CPFR (Collaborative Planning, Forecasting & Replenishment)</strong> 
+                  supply chain management platform with full API integration capabilities.
+                </DynamicTranslation>
               </p>
               
               <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 sm:p-5 lg:p-6 rounded-lg border">
