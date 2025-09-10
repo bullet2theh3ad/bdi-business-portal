@@ -382,26 +382,26 @@ export default function PurchaseOrdersPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search by Purchase Order number or supplier name..."
+            placeholder={tc('searchPOPlaceholder', 'Search by Purchase Order number or supplier name...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
           />
         </div>
         <div className="flex items-center space-x-2">
-          <Label htmlFor="status-filter">Status:</Label>
+          <Label htmlFor="status-filter">{tc('status', 'Status')}:</Label>
           <select
             id="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           >
-            <option value="all">All Statuses</option>
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
+            <option value="all">{tc('allStatus', 'All Status')}</option>
+            <option value="draft">{tc('statusDraft', 'Draft')}</option>
+            <option value="sent">{tc('statusSent', 'Sent')}</option>
+            <option value="confirmed">{tc('statusConfirmed', 'Confirmed')}</option>
+            <option value="shipped">{tc('statusShipped', 'Shipped')}</option>
+            <option value="delivered">{tc('statusDelivered', 'Delivered')}</option>
           </select>
         </div>
       </div>

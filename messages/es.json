@@ -73,6 +73,7 @@
     "status": "Estado",
     "allStatus": "Todos los Estados",
     "searchInvoicePlaceholder": "Buscar por número de factura o nombre de cliente...",
+    "searchPOPlaceholder": "Buscar por número de orden de compra o nombre de proveedor...",
     "salesForecasts": "Pronósticos de Ventas",
     "forecastsDescription": "Crear pronósticos de demanda para planificación CPFR",
     "createSalesForecast": "Crear Pronóstico de Ventas",

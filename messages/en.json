@@ -73,6 +73,7 @@
     "status": "Status",
     "allStatus": "All Status",
     "searchInvoicePlaceholder": "Search by Invoice number or customer name...",
+    "searchPOPlaceholder": "Search by Purchase Order number or supplier name...",
     "salesForecasts": "Sales Forecasts",
     "forecastsDescription": "Create demand forecasts for CPFR planning", 
     "createSalesForecast": "Create Sales Forecast",
