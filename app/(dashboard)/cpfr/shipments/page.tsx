@@ -839,9 +839,9 @@ export default function ShipmentsPage() {
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">{tc('allStatus', 'All Status')}</option>
-              <option value="planning">Planning</option>
-              <option value="in_transit">In Transit</option>
-              <option value="delivered">Delivered</option>
+              <option value="planning">{tc('planning', 'Planning')}</option>
+              <option value="in_transit">{tc('inTransit', 'In Transit')}</option>
+              <option value="delivered">{tc('delivered', 'Delivered')}</option>
             </select>
           </div>
           <div className="flex items-center space-x-2">
@@ -853,9 +853,9 @@ export default function ShipmentsPage() {
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">{tc('allMethods', 'All Methods')}</option>
-              <option value="SEA">🚢 Sea Freight</option>
-              <option value="AIR">✈️ Air Freight</option>
-              <option value="TRUCK">🚛 Ground</option>
+              <option value="SEA">🚢 {tc('seaFreight', 'Sea Freight')}</option>
+              <option value="AIR">✈️ {tc('airFreight', 'Air Freight')}</option>
+              <option value="TRUCK">🚛 {tc('ground', 'Ground')}</option>
             </select>
           </div>
         </div>
@@ -866,7 +866,7 @@ export default function ShipmentsPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="shipping" size={20} />
-            <span>Shipments Timeline ({filteredShipments.length})</span>
+            <span>{tc('shipmentsTimeline', 'Shipments Timeline')} ({filteredShipments.length})</span>
           </CardTitle>
           <CardDescription>
             Shipment tracking from sales forecast through delivery milestones
@@ -899,11 +899,13 @@ export default function ShipmentsPage() {
                       <div className="flex-1">
                         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3 mb-3">
                           <h3 className="font-semibold text-base sm:text-lg break-all">
-                            {forecast.sku.sku} - {forecast.sku.name}
+                            <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                              {forecast.sku.sku} - {forecast.sku.name}
+                            </DynamicTranslation>
                           </h3>
                           <div className="flex flex-wrap gap-2">
                             <Badge className="bg-blue-100 text-blue-800 text-xs">
-                              {forecast.quantity.toLocaleString()} units
+                              {forecast.quantity.toLocaleString()} {tc('units', 'units')}
                             </Badge>
                             <Badge className="bg-purple-100 text-purple-800 text-xs">
                               {forecast.deliveryWeek}
