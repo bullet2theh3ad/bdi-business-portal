@@ -10,6 +10,7 @@ import {
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
+import { CapabilityItem, NavigationItem, DocumentationCard } from '@/components/DocumentationTranslation';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 
@@ -64,28 +65,31 @@ export default function UserGuidePage() {
               <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 sm:p-5 lg:p-6 rounded-lg border">
                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                   <SemanticBDIIcon semantic="analytics" size={20} className="text-gray-800 flex-shrink-0" />
-                  <h3 className="font-bold text-base sm:text-lg lg:text-xl text-gray-800">Core Capabilities</h3>
+                  <h3 className="font-bold text-base sm:text-lg lg:text-xl text-gray-800">{tc('coreCapabilities', 'Core Capabilities')}</h3>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2 sm:space-y-3">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <SemanticBDIIcon semantic="forecasts" size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs sm:text-sm">
-                        <strong className="text-blue-700">CPFR Management:</strong> Real-time demand forecasting with 4-stage signals
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <SemanticBDIIcon semantic="inventory" size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs sm:text-sm">
-                        <strong className="text-green-700">Inventory Intelligence:</strong> SKU tracking & warehouse management
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <SemanticBDIIcon semantic="collaboration" size={16} className="text-purple-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs sm:text-sm">
-                        <strong className="text-purple-700">Organization Management:</strong> Multi-tenant partner ecosystem
-                      </div>
-                    </div>
+                    <CapabilityItem
+                      icon={<SemanticBDIIcon semantic="forecasts" size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />}
+                      title="CPFR Management"
+                      description="Real-time demand forecasting with 4-stage signals"
+                      userLanguage={userLocale}
+                      context="business"
+                    />
+                    <CapabilityItem
+                      icon={<SemanticBDIIcon semantic="inventory" size={16} className="text-green-600 flex-shrink-0 mt-0.5" />}
+                      title="Inventory Intelligence"
+                      description="SKU tracking & warehouse management"
+                      userLanguage={userLocale}
+                      context="business"
+                    />
+                    <CapabilityItem
+                      icon={<SemanticBDIIcon semantic="collaboration" size={16} className="text-purple-600 flex-shrink-0 mt-0.5" />}
+                      title="Organization Management"
+                      description="Multi-tenant partner ecosystem"
+                      userLanguage={userLocale}
+                      context="business"
+                    />
                     <div className="flex items-start gap-2 sm:gap-3">
                       <SemanticBDIIcon semantic="connect" size={16} className="text-indigo-600 flex-shrink-0 mt-0.5" />
                       <div className="text-xs sm:text-sm">
