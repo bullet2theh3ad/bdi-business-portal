@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { User, ProductSku, Organization } from '@/lib/db/schema';
 
 interface UserWithOrganization extends User {
@@ -24,6 +26,8 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function SKUsPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   const { data: skus, mutate: mutateSkus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR<Organization[]>('/api/admin/organizations', fetcher);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -60,8 +64,16 @@ export default function SKUsPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <SemanticBDIIcon semantic="settings" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground">Only BDI Admins can manage product SKUs.</p>
+            <h2 className="text-xl font-semibold mb-2">
+              <DynamicTranslation userLanguage={userLocale} context="business">
+                Access Denied
+              </DynamicTranslation>
+            </h2>
+            <p className="text-muted-foreground">
+              <DynamicTranslation userLanguage={userLocale} context="business">
+                Only BDI Admins can manage product SKUs.
+              </DynamicTranslation>
+            </p>
           </div>
         </div>
       </div>
@@ -378,13 +390,17 @@ export default function SKUsPage() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="inventory" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Product SKUs</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Manage your product catalog for CPFR planning</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">{tc('productSKUsTitle', 'Product SKUs')}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                <DynamicTranslation userLanguage={userLocale} context="business">
+                  Manage your product catalog for CPFR planning
+                </DynamicTranslation>
+              </p>
             </div>
           </div>
           <Button className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
             <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            Add SKU
+            {tc('addSKU', 'Add SKU')}
           </Button>
         </div>
       </div>
@@ -393,7 +409,7 @@ export default function SKUsPage() {
       <div className="mb-6 flex flex-col space-y-4 sm:flex-row sm:space-y-0 gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search SKUs, names, or descriptions..."
+            placeholder={tc('searchSKUsPlaceholder', 'Search SKUs, names, or descriptions...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
@@ -401,14 +417,14 @@ export default function SKUsPage() {
         </div>
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
           <div className="flex items-center space-x-2">
-            <Label htmlFor="category-filter" className="text-sm">Category:</Label>
+            <Label htmlFor="category-filter" className="text-sm">{tc('category', 'Category')}:</Label>
             <select
               id="category-filter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-3 py-2 border rounded-md text-sm flex-1 sm:flex-none"
             >
-              <option value="all">All Categories</option>
+              <option value="all">{tc('allCategories', 'All Categories')}</option>
               {categories.map(category => (
                 <option key={category} value={category || ''}>
                   {category && category.length === 1 ? `${category} - Product Type` : category}
@@ -486,7 +502,11 @@ export default function SKUsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">{sku.name}</h3>
+                        <h3 className="font-semibold text-lg">
+                          <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                            {sku.name}
+                          </DynamicTranslation>
+                        </h3>
                         <Badge variant="outline" className="font-mono text-xs">
                           {sku.sku}
                         </Badge>
@@ -494,16 +514,20 @@ export default function SKUsPage() {
                           <Badge variant="secondary">{sku.category}</Badge>
                         )}
                         {!sku.isActive && (
-                          <Badge variant="destructive">Inactive</Badge>
+                          <Badge variant="destructive">{tc('inactive', 'Inactive')}</Badge>
                         )}
                         {sku.isDiscontinued && (
                           <Badge variant="outline" className="text-orange-600 border-orange-600">
-                            Discontinued
+                            {tc('discontinued', 'Discontinued')}
                           </Badge>
                         )}
                       </div>
                       {sku.description && (
-                        <p className="text-muted-foreground mb-3">{sku.description}</p>
+                        <p className="text-muted-foreground mb-3">
+                          <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                            {sku.description}
+                          </DynamicTranslation>
+                        </p>
                       )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
                         {sku.model && (
