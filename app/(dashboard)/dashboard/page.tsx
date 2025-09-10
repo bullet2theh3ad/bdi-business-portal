@@ -308,6 +308,9 @@ function CPFRMetrics() {
 }
 
 function ForecastMonthlyCharts() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   const { data: forecasts, mutate } = useSWR('/api/cpfr/forecasts', fetcher, {
     refreshInterval: 30000, // Refresh every 30 seconds
     revalidateOnFocus: true, // Refresh when user focuses the tab
@@ -363,17 +366,21 @@ function ForecastMonthlyCharts() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Forecast Monthly Overview
+            {tc('forecastMonthlyOverview', 'Forecast Monthly Overview')}
           </div>
           <button
             onClick={() => mutate()}
             className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
             title="Refresh forecast data"
           >
-            🔄 Refresh
+            🔄 {tc('refresh', 'Refresh')}
           </button>
         </CardTitle>
-        <CardDescription>6-month CPFR forecast activity and quantities (bar length = total quantity)</CardDescription>
+        <CardDescription>
+          <DynamicTranslation userLanguage={userLocale} context="cpfr">
+            6-month CPFR forecast activity and quantities (bar length = total quantity)
+          </DynamicTranslation>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -406,10 +413,10 @@ function ForecastMonthlyCharts() {
                 
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-xs font-medium text-gray-700">
-                    {month.forecasts} forecasts • {month.quantity.toLocaleString()} units
+                    {month.forecasts} {tc('forecasts', 'forecasts')} • {month.quantity.toLocaleString()} {tc('units', 'units')}
                     {month.draftQuantity > 0 && month.submittedQuantity > 0 && (
                       <span className="ml-1 text-gray-500">
-                        ({month.submittedQuantity.toLocaleString()} submitted, {month.draftQuantity.toLocaleString()} draft)
+                        ({month.submittedQuantity.toLocaleString()} {tc('submitted', 'submitted')}, {month.draftQuantity.toLocaleString()} {tc('draft', 'draft')})
                       </span>
                     )}
                   </span>
@@ -421,7 +428,7 @@ function ForecastMonthlyCharts() {
                     ? 'bg-green-100 text-green-800' 
                     : 'bg-gray-100 text-gray-600'
                 }`}>
-                  {month.status === 'active' ? '📊 Active' : '📅 Planned'}
+                  {month.status === 'active' ? `📊 ${tc('active', 'Active')}` : `📅 ${tc('planned', 'Planned')}`}
                 </div>
               </div>
             </div>
@@ -430,23 +437,39 @@ function ForecastMonthlyCharts() {
         
         {/* Chart Legend */}
         <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
-          <div className="text-xs text-gray-600 mb-2 font-medium">📊 Chart Legend:</div>
+          <div className="text-xs text-gray-600 mb-2 font-medium">📊 {tc('chartLegend', 'Chart Legend')}:</div>
           <div className="space-y-1 text-xs text-gray-600">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded"></div>
-              <span><strong>Blue</strong> = Submitted forecasts (triggers emails)</span>
+              <span>
+                <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                  <strong>Blue</strong> = Submitted forecasts (triggers emails)
+                </DynamicTranslation>
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-2 bg-gradient-to-r from-orange-300 to-orange-500 rounded"></div>
-              <span><strong>Orange</strong> = Draft forecasts (no emails sent)</span>
+              <span>
+                <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                  <strong>Orange</strong> = Draft forecasts (no emails sent)
+                </DynamicTranslation>
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-2 bg-gray-300 rounded"></div>
-              <span><strong>Gray</strong> = No forecasts planned</span>
+              <span>
+                <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                  <strong>Gray</strong> = No forecasts planned
+                </DynamicTranslation>
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <span className="w-4 text-center">📏</span>
-              <span><strong>Bar Length</strong> = Total forecast quantity</span>
+              <span>
+                <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                  <strong>Bar Length</strong> = Total forecast quantity
+                </DynamicTranslation>
+              </span>
             </div>
           </div>
         </div>
