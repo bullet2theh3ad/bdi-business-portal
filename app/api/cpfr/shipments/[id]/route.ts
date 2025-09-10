@@ -42,35 +42,59 @@ export async function PUT(
     const estimatedDeparture = body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : null;
     const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : null;
 
+    // Prepare update data with proper validation
+    const updateData: any = {
+      // 3-step flow data - CRITICAL UPDATE
+      organization_id: body.organizationId || null, // Step 1: Origin Factory
+      shipper_organization_id: body.shipperOrganizationId || null, // Step 2: Shipping Partner
+      destination_warehouse_id: body.destinationWarehouseId || null, // Step 3: Final Destination
+      // Legacy/additional fields
+      priority: body.priority || 'standard',
+      shipper_reference: body.shipperReference || null,
+      factory_warehouse_id: body.factoryWarehouseId || null,
+      incoterms: body.incoterms || 'EXW',
+      notes: body.notes || null,
+      status: 'draft', // Use standardized status
+      // Update signals if provided
+      sales_signal: body.salesSignal || null,
+      factory_signal: body.factorySignal || null,
+      shipping_signal: body.shippingSignal || null,
+      updated_at: new Date().toISOString()
+    };
+
+    // Only update dates if provided (avoid overwriting existing dates with null)
+    if (estimatedDeparture) {
+      updateData.estimated_departure = estimatedDeparture;
+    }
+    if (estimatedArrival) {
+      updateData.estimated_arrival = estimatedArrival;
+    }
+
+    console.log('🔧 Update data being sent:', updateData);
+
     const { data: updatedShipment, error: shipmentError } = await supabase
       .from('shipments')
-      .update({
-        // 3-step flow data - CRITICAL UPDATE
-        organization_id: body.organizationId || null, // Step 1: Origin Factory
-        shipper_organization_id: body.shipperOrganizationId || null, // Step 2: Shipping Partner
-        destination_warehouse_id: body.destinationWarehouseId || null, // Step 3: Final Destination
-        // Legacy/additional fields
-        priority: body.priority || 'standard',
-        shipper_reference: body.shipperReference || null,
-        factory_warehouse_id: body.factoryWarehouseId || null,
-        incoterms: body.incoterms || 'EXW',
-        estimated_departure: estimatedDeparture,
-        estimated_arrival: estimatedArrival,
-        notes: body.notes || null,
-        status: 'draft', // Use standardized status
-        // Update signals if provided
-        sales_signal: body.salesSignal || null,
-        factory_signal: body.factorySignal || null,
-        shipping_signal: body.shippingSignal || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', shipmentId)
       .select()
       .single();
 
     if (shipmentError) {
       console.error('🔧 Error updating shipment:', shipmentError);
-      return NextResponse.json({ error: 'Failed to update shipment', details: shipmentError.message }, { status: 500 });
+      console.error('🔧 Error details:', {
+        message: shipmentError.message,
+        code: shipmentError.code,
+        details: shipmentError.details,
+        hint: shipmentError.hint
+      });
+      console.error('🔧 Update data that failed:', updateData);
+      return NextResponse.json({ 
+        error: 'Failed to update shipment', 
+        details: shipmentError.message,
+        code: shipmentError.code,
+        hint: shipmentError.hint,
+        updateData: updateData
+      }, { status: 500 });
     }
 
     console.log('🔧 Updated shipment in database:', updatedShipment);
