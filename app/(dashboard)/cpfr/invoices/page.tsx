@@ -513,7 +513,7 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="supplierName">MFG/Customer Organization *</Label>
+                  <Label htmlFor="supplierName">{tc('formLabels.organization', 'Organization')} *</Label>
                   <select
                     id="supplierName"
                     name="supplierName"
@@ -721,7 +721,7 @@ export default function InvoicesPage() {
                             </select>
                           </div>
                           <div>
-                            <Label className="text-xs">Quantity *</Label>
+                            <Label className="text-xs">{tc('formLabels.quantity', 'Quantity')} *</Label>
                             <Input
                               type="number"
                               value={item.quantity === 0 ? '' : item.quantity}
@@ -1131,7 +1131,7 @@ export default function InvoicesPage() {
                             </select>
                           </div>
                           <div>
-                            <Label className="text-xs">Quantity *</Label>
+                            <Label className="text-xs">{tc('formLabels.quantity', 'Quantity')} *</Label>
                             <Input
                               type="number"
                               value={item.quantity === 0 ? '' : item.quantity}

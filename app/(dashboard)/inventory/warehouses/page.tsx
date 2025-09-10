@@ -673,7 +673,7 @@ export default function WarehousesPage() {
                 </div>
               </div>
               <div className="md:col-span-2">
-                <Label htmlFor="name">Warehouse Name *</Label>
+                <Label htmlFor="name">{tc('formLabels.name', 'Name')} *</Label>
                 <Input
                   id="name"
                   name="name"
@@ -794,7 +794,7 @@ export default function WarehousesPage() {
             {/* Location Information */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div className="md:col-span-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="address">{tc('formLabels.shippingAddress', 'Address')} *</Label>
                 <Input
                   id="address"
                   name="address"
@@ -1306,7 +1306,7 @@ export default function WarehousesPage() {
               {/* Location Information */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
                 <div className="md:col-span-2">
-                  <Label htmlFor="editAddress">Address *</Label>
+                  <Label htmlFor="editAddress">{tc('formLabels.shippingAddress', 'Address')} *</Label>
                   <Input
                     id="editAddress"
                     name="address"
