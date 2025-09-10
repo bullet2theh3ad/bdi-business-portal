@@ -317,11 +317,11 @@ export default function InvoicesPage() {
             className="px-3 py-2 border rounded-md"
           >
             <option value="all">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
+            <option value="draft">{tc('statusDraft', 'Draft')}</option>
+            <option value="sent">{tc('statusSent', 'Sent')}</option>
+            <option value="confirmed">{tc('statusConfirmed', 'Confirmed')}</option>
+            <option value="shipped">{tc('statusShipped', 'Shipped')}</option>
+            <option value="delivered">{tc('statusDelivered', 'Delivered')}</option>
           </select>
         </div>
       </div>
@@ -358,9 +358,13 @@ export default function InvoicesPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-3">
-                        <h3 className="font-semibold text-lg">Invoice #{invoice.invoiceNumber}</h3>
+                        <h3 className="font-semibold text-lg">
+                          <DynamicTranslation userLanguage={userLocale} context="business">
+                            Invoice #{invoice.invoiceNumber}
+                          </DynamicTranslation>
+                        </h3>
                         <Badge className={getStatusColor(invoice.status)}>
-                          {invoice.status}
+                          {tc(`status${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}`, invoice.status)}
                         </Badge>
                       </div>
                       
@@ -452,7 +456,11 @@ export default function InvoicesPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Supplier:</span>
-                          <p className="font-medium">{invoice.customerName}</p>
+                          <p className="font-medium">
+                            <DynamicTranslation userLanguage={userLocale} context="business">
+                              {invoice.customerName}
+                            </DynamicTranslation>
+                          </p>
                         </div>
                         <div>
                           <span className="text-gray-500">Invoice Date:</span>
