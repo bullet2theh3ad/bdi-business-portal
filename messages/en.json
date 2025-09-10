@@ -83,7 +83,9 @@
     "addWarehouseButton": "Add Warehouse",
     "uploadFilesButton": "Upload Files",
     "saveButton": "Save",
-    "cancelButton": "Cancel"
+    "cancelButton": "Cancel",
+    "viewTemplatesButton": "View Templates",
+    "downloadButton": "Download"
   },
   "cpfr": {
     "signals": {

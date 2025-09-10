@@ -77,7 +77,9 @@
     "addWarehouseButton": "Thêm Kho",
     "uploadFilesButton": "Tải lên Tệp",
     "saveButton": "Lưu",
-    "cancelButton": "Hủy"
+    "cancelButton": "Hủy",
+    "viewTemplatesButton": "Xem Mẫu",
+    "downloadButton": "Tải xuống"
   },
   "cpfr": {
     "signals": {

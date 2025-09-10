@@ -83,7 +83,9 @@
     "addWarehouseButton": "添加仓库",
     "uploadFilesButton": "上传文件",
     "saveButton": "保存",
-    "cancelButton": "取消"
+    "cancelButton": "取消",
+    "viewTemplatesButton": "查看模板",
+    "downloadButton": "下载"
   },
   "cpfr": {
     "signals": {

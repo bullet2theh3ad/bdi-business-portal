@@ -415,7 +415,7 @@ export default function ProductionFilesPage() {
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               <SemanticBDIIcon semantic="help" size={14} className="mr-2" />
-              View Templates
+              {tc('viewTemplatesButton', 'View Templates')}
             </Button>
           </div>
         </CardContent>
@@ -523,7 +523,7 @@ export default function ProductionFilesPage() {
                           className="w-full sm:w-auto"
                         >
                           <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
-                          Download
+                          {tc('downloadButton', 'Download')}
                         </Button>
                         <Button 
                           variant="outline" 
@@ -532,7 +532,7 @@ export default function ProductionFilesPage() {
                           className="w-full sm:w-auto text-red-600 hover:text-red-700"
                         >
                           <span className="mr-1 text-sm">🗑️</span>
-                          Delete
+                          {tc('deleteButton', 'Delete')}
                         </Button>
                       </div>
                     </div>
