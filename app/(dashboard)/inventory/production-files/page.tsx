@@ -407,8 +407,16 @@ export default function ProductionFilesPage() {
             <div className="flex items-center space-x-3">
               <SemanticBDIIcon semantic="help" size={20} className="text-green-600" />
               <div>
-                <p className="font-semibold text-green-800">Need help with file formats?</p>
-                <p className="text-sm text-green-700">Download sample templates to see the expected format for each file type</p>
+                <p className="font-semibold text-green-800">
+                  <DynamicTranslation userLanguage={userLocale} context="technical">
+                    Need help with file formats?
+                  </DynamicTranslation>
+                </p>
+                <p className="text-sm text-green-700">
+                  <DynamicTranslation userLanguage={userLocale} context="technical">
+                    Download sample templates to see the expected format for each file type
+                  </DynamicTranslation>
+                </p>
               </div>
             </div>
             <Button 
@@ -427,10 +435,12 @@ export default function ProductionFilesPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="analytics" size={20} />
-            <span>Production Files ({filteredFiles.length})</span>
+            <span>{tc('productionFilesTitle', 'Production Files')} ({filteredFiles.length})</span>
           </CardTitle>
           <CardDescription>
-            Manufacturing and production files associated with device shipments
+            <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+              Manufacturing and production files associated with device shipments
+            </DynamicTranslation>
           </CardDescription>
         </CardHeader>
         <CardContent>
