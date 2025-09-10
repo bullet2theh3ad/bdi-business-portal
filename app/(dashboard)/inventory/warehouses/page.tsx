@@ -612,7 +612,7 @@ export default function WarehousesPage() {
                     <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedWarehouse(warehouse)} className="w-full sm:w-auto">
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                        Edit
+                        {tc('editButton', 'Edit')}
                       </Button>
                       {warehouse.warehouseCode === 'EMG' && (
                         <Button 
@@ -632,7 +632,7 @@ export default function WarehousesPage() {
                         className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:border-red-300"
                       >
                         <span className="mr-1 text-sm">🗑️</span>
-                        Delete
+                        {tc('deleteButton', 'Delete')}
                       </Button>
                     </div>
                   </div>
