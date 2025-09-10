@@ -6,6 +6,12 @@ import { UserMenu } from '@/app/(dashboard)/user-menu';
 import { Button } from '@/components/ui/button';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import VersionDisplay from '@/components/VersionDisplay';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { getUserLocale } from '@/lib/i18n/simple-translator';
+import useSWR from 'swr';
+import { User } from '@/lib/db/schema';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function DashboardLayout({
   children
@@ -13,6 +19,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const userLocale = getUserLocale(user);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,7 +87,15 @@ export default function DashboardLayout({
                 </h1>
               </div>
               
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                {/* Language Switcher - Mobile optimized */}
+                <LanguageSwitcher
+                  currentLanguage={userLocale}
+                  onLanguageChange={() => {}} // Handled internally by component
+                  compact={true} // Always compact for header
+                  className="order-1 sm:order-none"
+                />
+                
                 {/* Version Display */}
                 <VersionDisplay />
                 
