@@ -453,7 +453,7 @@ export default function SalesForecastsPage() {
               className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
             >
               <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
-              Refresh
+              {tc('refreshButton', 'Refresh')}
             </Button>
             {canCreateForecasts && (
               <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
@@ -878,7 +878,7 @@ export default function SalesForecastsPage() {
                   className="ml-2"
                 >
                   <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
-                  Refresh
+                  {tc('refreshButton', 'Refresh')}
                 </Button>
               </div>
             ) : (
