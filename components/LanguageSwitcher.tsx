@@ -56,7 +56,7 @@ export function LanguageSwitcher({
     try {
       // Update user's preferred language in the database
       const response = await fetch('/api/user/language', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preferredLanguage: languageCode }),
       });
