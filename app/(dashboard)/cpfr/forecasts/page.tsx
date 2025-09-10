@@ -11,6 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User, ProductSku } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -565,7 +566,15 @@ export default function SalesForecastsPage() {
                   }
                 }}
               >
-                ← <span className="hidden sm:inline">Previous </span>{calendarView === 'months' ? '6M' : 'Month'}
+                ← <span className="hidden sm:inline">
+                  <DynamicTranslation userLanguage={userLocale} context="general">
+                    Previous
+                  </DynamicTranslation>{' '}
+                </span>{calendarView === 'months' ? '6M' : 
+                  <DynamicTranslation userLanguage={userLocale} context="general">
+                    Month
+                  </DynamicTranslation>
+                }
               </Button>
               <h2 className="text-sm sm:text-lg lg:text-xl font-semibold text-blue-800 text-center sm:text-left">
                 {calendarView === 'months' && `${currentDate.getFullYear()} - CPFR Planning`}
@@ -590,7 +599,15 @@ export default function SalesForecastsPage() {
                   }
                 }}
               >
-                <span className="hidden sm:inline">Next </span>{calendarView === 'months' ? '6M' : 'Month'} →
+                <span className="hidden sm:inline">
+                  <DynamicTranslation userLanguage={userLocale} context="general">
+                    Next
+                  </DynamicTranslation>{' '}
+                </span>{calendarView === 'months' ? '6M' : 
+                  <DynamicTranslation userLanguage={userLocale} context="general">
+                    Month
+                  </DynamicTranslation>
+                } →
               </Button>
               
               {/* Today/Current Button */}
@@ -610,8 +627,14 @@ export default function SalesForecastsPage() {
             </div>
             <div className="text-sm text-blue-700">
               {calendarView === 'months' ? '6-Month CPFR View' : 
-               calendarView === 'weeks' ? 'Weekly Detail View' : 
-               'Daily Detail View'}
+               calendarView === 'weeks' ? 
+                 <DynamicTranslation userLanguage={userLocale} context="general">
+                   Weekly Detail View
+                 </DynamicTranslation> : 
+                 <DynamicTranslation userLanguage={userLocale} context="general">
+                   Daily Detail View
+                 </DynamicTranslation>
+               }
             </div>
           </div>
 
@@ -858,13 +881,17 @@ export default function SalesForecastsPage() {
               <div className="text-center py-12">
                 <SemanticBDIIcon semantic="forecasts" size={48} className="mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">
-                  {canCreateForecasts ? 'No Forecasts Yet' : 'No Forecasts Available'}
+                  <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                    {canCreateForecasts ? 'No Forecasts Yet' : 'No Forecasts Available'}
+                  </DynamicTranslation>
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  {canCreateForecasts 
-                    ? 'Create your first demand forecast to start CPFR planning'
-                    : 'Waiting for BDI to create forecasts for your organization'
-                  }
+                  <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                    {canCreateForecasts 
+                      ? 'Create your first demand forecast to start CPFR planning'
+                      : 'Waiting for BDI to create forecasts for your organization'
+                    }
+                  </DynamicTranslation>
                 </p>
                 {canCreateForecasts && (
                   <Button onClick={() => setShowCreateModal(true)}>
@@ -946,7 +973,9 @@ export default function SalesForecastsPage() {
                       <div className="flex items-center justify-center sm:justify-end">
                         <Button variant="outline" size="sm" className="w-full sm:w-auto">
                           <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                          {canCreateForecasts ? 'Edit' : 'Respond'}
+                          <DynamicTranslation userLanguage={userLocale} context="general">
+                            {canCreateForecasts ? 'Edit' : 'Respond'}
+                          </DynamicTranslation>
                         </Button>
                       </div>
                     </div>
@@ -1029,10 +1058,16 @@ export default function SalesForecastsPage() {
                       <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Units per Carton</span>
                         <p className="font-bold text-3xl text-blue-600 mb-2">
-                          {(selectedSku as any).boxesPerCarton || 'Not Set'}
+                          {(selectedSku as any).boxesPerCarton || 
+                            <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                              Not Set
+                            </DynamicTranslation>
+                          }
                         </p>
                         <p className="text-xs text-gray-500">
-                          {(selectedSku as any).boxesPerCarton ? 'Forecast in multiples of this' : 'Configure in SKU settings'}
+                          <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                            {(selectedSku as any).boxesPerCarton ? 'Forecast in multiples of this' : 'Configure in SKU settings'}
+                          </DynamicTranslation>
                         </p>
                       </div>
                       <div className="bg-white p-4 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
@@ -1155,18 +1190,30 @@ export default function SalesForecastsPage() {
                               'TRUCK_STANDARD': '14-28 days',
                               'RAIL': '21-35 days',
                             };
-                            return selectedShipping ? shippingTimes[selectedShipping] || 'TBD' : 'Select shipping';
+                            return selectedShipping ? shippingTimes[selectedShipping] || 
+                              <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                                TBD
+                              </DynamicTranslation> : 
+                              <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                                Select shipping
+                              </DynamicTranslation>;
                           })()}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {selectedShipping ? 'Transit time for selected method' : 'Choose shipping method above'}
+                          <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                            {selectedShipping ? 'Transit time for selected method' : 'Choose shipping method above'}
+                          </DynamicTranslation>
                         </p>
                       </div>
                       <div className="bg-white p-6 rounded-lg border shadow-sm h-[160px] flex flex-col justify-center">
                         <span className="text-gray-600 text-sm font-medium mb-2">Total Delivery Time</span>
                         <p className="font-bold text-xl text-indigo-600 mb-2">
                           {(() => {
-                            if (!selectedShipping) return 'Select shipping';
+                            if (!selectedShipping) return (
+                              <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                                Select shipping
+                              </DynamicTranslation>
+                            );
                             const leadTime = getEffectiveLeadTime();
                             const shippingDays: { [key: string]: number } = {
                               'AIR_7_DAYS': 7,
@@ -1199,7 +1246,9 @@ export default function SalesForecastsPage() {
                           })()} days
                         </p>
                         <p className="text-xs text-gray-500">
-                          {selectedShipping ? 'Lead time + shipping time' : 'Select shipping for calculation'}
+                          <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                            {selectedShipping ? 'Lead time + shipping time' : 'Select shipping for calculation'}
+                          </DynamicTranslation>
                         </p>
                       </div>
                     </div>
@@ -1252,7 +1301,11 @@ export default function SalesForecastsPage() {
                       <div className="text-center">
                         <div className="text-sm font-medium text-blue-800 mb-1">Selected Delivery Week</div>
                         <div className="text-lg font-bold text-blue-900 bg-blue-100 rounded-lg py-2 px-4">
-                          {selectedDeliveryWeek || 'Click a week below'}
+                          {selectedDeliveryWeek || 
+                            <DynamicTranslation userLanguage={userLocale} context="general">
+                              Click a week below
+                            </DynamicTranslation>
+                          }
                         </div>
                       </div>
                     </div>
@@ -1979,7 +2032,7 @@ export default function SalesForecastsPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="analytics" size={20} className="mr-2" />
-                <span>CPFR Supply Chain Signals - Week {selectedWeekForDetail}</span>
+                <span>{tcpfr('modal.title', 'CPFR Supply Chain Signals')} - {tcpfr('modal.weekPrefix', 'Week')} {selectedWeekForDetail}</span>
                 {/* Week Status Dot */}
                 {(() => {
                   const weekForecasts = forecastsArray.filter(f => f.deliveryWeek === selectedWeekForDetail);
@@ -2034,9 +2087,9 @@ export default function SalesForecastsPage() {
             <div className="space-y-6 p-6">
               {/* Week Summary */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-blue-800 mb-2">Week Summary</h3>
+                <h3 className="font-semibold text-blue-800 mb-2">{tcpfr('modal.weekSummary', 'Week Summary')}</h3>
                 <div className="text-sm text-blue-700">
-                  {forecastsArray.filter(f => f.deliveryWeek === selectedWeekForDetail).length} forecasts for delivery week {selectedWeekForDetail}
+                  {forecastsArray.filter(f => f.deliveryWeek === selectedWeekForDetail).length} {tcpfr('modal.forecastsForDelivery', 'forecasts for delivery week')} {selectedWeekForDetail}
                 </div>
               </div>
 
@@ -2093,7 +2146,7 @@ export default function SalesForecastsPage() {
                                 }}
                                 className="bg-green-600 hover:bg-green-700"
                               >
-                                💾 Save
+                                💾 {tc('saveButton', 'Save')}
                               </Button>
                               <Button
                                 variant="outline"
@@ -2103,7 +2156,7 @@ export default function SalesForecastsPage() {
                                   setEditFormData({});
                                 }}
                               >
-                                Cancel
+                                {tc('cancelButton', 'Cancel')}
                               </Button>
                             </>
                           ) : (
@@ -2122,7 +2175,7 @@ export default function SalesForecastsPage() {
                                   });
                                 }}
                               >
-                                ✏️ Edit
+                                ✏️ {tc('editButton', 'Edit')}
                               </Button>
                               <Button
                                 variant="outline"
@@ -2171,7 +2224,7 @@ export default function SalesForecastsPage() {
                                 }}
                                 className="text-red-600 border-red-300 hover:bg-red-50"
                               >
-                                🗑️ Delete
+                                🗑️ {tc('deleteButton', 'Delete')}
                               </Button>
                             </>
                           )}
@@ -2184,7 +2237,7 @@ export default function SalesForecastsPage() {
                         <div className="bg-blue-50 p-3 rounded border border-blue-200 text-center">
                           <div className="flex items-center justify-center space-x-2 mb-2">
                             <span className="text-lg">📊</span>
-                            <span className="text-sm font-medium text-blue-800">Sales</span>
+                            <span className="text-sm font-medium text-blue-800">{tcpfr('milestones.sales', 'Sales')}</span>
                           </div>
                           {editingForecast === forecast.id ? (
                             <select
@@ -2192,10 +2245,10 @@ export default function SalesForecastsPage() {
                               onChange={(e) => setEditFormData({...editFormData, salesSignal: e.target.value})}
                               className="w-full px-2 py-1 text-xs border rounded"
                             >
-                              <option value="unknown">❓ Unknown</option>
-                              <option value="submitted">⏳ Submitted</option>
-                              <option value="confirmed">✅ Accepted</option>
-                              <option value="rejected">❌ Rejected</option>
+                              <option value="unknown">❓ {tcpfr('signals.unknown', 'Unknown')}</option>
+                              <option value="submitted">⏳ {tcpfr('signals.submitted', 'Submitted')}</option>
+                              <option value="confirmed">✅ {tcpfr('signals.accepted', 'Accepted')}</option>
+                              <option value="rejected">❌ {tcpfr('signals.rejected', 'Rejected')}</option>
                             </select>
                           ) : (
                             <div className="flex items-center justify-center space-x-2">
@@ -2211,7 +2264,7 @@ export default function SalesForecastsPage() {
                         <div className="bg-orange-50 p-3 rounded border border-orange-200 text-center">
                           <div className="flex items-center justify-center space-x-2 mb-2">
                             <span className="text-lg">🏭</span>
-                            <span className="text-sm font-medium text-orange-800">Factory</span>
+                            <span className="text-sm font-medium text-orange-800">{tcpfr('milestones.factory', 'Factory')}</span>
                           </div>
                           {editingForecast === forecast.id ? (
                             <select
@@ -2219,10 +2272,10 @@ export default function SalesForecastsPage() {
                               onChange={(e) => setEditFormData({...editFormData, factorySignal: e.target.value})}
                               className="w-full px-2 py-1 text-xs border rounded"
                             >
-                              <option value="unknown">❓ Unknown</option>
-                              <option value="reviewing">⏳ Awaiting</option>
-                              <option value="confirmed">✅ Accepted</option>
-                              <option value="rejected">❌ Rejected</option>
+                              <option value="unknown">❓ {tcpfr('signals.unknown', 'Unknown')}</option>
+                              <option value="reviewing">⏳ {tcpfr('signals.reviewing', 'Reviewing')}</option>
+                              <option value="confirmed">✅ {tcpfr('signals.accepted', 'Accepted')}</option>
+                              <option value="rejected">❌ {tcpfr('signals.rejected', 'Rejected')}</option>
                             </select>
                           ) : (
                             <div className="flex items-center justify-center space-x-2">
@@ -2238,7 +2291,7 @@ export default function SalesForecastsPage() {
                         <div className="bg-green-50 p-3 rounded border border-green-200 text-center">
                           <div className="flex items-center justify-center space-x-2 mb-2">
                             <span className="text-lg">🚢</span>
-                            <span className="text-sm font-medium text-green-800">Shipping</span>
+                            <span className="text-sm font-medium text-green-800">{tcpfr('milestones.shipping', 'Shipping')}</span>
                           </div>
                           {editingForecast === forecast.id ? (
                             <select
@@ -2246,10 +2299,10 @@ export default function SalesForecastsPage() {
                               onChange={(e) => setEditFormData({...editFormData, shippingSignal: e.target.value})}
                               className="w-full px-2 py-1 text-xs border rounded"
                             >
-                              <option value="unknown">❓ Unknown</option>
-                              <option value="reviewing">⏳ Awaiting</option>
-                              <option value="confirmed">✅ Accepted</option>
-                              <option value="rejected">❌ Rejected</option>
+                              <option value="unknown">❓ {tcpfr('signals.unknown', 'Unknown')}</option>
+                              <option value="reviewing">⏳ {tcpfr('signals.reviewing', 'Reviewing')}</option>
+                              <option value="confirmed">✅ {tcpfr('signals.accepted', 'Accepted')}</option>
+                              <option value="rejected">❌ {tcpfr('signals.rejected', 'Rejected')}</option>
                             </select>
                           ) : (
                             <div className="flex items-center justify-center space-x-2">
@@ -2278,7 +2331,7 @@ export default function SalesForecastsPage() {
                   variant="outline"
                   onClick={() => setShowDetailModal(false)}
                 >
-                  Close
+                  {tcpfr('modal.closeButton', 'Close')}
                 </Button>
               </div>
             </div>
