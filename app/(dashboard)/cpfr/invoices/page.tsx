@@ -11,6 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -87,7 +88,11 @@ export default function InvoicesPage() {
   // Helper function to aggregate SKU quantities for display
   const getSkuSummary = (invoiceId: string) => {
     const lineItems = invoiceLineItems[invoiceId] || [];
-    if (lineItems.length === 0) return 'No items';
+    if (lineItems.length === 0) return (
+      <DynamicTranslation userLanguage={userLocale} context="business">
+        No items
+      </DynamicTranslation>
+    );
 
     // Aggregate quantities by SKU
     const skuTotals: Record<string, { name: string; quantity: number }> = {};
@@ -105,7 +110,11 @@ export default function InvoicesPage() {
 
     // Format for display with commas
     const skuEntries = Object.entries(skuTotals);
-    if (skuEntries.length === 0) return 'No items';
+    if (skuEntries.length === 0) return (
+      <DynamicTranslation userLanguage={userLocale} context="business">
+        No items
+      </DynamicTranslation>
+    );
 
     return skuEntries.map(([sku, data]) => 
       `${sku}: ${data.quantity.toLocaleString()}`
@@ -667,7 +676,9 @@ export default function InvoicesPage() {
                     className="mt-1"
                   />
                   <div className="mt-1 text-xs text-gray-600">
-                    Named place where IncoTerms apply (e.g., "FOB Shanghai")
+                    <DynamicTranslation userLanguage={userLocale} context="business">
+                      Named place where IncoTerms apply (e.g., "FOB Shanghai")
+                    </DynamicTranslation>
                   </div>
                 </div>
               </div>
@@ -697,7 +708,11 @@ export default function InvoicesPage() {
                   <div className="text-center py-8 text-gray-500">
                     <SemanticBDIIcon semantic="inventory" size={32} className="mx-auto mb-2 opacity-50" />
                     <p>No line items added yet</p>
-                    <p className="text-xs">Click "Add Item" to start building your PO</p>
+                    <p className="text-xs">
+                      <DynamicTranslation userLanguage={userLocale} context="business">
+                        Click "Add Item" to start building your PO
+                      </DynamicTranslation>
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
