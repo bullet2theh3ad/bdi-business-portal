@@ -70,6 +70,8 @@
     "statusConfirmed": "Confirmed",
     "statusShipped": "Shipped",
     "statusDelivered": "Delivered",
+    "status": "Status",
+    "allStatus": "All Status",
     "salesForecasts": "Sales Forecasts",
     "forecastsDescription": "Create demand forecasts for CPFR planning", 
     "createSalesForecast": "Create Sales Forecast",

@@ -281,7 +281,7 @@ export default function InvoicesPage() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             <SemanticBDIIcon semantic="orders" size={24} className="sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">{tc('invoicesTitle', 'Invoices')}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">{tc('invoicesTitle', 'Invoices')} ({filteredInvoices.length})</h1>
               <p className="text-sm sm:text-base text-muted-foreground">{tc('invoicesDescription', 'Manage customer invoices and billing')}</p>
             </div>
           </div>
@@ -309,14 +309,14 @@ export default function InvoicesPage() {
           />
         </div>
         <div className="flex items-center space-x-2">
-          <Label htmlFor="status-filter">Status:</Label>
+          <Label htmlFor="status-filter">{tc('status', 'Status')}:</Label>
           <select
             id="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border rounded-md"
           >
-            <option value="all">All Status</option>
+            <option value="all">{tc('allStatus', 'All Status')}</option>
             <option value="draft">{tc('statusDraft', 'Draft')}</option>
             <option value="sent">{tc('statusSent', 'Sent')}</option>
             <option value="confirmed">{tc('statusConfirmed', 'Confirmed')}</option>

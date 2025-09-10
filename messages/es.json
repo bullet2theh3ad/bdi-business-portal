@@ -70,6 +70,8 @@
     "statusConfirmed": "Confirmado",
     "statusShipped": "Enviado",
     "statusDelivered": "Entregado",
+    "status": "Estado",
+    "allStatus": "Todos los Estados",
     "salesForecasts": "Pronósticos de Ventas",
     "forecastsDescription": "Crear pronósticos de demanda para planificación CPFR",
     "createSalesForecast": "Crear Pronóstico de Ventas",

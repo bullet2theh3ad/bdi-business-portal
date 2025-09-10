@@ -70,6 +70,8 @@
     "statusConfirmed": "Đã xác nhận",
     "statusShipped": "Đã vận chuyển", 
     "statusDelivered": "Đã giao hàng",
+    "status": "Trạng thái",
+    "allStatus": "Tất cả Trạng thái",
     "salesForecasts": "Dự báo Bán hàng",
     "forecastsDescription": "Tạo dự báo nhu cầu cho kế hoạch CPFR",
     "createSalesForecast": "Tạo Dự báo Bán hàng",
