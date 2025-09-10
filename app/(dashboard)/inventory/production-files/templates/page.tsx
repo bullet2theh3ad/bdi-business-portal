@@ -168,46 +168,68 @@ export default function ProductionFileTemplatesPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="help" size={20} className="text-blue-600" />
-            <span>How to Use Production File Templates</span>
+            <span>{tc('howToUseTemplates', 'How to Use Production File Templates')}</span>
           </CardTitle>
           <CardDescription>
-            Follow these steps to create properly formatted production files
+            <DynamicTranslation userLanguage={userLocale} context="technical">
+              Follow these steps to create properly formatted production files
+            </DynamicTranslation>
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h4 className="font-semibold text-blue-800">📋 Step-by-Step Process</h4>
+              <h4 className="font-semibold text-blue-800">📋 {tc('stepByStepProcess', 'Step-by-Step Process')}</h4>
               <ul className="space-y-2 text-sm text-blue-700">
                 <li className="flex items-start space-x-2">
                   <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
-                  <span>Download the template that matches your production file type</span>
+                  <span>
+                    <DynamicTranslation userLanguage={userLocale} context="technical">
+                      Download the template that matches your production file type
+                    </DynamicTranslation>
+                  </span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2</span>
-                  <span>Open the CSV file in Excel or your preferred spreadsheet application</span>
+                  <span>
+                    <DynamicTranslation userLanguage={userLocale} context="technical">
+                      Open the CSV file in Excel or your preferred spreadsheet application
+                    </DynamicTranslation>
+                  </span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
-                  <span>Keep the same column headers and format structure</span>
+                  <span>
+                    <DynamicTranslation userLanguage={userLocale} context="technical">
+                      Keep the same column headers and format structure
+                    </DynamicTranslation>
+                  </span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>
-                  <span>Replace sample data with your actual production data</span>
+                  <span>
+                    <DynamicTranslation userLanguage={userLocale} context="technical">
+                      Replace sample data with your actual production data
+                    </DynamicTranslation>
+                  </span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">5</span>
-                  <span>Save as CSV and upload via the Production Files page</span>
+                  <span>
+                    <DynamicTranslation userLanguage={userLocale} context="technical">
+                      Save as CSV and upload via the Production Files page
+                    </DynamicTranslation>
+                  </span>
                 </li>
               </ul>
             </div>
             <div className="space-y-4">
-              <h4 className="font-semibold text-green-800">✅ Best Practices</h4>
+              <h4 className="font-semibold text-green-800">✅ {tc('bestPractices', 'Best Practices')}</h4>
               <ul className="space-y-2 text-sm text-green-700">
-                <li>• Use consistent date formats (YYYY-MM-DD)</li>
-                <li>• Include all required columns from the template</li>
-                <li>• Validate MAC addresses follow standard format</li>
-                <li>• Ensure serial numbers are unique per device</li>
+                <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Use consistent date formats (YYYY-MM-DD)</DynamicTranslation></li>
+                <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Include all required columns from the template</DynamicTranslation></li>
+                <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Validate MAC addresses follow standard format</DynamicTranslation></li>
+                <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Ensure serial numbers are unique per device</DynamicTranslation></li>
                 <li>• Associate files with specific forecasts/shipments</li>
                 <li>• Add meaningful descriptions for file identification</li>
               </ul>
@@ -221,10 +243,12 @@ export default function ProductionFileTemplatesPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="analytics" size={20} className="text-green-600" />
-            <span>Available Templates</span>
+            <span>{tc('availableTemplates', 'Available Templates')}</span>
           </CardTitle>
           <CardDescription>
-            Click any template below to download a properly formatted sample file
+            <DynamicTranslation userLanguage={userLocale} context="technical">
+              Click any template below to download a properly formatted sample file
+            </DynamicTranslation>
           </CardDescription>
         </CardHeader>
         <CardContent>
