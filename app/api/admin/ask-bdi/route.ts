@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
 - Performance KPIs: OTD (On-Time Delivery), forecast accuracy, inventory turns, cost per unit
 - Manufacturer Analysis: SKU breakdown by manufacturer (MTN, CBN, etc.), performance by supplier
 - Product Portfolio: Category analysis, lifecycle management, discontinuation planning
+- Inventory Management: Real-time warehouse inventory levels (EMG), stock allocation, backorder analysis
+- Warehouse Analytics: Inventory trends, stock movement, location analysis, upload tracking
 
 🎯 YOUR ANALYSIS APPROACH:
 1. **Data-Driven**: Always cite specific numbers and trends from the provided data
@@ -167,7 +169,7 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Comprehensive data gathering
+    // Comprehensive data gathering including inventory tracking
     const [
       forecastsResult,
       shipmentsResult, 
@@ -176,7 +178,9 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       organizationsResult,
       warehousesResult,
       purchaseOrdersResult,
-      invoiceLineItemsResult
+      invoiceLineItemsResult,
+      emgInventoryResult,
+      emgInventoryHistoryResult
     ] = await Promise.all([
       // Forecasts with full details
       serviceSupabase.from('sales_forecasts').select(`
@@ -226,7 +230,20 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       // Invoice Line Items for SKU analysis
       serviceSupabase.from('invoice_line_items').select(`
         id, invoice_id, sku_id, quantity, unit_price, total_price
-      `)
+      `),
+      
+      // EMG Inventory Tracking - Current levels
+      serviceSupabase.from('emg_inventory_tracking').select(`
+        id, location, upc, model, description,
+        qty_on_hand, qty_allocated, qty_backorder, net_stock,
+        source_file_name, upload_date, last_updated
+      `),
+      
+      // EMG Inventory History - Changes over time
+      serviceSupabase.from('emg_inventory_history').select(`
+        id, upc, model, location, qty_on_hand, qty_change, change_type,
+        snapshot_date, source_file_name
+      `).order('snapshot_date', { ascending: false }).limit(100)
     ]);
 
     // Calculate comprehensive business metrics
@@ -320,6 +337,34 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
         totalValue: (purchaseOrdersResult.data || []).reduce((sum: number, po: any) => sum + (parseFloat(po.total_value) || 0), 0)
       },
       
+      // EMG Inventory Analysis
+      emgInventory: {
+        totalItems: emgInventoryResult.data?.length || 0,
+        totalUnitsOnHand: (emgInventoryResult.data || []).reduce((sum: number, item: any) => sum + (item.qty_on_hand || 0), 0),
+        totalUnitsAllocated: (emgInventoryResult.data || []).reduce((sum: number, item: any) => sum + (item.qty_allocated || 0), 0),
+        totalUnitsBackorder: (emgInventoryResult.data || []).reduce((sum: number, item: any) => sum + (item.qty_backorder || 0), 0),
+        totalNetStock: (emgInventoryResult.data || []).reduce((sum: number, item: any) => sum + (item.net_stock || 0), 0),
+        byLocation: groupBy(emgInventoryResult.data || [], 'location'),
+        lastUploadDate: emgInventoryResult.data?.length ? 
+          Math.max(...(emgInventoryResult.data.map((item: any) => new Date(item.upload_date || item.last_updated).getTime()))) : null,
+        topItems: (emgInventoryResult.data || [])
+          .sort((a: any, b: any) => (b.qty_on_hand || 0) - (a.qty_on_hand || 0))
+          .slice(0, 10)
+          .map((item: any) => ({
+            model: item.model,
+            description: item.description,
+            location: item.location,
+            qtyOnHand: item.qty_on_hand,
+            netStock: item.net_stock
+          })),
+        inventoryTrends: {
+          totalSnapshots: emgInventoryHistoryResult.data?.length || 0,
+          recentChanges: (emgInventoryHistoryResult.data || []).slice(0, 20),
+          lastSnapshotDate: emgInventoryHistoryResult.data?.length ? 
+            emgInventoryHistoryResult.data[0]?.snapshot_date : null
+        }
+      },
+      
       // Raw data for complex analysis (limited for performance)
       rawData: {
         recentForecasts: forecastsResult.data?.slice(0, 10) || [],
@@ -336,7 +381,9 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       shipments: businessData.shipments.total,
       invoices: businessData.invoices.total,
       skus: businessData.skus.total,
-      organizations: businessData.organizations.total
+      organizations: businessData.organizations.total,
+      emgInventoryItems: businessData.emgInventory.totalItems,
+      emgUnitsOnHand: businessData.emgInventory.totalUnitsOnHand
     });
 
     return businessData;
