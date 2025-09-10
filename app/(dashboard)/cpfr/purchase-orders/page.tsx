@@ -547,7 +547,7 @@ export default function PurchaseOrdersPage() {
                         }
                       }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                        Edit
+                        {tc('editButton', 'Edit')}
                       </Button>
                         <Button
                           variant="outline"
@@ -556,7 +556,7 @@ export default function PurchaseOrdersPage() {
                           className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:border-red-300"
                         >
                         <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
-                        Delete
+                        {tc('deleteButton', 'Delete')}
                       </Button>
                       </div>
                     </div>
@@ -1355,7 +1355,7 @@ export default function PurchaseOrdersPage() {
                               className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
                             >
                               <SemanticBDIIcon semantic="delete" size={12} className="mr-1" />
-                              Delete
+                              {tc('deleteButton', 'Delete')}
                             </Button>
                           </div>
                         </div>
