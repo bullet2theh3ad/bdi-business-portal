@@ -611,11 +611,41 @@ export default function ShipmentsPage() {
     // Get the current shipment data for configuration fields
     const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
     
-    // Get details for all three steps
+    // Get full details for all three steps with complete data
     const originFactory = manufacturingOrganizations.find((o: any) => o.id === shipmentForm.originFactoryId);
     const shippingPartner = shippingOrganizations.find((o: any) => o.id === shipmentForm.shippingOrganizationId) || 
                            (user?.organization?.type === 'shipping_logistics' ? user.organization : null);
     const destinationWarehouse = allWarehouses.find((w: any) => w.id === shipmentForm.destinationWarehouseId);
+    
+    // Helper function to get primary contact from CPFR contacts
+    const getPrimaryContact = (cpfrContacts: any) => {
+      if (cpfrContacts?.primary_contacts && cpfrContacts.primary_contacts.length > 0) {
+        return cpfrContacts.primary_contacts[0];
+      }
+      return null;
+    };
+    
+    // Helper function to format capabilities
+    const formatCapabilities = (capabilities: any) => {
+      if (!capabilities) return 'Not Available';
+      const caps = [];
+      if (capabilities.airFreight) caps.push('Air');
+      if (capabilities.seaFreight) caps.push('Sea');
+      if (capabilities.truckLoading) caps.push('Truck');
+      if (capabilities.railAccess) caps.push('Rail');
+      if (capabilities.coldStorage) caps.push('Cold Storage');
+      if (capabilities.hazmatHandling) caps.push('Hazmat');
+      return caps.length > 0 ? caps.join(', ') : 'Standard';
+    };
+    
+    // Get primary warehouse contact
+    const getPrimaryWarehouseContact = (contacts: any) => {
+      if (Array.isArray(contacts) && contacts.length > 0) {
+        const primary = contacts.find((c: any) => c.isPrimary) || contacts[0];
+        return primary;
+      }
+      return null;
+    };
     
     // Legacy warehouse for backward compatibility
     const linkedWarehouse = warehouses?.find((w: any) => w.id === shipmentForm.factoryWarehouseId);
@@ -667,9 +697,15 @@ export default function ShipmentsPage() {
       ['Factory Name', originFactory?.name || 'Not Available', '', '', '', '', ''],
       ['Factory Code', originFactory?.code || 'Not Available', '', '', '', '', ''],
       ['Factory Type', originFactory?.type || 'Not Available', '', '', '', '', ''],
-      ['Factory Email', originFactory?.contactEmail || 'Not Available', '', '', '', '', ''],
-      ['Factory Phone', originFactory?.contactPhone || 'Not Available', '', '', '', '', ''],
-      ['Factory Address', originFactory?.address || 'Not Available', '', '', '', '', ''],
+      ['Legal Name', originFactory?.legalName || 'Not Available', '', '', '', '', ''],
+      ['Primary Email', originFactory?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Primary Phone', originFactory?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Business Address', originFactory?.address || originFactory?.businessAddress || 'Not Available', '', '', '', '', ''],
+      ['Billing Address', originFactory?.billingAddress || 'Same as Business Address', '', '', '', '', ''],
+      ['DUNS Number', originFactory?.dunsNumber || 'Not Available', '', '', '', '', ''],
+      ['Tax ID', originFactory?.taxId || 'Not Available', '', '', '', '', ''],
+      ['Industry Code', originFactory?.industryCode || 'Not Available', '', '', '', '', ''],
+      ['Company Size', originFactory?.companySize || 'Not Available', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
       // Shipping Partner Details  
@@ -677,32 +713,59 @@ export default function ShipmentsPage() {
       ['Shipper Name', shippingPartner?.name || 'Not Available', '', '', '', '', ''],
       ['Shipper Code', shippingPartner?.code || 'Not Available', '', '', '', '', ''],
       ['Shipper Type', shippingPartner?.type || 'Not Available', '', '', '', '', ''],
-      ['Shipper Email', shippingPartner?.contactEmail || 'Not Available', '', '', '', '', ''],
-      ['Shipper Phone', shippingPartner?.contactPhone || 'Not Available', '', '', '', '', ''],
-      ['Shipper Address', shippingPartner?.address || 'Not Available', '', '', '', '', ''],
+      ['Legal Name', shippingPartner?.legalName || 'Not Available', '', '', '', '', ''],
+      ['Primary Email', shippingPartner?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Primary Phone', shippingPartner?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Business Address', shippingPartner?.address || shippingPartner?.businessAddress || 'Not Available', '', '', '', '', ''],
+      ['Billing Address', shippingPartner?.billingAddress || 'Same as Business Address', '', '', '', '', ''],
+      ['DUNS Number', shippingPartner?.dunsNumber || 'Not Available', '', '', '', '', ''],
+      ['Tax ID', shippingPartner?.taxId || 'Not Available', '', '', '', '', ''],
+      // CPFR Primary Contact
+      ...((() => {
+        const primaryContact = getPrimaryContact(shippingPartner?.cpfrContacts);
+        return primaryContact ? [
+          ['CPFR Primary Contact Name', primaryContact.name || 'Not Available', '', '', '', '', ''],
+          ['CPFR Primary Contact Email', primaryContact.email || 'Not Available', '', '', '', '', ''],
+          ['CPFR Primary Contact Role', primaryContact.role || 'Not Available', '', '', '', '', ''],
+        ] : [
+          ['CPFR Primary Contact', 'No CPFR contact configured', '', '', '', '', '']
+        ];
+      })()),
       ['', '', '', '', '', '', ''],
       
       // Destination Warehouse Details
       ['=== DESTINATION WAREHOUSE DETAILS ===', '', '', '', '', '', ''],
       ['Warehouse Name', destinationWarehouse?.name || 'Not Available', '', '', '', '', ''],
       ['Warehouse Code', destinationWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Address', destinationWarehouse?.address || 'Not Available', '', '', '', '', ''],
-      ['Warehouse City', destinationWarehouse?.city || 'Not Available', '', '', '', '', ''],
-      ['Warehouse State', destinationWarehouse?.state || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Country', destinationWarehouse?.country || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Postal Code', destinationWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Time Zone', destinationWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Operating Hours', destinationWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Contact Email', destinationWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Contact Phone', destinationWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
-      ['Primary Contact Name', linkedWarehouse?.contactName || 'Not Available', '', '', '', '', ''],
-      ['Primary Contact Email', linkedWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
-      ['Primary Contact Phone', linkedWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
-      ['Max Pallet Height (cm)', linkedWarehouse?.maxPalletHeightCm || 'Not Available', '', '', '', '', ''],
-      ['Max Pallet Weight (kg)', linkedWarehouse?.maxPalletWeightKg || 'Not Available', '', '', '', '', ''],
-      ['Loading Dock Count', linkedWarehouse?.loadingDockCount || 'Not Available', '', '', '', '', ''],
-      ['Storage Capacity (sqm)', linkedWarehouse?.storageCapacitySqm || 'Not Available', '', '', '', '', ''],
-      ['Warehouse Notes', linkedWarehouse?.notes || 'None', '', '', '', '', '']
+      ['Warehouse Type', destinationWarehouse?.type || 'Not Available', '', '', '', '', ''],
+      ['Full Address', destinationWarehouse?.address || 'Not Available', '', '', '', '', ''],
+      ['City', destinationWarehouse?.city || 'Not Available', '', '', '', '', ''],
+      ['State/Province', destinationWarehouse?.state || 'Not Available', '', '', '', '', ''],
+      ['Country', destinationWarehouse?.country || 'Not Available', '', '', '', '', ''],
+      ['Postal Code', destinationWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
+      ['Time Zone', destinationWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
+      ['Operating Hours', destinationWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
+      // Physical Specifications
+      ['Max Pallet Height', destinationWarehouse?.maxPalletHeightCm ? `${destinationWarehouse.maxPalletHeightCm}cm` : 'Not Available', '', '', '', '', ''],
+      ['Max Pallet Weight', destinationWarehouse?.maxPalletWeightKg ? `${destinationWarehouse.maxPalletWeightKg}kg` : 'Not Available', '', '', '', '', ''],
+      ['Loading Docks', destinationWarehouse?.loadingDockCount ? `${destinationWarehouse.loadingDockCount} loading docks` : 'Not Available', '', '', '', '', ''],
+      ['Storage Capacity', destinationWarehouse?.storageCapacitySqm ? `${destinationWarehouse.storageCapacitySqm.toLocaleString()} m²` : 'Not Available', '', '', '', '', ''],
+      ['Shipping Capabilities', formatCapabilities(destinationWarehouse?.capabilities), '', '', '', '', ''],
+      // Primary Contact
+      ...((() => {
+        const primaryContact = getPrimaryWarehouseContact(destinationWarehouse?.contacts);
+        return primaryContact ? [
+          ['Primary Contact Name', primaryContact.name || 'Not Available', '', '', '', '', ''],
+          ['Primary Contact Email', primaryContact.email || 'Not Available', '', '', '', '', ''],
+          ['Primary Contact Phone', primaryContact.phone || 'Not Available', '', '', '', '', ''],
+          ['Primary Contact Extension', primaryContact.extension || 'N/A', '', '', '', '', ''],
+        ] : [
+          ['Primary Contact Name', destinationWarehouse?.contactName || 'Not Available', '', '', '', '', ''],
+          ['Primary Contact Email', destinationWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
+          ['Primary Contact Phone', destinationWarehouse?.contactPhone || 'Not Available', '', '', '', '', '']
+        ];
+      })()),
+      ['Warehouse Notes', destinationWarehouse?.notes || 'None', '', '', '', '', '']
     ];
     
     const csvContent = csvData.map(row => row.join(',')).join('\n');
