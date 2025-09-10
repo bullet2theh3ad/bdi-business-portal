@@ -230,8 +230,8 @@ export default function ProductionFileTemplatesPage() {
                 <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Include all required columns from the template</DynamicTranslation></li>
                 <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Validate MAC addresses follow standard format</DynamicTranslation></li>
                 <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Ensure serial numbers are unique per device</DynamicTranslation></li>
-                <li>• Associate files with specific forecasts/shipments</li>
-                <li>• Add meaningful descriptions for file identification</li>
+                <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Associate files with specific forecasts/shipments</DynamicTranslation></li>
+                <li>• <DynamicTranslation userLanguage={userLocale} context="technical">Add meaningful descriptions for file identification</DynamicTranslation></li>
               </ul>
             </div>
           </div>
@@ -270,10 +270,15 @@ export default function ProductionFileTemplatesPage() {
                   />
                   <div className="flex-1">
                     <h4 className={`font-semibold text-sm mb-1 ${fileType.active ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {fileType.label}{!fileType.active ? ' (Coming Soon)' : ''}
+                      <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                        {fileType.label}
+                      </DynamicTranslation>
+                      {!fileType.active ? ` (${tc('comingSoon', 'Coming Soon')})` : ''}
                     </h4>
                     <p className="text-xs text-gray-600 mb-3">
-                      {getFileTypeDescription(fileType.value)}
+                      <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                        {getFileTypeDescription(fileType.value)}
+                      </DynamicTranslation>
                     </p>
                     <Button 
                       variant="outline" 
@@ -287,7 +292,7 @@ export default function ProductionFileTemplatesPage() {
                       disabled={!fileType.active}
                     >
                       <SemanticBDIIcon semantic="download" size={14} className="mr-2" />
-                      {fileType.active ? 'Download Template' : 'Coming Soon'}
+                      {fileType.active ? tc('downloadTemplate', 'Download Template') : tc('comingSoon', 'Coming Soon')}
                     </Button>
                   </div>
                 </div>
