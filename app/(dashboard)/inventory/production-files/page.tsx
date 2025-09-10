@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { User, ProductionFile } from '@/lib/db/schema';
 import { useDropzone } from 'react-dropzone';
 
@@ -317,7 +318,7 @@ export default function ProductionFilesPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="analytics" size={20} className="text-purple-600" />
               <div>
-                <p className="text-sm text-gray-600">Total Files</p>
+                <p className="text-sm text-gray-600">{tc('totalFiles', 'Total Files')}</p>
                 <p className="text-2xl font-bold text-purple-600">{filteredFiles.length}</p>
               </div>
             </div>
@@ -328,7 +329,7 @@ export default function ProductionFilesPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="shipping" size={20} className="text-blue-600" />
               <div>
-                <p className="text-sm text-gray-600">BDI Shipments</p>
+                <p className="text-sm text-gray-600">{tc('bdiShipments', 'BDI Shipments')}</p>
                 <p className="text-2xl font-bold text-blue-600">{uniqueShipments}</p>
               </div>
             </div>
@@ -339,7 +340,7 @@ export default function ProductionFilesPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="inventory_items" size={20} className="text-green-600" />
               <div>
-                <p className="text-sm text-gray-600">Total Devices</p>
+                <p className="text-sm text-gray-600">{tc('totalDevices', 'Total Devices')}</p>
                 <p className="text-2xl font-bold text-green-600">{totalDevices.toLocaleString()}</p>
               </div>
             </div>
@@ -350,7 +351,7 @@ export default function ProductionFilesPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="collaboration" size={20} className="text-orange-600" />
               <div>
-                <p className="text-sm text-gray-600">Organization</p>
+                <p className="text-sm text-gray-600">{tc('organization', 'Organization')}</p>
                 <p className="text-2xl font-bold text-orange-600">{user?.organization?.code || 'N/A'}</p>
               </div>
             </div>
@@ -362,7 +363,7 @@ export default function ProductionFilesPage() {
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search files by name, description, or shipment number..."
+            placeholder={tc('searchFilesPlaceholder', 'Search files by name, description, or shipment number...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -370,28 +371,28 @@ export default function ProductionFilesPage() {
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <Label htmlFor="type-filter">Type:</Label>
+            <Label htmlFor="type-filter">{tc('type', 'Type')}:</Label>
             <select
               id="type-filter"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="all">All Types</option>
+              <option value="all">{tc('allTypes', 'All Types')}</option>
               {FILE_TYPES.map(type => (
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
           </div>
           <div className="flex items-center space-x-2">
-            <Label htmlFor="shipment-filter">Shipment:</Label>
+            <Label htmlFor="shipment-filter">{tc('shipment', 'Shipment')}:</Label>
             <select
               id="shipment-filter"
               value={filterShipment}
               onChange={(e) => setFilterShipment(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="all">All Files</option>
+              <option value="all">{tc('allFiles', 'All Files')}</option>
               <option value="with_shipment">With Shipment</option>
               <option value="no_shipment">No Shipment</option>
             </select>
@@ -458,7 +459,11 @@ export default function ProductionFilesPage() {
                         <div className="flex flex-col space-y-2 mb-3">
                           <div className="flex items-center space-x-2">
                             <SemanticBDIIcon semantic={fileTypeInfo.icon as any} size={18} className="text-purple-600 flex-shrink-0" />
-                            <h3 className="font-semibold text-base sm:text-lg break-all">{file.fileName}</h3>
+                            <h3 className="font-semibold text-base sm:text-lg break-all">
+                              <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                                {file.fileName}
+                              </DynamicTranslation>
+                            </h3>
                           </div>
                           <div className="flex flex-wrap gap-1">
                             <Badge className="bg-purple-100 text-purple-800 text-xs">
@@ -473,7 +478,11 @@ export default function ProductionFilesPage() {
                         </div>
                         
                         {file.description && (
-                          <p className="text-gray-600 mb-2">{file.description}</p>
+                          <p className="text-gray-600 mb-2">
+                            <DynamicTranslation userLanguage={userLocale} context="manufacturing">
+                              {file.description}
+                            </DynamicTranslation>
+                          </p>
                         )}
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
