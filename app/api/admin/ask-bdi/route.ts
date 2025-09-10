@@ -6,6 +6,8 @@ import { db } from '@/lib/db/drizzle';
 import { users, organizations, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import OpenAI from 'openai';
+import { schemaPromptBuilder } from '@/lib/ai/schema-aware-prompt';
+import { supabaseFileRAG } from '@/lib/ai/supabase-file-rag';
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -74,72 +76,54 @@ export async function POST(request: NextRequest) {
     // Gather business data context
     const businessData = await gatherBusinessContext(supabase, context);
 
-    // Create comprehensive business analyst prompt
-    const systemPrompt = `You are BDI's Senior Business Intelligence Assistant and Supply Chain Expert. You have complete access to BDI's business data and provide world-class analysis.
+    // Determine if query needs file analysis
+    const needsFileAnalysis = requiresFileAnalysis(question);
+    
+    let answer: string;
+    
+    if (needsFileAnalysis) {
+      console.log('📁 Query requires file analysis - using enhanced RAG');
+      // Use enhanced file RAG analysis
+      answer = await supabaseFileRAG.analyzeWithFiles(question, businessData);
+    } else {
+      console.log('📊 Query uses database analysis only');
+      // Use standard database analysis
+      
+      // Build ultimate schema-aware prompt
+      const schemaAwarePrompt = await schemaPromptBuilder.buildUltimatePrompt();
+      
+      const systemPrompt = schemaAwarePrompt + `
 
-🏢 ABOUT BDI (Boundless Devices Inc):
-- B2B technology company specializing in CPFR (Collaborative Planning, Forecasting, and Replenishment)
-- Supply chain management platform for telecom/networking equipment
-- Partners: Manufacturers (MTN=Vietnam Factory, CBN=Compal), Shipping (OLM=Logistics), Distributors
-- Products: Motorola networking equipment (routers, modems, hotspots)
-
-📊 YOUR EXPERTISE & CAPABILITIES:
-- Supply Chain Analytics: Forecast accuracy, lead time optimization, capacity planning
-- Financial Analysis: Invoice trends, cost optimization, margin analysis, payment terms
-- Operational Excellence: Shipment performance, warehouse utilization, inventory turnover
-- CPFR Optimization: Signal analysis, collaboration effectiveness, demand planning
-- Risk Management: Supply chain resilience, bottleneck identification, contingency planning
-- Performance KPIs: OTD (On-Time Delivery), forecast accuracy, inventory turns, cost per unit
-- Manufacturer Analysis: SKU breakdown by manufacturer (MTN, CBN, etc.), performance by supplier
-- Product Portfolio: Category analysis, lifecycle management, discontinuation planning
-- Inventory Management: Real-time warehouse inventory levels (EMG), stock allocation, backorder analysis
-- Warehouse Analytics: Inventory trends, stock movement, location analysis, upload tracking
-
-🎯 YOUR ANALYSIS APPROACH:
-1. **Data-Driven**: Always cite specific numbers and trends from the provided data
-2. **Actionable Insights**: Provide concrete recommendations, not just observations
-3. **Context Aware**: Consider seasonality, market conditions, and business cycles
-4. **Comparative Analysis**: Benchmark against industry standards when relevant
-5. **Risk Assessment**: Identify potential issues and mitigation strategies
-
-💼 COMMUNICATION STYLE:
-- Lead with the key insight or answer
-- Support with specific data points and percentages
-- Include trend analysis (improving/declining/stable)
-- Provide 2-3 actionable recommendations
-- Use business terminology appropriately
-- Format numbers clearly (e.g., "$2.6M", "24,544 units", "87% accuracy")
-
-📈 COMPREHENSIVE BUSINESS DATA AVAILABLE:
+📈 CURRENT SESSION DATA:
 ${JSON.stringify(businessData, null, 2)}
 
-🔍 ANALYSIS GUIDELINES:
-- Reference specific SKUs, organizations, and timeframes
-- Calculate ratios and percentages for meaningful insights
-- Identify patterns, outliers, and opportunities
-- Consider supply chain interdependencies
-- Suggest process improvements based on data patterns
+🎯 SESSION CONTEXT:
+- User: ${dbUser.name} (${dbUser.role})
+- Organization: ${dbUser.organization?.name} (${dbUser.organization?.code})
+- Current Page: ${context.currentPage}
+- Timestamp: ${context.timestamp}
 
-Answer questions with the depth and insight of a senior McKinsey consultant specializing in supply chain and technology businesses.`;
+Always provide specific, actionable insights based on the complete database schema and current business data.`;
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      // Include recent chat history for context
-      ...chatHistory.slice(-6).map((msg: any) => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      })),
-      { role: 'user', content: question }
-    ];
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        // Include recent chat history for context
+        ...chatHistory.slice(-6).map((msg: any) => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        })),
+        { role: 'user', content: question }
+      ];
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: messages as any,
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: messages as any,
+        temperature: 0.7,
+        max_tokens: 1500,
+      });
 
-    const answer = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
+      answer = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
+    }
 
     console.log('🤖 Ask BDI Response generated successfully');
 
@@ -404,5 +388,17 @@ function groupBy(array: any[], key: string) {
     groups[value] = (groups[value] || 0) + 1;
     return groups;
   }, {});
+}
+
+// Helper function to determine if query needs file analysis
+function requiresFileAnalysis(question: string): boolean {
+  const fileKeywords = [
+    'document', 'file', 'pdf', 'excel', 'csv', 'report', 'upload', 'attachment',
+    'invoice document', 'production file', 'shipment document', 'warehouse document',
+    'jjolm', 'manifest', 'certificate', 'specification', 'datasheet', 'inventory report'
+  ];
+  
+  const questionLower = question.toLowerCase();
+  return fileKeywords.some(keyword => questionLower.includes(keyword));
 }
 
