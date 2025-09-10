@@ -848,7 +848,7 @@ export default function PurchaseOrdersPage() {
                             </div>
                           </div>
                         <div>
-                          <Label className="text-xs">Line Total</Label>
+                          <Label className="text-xs">{tc('tableHeaders.lineTotal', 'Line Total')}</Label>
                           <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
                             ${item.lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
@@ -1235,7 +1235,7 @@ export default function PurchaseOrdersPage() {
                             </div>
                           </div>
                           <div>
-                            <Label className="text-xs">Line Total</Label>
+                            <Label className="text-xs">{tc('tableHeaders.lineTotal', 'Line Total')}</Label>
                             <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm font-mono">
                               ${item.lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
@@ -1437,10 +1437,10 @@ export default function PurchaseOrdersPage() {
 
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setSelectedPurchaseOrder(null)}>
-                  Cancel
+                  {tc('cancelButton', 'Cancel')}
                 </Button>
                 <Button type="submit" className="bg-green-600 hover:bg-green-700">
-                  Update Purchase Order
+                  {tc('updatePurchaseOrderButton', 'Update Purchase Order')}
                 </Button>
               </div>
             </form>

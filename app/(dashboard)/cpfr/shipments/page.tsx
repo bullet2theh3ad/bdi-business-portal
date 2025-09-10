@@ -1145,8 +1145,8 @@ export default function ShipmentsPage() {
                   const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
                   const localShipment = createdShipments.get(selectedShipment?.id || '');
                   return (existingShipment || localShipment) 
-                    ? `${tc('edit', 'Edit')} ${tc('shipment', 'Shipment')}: ${selectedShipment?.sku.sku}` 
-                    : `${tc('create', 'Create')} ${tc('shipment', 'Shipment')}: ${selectedShipment?.sku.sku}`;
+                    ? `${tc('editShipmentButton', 'Edit Shipment')}: ${selectedShipment?.sku.sku}` 
+                    : `${tc('createButton', 'Create')} ${tc('shipmentsTitle', 'Shipment')}: ${selectedShipment?.sku.sku}`;
                 })()}
               </span>
             </DialogTitle>
@@ -1751,7 +1751,7 @@ export default function ShipmentsPage() {
                         {(() => {
                           const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment?.id);
                           const localShipment = createdShipments.get(selectedShipment?.id || '');
-                          return (existingShipment || localShipment) ? 'Update Shipment' : 'Create Shipment';
+                          return (existingShipment || localShipment) ? tc('updateShipmentButton', 'Update Shipment') : tc('createButton', 'Create Shipment');
                         })()}
                       </>
                     )}

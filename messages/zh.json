@@ -85,7 +85,11 @@
     "saveButton": "保存",
     "cancelButton": "取消",
     "viewTemplatesButton": "查看模板",
-    "downloadButton": "下载"
+    "downloadButton": "下载",
+    "updateInvoiceButton": "更新发票",
+    "updatePurchaseOrderButton": "更新采购订单",
+    "updateShipmentButton": "更新货运",
+    "editShipmentButton": "编辑货运"
   },
   "formLabels": {
     "name": "名称",

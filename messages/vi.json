@@ -79,7 +79,11 @@
     "saveButton": "Lưu",
     "cancelButton": "Hủy",
     "viewTemplatesButton": "Xem Mẫu",
-    "downloadButton": "Tải xuống"
+    "downloadButton": "Tải xuống",
+    "updateInvoiceButton": "Cập nhật Hóa đơn",
+    "updatePurchaseOrderButton": "Cập nhật Đơn đặt hàng",
+    "updateShipmentButton": "Cập nhật Vận chuyển",
+    "editShipmentButton": "Chỉnh sửa Vận chuyển"
   },
   "formLabels": {
     "name": "Tên",

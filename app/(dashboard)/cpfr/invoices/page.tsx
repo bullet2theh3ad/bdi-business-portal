@@ -1388,7 +1388,7 @@ export default function InvoicesPage() {
                   {tc('cancelButton', 'Cancel')}
                 </Button>
                 <Button type="submit" className="bg-green-600 hover:bg-green-700">
-                  Update Invoice
+                  {tc('updateInvoiceButton', 'Update Invoice')}
                 </Button>
               </div>
             </form>

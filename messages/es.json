@@ -79,7 +79,11 @@
     "saveButton": "Guardar",
     "cancelButton": "Cancelar",
     "viewTemplatesButton": "Ver Plantillas",
-    "downloadButton": "Descargar"
+    "downloadButton": "Descargar",
+    "updateInvoiceButton": "Actualizar Factura",
+    "updatePurchaseOrderButton": "Actualizar Orden de Compra",
+    "updateShipmentButton": "Actualizar Envío",
+    "editShipmentButton": "Editar Envío"
   },
   "formLabels": {
     "name": "Nombre",
