@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
@@ -111,11 +110,6 @@ export default function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [selectedMetric, setSelectedMetric] = useState<'count' | 'value' | 'units'>('count');
-  const [askBdiQuery, setAskBdiQuery] = useState('');
-  const [showAskBdiModal, setShowAskBdiModal] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{id: string, type: 'user' | 'assistant', content: string, timestamp: Date}>>([]);
-  const [isThinking, setIsThinking] = useState(false);
-  const [localAskBdiQuery, setLocalAskBdiQuery] = useState(''); // Local state for input to prevent chart re-renders
 
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -138,84 +132,6 @@ export default function AnalyticsPage() {
     'QVC': '#65a30d', // Lime
   };
 
-  // Handle Ask BDI question submission - stable version
-  const handleAskBDI = async () => {
-    if (!localAskBdiQuery.trim() || isThinking) return;
-    
-    const currentQuestion = localAskBdiQuery; // Capture the question before clearing
-    
-    // Open modal and set up initial state
-    setShowAskBdiModal(true);
-    
-    // Use setTimeout to ensure modal is rendered before updating other state
-    setTimeout(() => {
-      const userMessage = {
-        id: Date.now().toString(),
-        type: 'user' as const,
-        content: currentQuestion,
-        timestamp: new Date()
-      };
-      
-      setLocalAskBdiQuery(''); // Clear input
-      setChatHistory(prev => [...prev, userMessage]);
-      setIsThinking(true);
-      
-      // Process the question
-      processAskBDIQuestion(currentQuestion);
-    }, 100);
-  };
-  
-  // Separate function to process the question
-  const processAskBDIQuestion = async (question: string) => {
-    try {
-      // Simple business context to avoid dependency issues
-      const businessContext = {
-        currentPage: 'analytics',
-        dateRange: { startDate, endDate },
-        selectedPeriod,
-        selectedMetric,
-        timestamp: new Date().toISOString()
-      };
-      
-      const response = await fetch('/api/admin/ask-bdi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: question, // Use the passed question parameter
-          context: businessContext,
-          chatHistory: []
-        })
-      });
-      
-      const result = await response.json();
-      
-      const assistantMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant' as const,
-        content: result.answer || 'I apologize, but I encountered an error processing your question.',
-        timestamp: new Date()
-      };
-      
-      setChatHistory(prev => [...prev, assistantMessage]);
-      
-    } catch (error) {
-      console.error('Ask BDI error:', error);
-      const errorMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant' as const,
-        content: 'I apologize, but I encountered a technical error. Please try again.',
-        timestamp: new Date()
-      };
-      setChatHistory(prev => [...prev, errorMessage]);
-    } finally {
-      setIsThinking(false);
-    }
-  };
-
-  // Simple function to test modal opening
-  const testModalOpen = () => {
-    setShowAskBdiModal(true);
-  };
 
   // Fetch user data
   useEffect(() => {
@@ -572,48 +488,6 @@ export default function AnalyticsPage() {
         </Badge>
       </div>
 
-      {/* Ask BDI AI Section - Placeholder */}
-      <Card className="border-2 border-dashed border-blue-200 bg-blue-50/50">
-        <CardHeader>
-          <CardTitle className="flex items-center text-blue-800">
-            <SemanticBDIIcon semantic="ai" size={20} className="mr-2" />
-            <DynamicTranslation userLanguage={userLocale} context="business">
-              Ask BDI (Coming Soon)
-            </DynamicTranslation>
-          </CardTitle>
-          <CardDescription>
-            <DynamicTranslation userLanguage={userLocale} context="business">
-              Ask questions about your data and get AI-powered insights and analysis
-            </DynamicTranslation>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-3">
-            <div className="flex-1">
-              <Input
-                placeholder="e.g., 'What are our top performing SKUs this month?' or 'Show me invoice trends by organization'"
-                value={localAskBdiQuery}
-                onChange={(e) => setLocalAskBdiQuery(e.target.value)}
-                disabled
-                className="bg-white"
-              />
-            </div>
-            <Button disabled className="bg-blue-600 hover:bg-blue-700">
-              <SemanticBDIIcon semantic="query" size={16} className="mr-2" />
-              <DynamicTranslation userLanguage={userLocale} context="business">
-                Ask BDI
-              </DynamicTranslation>
-            </Button>
-          </div>
-          <p className="text-sm text-blue-600 mt-2">
-            <DynamicTranslation userLanguage={userLocale} context="technical">
-              🚀 This feature integrates with BDI's SecureAI — powered by Retrieval-Augmented Generation (RAG) — to deliver intelligent, secure analysis of your business data.
-            </DynamicTranslation>
-          </p>
-        </CardContent>
-      </Card>
-
-      <Separator />
 
       {/* Controls */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 gap-4 lg:gap-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
