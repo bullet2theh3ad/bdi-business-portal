@@ -72,6 +72,7 @@
     "statusDelivered": "Entregado",
     "status": "Estado",
     "allStatus": "Todos los Estados",
+    "searchInvoicePlaceholder": "Buscar por número de factura o nombre de cliente...",
     "salesForecasts": "Pronósticos de Ventas",
     "forecastsDescription": "Crear pronósticos de demanda para planificación CPFR",
     "createSalesForecast": "Crear Pronóstico de Ventas",

@@ -302,7 +302,7 @@ export default function InvoicesPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search by Invoice number or customer name..."
+            placeholder={tc('searchInvoicePlaceholder', 'Search by Invoice number or customer name...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -331,7 +331,7 @@ export default function InvoicesPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <SemanticBDIIcon semantic="orders" size={20} className="mr-2" />
-            Invoices ({filteredInvoices.length})
+            {tc('invoicesTitle', 'Invoices')} ({filteredInvoices.length})
           </CardTitle>
         </CardHeader>
         <CardContent>

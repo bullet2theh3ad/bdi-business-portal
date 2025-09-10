@@ -72,6 +72,7 @@
     "statusDelivered": "Đã giao hàng",
     "status": "Trạng thái",
     "allStatus": "Tất cả Trạng thái",
+    "searchInvoicePlaceholder": "Tìm kiếm theo số hóa đơn hoặc tên khách hàng...",
     "salesForecasts": "Dự báo Bán hàng",
     "forecastsDescription": "Tạo dự báo nhu cầu cho kế hoạch CPFR",
     "createSalesForecast": "Tạo Dự báo Bán hàng",
