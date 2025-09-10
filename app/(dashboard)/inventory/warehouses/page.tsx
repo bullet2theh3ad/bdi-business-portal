@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { User } from '@/lib/db/schema';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -471,26 +472,26 @@ export default function WarehousesPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search by warehouse name, code, or city..."
+            placeholder={tc('searchWarehousePlaceholder', 'Search by warehouse name, code, or city...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
           />
         </div>
         <div className="flex items-center space-x-2">
-          <Label htmlFor="type-filter">Type:</Label>
+          <Label htmlFor="type-filter">{tc('type', 'Type')}:</Label>
           <select
             id="type-filter"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="all">All Types</option>
-            <option value="warehouse">Warehouse</option>
-            <option value="distribution_center">Distribution Center</option>
-            <option value="fulfillment_center">Fulfillment Center</option>
-            <option value="cross_dock">Cross Dock</option>
-            <option value="manufacturing">Manufacturing</option>
+            <option value="all">{tc('allTypes', 'All Types')}</option>
+            <option value="warehouse">{tc('warehouse', 'Warehouse')}</option>
+            <option value="distribution_center">{tc('distributionCenter', 'Distribution Center')}</option>
+            <option value="fulfillment_center">{tc('fulfillmentCenter', 'Fulfillment Center')}</option>
+            <option value="cross_dock">{tc('crossDock', 'Cross Dock')}</option>
+            <option value="manufacturing">{tc('manufacturing', 'Manufacturing')}</option>
           </select>
         </div>
       </div>
@@ -500,7 +501,7 @@ export default function WarehousesPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="sites" size={20} />
-            <span>Warehouses ({filteredWarehouses.length})</span>
+            <span>{tc('warehousesTitle', 'Warehouses')} ({filteredWarehouses.length})</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -522,7 +523,11 @@ export default function WarehousesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col space-y-2 mb-3">
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold text-base sm:text-lg break-words">{warehouse.name}</h3>
+                          <h3 className="font-semibold text-base sm:text-lg break-words">
+                            <DynamicTranslation userLanguage={userLocale} context="business">
+                              {warehouse.name}
+                            </DynamicTranslation>
+                          </h3>
                           <Badge className="bg-indigo-100 text-indigo-800 text-xs">
                             {warehouse.warehouseCode}
                           </Badge>
