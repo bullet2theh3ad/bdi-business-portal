@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
+import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
+import useSWR from 'swr';
 import { 
   BarChart, 
   Bar, 
@@ -92,9 +95,15 @@ interface ForecastDeliveryData {
   totalUnits: number;
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function AnalyticsPage() {
-  const [user, setUser] = useState<any>(null);
+  const { data: user } = useSWR('/api/user', fetcher);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  
+  // 🌍 Translation hooks for dynamic content
+  const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
   const [invoicesByOrg, setInvoicesByOrg] = useState<InvoiceByOrgData[]>([]);
   const [forecastDeliveries, setForecastDeliveries] = useState<ForecastDeliveryData[]>([]);
@@ -130,7 +139,7 @@ export default function AnalyticsPage() {
         const response = await fetch('/api/user');
         if (response.ok) {
           const userData = await response.json();
-          setUser(userData);
+          // User data now handled by SWR
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -483,10 +492,14 @@ export default function AnalyticsPage() {
         <CardHeader>
           <CardTitle className="flex items-center text-blue-800">
             <SemanticBDIIcon semantic="ai" size={20} className="mr-2" />
-            Ask BDI (Coming Soon)
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              Ask BDI (Coming Soon)
+            </DynamicTranslation>
           </CardTitle>
           <CardDescription>
-            Ask questions about your data and get AI-powered insights and analysis
+            <DynamicTranslation userLanguage={userLocale} context="business">
+              Ask questions about your data and get AI-powered insights and analysis
+            </DynamicTranslation>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -502,11 +515,15 @@ export default function AnalyticsPage() {
             </div>
             <Button disabled className="bg-blue-600 hover:bg-blue-700">
               <SemanticBDIIcon semantic="query" size={16} className="mr-2" />
-              Ask BDI
+              <DynamicTranslation userLanguage={userLocale} context="business">
+                Ask BDI
+              </DynamicTranslation>
             </Button>
           </div>
           <p className="text-sm text-blue-600 mt-2">
-            🚀 This feature integrates with BDI's SecureAI — powered by Retrieval-Augmented Generation (RAG) — to deliver intelligent, secure analysis of your business data.
+            <DynamicTranslation userLanguage={userLocale} context="technical">
+              🚀 This feature integrates with BDI's SecureAI — powered by Retrieval-Augmented Generation (RAG) — to deliver intelligent, secure analysis of your business data.
+            </DynamicTranslation>
           </p>
         </CardContent>
       </Card>
