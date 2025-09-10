@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { Separator } from '@/components/ui/separator';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
@@ -111,6 +112,73 @@ export default function AnalyticsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [selectedMetric, setSelectedMetric] = useState<'count' | 'value' | 'units'>('count');
   const [askBdiQuery, setAskBdiQuery] = useState('');
+  const [showAskBdiModal, setShowAskBdiModal] = useState(false);
+  const [chatHistory, setChatHistory] = useState<Array<{id: string, type: 'user' | 'assistant', content: string, timestamp: Date}>>([]);
+  const [isThinking, setIsThinking] = useState(false);
+
+  // Handle Ask BDI question submission
+  const handleAskBDI = async () => {
+    if (!askBdiQuery.trim()) return;
+    
+    const userMessage = {
+      id: Date.now().toString(),
+      type: 'user' as const,
+      content: askBdiQuery,
+      timestamp: new Date()
+    };
+    
+    setChatHistory(prev => [...prev, userMessage]);
+    setIsThinking(true);
+    setShowAskBdiModal(true);
+    setAskBdiQuery('');
+    
+    try {
+      // Gather business context
+      const businessContext = {
+        currentPage: 'analytics',
+        dateRange: { startDate, endDate },
+        totalForecasts: forecastDeliveries.length,
+        totalInvoices: invoicesByOrg.reduce((sum, org) => sum + Object.values(org.organizations).reduce((orgSum, orgData) => orgSum + orgData.count, 0), 0),
+        organizations: invoicesByOrg.map(org => org.month),
+        selectedPeriod,
+        selectedMetric
+      };
+      
+      const response = await fetch('/api/admin/ask-bdi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: askBdiQuery,
+          context: businessContext,
+          chatHistory: chatHistory.slice(-10) // Last 10 messages for context
+        })
+      });
+      
+      const result = await response.json();
+      
+      const assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant' as const,
+        content: result.answer || 'I apologize, but I encountered an error processing your question.',
+        timestamp: new Date()
+      };
+      
+      setChatHistory(prev => [...prev, assistantMessage]);
+      
+    } catch (error) {
+      console.error('Ask BDI error:', error);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant' as const,
+        content: 'I apologize, but I encountered a technical error. Please try again.',
+        timestamp: new Date()
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setMonth(date.getMonth() - 3); // Default to 3 months ago
@@ -509,11 +577,11 @@ export default function AnalyticsPage() {
                 placeholder="e.g., 'What are our top performing SKUs this month?' or 'Show me invoice trends by organization'"
                 value={askBdiQuery}
                 onChange={(e) => setAskBdiQuery(e.target.value)}
-                disabled
+                onKeyPress={(e) => e.key === 'Enter' && handleAskBDI()}
                 className="bg-white"
               />
             </div>
-            <Button disabled className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleAskBDI} disabled={!askBdiQuery.trim()} className="bg-blue-600 hover:bg-blue-700">
               <SemanticBDIIcon semantic="query" size={16} className="mr-2" />
               <DynamicTranslation userLanguage={userLocale} context="business">
                 Ask BDI
@@ -820,6 +888,101 @@ export default function AnalyticsPage() {
           </div>
         </>
       )}
+
+      {/* Ask BDI Modal */}
+      <Dialog open={showAskBdiModal} onOpenChange={setShowAskBdiModal}>
+        <DialogContent className="w-[98vw] h-[98vh] overflow-hidden flex flex-col" style={{ maxWidth: 'none' }}>
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center space-x-3">
+              <SemanticBDIIcon semantic="query" size={24} className="text-blue-600" />
+              <span>🤖 Ask BDI - Business Intelligence Assistant</span>
+            </DialogTitle>
+            <DialogDescription>
+              AI-powered analysis of your CPFR data, supply chain metrics, and business insights
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Chat History */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {chatHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <SemanticBDIIcon semantic="query" size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">Welcome to Ask BDI!</p>
+                  <p className="text-sm">Ask me anything about your business data, supply chain, or analytics.</p>
+                  <div className="mt-4 text-xs space-y-1">
+                    <p>💡 Try asking: "What are our top performing SKUs?"</p>
+                    <p>📊 Or: "Show me invoice trends by organization"</p>
+                    <p>🚢 Or: "How are our shipments performing?"</p>
+                  </div>
+                </div>
+              ) : (
+                chatHistory.map((message) => (
+                  <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-lg p-3 ${
+                      message.type === 'user' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white border border-gray-200 text-gray-900'
+                    }`}>
+                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                      <div className={`text-xs mt-1 ${
+                        message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                      }`}>
+                        {message.timestamp.toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              {/* Thinking indicator */}
+              {isThinking && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2">
+                      <SemanticBDIIcon semantic="loading" size={16} className="animate-spin text-blue-600" />
+                      <span className="text-sm text-gray-600">BDI is analyzing your data...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* New Question Input */}
+            <div className="border-t bg-white p-4">
+              <div className="flex space-x-3">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Ask a follow-up question..."
+                    value={askBdiQuery}
+                    onChange={(e) => setAskBdiQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAskBDI()}
+                    className="bg-white"
+                    disabled={isThinking}
+                  />
+                </div>
+                <Button 
+                  onClick={handleAskBDI} 
+                  disabled={!askBdiQuery.trim() || isThinking}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isThinking ? (
+                    <SemanticBDIIcon semantic="loading" size={16} className="animate-spin" />
+                  ) : (
+                    <SemanticBDIIcon semantic="query" size={16} />
+                  )}
+                </Button>
+              </div>
+              
+              {/* Context Info */}
+              <div className="mt-2 text-xs text-gray-500 flex items-center space-x-4">
+                <span>📊 Context: {forecastDeliveries.length} forecasts, {invoicesByOrg.reduce((sum, org) => sum + Object.values(org.organizations).reduce((orgSum, orgData) => orgSum + orgData.count, 0), 0)} invoices</span>
+                <span>📅 Period: {startDate} to {endDate}</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
