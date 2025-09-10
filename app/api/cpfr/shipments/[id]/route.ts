@@ -45,6 +45,11 @@ export async function PUT(
     const { data: updatedShipment, error: shipmentError } = await supabase
       .from('shipments')
       .update({
+        // 3-step flow data - CRITICAL UPDATE
+        organization_id: body.organizationId || null, // Step 1: Origin Factory
+        shipper_organization_id: body.shipperOrganizationId || null, // Step 2: Shipping Partner
+        destination_warehouse_id: body.destinationWarehouseId || null, // Step 3: Final Destination
+        // Legacy/additional fields
         priority: body.priority || 'standard',
         shipper_reference: body.shipperReference || null,
         factory_warehouse_id: body.factoryWarehouseId || null,

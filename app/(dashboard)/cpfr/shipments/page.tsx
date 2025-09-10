@@ -229,16 +229,20 @@ export default function ShipmentsPage() {
         // Populate form with existing shipment data
         const shipmentData = existingShipment || localShipment;
         console.log('🔍 Using shipment data:', shipmentData);
+        console.log('🔍 3-Step Flow Debug:');
+        console.log('   - organization_id:', shipmentData.organization_id);
+        console.log('   - shipper_organization_id:', shipmentData.shipper_organization_id);
+        console.log('   - destination_warehouse_id:', shipmentData.destination_warehouse_id);
         
         const formData = {
-          // Step 1: Origin Factory (from organization_id or derive from factory_warehouse)
-          originFactoryId: shipmentData.organization_id || '',
+          // Step 1: Origin Factory (from organization_id field)
+          originFactoryId: shipmentData.organization_id || shipmentData.organizationId || '',
           
-          // Step 2: Shipping Partner (from new shipper_organization_id field)
-          shippingOrganizationId: shipmentData.shipper_organization_id || '',
+          // Step 2: Shipping Partner (from shipper_organization_id field)
+          shippingOrganizationId: shipmentData.shipper_organization_id || shipmentData.shipperOrganizationId || '',
           
-          // Step 3: Final Destination (from destination_warehouse_id)
-          destinationWarehouseId: shipmentData.destination_warehouse_id || '',
+          // Step 3: Final Destination (from destination_warehouse_id field)
+          destinationWarehouseId: shipmentData.destination_warehouse_id || shipmentData.destinationWarehouseId || '',
           
           // Legacy/Additional fields
           shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
