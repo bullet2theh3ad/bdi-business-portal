@@ -74,19 +74,16 @@ function WelcomeCard() {
 function QuickActions() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
 
   return (
     <Card className="mb-8">
       <CardHeader>
         <CardTitle>
-          <DynamicTranslation userLanguage={userLocale} context="business">
-            Quick Actions
-          </DynamicTranslation>
+          {tc('quickActions', 'Quick Actions')}
         </CardTitle>
         <CardDescription>
-          <DynamicTranslation userLanguage={userLocale} context="business">
-            Get started with common tasks
-          </DynamicTranslation>
+          {tc('quickActionsDescription', 'Get started with common tasks')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -95,9 +92,7 @@ function QuickActions() {
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="forecasts" size={24} />
               <span className="text-xs sm:text-sm">
-                <DynamicTranslation userLanguage={userLocale} context="cpfr">
-                  View Forecasts
-                </DynamicTranslation>
+                {tc('viewForecasts', 'View Forecasts')}
               </span>
             </Button>
           </Link>
@@ -105,9 +100,7 @@ function QuickActions() {
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="supply" size={24} />
               <span className="text-xs sm:text-sm">
-                <DynamicTranslation userLanguage={userLocale} context="cpfr">
-                  Supply Signals
-                </DynamicTranslation>
+                {tc('supplySignals', 'Supply Signals')}
               </span>
             </Button>
           </Link>
@@ -115,9 +108,7 @@ function QuickActions() {
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="inventory_analytics" size={24} />
               <span className="text-xs sm:text-sm">
-                <DynamicTranslation userLanguage={userLocale} context="manufacturing">
-                  Inventory
-                </DynamicTranslation>
+                {tc('inventory', 'Inventory')}
               </span>
             </Button>
           </Link>
@@ -125,9 +116,7 @@ function QuickActions() {
             <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:border-bdi-green-1 hover:bg-bdi-green-1/5">
               <SemanticBDIIcon semantic="users" size={24} />
               <span className="text-xs sm:text-sm">
-                <DynamicTranslation userLanguage={userLocale} context="business">
-                  Manage Teams
-                </DynamicTranslation>
+                {tc('manageTeams', 'Manage Teams')}
               </span>
             </Button>
           </Link>
@@ -140,6 +129,7 @@ function QuickActions() {
 function CPFRMetrics() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const userLocale = getUserLocale(user);
+  const { tc } = useSimpleTranslations(userLocale);
   // Only call admin organizations API for super_admin/admin roles
   const { data: organizations } = useSWR(
     user && ['super_admin', 'admin'].includes(user.role) ? '/api/admin/organizations?includeInternal=true' : null, 
@@ -257,18 +247,14 @@ function CPFRMetrics() {
       <Card className="border-green-200 bg-green-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-green-800">
-            <DynamicTranslation userLanguage={userLocale} context="cpfr">
-              Active Forecasts
-            </DynamicTranslation>
+            {tc('activeForecasts', 'Active Forecasts')}
           </CardTitle>
           <SemanticBDIIcon semantic="forecasts" size={16} className="text-green-600" />
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold text-green-900">{activeForecastsCount}</div>
           <p className="text-xs text-green-700">
-            <DynamicTranslation userLanguage={userLocale} context="cpfr">
-              Current CPFR forecasts in system
-            </DynamicTranslation>
+            {tc('currentForecasts', 'Current CPFR forecasts in system')}
           </p>
         </CardContent>
       </Card>
@@ -284,9 +270,7 @@ function CPFRMetrics() {
             shipmentStatus.status === 'yellow' ? 'text-yellow-800' :
             'text-green-800'
           }`}>
-            <DynamicTranslation userLanguage={userLocale} context="cpfr">
-              Shipment Status
-            </DynamicTranslation>
+            {tc('shipmentStatus', 'Shipment Status')}
           </CardTitle>
           <SemanticBDIIcon 
             semantic="shipping" 
