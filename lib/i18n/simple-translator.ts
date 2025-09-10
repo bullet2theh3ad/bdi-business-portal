@@ -1,5 +1,5 @@
 // Simple translation function that works without full next-intl routing
-// Safe fallback approach for gradual i18n implementation
+// Safe fallback approach with OpenAI enhancement for real-time translation
 
 import enMessages from '@/messages/en.json';
 import zhMessages from '@/messages/zh.json';
@@ -69,4 +69,37 @@ export function getUserLocale(user?: any): Locale {
   
   // Default to English if no preference set
   return 'en';
+}
+
+// OpenAI-enhanced translation function (client-side)
+export async function translateWithAI(
+  text: string, 
+  targetLanguage: Locale, 
+  context: string = 'business'
+): Promise<string> {
+  try {
+    const response = await fetch('/api/openai/translate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        fromLanguage: 'en',
+        toLanguage: targetLanguage,
+        context
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Translation failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.result.translatedText;
+  } catch (error) {
+    console.error('AI Translation Error:', error);
+    // Fallback to original text if AI translation fails
+    return text;
+  }
 }
