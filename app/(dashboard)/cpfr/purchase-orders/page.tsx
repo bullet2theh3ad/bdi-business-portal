@@ -411,7 +411,7 @@ export default function PurchaseOrdersPage() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <SemanticBDIIcon semantic="orders" size={20} />
-            <span>Purchase Orders ({filteredPurchaseOrders.length})</span>
+            <span>{tc('purchaseOrdersTitle', 'Purchase Orders')} ({filteredPurchaseOrders.length})</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -450,9 +450,13 @@ export default function PurchaseOrdersPage() {
                       {/* Header with PO number and status */}
                       <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3 mb-3">
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold text-base sm:text-lg">PO #{po.purchaseOrderNumber}</h3>
+                          <h3 className="font-semibold text-base sm:text-lg">
+                            <DynamicTranslation userLanguage={userLocale} context="business">
+                              PO #{po.purchaseOrderNumber}
+                            </DynamicTranslation>
+                          </h3>
                           <Badge className={getStatusColor(po.status)}>
-                            {po.status}
+                            {tc(`status${po.status.charAt(0).toUpperCase() + po.status.slice(1)}`, po.status)}
                           </Badge>
                         </div>
                       </div>
@@ -461,7 +465,11 @@ export default function PurchaseOrdersPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 text-sm mb-3">
                         <div>
                           <span className="text-gray-500">Supplier:</span>
-                          <p className="font-medium">{po.supplierName}</p>
+                          <p className="font-medium">
+                            <DynamicTranslation userLanguage={userLocale} context="business">
+                              {po.supplierName}
+                            </DynamicTranslation>
+                          </p>
                         </div>
                         <div>
                           <span className="text-gray-500">PO Date:</span>
