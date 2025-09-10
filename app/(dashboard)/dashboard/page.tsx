@@ -324,7 +324,12 @@ function ForecastMonthlyCharts() {
     
     for (let i = 0; i < 6; i++) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      const monthName = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const monthName = monthDate.toLocaleDateString(
+        userLocale === 'zh' ? 'zh-CN' : 
+        userLocale === 'vi' ? 'vi-VN' : 
+        userLocale === 'es' ? 'es-ES' : 'en-US', 
+        { month: 'short', year: 'numeric' }
+      );
       
       // Count forecasts for this month - ensure forecasts is an array
       const monthForecasts = (Array.isArray(forecasts) ? forecasts : []).filter((f: any) => {
@@ -478,7 +483,7 @@ function ForecastMonthlyCharts() {
           <Link href="/cpfr/forecasts">
             <Button variant="outline" className="w-full hover:border-blue-500 hover:bg-blue-50">
               <Calendar className="h-4 w-4 mr-2" />
-              View Full CPFR Calendar
+              {tc('viewFullCPFRCalendar', 'View Full CPFR Calendar')}
             </Button>
           </Link>
         </div>

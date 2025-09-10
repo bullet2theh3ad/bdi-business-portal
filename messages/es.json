@@ -64,6 +64,7 @@
     "active": "Activo",
     "planned": "Planificado",
     "chartLegend": "Leyenda del Gráfico",
+    "viewFullCPFRCalendar": "Ver Calendario CPFR Completo",
     "salesForecasts": "Pronósticos de Ventas",
     "forecastsDescription": "Crear pronósticos de demanda para planificación CPFR",
     "createSalesForecast": "Crear Pronóstico de Ventas",
