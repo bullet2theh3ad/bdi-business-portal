@@ -12,6 +12,7 @@ import { useDropzone } from 'react-dropzone';
 import useSWR from 'swr';
 import { User, ProductSku, Warehouse } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { DynamicTranslation } from '@/components/DynamicTranslation';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -116,7 +117,11 @@ export default function ShipmentsPage() {
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Not set';
+    if (!dateString) return (
+      <DynamicTranslation userLanguage={userLocale} context="general">
+        Not set
+      </DynamicTranslation>
+    );
     return new Date(dateString).toLocaleDateString();
   };
 
