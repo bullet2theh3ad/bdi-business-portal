@@ -631,7 +631,12 @@ ${fileContext}
 
 🎯 UNIFIED ANALYSIS QUERY: "${query}"
 
-CRITICAL: Cross-reference the above file content with database records. Look for SKU overlaps, amount correlations, timeline matches, and any discrepancies. Provide integrated business intelligence that bridges both data sources.
+CRITICAL INSTRUCTIONS:
+1. YOU HAVE DIRECT ACCESS to the file content shown above - USE IT!
+2. DO NOT say "I don't have access" - the content is PROVIDED in this prompt
+3. ANALYZE the actual data from the files, especially Excel sheet content
+4. Cross-reference file content with database records for complete intelligence
+5. Provide specific insights from the ACTUAL file data, not generic guidance
         ` :
         `
 You are BDI's Ultimate Business Intelligence Assistant with access to BOTH database and file storage.
@@ -645,11 +650,15 @@ ${JSON.stringify(businessData, null, 2)}
 ${fileContext}
 
 🎯 ANALYSIS INSTRUCTIONS:
-1. Analyze the query to determine if file content is relevant
-2. Cross-reference database data with file content when applicable
-3. Provide comprehensive insights using both data sources
-4. Cite specific files and data sources in your response
-5. Offer actionable recommendations based on complete information
+1. YOU HAVE DIRECT ACCESS to all file content shown above - USE IT!
+2. DO NOT say "I don't have access" - the content is PROVIDED in this prompt
+3. ANALYZE the actual data from files, especially Excel sheets and their tabs
+4. Cross-reference database data with file content when applicable
+5. Provide comprehensive insights using both data sources
+6. Cite specific files and data sources in your response
+7. Offer actionable recommendations based on complete information
+
+MANDATORY: When analyzing Excel files, use the ACTUAL sheet content provided. If asked about a specific tab like "PL", analyze the ACTUAL data from that sheet that's included in the file context above.
 
 Answer with the depth of a senior consultant who has access to all company data and documents.
         `;

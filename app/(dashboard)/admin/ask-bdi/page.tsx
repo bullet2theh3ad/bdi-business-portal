@@ -131,18 +131,18 @@ export default function AskBDIPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-6xl">
-      <div className="mb-8">
+    <div className="container mx-auto py-4 px-4 max-w-4xl">
+      <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <Brain className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold">Ask BDI - AI Business Intelligence</h1>
+          <Brain className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+          <h1 className="text-xl md:text-3xl font-bold">Ask BDI</h1>
         </div>
-        <p className="text-muted-foreground">
-          Advanced AI assistant with complete access to database + document intelligence
+        <p className="text-sm md:text-base text-muted-foreground">
+          AI assistant with database + document intelligence
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="space-y-4">
         {/* Chat History Stream */}
         {chatHistory.length > 0 && (
           <Card>
@@ -164,11 +164,11 @@ export default function AskBDIPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-[70vh] overflow-y-auto">
                 {chatHistory.map((message, index) => (
                   <div
                     key={index}
-                    className={`p-4 rounded-lg ${
+                    className={`p-3 md:p-4 rounded-lg ${
                       message.type === 'user'
                         ? 'bg-blue-50 border-l-4 border-blue-500'
                         : message.isError
@@ -179,17 +179,17 @@ export default function AskBDIPage() {
                     <div className="flex items-center gap-2 mb-2">
                       {message.type === 'user' ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                          <div className="w-5 h-5 md:w-6 md:h-6 bg-blue-600 rounded-full flex items-center justify-center">
                             <span className="text-white text-xs font-bold">
                               {user?.name?.charAt(0) || 'U'}
                             </span>
                           </div>
-                          <span className="font-semibold text-blue-700">You</span>
+                          <span className="text-sm md:text-base font-semibold text-blue-700">You</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <Brain className={`w-5 h-5 ${message.isError ? 'text-red-600' : 'text-green-600'}`} />
-                          <span className={`font-semibold ${message.isError ? 'text-red-700' : 'text-green-700'}`}>
+                          <Brain className={`w-4 h-4 md:w-5 md:h-5 ${message.isError ? 'text-red-600' : 'text-green-600'}`} />
+                          <span className={`text-sm md:text-base font-semibold ${message.isError ? 'text-red-700' : 'text-green-700'}`}>
                             BDI AI
                           </span>
                         </div>
@@ -199,27 +199,29 @@ export default function AskBDIPage() {
                       </span>
                     </div>
                     <div className="prose max-w-none">
-                      <pre className="whitespace-pre-wrap text-sm">
+                      <pre className="whitespace-pre-wrap text-xs md:text-sm break-words">
                         {message.content}
                       </pre>
                     </div>
                   </div>
                 ))}
-                {/* Show current processing at the bottom */}
+                
+                {/* Integrated processing indicator in chat stream */}
                 {isLoading && (
-                  <div className="p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500">
+                  <div className="p-3 md:p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500">
                     <div className="flex items-center gap-2 mb-2">
-                      <Brain className="w-5 h-5 text-yellow-600 animate-pulse" />
-                      <span className="font-semibold text-yellow-700">BDI AI</span>
+                      <Clock className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 animate-spin" />
+                      <span className="text-sm md:text-base font-semibold text-yellow-700">BDI AI</span>
                       <span className="text-xs text-muted-foreground ml-auto">
-                        Processing... {startTime && `(${getElapsedTime()}s)`}
+                        {startTime && `${getElapsedTime()}s`}
                       </span>
                     </div>
-                    <p className="text-sm text-yellow-700">
-                      {progress || 'Thinking...'}
+                    <p className="text-xs md:text-sm text-yellow-700">
+                      {progress || 'Processing your request...'}
                     </p>
                   </div>
                 )}
+                
                 {/* Auto-scroll anchor */}
                 <div ref={chatEndRef} />
               </div>
@@ -227,108 +229,51 @@ export default function AskBDIPage() {
           </Card>
         )}
 
-        {/* Query Input */}
+        {/* Query Input - Always at bottom for mobile UX */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5" />
-              Ask Your Question
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="pt-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               <Input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g., How many files do we have? What's in the MTN invoices? Show me financial models..."
+                placeholder="Ask about files, financials, CPFR data..."
                 disabled={isLoading}
-                className="text-lg p-4"
+                className="text-sm md:text-base p-3 md:p-4"
               />
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setQuestion('List all files available to us')}
                     disabled={isLoading}
+                    className="text-xs md:text-sm"
                   >
-                    <FileSearch className="h-4 w-4 mr-1" />
-                    List Files
+                    <FileSearch className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                    Files
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setQuestion('What financial models do we have?')}
+                    onClick={() => setQuestion('Analyze the PL tab with full data extraction')}
                     disabled={isLoading}
+                    className="text-xs md:text-sm"
                   >
-                    <Database className="h-4 w-4 mr-1" />
-                    Financial Models
+                    <Database className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                    Deep PL
                   </Button>
                 </div>
-                <Button type="submit" disabled={isLoading || !question.trim()}>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !question.trim()}
+                  className="w-full sm:w-auto"
+                >
                   {isLoading ? 'Processing...' : 'Ask BDI'}
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Progress Indicator */}
-        {isLoading && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center space-y-3">
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="h-5 w-5 animate-spin" />
-                  <span className="font-medium">Processing Your Request</span>
-                  {startTime && (
-                    <span className="text-muted-foreground">({getElapsedTime()}s)</span>
-                  )}
-                </div>
-                {progress && (
-                  <p className="text-sm text-blue-600">{progress}</p>
-                )}
-                <div className="w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
-                  <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{
-                    width: startTime ? `${Math.min((Date.now() - startTime) / 1200, 100)}%` : '0%'
-                  }}></div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Analyzing business data • Advanced AI processing
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* System Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>🎯 System Capabilities</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm space-y-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-semibold">📊 Database Access:</p>
-                <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li>Complete CPFR system data</li>
-                  <li>Financial records and forecasts</li>
-                  <li>Inventory and warehouse data</li>
-                  <li>Organization and user management</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-semibold">📄 Document Intelligence:</p>
-                <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li>RAG uploaded documents with tagging</li>
-                  <li>Invoice and purchase order analysis</li>
-                  <li>Production files and specifications</li>
-                  <li>Shipment reports and logistics data</li>
-                </ul>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
