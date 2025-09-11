@@ -411,13 +411,17 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
         const rowLimit = sheet.isFinancial ? sheet.rows : Math.min(sheet.rows, 200); // NO LIMIT for financial sheets!
         
         console.log(`🔍 DEBUG: Extracting ${rowLimit} rows from "${sheet.name}"`);
-        console.log(`🔍 DEBUG: First 5 rows from "${sheet.name}":`, sheet.data.slice(0, 5));
+        
+        // Extract the specific tab data and convert to JSON
+        const tabData = sheet.data.slice(0, rowLimit);
+        console.log(`📊 DEBUG: Raw tab data for "${sheet.name}" (${tabData.length} rows):`, JSON.stringify(tabData.slice(0, 3), null, 2));
         
         // Format data as structured JSON for better AI analysis
         content += `📈 STRUCTURED DATA (${rowLimit} rows extracted):\n`;
         
         // Convert to structured format
-        const structuredData = this.formatSheetDataForAI(sheet.data.slice(0, rowLimit), sheet.name);
+        const structuredData = this.formatSheetDataForAI(tabData, sheet.name);
+        console.log(`🔧 DEBUG: Structured JSON for "${sheet.name}":`, structuredData.substring(0, 500) + '...');
         content += structuredData;
         
         // For financial sheets, extract ALL key metrics
@@ -475,6 +479,7 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       formatted += `📋 DATA ROWS (extracting ${maxRows - headerRowIndex - 1} rows):\n`;
       console.log(`🔧 DEBUG: Extracting ${maxRows - headerRowIndex - 1} rows for "${sheetName}" (isFinancial: ${isFinancialSheet})`);
       
+      const extractedRowsData: any[] = [];
       for (let i = headerRowIndex + 1; i < maxRows; i++) {
         const row = sheetData[i];
         if (!row || row.every(cell => !cell)) continue;
@@ -487,9 +492,14 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
         });
         
         if (Object.keys(rowData).length > 0) {
+          extractedRowsData.push(rowData);
           formatted += `Row ${i + 1}: ${JSON.stringify(rowData, null, 0)}\n`;
         }
       }
+      
+      // Log the structured JSON data being sent to AI
+      console.log(`📋 DEBUG: Structured JSON data for "${sheetName}" (first 5 rows):`, JSON.stringify(extractedRowsData.slice(0, 5), null, 2));
+      console.log(`📋 DEBUG: Total structured rows for "${sheetName}": ${extractedRowsData.length}`);
       
       // For financial sheets, add summary analysis
       if (/^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName)) {
@@ -806,6 +816,11 @@ ${fileContext}
 
 Answer with the depth of a senior consultant who has access to all company data and documents.
         `;
+      
+      // Log what's being sent to OpenAI
+      console.log(`🤖 DEBUG: Sending to OpenAI - System prompt length: ${enhancedPrompt.length} chars`);
+      console.log(`🤖 DEBUG: System prompt preview:`, enhancedPrompt.substring(0, 1000) + '...');
+      console.log(`🤖 DEBUG: User query:`, query);
       
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o',
