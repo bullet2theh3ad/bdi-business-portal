@@ -51,7 +51,7 @@ export class SupabaseFileRAG {
       
       console.log('📁 Found buckets:', buckets.map(b => b.name));
       
-      // Get files from each bucket - enhanced to handle folders
+      // Get files from each bucket - enhanced to handle folders including RAG documents
       const allFiles: any[] = [];
       
       for (const bucket of buckets) {
@@ -60,6 +60,12 @@ export class SupabaseFileRAG {
           const { data: rootItems, error: rootError } = await this.serviceSupabase.storage
             .from(bucket.name)
             .list('', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
+          
+          // CRITICAL: Also explicitly check for rag-documents folder
+          if (bucket.name === 'organization-documents') {
+            console.log('📁 Explicitly scanning rag-documents folder...');
+            await this.exploreFolder(bucket.name, 'rag-documents', allFiles, 0);
+          }
           
           if (rootError) {
             console.error(`Error listing root items in ${bucket.name}:`, rootError);
