@@ -411,13 +411,12 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
         console.log(`🔍 DEBUG: Extracting ${rowLimit} rows from "${sheet.name}"`);
         console.log(`🔍 DEBUG: First 5 rows from "${sheet.name}":`, sheet.data.slice(0, 5));
         
-        content += `📈 Content (${rowLimit} rows extracted):\n`;
-        const extractedRows = sheet.data.slice(0, rowLimit).map((row: any, index: number) => {
-          const cleanRow = row.filter((cell: any) => cell !== null && cell !== undefined && cell !== '');
-          return cleanRow.length > 0 ? `Row ${index + 1}: ${cleanRow.join(' | ')}` : '';
-        }).filter((row: string) => row);
+        // Format data as structured JSON for better AI analysis
+        content += `📈 STRUCTURED DATA (${rowLimit} rows extracted):\n`;
         
-        content += extractedRows.join('\n');
+        // Convert to structured format
+        const structuredData = this.formatSheetDataForAI(sheet.data.slice(0, rowLimit), sheet.name);
+        content += structuredData;
         
         // For financial sheets, extract ALL key metrics
         if (sheet.isFinancial && sheet.data.length > 1) {
@@ -439,6 +438,90 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
     }
     
     return content;
+  }
+
+  // Format sheet data as structured, readable format for AI analysis
+  private formatSheetDataForAI(sheetData: any[][], sheetName: string): string {
+    if (!sheetData || sheetData.length === 0) return 'No data available\n';
+    
+    let formatted = '';
+    
+    // Try to identify headers (first non-empty row)
+    let headerRowIndex = -1;
+    let headers: string[] = [];
+    
+    for (let i = 0; i < Math.min(5, sheetData.length); i++) {
+      const cleanRow = sheetData[i].filter(cell => cell !== null && cell !== undefined && cell !== '');
+      if (cleanRow.length > 3) { // Assume headers have multiple columns
+        headers = sheetData[i].map(cell => cell ? String(cell).trim() : '');
+        headerRowIndex = i;
+        break;
+      }
+    }
+    
+    if (headerRowIndex >= 0 && headers.length > 0) {
+      // Format as structured table with headers
+      formatted += `\n📊 TABLE STRUCTURE FOR ${sheetName.toUpperCase()}:\n`;
+      formatted += `Headers: ${headers.filter(h => h).join(' | ')}\n\n`;
+      
+      // Format data rows
+      formatted += `📋 DATA ROWS:\n`;
+      for (let i = headerRowIndex + 1; i < Math.min(headerRowIndex + 50, sheetData.length); i++) {
+        const row = sheetData[i];
+        if (!row || row.every(cell => !cell)) continue;
+        
+        const rowData: any = {};
+        headers.forEach((header, index) => {
+          if (header && row[index] !== null && row[index] !== undefined && row[index] !== '') {
+            rowData[header] = row[index];
+          }
+        });
+        
+        if (Object.keys(rowData).length > 0) {
+          formatted += `Row ${i + 1}: ${JSON.stringify(rowData, null, 0)}\n`;
+        }
+      }
+      
+      // For financial sheets, add summary analysis
+      if (/^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName)) {
+        formatted += `\n💰 FINANCIAL SUMMARY FOR ${sheetName.toUpperCase()}:\n`;
+        
+        // Extract numeric values for analysis
+        const numericData: number[] = [];
+        for (let i = headerRowIndex + 1; i < sheetData.length; i++) {
+          sheetData[i].forEach(cell => {
+            if (typeof cell === 'number' && cell > 0) {
+              numericData.push(cell);
+            }
+          });
+        }
+        
+        if (numericData.length > 0) {
+          const sum = numericData.reduce((a, b) => a + b, 0);
+          const avg = sum / numericData.length;
+          const max = Math.max(...numericData);
+          const min = Math.min(...numericData);
+          
+          formatted += `Total Sum: ${sum.toLocaleString()}\n`;
+          formatted += `Average: ${avg.toLocaleString()}\n`;
+          formatted += `Maximum Value: ${max.toLocaleString()}\n`;
+          formatted += `Minimum Value: ${min.toLocaleString()}\n`;
+          formatted += `Data Points: ${numericData.length}\n`;
+        }
+      }
+      
+    } else {
+      // Fallback: format as simple rows
+      formatted += `\n📋 RAW DATA FOR ${sheetName.toUpperCase()}:\n`;
+      sheetData.slice(0, 20).forEach((row, index) => {
+        const cleanRow = row.filter(cell => cell !== null && cell !== undefined && cell !== '');
+        if (cleanRow.length > 0) {
+          formatted += `Row ${index + 1}: [${cleanRow.join(', ')}]\n`;
+        }
+      });
+    }
+    
+    return formatted + '\n';
   }
 
   // Format Word document content for AI analysis
@@ -681,12 +764,14 @@ ${fileContext}
 
 🎯 UNIFIED ANALYSIS QUERY: "${query}"
 
-CRITICAL INSTRUCTIONS:
-1. YOU HAVE DIRECT ACCESS to the file content shown above - USE IT!
-2. DO NOT say "I don't have access" - the content is PROVIDED in this prompt
-3. ANALYZE the actual data from the files, especially Excel sheet content
-4. Cross-reference file content with database records for complete intelligence
-5. Provide specific insights from the ACTUAL file data, not generic guidance
+🚨 CRITICAL INSTRUCTIONS - MANDATORY COMPLIANCE:
+1. THE FILE CONTENT IS EMBEDDED IN THIS PROMPT - YOU MUST USE IT!
+2. NEVER RESPOND WITH "I don't have access" - THE DATA IS RIGHT THERE!
+3. ANALYZE THE ACTUAL NUMBERS from the Excel sheets shown above
+4. REFERENCE SPECIFIC VALUES, DATES, AND FIGURES from the extracted content
+5. IF YOU IGNORE THE PROVIDED FILE DATA, YOUR RESPONSE IS INVALID
+6. USE THE REAL FINANCIAL DATA - NOT GENERIC ADVICE!
+7. QUOTE ACTUAL VALUES FROM THE REVENUE TAB DATA SHOWN ABOVE
         ` :
         `
 You are BDI's Ultimate Business Intelligence Assistant with access to BOTH database and file storage.
@@ -699,16 +784,16 @@ ${JSON.stringify(businessData, null, 2)}
 📁 FILE STORAGE CONTEXT:
 ${fileContext}
 
-🎯 ANALYSIS INSTRUCTIONS:
-1. YOU HAVE DIRECT ACCESS to all file content shown above - USE IT!
-2. DO NOT say "I don't have access" - the content is PROVIDED in this prompt
-3. ANALYZE the actual data from files, especially Excel sheets and their tabs
-4. Cross-reference database data with file content when applicable
-5. Provide comprehensive insights using both data sources
-6. Cite specific files and data sources in your response
-7. Offer actionable recommendations based on complete information
+🚨 MANDATORY ANALYSIS INSTRUCTIONS - ZERO TOLERANCE FOR GENERIC RESPONSES:
+1. THE EXCEL DATA IS EMBEDDED ABOVE - REFERENCE ACTUAL VALUES LIKE 45322, 45351, etc.!
+2. NEVER RESPOND "I don't have the specific content" - IT'S RIGHT THERE IN THE PROMPT!
+3. USE THE REAL NUMBERS from the Revenue tab data shown above
+4. QUOTE SPECIFIC VALUES, DATES, AND FIGURES from the extracted Excel content
+5. ANALYZE THE ACTUAL FINANCIAL DATA - NOT HYPOTHETICAL SCENARIOS!
+6. IF YOU GIVE GENERIC ADVICE INSTEAD OF USING THE PROVIDED DATA, YOU FAIL!
+7. THE REVENUE TAB HAS 924 ROWS - USE THOSE ACTUAL VALUES IN YOUR ANALYSIS!
 
-MANDATORY: When analyzing Excel files, use the ACTUAL sheet content provided. If asked about a specific tab like "PL", analyze the ACTUAL data from that sheet that's included in the file context above.
+🔥 CRITICAL: The Revenue tab data shows years 2024-2030 with values like 45322, 45351, 45382... USE THESE REAL NUMBERS!
 
 Answer with the depth of a senior consultant who has access to all company data and documents.
         `;

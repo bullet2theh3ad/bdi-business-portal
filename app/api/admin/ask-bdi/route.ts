@@ -129,38 +129,11 @@ ${JSON.stringify(businessData, null, 2)}
 
 MANDATORY: When analyzing ANY query, consider BOTH document content AND database records. Look for connections, correlations, and discrepancies. Provide unified business intelligence that bridges both data sources.`;
 
-    // Determine if we need enhanced file analysis
-    const needsFileAnalysis = requiresFileAnalysis(question);
-    let answer: string;
+    // ALL QUERIES NOW USE DEEP ANALYSIS - as requested by user
+    console.log('🧠 Using UNIFIED analysis - combining database + files for complete intelligence');
     
-    if (needsFileAnalysis) {
-      console.log('📁 Enhanced analysis: Files + Database integration');
-      // Use enhanced file RAG with unified prompt
-      answer = await supabaseFileRAG.analyzeWithFiles(question, businessData, unifiedSystemPrompt);
-    } else {
-      console.log('📊 Database analysis with document awareness');
-      // Use database analysis but with document-aware prompt
-      const messages = [
-        { role: 'system', content: unifiedSystemPrompt },
-        // Include recent chat history for context
-        ...chatHistory.slice(-6).map((msg: any) => ({
-          role: msg.type === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        })),
-        { role: 'user', content: question }
-      ];
-
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: messages as any,
-        temperature: 0.7,
-        max_tokens: 1500, // Reduced for faster response
-      }, {
-        timeout: 30000, // 30 second timeout in options
-      });
-
-      answer = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
-    }
+    // Always use enhanced file RAG with unified prompt for comprehensive analysis
+    const answer = await supabaseFileRAG.analyzeWithFiles(question, businessData, unifiedSystemPrompt);
 
     console.log('🤖 Ask BDI Response generated successfully');
 
