@@ -430,7 +430,10 @@ function requiresFileAnalysis(question: string): boolean {
     'jjolm', 'manifest', 'certificate', 'specification', 'datasheet', 'inventory report',
     // Add folder-specific keywords
     'folder', 'purchase-orders', 'invoices', 'shipments', 'warehouses', 'production-files',
-    'supabase', 'storage', 'bucket', 'files in', 'documents in', 'what files'
+    'supabase', 'storage', 'bucket', 'files in', 'documents in', 'what files',
+    // RAG-specific keywords
+    'rag', 'rag-documents', 'rag directory', 'directory', 'contents', 'uploaded files',
+    'financial model', 'boundless financial'
   ];
   
   const questionLower = question.toLowerCase();
