@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Brain, FileSearch, Database, Zap, Clock } from 'lucide-react';
+import { Brain, FileSearch, Database, Zap, Clock, Trash2 } from 'lucide-react';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -13,10 +13,19 @@ export default function AskBDIPage() {
   const { data: user } = useSWR('/api/user', fetcher);
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState('');
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [progress, setProgress] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
+
+  const clearChat = () => {
+    setChatHistory([]);
+  };
 
   // Access control check
   if (!user || user.role !== 'super_admin') {
@@ -42,10 +51,19 @@ export default function AskBDIPage() {
     setIsLoading(true);
     setStartTime(Date.now());
     setProgress('🧠 Initializing AI analysis...');
-    setResponse('');
+    
+    // Add user question to chat history immediately
+    const userMessage = {
+      type: 'user',
+      content: question,
+      timestamp: new Date().toISOString()
+    };
+    setChatHistory(prev => [...prev, userMessage]);
+    const currentQuestion = question;
+    setQuestion(''); // Clear input immediately
 
     try {
-      // Simulate progress updates
+      // Progress updates for user feedback
       const progressUpdates = [
         { delay: 500, message: '📊 Gathering business context...' },
         { delay: 2000, message: '📁 Scanning document storage...' },
@@ -68,7 +86,7 @@ export default function AskBDIPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question,
+          question: currentQuestion,
           context: { currentPage: 'ask-bdi', timestamp: new Date().toISOString() },
           chatHistory
         })
@@ -77,21 +95,33 @@ export default function AskBDIPage() {
       const data = await res.json();
       
       if (data.error) {
-        setResponse(`Error: ${data.error}`);
+        const errorMessage = {
+          type: 'assistant',
+          content: `Error: ${data.error}`,
+          timestamp: new Date().toISOString(),
+          isError: true
+        };
+        setChatHistory(prev => [...prev, errorMessage]);
       } else {
-        setResponse(data.answer);
-        setChatHistory(prev => [...prev, 
-          { type: 'user', content: question, timestamp: new Date().toISOString() },
-          { type: 'assistant', content: data.answer, timestamp: new Date().toISOString() }
-        ]);
+        const assistantMessage = {
+          type: 'assistant',
+          content: data.answer,
+          timestamp: new Date().toISOString()
+        };
+        setChatHistory(prev => [...prev, assistantMessage]);
       }
     } catch (error) {
-      setResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = {
+        type: 'assistant',
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
       setProgress('');
       setStartTime(null);
-      setQuestion('');
     }
   };
 
@@ -113,6 +143,90 @@ export default function AskBDIPage() {
       </div>
 
       <div className="grid gap-6">
+        {/* Chat History Stream */}
+        {chatHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-green-600" />
+                  BDI Intelligence Chat Stream ({chatHistory.length} messages)
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={clearChat}
+                  className="flex items-center gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {chatHistory.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`p-4 rounded-lg ${
+                      message.type === 'user'
+                        ? 'bg-blue-50 border-l-4 border-blue-500'
+                        : message.isError
+                        ? 'bg-red-50 border-l-4 border-red-500'
+                        : 'bg-gray-50 border-l-4 border-green-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      {message.type === 'user' ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">
+                              {user?.name?.charAt(0) || 'U'}
+                            </span>
+                          </div>
+                          <span className="font-semibold text-blue-700">You</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Brain className={`w-5 h-5 ${message.isError ? 'text-red-600' : 'text-green-600'}`} />
+                          <span className={`font-semibold ${message.isError ? 'text-red-700' : 'text-green-700'}`}>
+                            BDI AI
+                          </span>
+                        </div>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="prose max-w-none">
+                      <pre className="whitespace-pre-wrap text-sm">
+                        {message.content}
+                      </pre>
+                    </div>
+                  </div>
+                ))}
+                {/* Show current processing at the bottom */}
+                {isLoading && (
+                  <div className="p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Brain className="w-5 h-5 text-yellow-600 animate-pulse" />
+                      <span className="font-semibold text-yellow-700">BDI AI</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        Processing... {startTime && `(${getElapsedTime()}s)`}
+                      </span>
+                    </div>
+                    <p className="text-sm text-yellow-700">
+                      {progress || 'Thinking...'}
+                    </p>
+                  </div>
+                )}
+                {/* Auto-scroll anchor */}
+                <div ref={chatEndRef} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Query Input */}
         <Card>
           <CardHeader>
@@ -182,27 +296,8 @@ export default function AskBDIPage() {
                   }}></div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Analyzing {user?.name ? `for ${user.name}` : 'business data'} • Advanced AI processing
+                  Analyzing business data • Advanced AI processing
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Response */}
-        {response && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-green-600" />
-                BDI Intelligence Response
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose max-w-none">
-                <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded border">
-                  {response}
-                </pre>
               </div>
             </CardContent>
           </Card>
