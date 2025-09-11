@@ -76,26 +76,47 @@ export async function POST(request: NextRequest) {
     // Gather business data context
     const businessData = await gatherBusinessContext(supabase, context);
 
-    // Determine if query needs file analysis
-    const needsFileAnalysis = requiresFileAnalysis(question);
+    console.log('🧠 Using UNIFIED analysis - combining database + files for complete intelligence');
     
-    let answer: string;
+    // CRITICAL: ALWAYS use both data sources for complete analysis
+    // Build ultimate schema-aware prompt with CPFR expertise
+    const schemaAwarePrompt = await schemaPromptBuilder.buildUltimatePrompt();
     
-    if (needsFileAnalysis) {
-      console.log('📁 Query requires file analysis - using enhanced RAG');
-      // Use enhanced file RAG analysis
-      answer = await supabaseFileRAG.analyzeWithFiles(question, businessData);
-    } else {
-      console.log('📊 Query uses database analysis only');
-      // Use standard database analysis
-      
-      // Build ultimate schema-aware prompt
-      const schemaAwarePrompt = await schemaPromptBuilder.buildUltimatePrompt();
-      
-      const systemPrompt = schemaAwarePrompt + `
+    // Enhanced system prompt for unified financial analyst + CPFR expert
+    const unifiedSystemPrompt = schemaAwarePrompt + `
 
-📈 CURRENT SESSION DATA:
+🎯 YOU ARE A SENIOR FINANCIAL ANALYST & CPFR EXPERT WITH DUAL DATA ACCESS:
+
+📊 COMPLETE DATABASE ACCESS:
 ${JSON.stringify(businessData, null, 2)}
+
+📄 DOCUMENT INTELLIGENCE: You have access to all business documents including:
+- Proforma Invoices (PIs) with pricing, quantities, technical specs
+- Purchase Orders with supplier details and delivery terms  
+- Production Files with manufacturing specifications
+- Shipment Reports with logistics and delivery data
+- Warehouse Documents with inventory levels
+
+🔗 CRITICAL INTEGRATION MANDATE:
+- ALWAYS cross-reference document data with database records
+- Look for SKU/model overlaps between files and CPFR signals
+- Connect PI amounts with forecast values and shipment data
+- Identify discrepancies between documents and database entries
+- Provide unified analysis that combines both data sources
+
+📈 CPFR ANALYSIS EXPERTISE:
+- Sales signals: Demand forecasts and customer orders
+- Factory signals: Production capacity and manufacturing schedules  
+- Shipping signals: Logistics coordination and delivery timing
+- Transit signals: In-transit inventory and warehouse signals
+- Warehouse signals: Stock levels, allocation, and distribution
+
+💼 FINANCIAL ANALYSIS FOCUS:
+- Revenue impact of PIs and purchase orders
+- Cash flow implications of payment terms
+- Inventory valuation and turnover analysis
+- Supplier relationship and pricing trends
+- Risk assessment across supply chain
 
 🎯 SESSION CONTEXT:
 - User: ${dbUser.name} (${dbUser.role})
@@ -103,10 +124,21 @@ ${JSON.stringify(businessData, null, 2)}
 - Current Page: ${context.currentPage}
 - Timestamp: ${context.timestamp}
 
-Always provide specific, actionable insights based on the complete database schema and current business data.`;
+MANDATORY: When analyzing ANY query, consider BOTH document content AND database records. Look for connections, correlations, and discrepancies. Provide unified business intelligence that bridges both data sources.`;
 
+    // Determine if we need enhanced file analysis
+    const needsFileAnalysis = requiresFileAnalysis(question);
+    let answer: string;
+    
+    if (needsFileAnalysis) {
+      console.log('📁 Enhanced analysis: Files + Database integration');
+      // Use enhanced file RAG with unified prompt
+      answer = await supabaseFileRAG.analyzeWithFiles(question, businessData, unifiedSystemPrompt);
+    } else {
+      console.log('📊 Database analysis with document awareness');
+      // Use database analysis but with document-aware prompt
       const messages = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: unifiedSystemPrompt },
         // Include recent chat history for context
         ...chatHistory.slice(-6).map((msg: any) => ({
           role: msg.type === 'user' ? 'user' : 'assistant',
@@ -119,7 +151,7 @@ Always provide specific, actionable insights based on the complete database sche
         model: 'gpt-4o',
         messages: messages as any,
         temperature: 0.7,
-        max_tokens: 1500,
+        max_tokens: 2000, // Increased for more comprehensive analysis
       });
 
       answer = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';

@@ -503,8 +503,8 @@ ${fileContents.join('\n---\n')}
     }
   }
 
-  // Enhanced AI analysis with file content
-  async analyzeWithFiles(query: string, businessData: any): Promise<string> {
+  // Enhanced AI analysis with file content and unified prompt
+  async analyzeWithFiles(query: string, businessData: any, customSystemPrompt?: string): Promise<string> {
     try {
       console.log('🧠 Starting enhanced analysis with file content...');
       
@@ -512,7 +512,18 @@ ${fileContents.join('\n---\n')}
       const fileContext = await this.generateFileContext(query);
       
       // Create enhanced prompt with file data
-      const enhancedPrompt = `
+      // Use custom unified prompt if provided, otherwise use enhanced default
+      const enhancedPrompt = customSystemPrompt ? 
+        customSystemPrompt + `
+
+📁 FILE STORAGE CONTEXT:
+${fileContext}
+
+🎯 UNIFIED ANALYSIS QUERY: "${query}"
+
+CRITICAL: Cross-reference the above file content with database records. Look for SKU overlaps, amount correlations, timeline matches, and any discrepancies. Provide integrated business intelligence that bridges both data sources.
+        ` :
+        `
 You are BDI's Ultimate Business Intelligence Assistant with access to BOTH database and file storage.
 
 QUERY: "${query}"
@@ -531,7 +542,7 @@ ${fileContext}
 5. Offer actionable recommendations based on complete information
 
 Answer with the depth of a senior consultant who has access to all company data and documents.
-      `;
+        `;
       
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o',
