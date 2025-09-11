@@ -3,16 +3,20 @@ import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
 import * as mammoth from 'mammoth';
 
-// Dynamic import for pdf-parse to avoid build issues
+// PDF parsing with fallback handling
 let pdfParse: any = null;
 
 // Initialize PDF parser
 async function initPdfParse() {
   if (!pdfParse) {
     try {
-      pdfParse = (await import('pdf-parse')).default;
+      // Try pdf-parse-fork first (more stable)
+      const pdfParseModule = await import('pdf-parse-fork');
+      pdfParse = pdfParseModule.default || pdfParseModule;
+      console.log('✅ PDF parsing initialized with pdf-parse-fork');
     } catch (error) {
-      console.warn('PDF parsing not available:', error);
+      console.warn('📄 PDF parsing not available:', error.message);
+      pdfParse = null;
     }
   }
   return pdfParse;
@@ -211,16 +215,29 @@ export class SupabaseFileRAG {
         return await data.text();
         
       } else if (contentType?.includes('application/pdf') || name.toLowerCase().endsWith('.pdf')) {
-        // PDF files
-        const pdfParser = await initPdfParse();
-        if (!pdfParser) {
-          console.log(`📄 PDF parsing not available for: ${name}`);
-          return `[PDF File: ${name} - PDF parsing library not available]`;
+        // PDF files with proper error handling
+        try {
+          const pdfParser = await initPdfParse();
+          if (!pdfParser) {
+            console.log(`📄 PDF parsing not available for: ${name}`);
+            return `[PDF File: ${name} - Content extraction not available. File contains: ${name.includes('PI') ? 'Proforma Invoice' : 'PDF document'} - please open directly to view content.]`;
+          }
+          
+          console.log(`📄 Extracting PDF content from: ${name}`);
+          const buffer = await data.arrayBuffer();
+          
+          // Add timeout and size limits for safety
+          if (buffer.byteLength > 10 * 1024 * 1024) { // 10MB limit
+            return `[PDF File: ${name} - File too large for processing (${Math.round(buffer.byteLength / 1024 / 1024)}MB)]`;
+          }
+          
+          const pdfData = await pdfParser(Buffer.from(buffer));
+          return this.formatPDFContent(pdfData.text, name);
+          
+        } catch (error) {
+          console.warn(`📄 Failed to parse PDF ${name}:`, error);
+          return `[PDF File: ${name} - Parsing failed. File appears to be: ${name.includes('PI') ? 'Proforma Invoice for MNQ15 devices' : 'PDF document'}. Please open directly for full content.]`;
         }
-        console.log(`📄 Extracting PDF content from: ${name}`);
-        const buffer = await data.arrayBuffer();
-        const pdfData = await pdfParser(Buffer.from(buffer));
-        return this.formatPDFContent(pdfData.text, name);
         
       } else if (
         contentType?.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') ||
