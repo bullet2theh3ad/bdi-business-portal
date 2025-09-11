@@ -41,31 +41,65 @@ export class SupabaseFileRAG {
       
       console.log('📁 Found buckets:', buckets.map(b => b.name));
       
-      // Get files from each bucket
+      // Get files from each bucket - enhanced to handle folders
       const allFiles: any[] = [];
       
       for (const bucket of buckets) {
         try {
-          const { data: files, error: filesError } = await this.serviceSupabase.storage
+          // Get root level items
+          const { data: rootItems, error: rootError } = await this.serviceSupabase.storage
             .from(bucket.name)
             .list('', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
           
-          if (filesError) {
-            console.error(`Error listing files in ${bucket.name}:`, filesError);
+          if (rootError) {
+            console.error(`Error listing root items in ${bucket.name}:`, rootError);
             continue;
           }
           
-          const bucketFiles = (files || []).map(file => ({
-            bucket: bucket.name,
-            name: file.name,
-            size: file.metadata?.size || 0,
-            contentType: file.metadata?.mimetype || 'unknown',
-            lastModified: file.updated_at || file.created_at,
-            path: `${bucket.name}/${file.name}`
-          }));
+          // Process each item (could be file or folder)
+          for (const item of rootItems || []) {
+            if (item.metadata?.size > 0) {
+              // It's a file
+              allFiles.push({
+                bucket: bucket.name,
+                name: item.name,
+                size: item.metadata.size,
+                contentType: item.metadata.mimetype || 'unknown',
+                lastModified: item.updated_at || item.created_at,
+                path: `${bucket.name}/${item.name}`,
+                isFile: true
+              });
+            } else {
+              // It's likely a folder, try to list contents
+              try {
+                const { data: folderFiles, error: folderError } = await this.serviceSupabase.storage
+                  .from(bucket.name)
+                  .list(item.name, { limit: 100 });
+                
+                if (!folderError && folderFiles) {
+                  for (const file of folderFiles) {
+                    if (file.metadata?.size > 0) {
+                      allFiles.push({
+                        bucket: bucket.name,
+                        name: file.name,
+                        folder: item.name,
+                        size: file.metadata.size,
+                        contentType: file.metadata.mimetype || 'unknown',
+                        lastModified: file.updated_at || file.created_at,
+                        path: `${bucket.name}/${item.name}/${file.name}`,
+                        isFile: true
+                      });
+                    }
+                  }
+                }
+              } catch (folderError) {
+                console.log(`📁 Could not access folder ${item.name} in ${bucket.name}`);
+              }
+            }
+          }
           
-          allFiles.push(...bucketFiles);
-          console.log(`📁 Found ${bucketFiles.length} files in ${bucket.name}`);
+          const bucketFileCount = allFiles.filter(f => f.bucket === bucket.name).length;
+          console.log(`📁 Found ${bucketFileCount} actual files in ${bucket.name}`);
           
         } catch (error) {
           console.error(`Error accessing bucket ${bucket.name}:`, error);
@@ -81,9 +115,11 @@ export class SupabaseFileRAG {
     }
   }
 
-  // Get file content for analysis
+  // Get file content for analysis - enhanced path handling
   async getFileContent(bucket: string, filePath: string): Promise<string | null> {
     try {
+      console.log(`📥 Downloading file: ${bucket}/${filePath}`);
+      
       const { data, error } = await this.serviceSupabase.storage
         .from(bucket)
         .download(filePath);
@@ -95,6 +131,7 @@ export class SupabaseFileRAG {
       
       // Convert blob to text for supported file types
       const text = await data.text();
+      console.log(`📄 Successfully read ${text.length} characters from ${filePath}`);
       return text;
       
     } catch (error) {
@@ -109,14 +146,22 @@ export class SupabaseFileRAG {
       const { bucket, name, contentType } = file;
       console.log(`📄 Extracting content from: ${name} (${contentType})`);
       
-      // Get raw file data
+      // Get raw file data using the correct path
+      const downloadPath = file.folder ? `${file.folder}/${name}` : name;
+      console.log(`📥 Attempting download: ${bucket}/${downloadPath}`);
+      
       const { data, error } = await this.serviceSupabase.storage
         .from(bucket)
-        .download(name);
+        .download(downloadPath);
       
       if (error) {
-        console.error(`Error downloading file ${bucket}/${name}:`, error);
-        return `[Error downloading file: ${name}]`;
+        console.error(`Error downloading file ${bucket}/${downloadPath}:`, error);
+        return `[Error downloading file: ${name} - ${error.message}]`;
+      }
+      
+      if (!data || data.size === 0) {
+        console.log(`📁 File appears to be empty or is a folder: ${name}`);
+        return `[File: ${name} - Empty or folder, no content available]`;
       }
       
       // Handle different file types
