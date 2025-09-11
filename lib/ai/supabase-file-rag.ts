@@ -5,10 +5,17 @@ import * as mammoth from 'mammoth';
 
 // Dynamic import for pdf-parse to avoid build issues
 let pdfParse: any = null;
-try {
-  pdfParse = require('pdf-parse');
-} catch (error) {
-  console.warn('PDF parsing not available:', error);
+
+// Initialize PDF parser
+async function initPdfParse() {
+  if (!pdfParse) {
+    try {
+      pdfParse = (await import('pdf-parse')).default;
+    } catch (error) {
+      console.warn('PDF parsing not available:', error);
+    }
+  }
+  return pdfParse;
 }
 
 // Supabase File RAG System
@@ -205,13 +212,14 @@ export class SupabaseFileRAG {
         
       } else if (contentType?.includes('application/pdf') || name.toLowerCase().endsWith('.pdf')) {
         // PDF files
-        if (!pdfParse) {
+        const pdfParser = await initPdfParse();
+        if (!pdfParser) {
           console.log(`📄 PDF parsing not available for: ${name}`);
           return `[PDF File: ${name} - PDF parsing library not available]`;
         }
         console.log(`📄 Extracting PDF content from: ${name}`);
         const buffer = await data.arrayBuffer();
-        const pdfData = await pdfParse(Buffer.from(buffer));
+        const pdfData = await pdfParser(Buffer.from(buffer));
         return this.formatPDFContent(pdfData.text, name);
         
       } else if (
@@ -340,6 +348,16 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
       const queryLower = query.toLowerCase();
       const searchTerms = this.extractSearchTerms(queryLower);
       
+      // CRITICAL: For general file listing queries, return ALL files
+      const isGeneralFileQuery = searchTerms.some(term => 
+        ['files', 'documents', 'how many', 'list', 'all files', 'total files', 'file count', 'directory'].includes(term)
+      ) || queryLower.includes('how many') || queryLower.includes('list') || queryLower.includes('what files');
+      
+      if (isGeneralFileQuery) {
+        console.log(`📁 General file query detected - returning all ${availableFiles.length} files`);
+        return availableFiles.slice(0, Math.max(maxFiles, 25)); // Allow up to 25 files for listing
+      }
+      
       const matchingFiles = availableFiles.filter(file => {
         const fileName = file.name.toLowerCase();
         const filePath = file.path.toLowerCase();
@@ -377,6 +395,11 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
         // If query asks about "files" in general, include more files
         if (searchTerms.includes('file') && availableFiles.length <= 10) {
           return true; // Include all files if asking generally and not too many
+        }
+        
+        // Purchase orders specific matching
+        if (searchTerms.includes('purchase') || searchTerms.includes('orders') || searchTerms.includes('purchase-orders')) {
+          return bucket.includes('organization') || filePath.includes('purchase-order') || fileName.includes('purchase');
         }
         
         // If asking about specific organizations
