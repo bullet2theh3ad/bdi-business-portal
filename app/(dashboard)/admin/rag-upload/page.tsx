@@ -79,9 +79,22 @@ export default function RAGUploadPage() {
       return;
     }
 
+    console.log('🚀 Starting upload process...');
+    console.log('📁 Company code:', getCompanyCode());
+    console.log('📄 Files to upload:', files.map(f => f.name));
+
     setUploading(true);
     
     try {
+      // Test Supabase connection
+      console.log('🔌 Testing Supabase connection...');
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      if (bucketsError) {
+        console.error('❌ Supabase connection failed:', bucketsError);
+        throw new Error(`Supabase connection failed: ${bucketsError.message}`);
+      }
+      console.log('✅ Supabase connected, found buckets:', buckets?.map(b => b.name));
+      
       const companyCode = getCompanyCode();
       const uploadResults = [];
 
@@ -90,6 +103,8 @@ export default function RAGUploadPage() {
         const fileName = `${timestamp}_${file.name}`;
         const filePath = `rag-documents/${companyCode}/${fileName}`;
 
+        console.log(`📤 Uploading ${file.name} to ${filePath}...`);
+        
         const { data, error } = await supabase.storage
           .from('organization-documents')
           .upload(filePath, file, {
@@ -98,10 +113,12 @@ export default function RAGUploadPage() {
           });
 
         if (error) {
-          console.error(`Upload failed for ${file.name}:`, error);
+          console.error(`❌ Upload failed for ${file.name}:`, error);
+          console.error('Error details:', JSON.stringify(error, null, 2));
           uploadResults.push({ file: file.name, success: false, error: error.message });
         } else {
-          console.log(`✅ Uploaded: ${file.name} to ${filePath}`);
+          console.log(`✅ Successfully uploaded: ${file.name} to ${filePath}`);
+          console.log('Upload data:', data);
           uploadResults.push({ file: file.name, success: true, path: filePath });
         }
       }
