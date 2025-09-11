@@ -479,6 +479,18 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
         const filePath = file.path.toLowerCase();
         const bucket = file.bucket.toLowerCase();
         
+        // CRITICAL: If query mentions specific file name, ALWAYS include it
+        const fileNameParts = fileName.replace(/[^a-z0-9]/g, ' ').split(' ');
+        const queryParts = queryLower.replace(/[^a-z0-9]/g, ' ').split(' ');
+        const hasFileNameMatch = fileNameParts.some((part: string) => 
+          part.length > 3 && queryParts.some((qPart: string) => qPart.includes(part) || part.includes(qPart))
+        );
+        
+        if (hasFileNameMatch) {
+          console.log(`🎯 File name match detected: ${fileName} matches query parts`);
+          return true;
+        }
+        
         // Direct filename/path matching
         if (fileName.includes(queryLower) || filePath.includes(queryLower)) {
           return true;
@@ -524,8 +536,10 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
         }
         
         // Financial model specific matching
-        if (searchTerms.includes('financial') || searchTerms.includes('model') || searchTerms.includes('boundless')) {
-          return fileName.includes('financial') || fileName.includes('boundless') || fileName.includes('model');
+        if (searchTerms.includes('financial') || searchTerms.includes('model') || searchTerms.includes('boundless') || 
+            searchTerms.includes('pl') || searchTerms.includes('p&l') || searchTerms.includes('analysis')) {
+          return fileName.includes('financial') || fileName.includes('boundless') || fileName.includes('model') ||
+                 filePath.includes('rag-documents') || bucket.includes('organization');
         }
         
         // If asking about specific organizations
