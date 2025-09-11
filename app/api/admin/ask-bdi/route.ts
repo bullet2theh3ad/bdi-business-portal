@@ -395,7 +395,10 @@ function requiresFileAnalysis(question: string): boolean {
   const fileKeywords = [
     'document', 'file', 'pdf', 'excel', 'csv', 'report', 'upload', 'attachment',
     'invoice document', 'production file', 'shipment document', 'warehouse document',
-    'jjolm', 'manifest', 'certificate', 'specification', 'datasheet', 'inventory report'
+    'jjolm', 'manifest', 'certificate', 'specification', 'datasheet', 'inventory report',
+    // Add folder-specific keywords
+    'folder', 'purchase-orders', 'invoices', 'shipments', 'warehouses', 'production-files',
+    'supabase', 'storage', 'bucket', 'files in', 'documents in', 'what files'
   ];
   
   const questionLower = question.toLowerCase();
