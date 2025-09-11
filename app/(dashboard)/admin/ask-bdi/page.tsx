@@ -1,222 +1,242 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { SemanticBDIIcon } from '@/components/BDIIcon';
-import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
-import { DynamicTranslation } from '@/components/DynamicTranslation';
+import { Brain, FileSearch, Database, Zap, Clock } from 'lucide-react';
 import useSWR from 'swr';
-import { User } from '@/lib/db/schema';
-
-interface UserWithOrganization extends User {
-  organization?: {
-    id: string;
-    name: string;
-    code: string;
-    type: string;
-  };
-}
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function AskBDIPage() {
-  const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
-  
-  // 🌍 Translation hooks
-  const userLocale = getUserLocale(user);
-  const { tc } = useSimpleTranslations(userLocale);
-  
-  const [askBdiQuery, setAskBdiQuery] = useState('');
-  const [chatHistory, setChatHistory] = useState<Array<{id: string, type: 'user' | 'assistant', content: string, timestamp: Date}>>([]);
-  const [isThinking, setIsThinking] = useState(false);
+  const { data: user } = useSWR('/api/user', fetcher);
+  const [question, setQuestion] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState('');
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [progress, setProgress] = useState<string>('');
+  const [startTime, setStartTime] = useState<number | null>(null);
 
-  // Handle Ask BDI question submission
-  const handleAskBDI = async () => {
-    if (!askBdiQuery.trim() || isThinking) return;
-    
-    const currentQuestion = askBdiQuery;
-    const userMessage = {
-      id: Date.now().toString(),
-      type: 'user' as const,
-      content: currentQuestion,
-      timestamp: new Date()
-    };
-    
-    setAskBdiQuery('');
-    setChatHistory(prev => [...prev, userMessage]);
-    setIsThinking(true);
-    
-    try {
-      const businessContext = {
-        currentPage: 'ask-bdi',
-        timestamp: new Date().toISOString()
-      };
-      
-      const response = await fetch('/api/admin/ask-bdi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: currentQuestion,
-          context: businessContext,
-          chatHistory: chatHistory.slice(-10)
-        })
-      });
-      
-      const result = await response.json();
-      
-      const assistantMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant' as const,
-        content: result.answer || 'I apologize, but I encountered an error processing your question.',
-        timestamp: new Date()
-      };
-      
-      setChatHistory(prev => [...prev, assistantMessage]);
-      
-    } catch (error) {
-      console.error('Ask BDI error:', error);
-      const errorMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant' as const,
-        content: 'I apologize, but I encountered a technical error. Please try again.',
-        timestamp: new Date()
-      };
-      setChatHistory(prev => [...prev, errorMessage]);
-    } finally {
-      setIsThinking(false);
-    }
-  };
-
-  // Only allow super admins
-  if (user && user.role !== 'super_admin') {
+  // Access control check
+  if (!user || user.role !== 'super_admin') {
     return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Restricted</h1>
-        <p className="text-gray-600">Ask BDI is currently available to Super Admins only.</p>
+      <div className="p-8">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-red-600">
+              <Brain className="w-12 h-12 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p>Only Super Admins can access Ask BDI.</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) return;
+
+    setIsLoading(true);
+    setStartTime(Date.now());
+    setProgress('🧠 Initializing AI analysis...');
+    setResponse('');
+
+    try {
+      // Simulate progress updates
+      const progressUpdates = [
+        { delay: 500, message: '📊 Gathering business context...' },
+        { delay: 2000, message: '📁 Scanning document storage...' },
+        { delay: 5000, message: '🔍 Analyzing file contents...' },
+        { delay: 10000, message: '🧠 Processing with AI intelligence...' },
+        { delay: 20000, message: '⚡ Generating comprehensive response...' }
+      ];
+
+      // Start progress simulation
+      progressUpdates.forEach(({ delay, message }) => {
+        setTimeout(() => {
+          if (isLoading) {
+            const elapsed = Date.now() - (startTime || Date.now());
+            setProgress(`${message} (${Math.round(elapsed / 1000)}s)`);
+          }
+        }, delay);
+      });
+
+      const res = await fetch('/api/admin/ask-bdi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          context: { currentPage: 'ask-bdi', timestamp: new Date().toISOString() },
+          chatHistory
+        })
+      });
+
+      const data = await res.json();
+      
+      if (data.error) {
+        setResponse(`Error: ${data.error}`);
+      } else {
+        setResponse(data.answer);
+        setChatHistory(prev => [...prev, 
+          { type: 'user', content: question, timestamp: new Date().toISOString() },
+          { type: 'assistant', content: data.answer, timestamp: new Date().toISOString() }
+        ]);
+      }
+    } catch (error) {
+      setResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+      setProgress('');
+      setStartTime(null);
+      setQuestion('');
+    }
+  };
+
+  const getElapsedTime = () => {
+    if (!startTime) return '';
+    return Math.round((Date.now() - startTime) / 1000);
+  };
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="container mx-auto py-8 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
-          <SemanticBDIIcon semantic="query" size={32} className="mr-3 text-blue-600" />
-          🤖 Ask BDI - Business Intelligence Assistant
-        </h1>
-        <p className="text-gray-600">
-          AI-powered analysis of your CPFR data, supply chain metrics, and business insights
+        <div className="flex items-center gap-3 mb-2">
+          <Brain className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold">Ask BDI - AI Business Intelligence</h1>
+        </div>
+        <p className="text-muted-foreground">
+          Advanced AI assistant with complete access to database + document intelligence
         </p>
       </div>
 
-      {/* Chat Interface */}
-      <Card className="h-[70vh] flex flex-col">
-        <CardHeader className="border-b">
-          <CardTitle className="flex items-center justify-between">
-            <span>Business Intelligence Chat</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700">
-              Super Admin Access
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            Ask questions about your business data and get expert analysis
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="flex-1 flex flex-col p-0">
-          {/* Chat History */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
-            {chatHistory.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <SemanticBDIIcon semantic="query" size={64} className="mx-auto mb-4 text-gray-300" />
-                <p className="text-xl font-medium mb-2">Welcome to Ask BDI!</p>
-                <p className="text-sm mb-6">Ask me anything about your business data, supply chain, or analytics.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left max-w-2xl mx-auto">
-                  <div className="bg-white p-4 rounded-lg border">
-                    <p className="font-medium text-gray-700 mb-2">📊 Business Questions</p>
-                    <p className="text-xs text-gray-600">"What are our top performing SKUs?"</p>
-                    <p className="text-xs text-gray-600">"How many SKUs are from MTN?"</p>
-                    <p className="text-xs text-gray-600">"Show me invoice trends by organization"</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border">
-                    <p className="font-medium text-gray-700 mb-2">🚢 Supply Chain Questions</p>
-                    <p className="text-xs text-gray-600">"How are our shipments performing?"</p>
-                    <p className="text-xs text-gray-600">"What's our forecast accuracy?"</p>
-                    <p className="text-xs text-gray-600">"Which suppliers are most reliable?"</p>
-                  </div>
+      <div className="grid gap-6">
+        {/* Query Input */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Ask Your Question
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="e.g., How many files do we have? What's in the MTN invoices? Show me financial models..."
+                disabled={isLoading}
+                className="text-lg p-4"
+              />
+              <div className="flex justify-between items-center">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuestion('List all files available to us')}
+                    disabled={isLoading}
+                  >
+                    <FileSearch className="h-4 w-4 mr-1" />
+                    List Files
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuestion('What financial models do we have?')}
+                    disabled={isLoading}
+                  >
+                    <Database className="h-4 w-4 mr-1" />
+                    Financial Models
+                  </Button>
                 </div>
+                <Button type="submit" disabled={isLoading || !question.trim()}>
+                  {isLoading ? 'Processing...' : 'Ask BDI'}
+                </Button>
               </div>
-            ) : (
-              chatHistory.map((message) => (
-                <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-lg p-4 ${
-                    message.type === 'user' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
-                  }`}>
-                    <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
-                    <div className={`text-xs mt-2 ${
-                      message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
-                    }`}>
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Progress Indicator */}
+        {isLoading && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-3">
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="h-5 w-5 animate-spin" />
+                  <span className="font-medium">Processing Your Request</span>
+                  {startTime && (
+                    <span className="text-muted-foreground">({getElapsedTime()}s)</span>
+                  )}
                 </div>
-              ))
-            )}
-            
-            {/* Thinking indicator */}
-            {isThinking && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                  <div className="flex items-center space-x-3">
-                    <SemanticBDIIcon semantic="loading" size={20} className="animate-spin text-blue-600" />
-                    <span className="text-sm text-gray-600">BDI is analyzing your data...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Input Area */}
-          <div className="border-t bg-white p-6">
-            <div className="flex space-x-3">
-              <div className="flex-1">
-                <Input
-                  placeholder="Ask a question about your business data..."
-                  value={askBdiQuery}
-                  onChange={(e) => setAskBdiQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !isThinking && handleAskBDI()}
-                  className="bg-white text-base"
-                  disabled={isThinking}
-                />
-              </div>
-              <Button 
-                onClick={handleAskBDI} 
-                disabled={!askBdiQuery.trim() || isThinking}
-                className="bg-blue-600 hover:bg-blue-700 px-6"
-              >
-                {isThinking ? (
-                  <SemanticBDIIcon semantic="loading" size={16} className="animate-spin" />
-                ) : (
-                  <>
-                    <SemanticBDIIcon semantic="query" size={16} className="mr-2" />
-                    Ask BDI
-                  </>
+                {progress && (
+                  <p className="text-sm text-blue-600">{progress}</p>
                 )}
-              </Button>
+                <div className="w-full bg-gray-200 rounded-full h-2 max-w-md mx-auto">
+                  <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{
+                    width: startTime ? `${Math.min((Date.now() - startTime) / 1200, 100)}%` : '0%'
+                  }}></div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Analyzing {user?.name ? `for ${user.name}` : 'business data'} • Advanced AI processing
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Response */}
+        {response && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-green-600" />
+                BDI Intelligence Response
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose max-w-none">
+                <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded border">
+                  {response}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* System Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>🎯 System Capabilities</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="font-semibold">📊 Database Access:</p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>Complete CPFR system data</li>
+                  <li>Financial records and forecasts</li>
+                  <li>Inventory and warehouse data</li>
+                  <li>Organization and user management</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-semibold">📄 Document Intelligence:</p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>RAG uploaded documents with tagging</li>
+                  <li>Invoice and purchase order analysis</li>
+                  <li>Production files and specifications</li>
+                  <li>Shipment reports and logistics data</li>
+                </ul>
+              </div>
             </div>
-            
-            <div className="mt-3 text-xs text-gray-500 flex items-center justify-between">
-              <span>💡 Try asking about SKUs, forecasts, shipments, or financial data</span>
-              <span>🔒 Super Admin Only</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

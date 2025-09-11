@@ -72,6 +72,9 @@ export async function POST(request: NextRequest) {
     const { question, context, chatHistory } = await request.json();
 
     console.log('🤖 Ask BDI Request:', { question, context });
+    
+    // For long-running queries, we should implement streaming or progress updates
+    // TODO: Add Server-Sent Events (SSE) for real-time progress updates
 
     // Gather business data context
     const businessData = await gatherBusinessContext(supabase, context);
@@ -151,7 +154,9 @@ MANDATORY: When analyzing ANY query, consider BOTH document content AND database
         model: 'gpt-4o',
         messages: messages as any,
         temperature: 0.7,
-        max_tokens: 2000, // Increased for more comprehensive analysis
+        max_tokens: 1500, // Reduced for faster response
+      }, {
+        timeout: 30000, // 30 second timeout in options
       });
 
       answer = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';

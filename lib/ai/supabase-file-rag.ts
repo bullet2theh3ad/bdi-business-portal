@@ -378,7 +378,8 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
       
       if (isGeneralFileQuery) {
         console.log(`📁 General file query detected - returning all ${availableFiles.length} files`);
-        return availableFiles.slice(0, Math.max(maxFiles, 25)); // Allow up to 25 files for listing
+        // For general queries, return more files but limit content extraction to prevent timeout
+        return availableFiles.slice(0, Math.max(maxFiles, 8)); // Further reduced to 8 for faster processing
       }
       
       const matchingFiles = availableFiles.filter(file => {
