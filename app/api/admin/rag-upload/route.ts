@@ -49,12 +49,13 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const companyCode = formData.get('companyCode') as string;
+    const tags = formData.get('tags') as string || '';
 
     if (!file || !companyCode) {
       return NextResponse.json({ error: 'File and company code required' }, { status: 400 });
     }
 
-    console.log(`🚀 RAG Upload API: ${file.name} to ${companyCode}`);
+    console.log(`🚀 RAG Upload API: ${file.name} to ${companyCode} with tags: ${tags}`);
 
     // serviceSupabase already created above for user verification
 
@@ -78,13 +79,43 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log(`✅ RAG Upload successful: ${filePath}`);
+    // Store metadata in RAG documents table for god-mode AI
+    const tagsArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+    
+    const { data: ragDoc, error: ragError } = await serviceSupabase
+      .from('rag_documents')
+      .insert({
+        file_name: file.name,
+        file_path: filePath,
+        company_code: companyCode,
+        file_size: file.size,
+        mime_type: file.type,
+        tags: tagsArray,
+        upload_metadata: {
+          timestamp,
+          original_name: file.name,
+          upload_source: 'rag-upload-center'
+        },
+        uploaded_by: authUser.id
+      })
+      .select()
+      .single();
+
+    if (ragError) {
+      console.warn('⚠️ Failed to store RAG metadata (file still uploaded):', ragError);
+    } else {
+      console.log(`✅ RAG metadata stored with ID: ${ragDoc.id}`);
+    }
+
+    console.log(`✅ RAG Upload successful: ${filePath} with tags: [${tagsArray.join(', ')}]`);
 
     return NextResponse.json({ 
       success: true, 
       filePath,
       fileName: file.name,
-      companyCode
+      companyCode,
+      tags: tagsArray,
+      ragDocumentId: ragDoc?.id
     });
 
   } catch (error) {

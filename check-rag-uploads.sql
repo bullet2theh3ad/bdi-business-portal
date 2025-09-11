@@ -1,4 +1,4 @@
--- Check uploaded RAG documents in Supabase storage
+to add-- Check uploaded RAG documents in Supabase storage
 -- Run this to see your uploaded files
 
 -- 1. Check files in the storage.objects table

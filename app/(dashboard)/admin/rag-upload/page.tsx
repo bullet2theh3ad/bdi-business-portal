@@ -24,7 +24,16 @@ export default function RAGUploadPage() {
   const [newCompanyCode, setNewCompanyCode] = useState<string>('');
   const [showNewCompany, setShowNewCompany] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FileWithTags[]>([]);
+  const [bulkTags, setBulkTags] = useState<string>('');
+  const [showBulkTags, setShowBulkTags] = useState(false);
+
+// Enhanced file interface with tagging
+interface FileWithTags {
+  file: File;
+  tags: string;
+  id: string;
+}
 
   // Access control check
   if (!user || user.role !== 'super_admin') {
@@ -48,19 +57,48 @@ export default function RAGUploadPage() {
     setDragOver(false);
     
     const droppedFiles = Array.from(e.dataTransfer.files);
-    setFiles(prev => [...prev, ...droppedFiles]);
+    const filesWithTags = droppedFiles.map(file => ({
+      file,
+      tags: bulkTags || '',
+      id: `${Date.now()}-${Math.random()}`
+    }));
+    setFiles(prev => [...prev, ...filesWithTags]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...selectedFiles]);
+      const filesWithTags = selectedFiles.map(file => ({
+        file,
+        tags: bulkTags || '',
+        id: `${Date.now()}-${Math.random()}`
+      }));
+      setFiles(prev => [...prev, ...filesWithTags]);
     }
   };
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
+
+  const updateFileTags = (id: string, tags: string) => {
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, tags } : f));
+  };
+
+  const applyBulkTags = () => {
+    if (bulkTags.trim()) {
+      setFiles(prev => prev.map(f => ({ ...f, tags: bulkTags.trim() })));
+      setShowBulkTags(false);
+    }
+  };
+
+  // Predefined tag suggestions
+  const tagSuggestions = [
+    'financial-model', 'forecast', 'cpfr-data', 'inventory-report', 'pricing',
+    'technical-specs', 'product-datasheet', 'supplier-info', 'contract', 
+    'compliance', 'certification', 'quality-control', 'shipping-docs',
+    'warehouse-data', 'production-plan', 'market-analysis', 'competitive-intel'
+  ];
 
   const getCompanyCode = () => {
     if (showNewCompany && newCompanyCode) {
@@ -81,7 +119,7 @@ export default function RAGUploadPage() {
 
     console.log('🚀 Starting upload process...');
     console.log('📁 Company code:', getCompanyCode());
-    console.log('📄 Files to upload:', files.map(f => f.name));
+      console.log('📄 Files to upload:', files.map(f => ({ name: f.file.name, tags: f.tags })));
 
     setUploading(true);
     
@@ -98,13 +136,14 @@ export default function RAGUploadPage() {
       const companyCode = getCompanyCode();
       const uploadResults = [];
 
-      for (const file of files) {
-        console.log(`📤 Uploading ${file.name} via API...`);
+      for (const fileWithTags of files) {
+        console.log(`📤 Uploading ${fileWithTags.file.name} via API with tags: ${fileWithTags.tags}...`);
         
         // Use API endpoint to bypass RLS issues
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', fileWithTags.file);
         formData.append('companyCode', companyCode);
+        formData.append('tags', fileWithTags.tags || '');
 
         const response = await fetch('/api/admin/rag-upload', {
           method: 'POST',
@@ -114,11 +153,11 @@ export default function RAGUploadPage() {
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-          console.error(`❌ Upload failed for ${file.name}:`, result);
-          uploadResults.push({ file: file.name, success: false, error: result.error || result.details });
+          console.error(`❌ Upload failed for ${fileWithTags.file.name}:`, result);
+          uploadResults.push({ file: fileWithTags.file.name, success: false, error: result.error || result.details });
         } else {
-          console.log(`✅ Successfully uploaded: ${file.name} to ${result.filePath}`);
-          uploadResults.push({ file: file.name, success: true, path: result.filePath });
+          console.log(`✅ Successfully uploaded: ${fileWithTags.file.name} to ${result.filePath}`);
+          uploadResults.push({ file: fileWithTags.file.name, success: true, path: result.filePath });
         }
       }
 
@@ -250,6 +289,45 @@ export default function RAGUploadPage() {
           </CardContent>
         </Card>
 
+        {/* Bulk Tagging */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Tagging & Intelligence Enhancement
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Bulk Tags (applied to all files)</Label>
+                <Input
+                  placeholder="e.g., financial-model, cpfr-data, forecast"
+                  value={bulkTags}
+                  onChange={(e) => setBulkTags(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Comma-separated tags for god-mode AI context
+                </p>
+              </div>
+              <div>
+                <Label>Quick Tag Suggestions</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {tagSuggestions.slice(0, 6).map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setBulkTags(prev => prev ? `${prev}, ${tag}` : tag)}
+                      className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* File Upload Zone */}
         <Card>
           <CardHeader>
@@ -291,27 +369,68 @@ export default function RAGUploadPage() {
               </Button>
             </div>
 
-            {/* File List */}
+            {/* File List with Individual Tagging */}
             {files.length > 0 && (
-              <div className="mt-6 space-y-2">
-                <Label>Files to Upload ({files.length})</Label>
-                <div className="max-h-40 overflow-y-auto space-y-2">
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span className="text-sm font-medium">{file.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({(file.size / 1024).toFixed(1)} KB)
-                        </span>
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Files to Upload ({files.length})</Label>
+                  {bulkTags && (
+                    <Button
+                      size="sm"
+                      onClick={applyBulkTags}
+                      className="text-xs"
+                    >
+                      Apply Bulk Tags to All
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-3">
+                  {files.map((fileWithTags, index) => (
+                    <div key={fileWithTags.id} className="p-3 bg-gray-50 rounded border space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-sm font-medium">{fileWithTags.file.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({(fileWithTags.file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFile(index)}
+                        >
+                          ×
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeFile(index)}
-                      >
-                        ×
-                      </Button>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Individual tags for this file..."
+                          value={fileWithTags.tags}
+                          onChange={(e) => updateFileTags(fileWithTags.id, e.target.value)}
+                          className="text-xs"
+                        />
+                        <div className="flex flex-wrap gap-1">
+                          {['financial', 'cpfr', 'forecast', 'technical'].map(quickTag => (
+                            <button
+                              key={quickTag}
+                              onClick={() => {
+                                const currentTags = fileWithTags.tags;
+                                const newTags = currentTags ? `${currentTags}, ${quickTag}` : quickTag;
+                                updateFileTags(fileWithTags.id, newTags);
+                              }}
+                              className="px-1 py-0.5 text-xs bg-green-100 hover:bg-green-200 rounded"
+                            >
+                              +{quickTag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {fileWithTags.tags && (
+                        <div className="text-xs text-blue-600">
+                          🏷️ Tags: {fileWithTags.tags}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
