@@ -487,15 +487,25 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
         const filePath = file.path.toLowerCase();
         const bucket = file.bucket.toLowerCase();
         
-        // CRITICAL: If query mentions specific file name, ALWAYS include it
-        const fileNameParts = fileName.replace(/[^a-z0-9]/g, ' ').split(' ');
-        const queryParts = queryLower.replace(/[^a-z0-9]/g, ' ').split(' ');
+        // CRITICAL: Handle Supabase timestamp prefixes (e.g., 1757613399158_Boundless_Financial...)
+        const fileNameWithoutTimestamp = fileName.replace(/^\d+_/, ''); // Remove timestamp prefix
+        const fileNameParts = fileNameWithoutTimestamp.replace(/[^a-z0-9]/g, ' ').split(' ').filter((p: string) => p.length > 2);
+        const queryParts = queryLower.replace(/[^a-z0-9]/g, ' ').split(' ').filter((p: string) => p.length > 2);
+        
+        console.log(`🔍 DEBUG: Checking file "${fileName}"`);
+        console.log(`🔍 DEBUG: Without timestamp: "${fileNameWithoutTimestamp}"`);
+        console.log(`🔍 DEBUG: File parts:`, fileNameParts);
+        console.log(`🔍 DEBUG: Query parts:`, queryParts);
+        
         const hasFileNameMatch = fileNameParts.some((part: string) => 
-          part.length > 3 && queryParts.some((qPart: string) => qPart.includes(part) || part.includes(qPart))
+          queryParts.some((qPart: string) => 
+            qPart.includes(part) || part.includes(qPart) || 
+            qPart === part || part === qPart
+          )
         );
         
         if (hasFileNameMatch) {
-          console.log(`🎯 CRITICAL FILE MATCH: ${fileName} matches query parts - FORCING INCLUSION`);
+          console.log(`🎯 CRITICAL FILE MATCH: ${fileName} (${fileNameWithoutTimestamp}) matches query - FORCING INCLUSION`);
           return true;
         }
         
