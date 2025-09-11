@@ -98,8 +98,8 @@ export class SupabaseFileRAG {
 
   // Recursively explore folder structures to find actual files
   private async exploreFolder(bucket: string, folderPath: string, allFiles: any[], depth: number = 0): Promise<void> {
-    // Prevent infinite recursion
-    if (depth > 3) {
+    // Prevent infinite recursion - increase depth for UUID folder structures
+    if (depth > 5) {
       console.log(`📁 Max depth reached for ${bucket}/${folderPath}`);
       return;
     }
@@ -133,7 +133,8 @@ export class SupabaseFileRAG {
           });
           console.log(`📄 Found file: ${itemPath} (${item.metadata.size} bytes)`);
         } else {
-          // It's likely another folder, explore recursively
+          // It's likely another folder (could be UUID folder), explore recursively
+          console.log(`📁 Found subfolder: ${itemPath} - exploring deeper...`);
           await this.exploreFolder(bucket, itemPath, allFiles, depth + 1);
         }
       }
