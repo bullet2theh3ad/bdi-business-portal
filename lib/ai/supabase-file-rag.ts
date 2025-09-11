@@ -315,17 +315,43 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
   // Format Excel content for AI analysis
   private formatExcelContent(workbook: XLSX.WorkBook, fileName: string): string {
     const sheetNames = workbook.SheetNames;
-    let content = `📊 EXCEL FILE: ${fileName}\n📋 Sheets: ${sheetNames.join(', ')}\n\n`;
+    let content = `📊 EXCEL FILE: ${fileName}\n📋 ALL SHEETS: ${sheetNames.join(', ')}\n\n`;
     
-    // Extract data from first 2 sheets
-    for (let i = 0; i < Math.min(2, sheetNames.length); i++) {
-      const sheetName = sheetNames[i];
+    // CRITICAL: Extract data from ALL sheets (not just first 2)
+    for (const sheetName of sheetNames) {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       
-      content += `📋 Sheet "${sheetName}" (first 10 rows):\n`;
-      content += jsonData.slice(0, 10).map((row: any) => row.join(' | ')).join('\n');
-      content += `\n📊 Total rows in ${sheetName}: ${jsonData.length}\n\n`;
+      content += `📋 SHEET "${sheetName.toUpperCase()}" ANALYSIS:\n`;
+      content += `📊 Total rows: ${jsonData.length}\n`;
+      
+      if (jsonData.length > 0) {
+        // Show more data for financial sheets (PL, CF, Revenue, etc.)
+        const isFinancialSheet = /^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName);
+        const rowLimit = isFinancialSheet ? 25 : 15; // More rows for financial data
+        
+        content += `📈 Content (first ${Math.min(rowLimit, jsonData.length)} rows):\n`;
+        content += jsonData.slice(0, rowLimit).map((row: any, index: number) => {
+          const cleanRow = row.filter((cell: any) => cell !== null && cell !== undefined && cell !== '');
+          return cleanRow.length > 0 ? `Row ${index + 1}: ${cleanRow.join(' | ')}` : '';
+        }).filter(row => row).join('\n');
+        
+        // For financial sheets, also extract key metrics
+        if (isFinancialSheet && jsonData.length > 1) {
+          content += `\n💰 KEY FINANCIAL METRICS DETECTED:\n`;
+          const keyRows = jsonData.slice(0, 30).filter((row: any) => {
+            const rowText = row.join(' ').toLowerCase();
+            return rowText.includes('revenue') || rowText.includes('profit') || 
+                   rowText.includes('cost') || rowText.includes('margin') ||
+                   rowText.includes('total') || rowText.includes('$');
+          });
+          keyRows.slice(0, 10).forEach((row: any, index: number) => {
+            content += `${index + 1}. ${row.filter((cell: any) => cell).join(' | ')}\n`;
+          });
+        }
+      }
+      
+      content += `\n`;
     }
     
     return content;
