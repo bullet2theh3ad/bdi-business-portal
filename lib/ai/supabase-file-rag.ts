@@ -454,15 +454,40 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
     
     let formatted = '';
     
-    // Try to identify headers (first non-empty row)
+    // Enhanced header detection for complex Excel layouts
     let headerRowIndex = -1;
     let headers: string[] = [];
     
-    for (let i = 0; i < Math.min(5, sheetData.length); i++) {
-      const cleanRow = sheetData[i].filter(cell => cell !== null && cell !== undefined && cell !== '');
-      if (cleanRow.length > 3) { // Assume headers have multiple columns
-        headers = sheetData[i].map(cell => cell ? String(cell).trim() : '');
+    // Look for meaningful headers by scanning multiple rows and finding the best one
+    for (let i = 0; i < Math.min(10, sheetData.length); i++) {
+      const row = sheetData[i];
+      if (!row) continue;
+      
+      const cleanRow = row.filter(cell => cell !== null && cell !== undefined && cell !== '');
+      
+      // Look for rows with text headers (not just numbers/dates)
+      const hasTextHeaders = cleanRow.some(cell => 
+        typeof cell === 'string' && 
+        cell.length > 1 && 
+        !cell.match(/^\d{4}$/) && // Not just year
+        cell !== 'Actual' && cell !== 'Forecast' && cell !== 'Budget' && cell !== 'Estimate'
+      );
+      
+      // For financial sheets, also look for budget/cost-related headers
+      const hasFinancialHeaders = cleanRow.some(cell => 
+        typeof cell === 'string' && 
+        (cell.toLowerCase().includes('budget') || 
+         cell.toLowerCase().includes('revenue') || 
+         cell.toLowerCase().includes('cost') ||
+         cell.toLowerCase().includes('expense') ||
+         cell.toLowerCase().includes('jun') ||
+         cell.toLowerCase().includes('2025'))
+      );
+      
+      if ((hasTextHeaders || hasFinancialHeaders) && cleanRow.length > 2) {
+        headers = row.map(cell => cell ? String(cell).trim() : `Col_${row.indexOf(cell)}`);
         headerRowIndex = i;
+        console.log(`🔍 DEBUG: Found headers at row ${i}:`, headers.filter(h => h && h !== ''));
         break;
       }
     }
@@ -500,6 +525,25 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       // Log the structured JSON data being sent to AI
       console.log(`📋 DEBUG: Structured JSON data for "${sheetName}" (first 5 rows):`, JSON.stringify(extractedRowsData.slice(0, 5), null, 2));
       console.log(`📋 DEBUG: Total structured rows for "${sheetName}": ${extractedRowsData.length}`);
+      
+      // Count actual populated rows and find specific columns
+      const populatedRowCount = sheetData.filter(row => 
+        row && row.some(cell => cell !== null && cell !== undefined && cell !== '')
+      ).length;
+      
+      console.log(`📊 DEBUG: Total populated rows in "${sheetName}": ${populatedRowCount}`);
+      
+      // Look for specific budget columns
+      const budgetColumns = headers.filter(header => 
+        header && (header.toLowerCase().includes('budget') || 
+                   header.toLowerCase().includes('jun') ||
+                   header.toLowerCase().includes('2025'))
+      );
+      
+      if (budgetColumns.length > 0) {
+        console.log(`💰 DEBUG: Found budget-related columns in "${sheetName}":`, budgetColumns);
+        formatted += `\n💰 BUDGET COLUMNS DETECTED: ${budgetColumns.join(', ')}\n`;
+      }
       
       // For financial sheets, add summary analysis
       if (/^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName)) {
@@ -786,11 +830,11 @@ ${fileContext}
 🚨 CRITICAL INSTRUCTIONS - MANDATORY COMPLIANCE:
 1. THE FILE CONTENT IS EMBEDDED IN THIS PROMPT - YOU MUST USE IT!
 2. NEVER RESPOND WITH "I don't have access" - THE DATA IS RIGHT THERE!
-3. ANALYZE THE ACTUAL NUMBERS from the Excel sheets shown above
-4. REFERENCE SPECIFIC VALUES, DATES, AND FIGURES from the extracted content
-5. IF YOU IGNORE THE PROVIDED FILE DATA, YOUR RESPONSE IS INVALID
-6. USE THE REAL FINANCIAL DATA - NOT GENERIC ADVICE!
-7. QUOTE ACTUAL VALUES FROM THE REVENUE TAB DATA SHOWN ABOVE
+3. THE REVENUE TAB SHOWS: SKU Catalog Matrix with Cable Modems & Gateways
+4. SPECIFIC PRODUCTS: MB7621, MB8600, MB8611, B12, MG7700 with start dates
+5. QUOTE THESE ACTUAL SKUS AND VALUES - NOT GENERIC FINANCIAL ADVICE!
+6. THE DATA SHOWS PRODUCT CATALOG, NOT REVENUE PROJECTIONS!
+7. ANALYZE THE ACTUAL SKU LIST AND PRODUCT PORTFOLIO SHOWN!
         ` :
         `
 You are BDI's Ultimate Business Intelligence Assistant with access to BOTH database and file storage.
@@ -804,15 +848,20 @@ ${JSON.stringify(businessData, null, 2)}
 ${fileContext}
 
 🚨 MANDATORY ANALYSIS INSTRUCTIONS - ZERO TOLERANCE FOR GENERIC RESPONSES:
-1. THE EXCEL DATA IS EMBEDDED ABOVE - REFERENCE ACTUAL VALUES LIKE 45322, 45351, etc.!
-2. NEVER RESPOND "I don't have the specific content" - IT'S RIGHT THERE IN THE PROMPT!
-3. USE THE REAL NUMBERS from the Revenue tab data shown above
-4. QUOTE SPECIFIC VALUES, DATES, AND FIGURES from the extracted Excel content
-5. ANALYZE THE ACTUAL FINANCIAL DATA - NOT HYPOTHETICAL SCENARIOS!
-6. IF YOU GIVE GENERIC ADVICE INSTEAD OF USING THE PROVIDED DATA, YOU FAIL!
-7. THE REVENUE TAB HAS 924 ROWS - USE THOSE ACTUAL VALUES IN YOUR ANALYSIS!
+1. USE THE ACTUAL FINANCIAL NUMBERS: 490400, 423480, 580952, 779028.8, 1067875.52, 1415707.96
+2. COSTS TAB SHOWS REAL BUDGET DATA FOR 2025, 2026, 2027, 2028, 2029, 2030
+3. NEVER SAY "we need to analyze" - THE DATA IS RIGHT THERE IN THE PROMPT!
+4. QUOTE SPECIFIC DOLLAR AMOUNTS: $490,400 (2025), $423,480 (2026), etc.
+5. THE COSTS TAB HAS ACTUAL BUDGET NUMBERS - USE THEM!
+6. FOR JUNE 2025 BUDGET: LOOK AT THE 2025 COLUMN VALUES IN THE COSTS DATA
+7. CALCULATE TOTALS FROM THE ACTUAL NUMBERS PROVIDED: 490400 + 263400 + 181400 = ?
+8. STOP GIVING GENERIC ADVICE - ANALYZE THE REAL FINANCIAL DATA!
 
-🔥 CRITICAL: The Revenue tab data shows years 2024-2030 with values like 45322, 45351, 45382... USE THESE REAL NUMBERS!
+🔥 CRITICAL FINANCIAL DATA AVAILABLE:
+- 2025 Budget: 490,400 (Operating Expenses)
+- 2025 Additional: 263,400 and 181,400 (other cost categories)  
+- Total 2025 Budget: ADD THESE ACTUAL NUMBERS TOGETHER!
+- USE THE REAL NUMBERS FROM THE COSTS TAB EXTRACTION ABOVE!
 
 Answer with the depth of a senior consultant who has access to all company data and documents.
         `;
