@@ -458,6 +458,14 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
       const availableFiles = await this.getAvailableFiles();
       console.log(`📁 Available files:`, availableFiles.map(f => f.name));
       
+      // DEBUG: Check if Boundless Financial Model is in available files
+      const financialModel = availableFiles.find(f => f.name.includes('Boundless_Financial'));
+      if (financialModel) {
+        console.log(`🎯 DEBUG: Found Boundless Financial Model in available files: ${financialModel.name}`);
+      } else {
+        console.log(`❌ DEBUG: Boundless Financial Model NOT found in available files`);
+      }
+      
       // Enhanced search logic
       const queryLower = query.toLowerCase();
       const searchTerms = this.extractSearchTerms(queryLower);
@@ -487,7 +495,7 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
         );
         
         if (hasFileNameMatch) {
-          console.log(`🎯 File name match detected: ${fileName} matches query parts`);
+          console.log(`🎯 CRITICAL FILE MATCH: ${fileName} matches query parts - FORCING INCLUSION`);
           return true;
         }
         
