@@ -186,7 +186,9 @@ export class SupabaseFileRAG {
   }
 
   // Extract text content from various file types - ENHANCED
-  async extractTextContent(file: any): Promise<string | null> {
+  async extractTextContent(file: any, query?: string): Promise<string | null> {
+    // Store current query for deep analysis detection
+    (this as any).currentQuery = query;
     try {
       const { bucket, name, contentType } = file;
       console.log(`📄 Extracting content from: ${name} (${contentType})`);
@@ -250,11 +252,19 @@ export class SupabaseFileRAG {
         name.toLowerCase().endsWith('.xlsx') ||
         name.toLowerCase().endsWith('.xls')
       ) {
-        // Excel files
+        // Excel files with smart analysis detection
         console.log(`📊 Extracting Excel content from: ${name}`);
         const buffer = await data.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'buffer' });
-        return this.formatExcelContent(workbook, name);
+        
+        // Detect if user is requesting deep analysis
+        const deepAnalysisKeywords = ['full data', 'all rows', 'complete analysis', 'deep analysis', 
+                                     'comprehensive', 'all data', 'full extraction', 'analyze the', 'with all'];
+        const isDeepAnalysisRequest = deepAnalysisKeywords.some(keyword => 
+          (this as any).currentQuery?.toLowerCase().includes(keyword)
+        );
+        
+        return this.formatExcelContent(workbook, name, isDeepAnalysisRequest);
         
       } else if (
         contentType?.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
@@ -313,39 +323,95 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
   }
 
   // Format Excel content for AI analysis
-  private formatExcelContent(workbook: XLSX.WorkBook, fileName: string): string {
+  private formatExcelContent(workbook: XLSX.WorkBook, fileName: string, deepAnalysis: boolean = false): string {
     const sheetNames = workbook.SheetNames;
     let content = `📊 EXCEL FILE: ${fileName}\n📋 ALL SHEETS: ${sheetNames.join(', ')}\n\n`;
     
-    // CRITICAL: Extract data from ALL sheets (not just first 2)
+    // First, scan all sheets to get structure and sizes
+    const sheetAnalysis: any[] = [];
+    let totalRows = 0;
+    let hasLargeSheets = false;
+    
     for (const sheetName of sheetNames) {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const isFinancialSheet = /^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName);
       
-      content += `📋 SHEET "${sheetName.toUpperCase()}" ANALYSIS:\n`;
-      content += `📊 Total rows: ${jsonData.length}\n`;
+      sheetAnalysis.push({
+        name: sheetName,
+        rows: jsonData.length,
+        isFinancial: isFinancialSheet,
+        data: jsonData
+      });
       
-      if (jsonData.length > 0) {
-        // Show more data for financial sheets (PL, CF, Revenue, etc.)
-        const isFinancialSheet = /^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName);
-        const rowLimit = isFinancialSheet ? 25 : 15; // More rows for financial data
+      totalRows += jsonData.length;
+      if (jsonData.length > 100) hasLargeSheets = true;
+    }
+    
+    // If file is large and not doing deep analysis, provide structure overview and ask
+    if (hasLargeSheets && !deepAnalysis) {
+      content += `🔍 FILE STRUCTURE ANALYSIS:\n`;
+      content += `📊 Total sheets: ${sheetNames.length}\n`;
+      content += `📊 Total rows across all sheets: ${totalRows.toLocaleString()}\n\n`;
+      
+      for (const sheet of sheetAnalysis) {
+        content += `📋 ${sheet.name.toUpperCase()}: ${sheet.rows.toLocaleString()} rows`;
+        if (sheet.isFinancial) content += ` (🔥 FINANCIAL DATA)`;
+        if (sheet.rows > 100) content += ` (⚠️ LARGE DATASET)`;
+        content += `\n`;
+      }
+      
+      content += `\n🤔 ANALYSIS DECISION REQUIRED:\n`;
+      content += `This file contains ${totalRows.toLocaleString()} total rows of data. `;
+      content += `Full analysis will take significantly longer but provide complete insights.\n\n`;
+      content += `💡 RECOMMENDATION: Ask a specific question like:\n`;
+      content += `- "Analyze the PL tab with full data extraction"\n`;
+      content += `- "Show me Revenue tab summary with all 900 rows"\n`;
+      content += `- "Quick preview of all financial sheets"\n\n`;
+      
+      // Still show preview of first few rows from each sheet
+      for (const sheet of sheetAnalysis) {
+        if (sheet.data.length > 0) {
+          content += `📋 ${sheet.name.toUpperCase()} PREVIEW (first 3 rows):\n`;
+          content += sheet.data.slice(0, 3).map((row: any, index: number) => {
+            const cleanRow = row.filter((cell: any) => cell !== null && cell !== undefined && cell !== '');
+            return cleanRow.length > 0 ? `${index + 1}: ${cleanRow.join(' | ')}` : '';
+          }).filter((row: string) => row).join('\n');
+          content += `\n`;
+        }
+      }
+      
+      return content;
+    }
+    
+    // DEEP ANALYSIS: Extract comprehensive data from all sheets
+    content += `🔥 COMPREHENSIVE ANALYSIS MODE (${totalRows.toLocaleString()} total rows)\n\n`;
+    
+    for (const sheet of sheetAnalysis) {
+      content += `📋 SHEET "${sheet.name.toUpperCase()}" FULL ANALYSIS:\n`;
+      content += `📊 Total rows: ${sheet.rows.toLocaleString()}\n`;
+      
+      if (sheet.data.length > 0) {
+        // For deep analysis, extract much more data
+        const rowLimit = sheet.isFinancial ? Math.min(sheet.rows, 200) : Math.min(sheet.rows, 100);
         
-        content += `📈 Content (first ${Math.min(rowLimit, jsonData.length)} rows):\n`;
-        content += jsonData.slice(0, rowLimit).map((row: any, index: number) => {
+        content += `📈 Content (${rowLimit} rows extracted):\n`;
+        content += sheet.data.slice(0, rowLimit).map((row: any, index: number) => {
           const cleanRow = row.filter((cell: any) => cell !== null && cell !== undefined && cell !== '');
           return cleanRow.length > 0 ? `Row ${index + 1}: ${cleanRow.join(' | ')}` : '';
-        }).filter(row => row).join('\n');
+        }).filter((row: string) => row).join('\n');
         
-        // For financial sheets, also extract key metrics
-        if (isFinancialSheet && jsonData.length > 1) {
-          content += `\n💰 KEY FINANCIAL METRICS DETECTED:\n`;
-          const keyRows = jsonData.slice(0, 30).filter((row: any) => {
+        // For financial sheets, extract ALL key metrics
+        if (sheet.isFinancial && sheet.data.length > 1) {
+          content += `\n💰 ALL FINANCIAL METRICS DETECTED:\n`;
+          const keyRows = sheet.data.filter((row: any) => {
             const rowText = row.join(' ').toLowerCase();
             return rowText.includes('revenue') || rowText.includes('profit') || 
                    rowText.includes('cost') || rowText.includes('margin') ||
-                   rowText.includes('total') || rowText.includes('$');
+                   rowText.includes('total') || rowText.includes('$') ||
+                   rowText.includes('income') || rowText.includes('expense');
           });
-          keyRows.slice(0, 10).forEach((row: any, index: number) => {
+          keyRows.forEach((row: any, index: number) => {
             content += `${index + 1}. ${row.filter((cell: any) => cell).join(' | ')}\n`;
           });
         }
@@ -519,7 +585,7 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
       const fileContents: string[] = [];
       
       for (const file of relevantFiles) {
-        const content = await this.extractTextContent(file);
+        const content = await this.extractTextContent(file, query);
         if (content) {
           fileContents.push(`
 📄 FILE: ${file.name} (${file.bucket})
