@@ -259,10 +259,17 @@ export class SupabaseFileRAG {
         
         // Detect if user is requesting deep analysis
         const deepAnalysisKeywords = ['full data', 'all rows', 'complete analysis', 'deep analysis', 
-                                     'comprehensive', 'all data', 'full extraction', 'analyze the', 'with all'];
+                                     'comprehensive', 'all data', 'full extraction', 'analyze the', 'with all',
+                                     'financial analysis', 'revenue tab', 'analyze revenue', 'revenue analysis',
+                                     'tab analysis', 'sheet analysis'];
+        const queryLower = (this as any).currentQuery?.toLowerCase() || '';
         const isDeepAnalysisRequest = deepAnalysisKeywords.some(keyword => 
-          (this as any).currentQuery?.toLowerCase().includes(keyword)
+          queryLower.includes(keyword)
         );
+        
+        console.log(`🔍 DEBUG: Deep analysis detection for "${name}"`);
+        console.log(`🔍 DEBUG: Query: "${queryLower}"`);
+        console.log(`🔍 DEBUG: Deep analysis triggered: ${isDeepAnalysisRequest}`);
         
         return this.formatExcelContent(workbook, name, isDeepAnalysisRequest);
         
@@ -372,10 +379,14 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       // Still show preview of first few rows from each sheet
       for (const sheet of sheetAnalysis) {
         if (sheet.data.length > 0) {
-          content += `📋 ${sheet.name.toUpperCase()} PREVIEW (first 3 rows):\n`;
-          content += sheet.data.slice(0, 3).map((row: any, index: number) => {
+          content += `📋 ${sheet.name.toUpperCase()} PREVIEW (first 10 rows):\n`;
+          console.log(`🔍 DEBUG: Sheet "${sheet.name}" has ${sheet.rows} rows`);
+          const previewRows = sheet.data.slice(0, 10);
+          console.log(`🔍 DEBUG: First 10 rows from ${sheet.name}:`, previewRows);
+          
+          content += previewRows.map((row: any, index: number) => {
             const cleanRow = row.filter((cell: any) => cell !== null && cell !== undefined && cell !== '');
-            return cleanRow.length > 0 ? `${index + 1}: ${cleanRow.join(' | ')}` : '';
+            return cleanRow.length > 0 ? `Row ${index + 1}: ${cleanRow.join(' | ')}` : '';
           }).filter((row: string) => row).join('\n');
           content += `\n`;
         }
@@ -391,15 +402,22 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       content += `📋 SHEET "${sheet.name.toUpperCase()}" FULL ANALYSIS:\n`;
       content += `📊 Total rows: ${sheet.rows.toLocaleString()}\n`;
       
+      console.log(`🔍 DEBUG: Deep analysis for sheet "${sheet.name}" - ${sheet.rows} rows`);
+      
       if (sheet.data.length > 0) {
         // For deep analysis, extract much more data
         const rowLimit = sheet.isFinancial ? Math.min(sheet.rows, 200) : Math.min(sheet.rows, 100);
         
+        console.log(`🔍 DEBUG: Extracting ${rowLimit} rows from "${sheet.name}"`);
+        console.log(`🔍 DEBUG: First 5 rows from "${sheet.name}":`, sheet.data.slice(0, 5));
+        
         content += `📈 Content (${rowLimit} rows extracted):\n`;
-        content += sheet.data.slice(0, rowLimit).map((row: any, index: number) => {
+        const extractedRows = sheet.data.slice(0, rowLimit).map((row: any, index: number) => {
           const cleanRow = row.filter((cell: any) => cell !== null && cell !== undefined && cell !== '');
           return cleanRow.length > 0 ? `Row ${index + 1}: ${cleanRow.join(' | ')}` : '';
-        }).filter((row: string) => row).join('\n');
+        }).filter((row: string) => row);
+        
+        content += extractedRows.join('\n');
         
         // For financial sheets, extract ALL key metrics
         if (sheet.isFinancial && sheet.data.length > 1) {
