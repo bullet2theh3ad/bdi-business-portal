@@ -355,8 +355,9 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       if (jsonData.length > 100) hasLargeSheets = true;
     }
     
-    // If file is large and not doing deep analysis, provide structure overview and ask
-    if (hasLargeSheets && !deepAnalysis) {
+    // NEVER use preview mode - always do deep analysis as requested by user
+    // if (hasLargeSheets && !deepAnalysis) {
+    if (false) { // DISABLED - always do full analysis
       content += `🔍 FILE STRUCTURE ANALYSIS:\n`;
       content += `📊 Total sheets: ${sheetNames.length}\n`;
       content += `📊 Total rows across all sheets: ${totalRows.toLocaleString()}\n\n`;
@@ -396,6 +397,7 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
     }
     
     // DEEP ANALYSIS: Extract comprehensive data from all sheets
+    console.log(`🔥 DEBUG: COMPREHENSIVE ANALYSIS MODE - processing ${totalRows.toLocaleString()} total rows`);
     content += `🔥 COMPREHENSIVE ANALYSIS MODE (${totalRows.toLocaleString()} total rows)\n\n`;
     
     for (const sheet of sheetAnalysis) {
@@ -405,8 +407,8 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       console.log(`🔍 DEBUG: Deep analysis for sheet "${sheet.name}" - ${sheet.rows} rows`);
       
       if (sheet.data.length > 0) {
-        // For deep analysis, extract much more data
-        const rowLimit = sheet.isFinancial ? Math.min(sheet.rows, 200) : Math.min(sheet.rows, 100);
+        // For deep analysis, extract ALL data from financial sheets
+        const rowLimit = sheet.isFinancial ? sheet.rows : Math.min(sheet.rows, 200); // NO LIMIT for financial sheets!
         
         console.log(`🔍 DEBUG: Extracting ${rowLimit} rows from "${sheet.name}"`);
         console.log(`🔍 DEBUG: First 5 rows from "${sheet.name}":`, sheet.data.slice(0, 5));
@@ -444,6 +446,8 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
   private formatSheetDataForAI(sheetData: any[][], sheetName: string): string {
     if (!sheetData || sheetData.length === 0) return 'No data available\n';
     
+    console.log(`🔧 DEBUG: formatSheetDataForAI called for "${sheetName}" with ${sheetData.length} rows`);
+    
     let formatted = '';
     
     // Try to identify headers (first non-empty row)
@@ -464,9 +468,14 @@ ${preview}${pdfText.length > 2000 ? '...' : ''}
       formatted += `\n📊 TABLE STRUCTURE FOR ${sheetName.toUpperCase()}:\n`;
       formatted += `Headers: ${headers.filter(h => h).join(' | ')}\n\n`;
       
-      // Format data rows
-      formatted += `📋 DATA ROWS:\n`;
-      for (let i = headerRowIndex + 1; i < Math.min(headerRowIndex + 50, sheetData.length); i++) {
+      // Format data rows - NO LIMIT for financial sheets!
+      const isFinancialSheet = /^(PL|P&L|CF|Revenue|Costs|KPI|Financial|Income|Profit|Loss)$/i.test(sheetName);
+      const maxRows = isFinancialSheet ? sheetData.length : Math.min(headerRowIndex + 100, sheetData.length);
+      
+      formatted += `📋 DATA ROWS (extracting ${maxRows - headerRowIndex - 1} rows):\n`;
+      console.log(`🔧 DEBUG: Extracting ${maxRows - headerRowIndex - 1} rows for "${sheetName}" (isFinancial: ${isFinancialSheet})`);
+      
+      for (let i = headerRowIndex + 1; i < maxRows; i++) {
         const row = sheetData[i];
         if (!row || row.every(cell => !cell)) continue;
         
