@@ -70,28 +70,9 @@ export class SupabaseFileRAG {
                 isFile: true
               });
             } else {
-              // It's likely a folder, try to list contents
+              // It's likely a folder, try to list contents recursively
               try {
-                const { data: folderFiles, error: folderError } = await this.serviceSupabase.storage
-                  .from(bucket.name)
-                  .list(item.name, { limit: 100 });
-                
-                if (!folderError && folderFiles) {
-                  for (const file of folderFiles) {
-                    if (file.metadata?.size > 0) {
-                      allFiles.push({
-                        bucket: bucket.name,
-                        name: file.name,
-                        folder: item.name,
-                        size: file.metadata.size,
-                        contentType: file.metadata.mimetype || 'unknown',
-                        lastModified: file.updated_at || file.created_at,
-                        path: `${bucket.name}/${item.name}/${file.name}`,
-                        isFile: true
-                      });
-                    }
-                  }
-                }
+                await this.exploreFolder(bucket.name, item.name, allFiles);
               } catch (folderError) {
                 console.log(`📁 Could not access folder ${item.name} in ${bucket.name}`);
               }
@@ -112,6 +93,53 @@ export class SupabaseFileRAG {
     } catch (error) {
       console.error('Error scanning Supabase storage:', error);
       return [];
+    }
+  }
+
+  // Recursively explore folder structures to find actual files
+  private async exploreFolder(bucket: string, folderPath: string, allFiles: any[], depth: number = 0): Promise<void> {
+    // Prevent infinite recursion
+    if (depth > 3) {
+      console.log(`📁 Max depth reached for ${bucket}/${folderPath}`);
+      return;
+    }
+    
+    try {
+      console.log(`📁 Exploring folder: ${bucket}/${folderPath} (depth: ${depth})`);
+      
+      const { data: folderItems, error: folderError } = await this.serviceSupabase.storage
+        .from(bucket)
+        .list(folderPath, { limit: 100 });
+      
+      if (folderError || !folderItems) {
+        console.log(`📁 Could not list items in ${bucket}/${folderPath}:`, folderError);
+        return;
+      }
+      
+      for (const item of folderItems) {
+        const itemPath = `${folderPath}/${item.name}`;
+        
+        if (item.metadata?.size > 0) {
+          // It's a file
+          allFiles.push({
+            bucket: bucket,
+            name: item.name,
+            folder: folderPath,
+            size: item.metadata.size,
+            contentType: item.metadata.mimetype || 'unknown',
+            lastModified: item.updated_at || item.created_at,
+            path: itemPath,
+            isFile: true
+          });
+          console.log(`📄 Found file: ${itemPath} (${item.metadata.size} bytes)`);
+        } else {
+          // It's likely another folder, explore recursively
+          await this.exploreFolder(bucket, itemPath, allFiles, depth + 1);
+        }
+      }
+      
+    } catch (error) {
+      console.error(`Error exploring folder ${bucket}/${folderPath}:`, error);
     }
   }
 
