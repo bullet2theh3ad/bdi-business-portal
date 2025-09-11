@@ -15,7 +15,7 @@ async function initPdfParse() {
       pdfParse = pdfParseModule.default || pdfParseModule;
       console.log('✅ PDF parsing initialized with pdf-parse-fork');
     } catch (error) {
-      console.warn('📄 PDF parsing not available:', error.message);
+      console.warn('📄 PDF parsing not available:', error instanceof Error ? error.message : String(error));
       pdfParse = null;
     }
   }
