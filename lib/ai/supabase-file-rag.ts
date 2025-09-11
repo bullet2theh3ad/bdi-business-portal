@@ -1,5 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import * as XLSX from 'xlsx';
+import * as mammoth from 'mammoth';
+
+// Dynamic import for pdf-parse to avoid build issues
+let pdfParse: any = null;
+try {
+  pdfParse = require('pdf-parse');
+} catch (error) {
+  console.warn('PDF parsing not available:', error);
+}
 
 // Supabase File RAG System
 export class SupabaseFileRAG {
@@ -93,54 +103,244 @@ export class SupabaseFileRAG {
     }
   }
 
-  // Extract text content from various file types
+  // Extract text content from various file types - ENHANCED
   async extractTextContent(file: any): Promise<string | null> {
     try {
       const { bucket, name, contentType } = file;
+      console.log(`📄 Extracting content from: ${name} (${contentType})`);
+      
+      // Get raw file data
+      const { data, error } = await this.serviceSupabase.storage
+        .from(bucket)
+        .download(name);
+      
+      if (error) {
+        console.error(`Error downloading file ${bucket}/${name}:`, error);
+        return `[Error downloading file: ${name}]`;
+      }
       
       // Handle different file types
-      if (contentType?.includes('text') || contentType?.includes('csv')) {
-        // Text-based files
-        return await this.getFileContent(bucket, name);
-      } else if (contentType?.includes('pdf')) {
-        // PDF files - would need PDF parsing library
-        console.log(`📄 PDF file detected: ${name} - PDF parsing not implemented yet`);
-        return `[PDF File: ${name} - Content extraction not yet implemented]`;
-      } else if (contentType?.includes('excel') || contentType?.includes('spreadsheet')) {
-        // Excel files - would need Excel parsing library
-        console.log(`📊 Excel file detected: ${name} - Excel parsing not implemented yet`);
-        return `[Excel File: ${name} - Content extraction not yet implemented]`;
+      if (contentType?.includes('text/csv') || name.toLowerCase().endsWith('.csv')) {
+        // CSV files
+        const text = await data.text();
+        return this.formatCSVContent(text, name);
+        
+      } else if (contentType?.includes('text/') || name.toLowerCase().endsWith('.txt')) {
+        // Plain text files
+        return await data.text();
+        
+      } else if (contentType?.includes('application/pdf') || name.toLowerCase().endsWith('.pdf')) {
+        // PDF files
+        if (!pdfParse) {
+          console.log(`📄 PDF parsing not available for: ${name}`);
+          return `[PDF File: ${name} - PDF parsing library not available]`;
+        }
+        console.log(`📄 Extracting PDF content from: ${name}`);
+        const buffer = await data.arrayBuffer();
+        const pdfData = await pdfParse(Buffer.from(buffer));
+        return this.formatPDFContent(pdfData.text, name);
+        
+      } else if (
+        contentType?.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') ||
+        contentType?.includes('application/vnd.ms-excel') ||
+        name.toLowerCase().endsWith('.xlsx') ||
+        name.toLowerCase().endsWith('.xls')
+      ) {
+        // Excel files
+        console.log(`📊 Extracting Excel content from: ${name}`);
+        const buffer = await data.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        return this.formatExcelContent(workbook, name);
+        
+      } else if (
+        contentType?.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+        name.toLowerCase().endsWith('.docx')
+      ) {
+        // Word documents
+        console.log(`📝 Extracting Word content from: ${name}`);
+        const buffer = await data.arrayBuffer();
+        const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
+        return this.formatWordContent(result.value, name);
+        
+      } else if (contentType?.includes('application/json') || name.toLowerCase().endsWith('.json')) {
+        // JSON files
+        const text = await data.text();
+        const jsonData = JSON.parse(text);
+        return this.formatJSONContent(jsonData, name);
+        
       } else {
         console.log(`📄 Unsupported file type: ${contentType} for ${name}`);
-        return `[File: ${name} - Type: ${contentType} - Content extraction not supported]`;
+        return `[File: ${name} - Type: ${contentType} - Content extraction not supported yet]`;
       }
       
     } catch (error) {
       console.error('Error extracting text content:', error);
-      return null;
+      return `[Error extracting content from ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
-  // Search files by content or metadata
+  // Format CSV content for AI analysis
+  private formatCSVContent(csvText: string, fileName: string): string {
+    const lines = csvText.split('\n').slice(0, 20); // First 20 lines
+    return `
+📊 CSV FILE: ${fileName}
+📋 Content (first 20 rows):
+${lines.join('\n')}
+
+📈 CSV Summary:
+- Total rows: ~${csvText.split('\n').length}
+- Headers: ${lines[0] || 'Not available'}
+- File type: Structured data (CSV)
+    `;
+  }
+
+  // Format PDF content for AI analysis
+  private formatPDFContent(pdfText: string, fileName: string): string {
+    const preview = pdfText.substring(0, 2000);
+    return `
+📄 PDF FILE: ${fileName}
+📋 Content Preview (first 2000 characters):
+${preview}${pdfText.length > 2000 ? '...' : ''}
+
+📈 PDF Summary:
+- Total characters: ${pdfText.length.toLocaleString()}
+- File type: Document (PDF)
+    `;
+  }
+
+  // Format Excel content for AI analysis
+  private formatExcelContent(workbook: XLSX.WorkBook, fileName: string): string {
+    const sheetNames = workbook.SheetNames;
+    let content = `📊 EXCEL FILE: ${fileName}\n📋 Sheets: ${sheetNames.join(', ')}\n\n`;
+    
+    // Extract data from first 2 sheets
+    for (let i = 0; i < Math.min(2, sheetNames.length); i++) {
+      const sheetName = sheetNames[i];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      content += `📋 Sheet "${sheetName}" (first 10 rows):\n`;
+      content += jsonData.slice(0, 10).map((row: any) => row.join(' | ')).join('\n');
+      content += `\n📊 Total rows in ${sheetName}: ${jsonData.length}\n\n`;
+    }
+    
+    return content;
+  }
+
+  // Format Word document content for AI analysis
+  private formatWordContent(wordText: string, fileName: string): string {
+    const preview = wordText.substring(0, 2000);
+    return `
+📝 WORD DOCUMENT: ${fileName}
+📋 Content Preview (first 2000 characters):
+${preview}${wordText.length > 2000 ? '...' : ''}
+
+📈 Document Summary:
+- Total characters: ${wordText.length.toLocaleString()}
+- File type: Document (Word)
+    `;
+  }
+
+  // Format JSON content for AI analysis
+  private formatJSONContent(jsonData: any, fileName: string): string {
+    return `
+🔧 JSON FILE: ${fileName}
+📋 Structure:
+${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
+
+📈 JSON Summary:
+- File type: Structured data (JSON)
+- Top-level keys: ${Object.keys(jsonData).join(', ')}
+    `;
+  }
+
+  // Search files by content or metadata - enhanced matching
   async searchFiles(query: string, maxFiles: number = 10): Promise<any[]> {
     try {
       console.log(`🔍 Searching files for: "${query}"`);
       
       const availableFiles = await this.getAvailableFiles();
+      console.log(`📁 Available files:`, availableFiles.map(f => f.name));
       
-      // Simple filename/path matching for now
-      const matchingFiles = availableFiles.filter(file => 
-        file.name.toLowerCase().includes(query.toLowerCase()) ||
-        file.path.toLowerCase().includes(query.toLowerCase())
-      );
+      // Enhanced search logic
+      const queryLower = query.toLowerCase();
+      const searchTerms = this.extractSearchTerms(queryLower);
       
-      console.log(`🔍 Found ${matchingFiles.length} matching files`);
+      const matchingFiles = availableFiles.filter(file => {
+        const fileName = file.name.toLowerCase();
+        const filePath = file.path.toLowerCase();
+        const bucket = file.bucket.toLowerCase();
+        
+        // Direct filename/path matching
+        if (fileName.includes(queryLower) || filePath.includes(queryLower)) {
+          return true;
+        }
+        
+        // Search term matching
+        if (searchTerms.some(term => 
+          fileName.includes(term) || filePath.includes(term) || bucket.includes(term)
+        )) {
+          return true;
+        }
+        
+        // Enhanced content type matching
+        if (searchTerms.includes('invoice') && (bucket.includes('organization') || bucket.includes('invoice') || fileName.includes('invoice'))) {
+          return true;
+        }
+        
+        if (searchTerms.includes('production') && (bucket.includes('production') || fileName.includes('production'))) {
+          return true;
+        }
+        
+        if (searchTerms.includes('shipment') && (bucket.includes('shipment') || fileName.includes('shipment'))) {
+          return true;
+        }
+        
+        if (searchTerms.includes('warehouse') && (bucket.includes('warehouse') || fileName.includes('warehouse'))) {
+          return true;
+        }
+        
+        // If query asks about "files" in general, include more files
+        if (searchTerms.includes('file') && availableFiles.length <= 10) {
+          return true; // Include all files if asking generally and not too many
+        }
+        
+        // If asking about specific organizations
+        if (searchTerms.includes('emg') || searchTerms.includes('mtn') || searchTerms.includes('cbn')) {
+          return true; // Include organization-related files
+        }
+        
+        return false;
+      });
+      
+      console.log(`🔍 Found ${matchingFiles.length} matching files:`, matchingFiles.map(f => f.name));
       return matchingFiles.slice(0, maxFiles);
       
     } catch (error) {
       console.error('Error searching files:', error);
       return [];
     }
+  }
+
+  // Extract search terms from query
+  private extractSearchTerms(query: string): string[] {
+    const terms = [];
+    
+    // Common business terms
+    if (query.includes('invoice')) terms.push('invoice');
+    if (query.includes('production')) terms.push('production');
+    if (query.includes('shipment')) terms.push('shipment');
+    if (query.includes('warehouse')) terms.push('warehouse');
+    if (query.includes('document')) terms.push('document');
+    if (query.includes('file')) terms.push('file');
+    if (query.includes('report')) terms.push('report');
+    if (query.includes('manifest')) terms.push('manifest');
+    if (query.includes('jjolm')) terms.push('jjolm');
+    if (query.includes('emg')) terms.push('emg');
+    if (query.includes('mtn')) terms.push('mtn');
+    if (query.includes('cbn')) terms.push('cbn');
+    
+    return terms;
   }
 
   // Generate file context for AI
