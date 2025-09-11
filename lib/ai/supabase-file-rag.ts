@@ -372,8 +372,9 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
       
       // CRITICAL: For general file listing queries, return ALL files
       const isGeneralFileQuery = searchTerms.some(term => 
-        ['files', 'documents', 'how many', 'list', 'all files', 'total files', 'file count', 'directory'].includes(term)
-      ) || queryLower.includes('how many') || queryLower.includes('list') || queryLower.includes('what files');
+        ['files', 'documents', 'how many', 'list', 'all files', 'total files', 'file count', 'directory', 'rag', 'see'].includes(term)
+      ) || queryLower.includes('how many') || queryLower.includes('list') || queryLower.includes('what files') 
+        || queryLower.includes('can you see') || queryLower.includes('rag directory') || queryLower.includes('whats in');
       
       if (isGeneralFileQuery) {
         console.log(`📁 General file query detected - returning all ${availableFiles.length} files`);
@@ -424,8 +425,18 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
           return bucket.includes('organization') || filePath.includes('purchase-order') || fileName.includes('purchase');
         }
         
+        // RAG documents specific matching
+        if (searchTerms.includes('rag') || searchTerms.includes('rag-documents') || searchTerms.includes('directory')) {
+          return filePath.includes('rag-documents') || bucket.includes('organization');
+        }
+        
+        // Financial model specific matching
+        if (searchTerms.includes('financial') || searchTerms.includes('model') || searchTerms.includes('boundless')) {
+          return fileName.includes('financial') || fileName.includes('boundless') || fileName.includes('model');
+        }
+        
         // If asking about specific organizations
-        if (searchTerms.includes('emg') || searchTerms.includes('mtn') || searchTerms.includes('cbn')) {
+        if (searchTerms.includes('emg') || searchTerms.includes('mtn') || searchTerms.includes('cbn') || searchTerms.includes('bdi')) {
           return true; // Include organization-related files
         }
         
