@@ -6,13 +6,12 @@ import * as mammoth from 'mammoth';
 // PDF parsing with fallback handling
 let pdfParse: any = null;
 
-// Initialize PDF parser
+// Initialize PDF parser - simplified approach that works
 async function initPdfParse() {
   if (!pdfParse) {
     try {
-      // Try pdf-parse-fork first (more stable)
-      const pdfParseModule = await import('pdf-parse-fork');
-      pdfParse = pdfParseModule.default || pdfParseModule;
+      // Use require for better compatibility in Node.js environment
+      pdfParse = require('pdf-parse-fork');
       console.log('✅ PDF parsing initialized with pdf-parse-fork');
     } catch (error) {
       console.warn('📄 PDF parsing not available:', error instanceof Error ? error.message : String(error));
