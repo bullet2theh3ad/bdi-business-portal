@@ -99,27 +99,26 @@ export default function RAGUploadPage() {
       const uploadResults = [];
 
       for (const file of files) {
-        const timestamp = Date.now();
-        const fileName = `${timestamp}_${file.name}`;
-        const filePath = `rag-documents/${companyCode}/${fileName}`;
-
-        console.log(`📤 Uploading ${file.name} to ${filePath}...`);
+        console.log(`📤 Uploading ${file.name} via API...`);
         
-        const { data, error } = await supabase.storage
-          .from('organization-documents')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
+        // Use API endpoint to bypass RLS issues
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('companyCode', companyCode);
 
-        if (error) {
-          console.error(`❌ Upload failed for ${file.name}:`, error);
-          console.error('Error details:', JSON.stringify(error, null, 2));
-          uploadResults.push({ file: file.name, success: false, error: error.message });
+        const response = await fetch('/api/admin/rag-upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          console.error(`❌ Upload failed for ${file.name}:`, result);
+          uploadResults.push({ file: file.name, success: false, error: result.error || result.details });
         } else {
-          console.log(`✅ Successfully uploaded: ${file.name} to ${filePath}`);
-          console.log('Upload data:', data);
-          uploadResults.push({ file: file.name, success: true, path: filePath });
+          console.log(`✅ Successfully uploaded: ${file.name} to ${result.filePath}`);
+          uploadResults.push({ file: file.name, success: true, path: result.filePath });
         }
       }
 
