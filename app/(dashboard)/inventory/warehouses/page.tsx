@@ -2291,19 +2291,18 @@ export default function WarehousesPage() {
                                   
                                   skuAnalysis[sku].totalUnits++;
                                   
-                                  // Debug the categorization
-                                  console.log(`📊 SKU ${sku} - WIP: ${item.wip}, EMG: ${item.shipped_to_emg}, JIRA: ${item.shipped_to_jira}`);
+                                  // CORRECT LOGIC: Every unit counts as "Received (IN)" since it was received
+                                  skuAnalysis[sku]['Received (IN)']++; // Every unit was received
                                   
+                                  // Also track current status
                                   if (item.wip === 1) {
                                     skuAnalysis[sku]['WIP (In House)']++;
-                                  } else if (item.shipped_to_emg === 1) {
+                                  }
+                                  if (item.shipped_to_emg === 1) {
                                     skuAnalysis[sku]['Shipped to EMG']++;
-                                  } else if (item.shipped_to_jira === 1) {
+                                  }
+                                  if (item.shipped_to_jira === 1) {
                                     skuAnalysis[sku]['RMA Units']++;
-                                  } else {
-                                    // This should be "Received (IN)" - units that haven't been processed yet
-                                    skuAnalysis[sku]['Received (IN)']++;
-                                    console.log(`📊 ${sku} - Categorized as Received (IN)`);
                                   }
                                 });
                                 

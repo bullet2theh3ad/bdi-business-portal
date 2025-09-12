@@ -295,27 +295,26 @@ export async function POST(request: NextRequest) {
         skuAnalysis[sku].weeklyActivity[week] = { in: 0, rma: 0, emg: 0, wip: 0 };
       }
       
-      // Categorize the unit - debug the values
-      console.log(`📊 Unit categorization - WIP: ${item.wip}, EMG: ${item.shipped_to_emg}, JIRA: ${item.shipped_to_jira}`);
+      // CORRECT LOGIC: Every unit counts as "Received (IN)" since it was received
+      // Then also count its current status (WIP, EMG, RMA)
+      skuAnalysis[sku].receivedIn++; // Every unit was received
+      skuAnalysis[sku].weeklyActivity[week].in++; // Count in the week it was received
       
+      // Also track current status
       if (item.wip === 1) {
         skuAnalysis[sku].wipInHouse++;
         skuAnalysis[sku].weeklyActivity[week].wip++;
-        console.log(`📊 ${sku} - Categorized as WIP`);
-      } else if (item.shipped_to_emg === 1) {
+      }
+      if (item.shipped_to_emg === 1) {
         skuAnalysis[sku].shippedEmgOut++;
         skuAnalysis[sku].weeklyActivity[week].emg++;
-        console.log(`📊 ${sku} - Categorized as EMG`);
-      } else if (item.shipped_to_jira === 1) {
+      }
+      if (item.shipped_to_jira === 1) {
         skuAnalysis[sku].rmaOut++;
         skuAnalysis[sku].weeklyActivity[week].rma++;
-        console.log(`📊 ${sku} - Categorized as RMA`);
-      } else {
-        // Units that haven't been processed yet - these are "Received (IN)"
-        skuAnalysis[sku].receivedIn++;
-        skuAnalysis[sku].weeklyActivity[week].in++;
-        console.log(`📊 ${sku} - Categorized as Received (IN)`);
       }
+      
+      console.log(`📊 ${sku} - Received: +1, WIP: ${item.wip}, EMG: ${item.shipped_to_emg}, RMA: ${item.shipped_to_jira}`);
     });
 
     // Sort SKUs by impact (total units)
