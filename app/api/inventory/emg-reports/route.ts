@@ -130,15 +130,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Validate filename pattern
+    // Validate filename pattern - allow any variation after "BOUNDLESS DEVICES" and "Inventory Report"
     const fileName = file.name;
-    const expectedPattern = /^BOUNDLESS DEVICES.*Inventory Report\.(csv|CSV)$/i;
+    const flexiblePattern = /^BOUNDLESS DEVICES.*Inventory Report.*\.(csv|CSV)$/i;
     
-    if (!expectedPattern.test(fileName)) {
+    if (!flexiblePattern.test(fileName)) {
       return NextResponse.json({ 
-        error: 'Invalid filename. Expected format: BOUNDLESS DEVICES, INC-Inventory Report.csv' 
+        error: 'Invalid filename. Must contain "BOUNDLESS DEVICES" and "Inventory Report" (any variation allowed)' 
       }, { status: 400 });
     }
+    
+    console.log(`✅ Filename validation passed: ${fileName}`);
 
     console.log(`📦 Processing EMG inventory report: ${fileName}`);
 

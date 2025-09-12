@@ -1729,7 +1729,7 @@ export default function WarehousesPage() {
                       Upload Inventory Report
                     </CardTitle>
                     <CardDescription>
-                      Upload CSV files with format: BOUNDLESS DEVICES, INC-Inventory Report.csv
+                      Upload CSV files starting with: BOUNDLESS DEVICES, INC-Inventory Report (any variation allowed)
                     </CardDescription>
                   </div>
                   {emgInventoryData?.data?.currentInventory?.length > 0 && (
