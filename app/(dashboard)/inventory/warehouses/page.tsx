@@ -2290,10 +2290,21 @@ export default function WarehousesPage() {
                                   }
                                   
                                   skuAnalysis[sku].totalUnits++;
-                                  if (item.wip === 1) skuAnalysis[sku]['WIP (In House)']++;
-                                  else if (item.shipped_to_emg === 1) skuAnalysis[sku]['Shipped to EMG']++;
-                                  else if (item.shipped_to_jira === 1) skuAnalysis[sku]['RMA Units']++;
-                                  else skuAnalysis[sku]['Received (IN)']++;
+                                  
+                                  // Debug the categorization
+                                  console.log(`📊 SKU ${sku} - WIP: ${item.wip}, EMG: ${item.shipped_to_emg}, JIRA: ${item.shipped_to_jira}`);
+                                  
+                                  if (item.wip === 1) {
+                                    skuAnalysis[sku]['WIP (In House)']++;
+                                  } else if (item.shipped_to_emg === 1) {
+                                    skuAnalysis[sku]['Shipped to EMG']++;
+                                  } else if (item.shipped_to_jira === 1) {
+                                    skuAnalysis[sku]['RMA Units']++;
+                                  } else {
+                                    // This should be "Received (IN)" - units that haven't been processed yet
+                                    skuAnalysis[sku]['Received (IN)']++;
+                                    console.log(`📊 ${sku} - Categorized as Received (IN)`);
+                                  }
                                 });
                                 
                                 return Object.values(skuAnalysis)
