@@ -2207,30 +2207,30 @@ export default function WarehousesPage() {
                       <h3 className="text-lg font-semibold mb-4">CATV Weekly Inventory Metrics</h3>
                       
                       {/* Metrics Summary */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-green-600">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <div className="text-xl sm:text-2xl font-bold text-green-600">
                             {(catvInventoryData?.data?.metrics?.receivedIn || catvUploadResult?.data?.metrics?.receivedIn || 0).toLocaleString()}
                           </div>
-                          <div className="text-sm text-muted-foreground">Received (IN)</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">Received (IN)</div>
                         </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-blue-600">
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <div className="text-xl sm:text-2xl font-bold text-blue-600">
                             {(catvInventoryData?.data?.metrics?.shippedJiraOut || catvUploadResult?.data?.metrics?.shippedJiraOut || 0).toLocaleString()}
                           </div>
-                          <div className="text-sm text-muted-foreground">Shipped via Jira (OUT)</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">Shipped via Jira (OUT)</div>
                         </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-purple-600">
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <div className="text-xl sm:text-2xl font-bold text-purple-600">
                             {(catvInventoryData?.data?.metrics?.shippedEmgOut || catvUploadResult?.data?.metrics?.shippedEmgOut || 0).toLocaleString()}
                           </div>
-                          <div className="text-sm text-muted-foreground">Shipped to EMG (OUT)</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">Shipped to EMG (OUT)</div>
                         </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-orange-600">
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <div className="text-xl sm:text-2xl font-bold text-orange-600">
                             {(catvInventoryData?.data?.metrics?.wipInHouse || catvUploadResult?.data?.metrics?.wipInHouse || 0).toLocaleString()}
                           </div>
-                          <div className="text-sm text-muted-foreground">WIP (In House)</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">WIP (In House)</div>
                         </div>
                       </div>
 
@@ -2277,43 +2277,26 @@ export default function WarehousesPage() {
                         )}
                       </div>
 
-                      {/* ALL UNITS - Scrollable Table */}
+                      {/* ALL UNITS - Mobile-First Design */}
                       <div className="bg-white border rounded-lg overflow-hidden">
                         <div className="max-h-96 overflow-y-auto">
-                          <div className="overflow-x-auto min-w-full">
-                            <table className="w-full text-sm min-w-[700px]">
-                              <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Line Item</th>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Serial Number</th>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Model</th>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Week</th>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Date</th>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm hidden sm:table-cell">EMG Ship</th>
-                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(catvInventoryData?.data?.pivotData || catvUploadResult?.data?.pivotData || []).filter((item: any) => {
-                                  if (!catvSearchTerm) return true;
-                                  const searchLower = catvSearchTerm.toLowerCase();
-                                  return (
-                                    item.serialnumber?.toLowerCase().includes(searchLower) ||
-                                    item.modelnumber?.toLowerCase().includes(searchLower) ||
-                                    item.lineitem?.toString().includes(searchLower) ||
-                                    item.datestamp?.toLowerCase().includes(searchLower)
-                                  );
-                                })?.map((item: any, index: number) => (
-                                  <tr key={index} className="border-t hover:bg-gray-50">
-                                    <td className="px-2 sm:px-3 py-2 font-mono text-xs">{item.lineitem}</td>
-                                    <td className="px-2 sm:px-3 py-2 font-mono text-xs">{item.serialnumber}</td>
-                                    <td className="px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">{item.modelnumber}</td>
-                                    <td className="px-2 sm:px-3 py-2 text-center text-xs">{item.iso_yearweek}</td>
-                                    <td className="px-2 sm:px-3 py-2 text-xs">{item.datestamp}</td>
-                                    <td className="px-2 sm:px-3 py-2 text-center text-xs hidden sm:table-cell">
-                                      {item.emg_ship_date || '-'}
-                                    </td>
-                                    <td className="px-2 sm:px-3 py-2">
+                          {/* Mobile Card View */}
+                          <div className="block sm:hidden">
+                            <div className="space-y-2 p-3">
+                              {(catvInventoryData?.data?.pivotData || catvUploadResult?.data?.pivotData || []).filter((item: any) => {
+                                if (!catvSearchTerm) return true;
+                                const searchLower = catvSearchTerm.toLowerCase();
+                                return (
+                                  item.serialnumber?.toLowerCase().includes(searchLower) ||
+                                  item.modelnumber?.toLowerCase().includes(searchLower) ||
+                                  item.lineitem?.toString().includes(searchLower) ||
+                                  item.datestamp?.toLowerCase().includes(searchLower)
+                                );
+                              }).map((item: any, index: number) => (
+                                <div key={index} className="bg-gray-50 rounded-lg p-3 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="font-semibold text-sm">{item.modelnumber}</div>
+                                    <div className="text-xs">
                                       {item.wip === 1 ? (
                                         <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
                                           WIP
@@ -2328,6 +2311,73 @@ export default function WarehousesPage() {
                                         </span>
                                       ) : (
                                         <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+                                          PENDING
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    <div><strong>Serial:</strong> {item.serialnumber}</div>
+                                    <div><strong>Line Item:</strong> {item.lineitem}</div>
+                                    <div className="flex justify-between mt-1">
+                                      <span><strong>Week:</strong> {item.iso_yearweek}</span>
+                                      <span><strong>Date:</strong> {item.datestamp}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Desktop Table View */}
+                          <div className="hidden sm:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-4 py-3 text-left font-medium">Line Item</th>
+                                  <th className="px-4 py-3 text-left font-medium">Serial Number</th>
+                                  <th className="px-4 py-3 text-left font-medium">Model</th>
+                                  <th className="px-4 py-3 text-left font-medium">Week</th>
+                                  <th className="px-4 py-3 text-left font-medium">Date</th>
+                                  <th className="px-4 py-3 text-left font-medium">EMG Ship</th>
+                                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(catvInventoryData?.data?.pivotData || catvUploadResult?.data?.pivotData || []).filter((item: any) => {
+                                  if (!catvSearchTerm) return true;
+                                  const searchLower = catvSearchTerm.toLowerCase();
+                                  return (
+                                    item.serialnumber?.toLowerCase().includes(searchLower) ||
+                                    item.modelnumber?.toLowerCase().includes(searchLower) ||
+                                    item.lineitem?.toString().includes(searchLower) ||
+                                    item.datestamp?.toLowerCase().includes(searchLower)
+                                  );
+                                })?.map((item: any, index: number) => (
+                                  <tr key={index} className="border-t hover:bg-gray-50">
+                                    <td className="px-4 py-3 font-mono text-sm">{item.lineitem}</td>
+                                    <td className="px-4 py-3 font-mono text-sm">{item.serialnumber}</td>
+                                    <td className="px-4 py-3 font-semibold">{item.modelnumber}</td>
+                                    <td className="px-4 py-3 text-center">{item.iso_yearweek}</td>
+                                    <td className="px-4 py-3">{item.datestamp}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      {item.emg_ship_date || '-'}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      {item.wip === 1 ? (
+                                        <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
+                                          WIP
+                                        </span>
+                                      ) : item.shipped_to_emg === 1 ? (
+                                        <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-medium">
+                                          EMG
+                                        </span>
+                                      ) : item.shipped_to_jira === 1 ? (
+                                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+                                          JIRA
+                                        </span>
+                                      ) : (
+                                        <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
                                           PENDING
                                         </span>
                                       )}
