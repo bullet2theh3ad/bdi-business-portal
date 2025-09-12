@@ -7,6 +7,7 @@ import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translat
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
+import { useState } from 'react';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -24,7 +25,7 @@ const FILE_TYPES = [
 
 const getFileTypeDescription = (fileType: string): string => {
   const descriptions = {
-    'PRODUCTION_FILE': 'Comprehensive Excel template for all production data including MAC addresses, serial numbers, and manufacturing details',
+    'PRODUCTION_FILE': 'Latest Production Data Template R2 (Sep 12 2025) - Comprehensive Excel template with updated format for all production data including MAC addresses, serial numbers, and manufacturing details',
     'MAC_ADDRESS_LIST': 'CSV file with device MAC addresses, one per line',
     'SERIAL_NUMBER_LIST': 'List of device serial numbers for tracking and warranty',
     'PRODUCTION_REPORT': 'Manufacturing summary with quantities, dates, and batch info',
@@ -41,16 +42,41 @@ export default function ProductionFileTemplatesPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
   const userLocale = getUserLocale(user);
   const { tc } = useSimpleTranslations(userLocale);
+  
+  // Template upload state
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const handleDownloadSample = async (fileType: string) => {
     try {
       if (fileType === 'PRODUCTION_FILE') {
-        // Download the actual Excel template
-        const link = document.createElement('a');
-        link.href = '/Production File Template.xlsx';
-        link.download = 'Production File Template.xlsx';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Download the latest Excel template from Supabase storage
+        console.log('📥 Fetching latest production template from Supabase...');
+        
+        const response = await fetch('/api/inventory/production-files/templates');
+        if (!response.ok) {
+          // Fallback to public folder template if Supabase fails
+          console.log('⚠️ Supabase template not found, using fallback...');
+          const link = document.createElement('a');
+          link.href = '/Production Data Template R2 (Sep 12 2025).xlsx';
+          link.download = 'Production Data Template R2 (Sep 12 2025).xlsx';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          return;
+        }
+        
+        const data = await response.json();
+        if (data.downloadUrl) {
+          console.log(`📥 Downloading: ${data.fileName}`);
+          const link = document.createElement('a');
+          link.href = data.downloadUrl;
+          link.download = data.fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          throw new Error('No download URL received');
+        }
         return;
       }
 
@@ -162,6 +188,80 @@ export default function ProductionFileTemplatesPage() {
           </Button>
         </div>
       </div>
+
+      {/* Super Admin Template Upload */}
+      {user?.role === 'super_admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="upload" size={20} />
+              Upload New Template (Super Admin)
+            </CardTitle>
+            <CardDescription>
+              Upload the latest production file template to Supabase storage - will be available for all users to download
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setTemplateFile(file);
+                }}
+                className="hidden"
+                id="template-upload"
+              />
+              <label htmlFor="template-upload" className="cursor-pointer">
+                <SemanticBDIIcon semantic="upload" size={24} className="mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Upload latest production template • Recommended: "Production Data Template R2"
+                </p>
+              </label>
+            </div>
+
+            {templateFile && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{templateFile.name}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setTemplateFile(null)}>✕</Button>
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={async () => {
+                if (!templateFile) return;
+                setUploadingTemplate(true);
+                try {
+                  const formData = new FormData();
+                  formData.append('file', templateFile);
+                  const response = await fetch('/api/admin/template-upload', {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  const result = await response.json();
+                  if (result.success) {
+                    alert('Template uploaded successfully! Users can now download the latest version.');
+                    setTemplateFile(null);
+                  } else {
+                    alert(`Upload failed: ${result.error}`);
+                  }
+                } catch (error) {
+                  alert(`Upload error: ${error}`);
+                } finally {
+                  setUploadingTemplate(false);
+                }
+              }}
+              disabled={!templateFile || uploadingTemplate}
+              className="w-full bg-purple-600 hover:bg-purple-700"
+            >
+              {uploadingTemplate ? 'Uploading to Supabase...' : 'Upload Template'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Usage Instructions */}
       <Card>
