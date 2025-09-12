@@ -2250,7 +2250,7 @@ export default function WarehousesPage() {
                     </div>
 
                     {/* SKU Impact Analysis */}
-                    {(catvUploadResult?.data?.skuAnalysis?.length > 0 || catvInventoryData?.data?.skuAnalysis?.length > 0) && (
+                    {(catvUploadResult?.data?.pivotData?.length > 0 || catvInventoryData?.data?.pivotData?.length > 0) && (
                       <div className="bg-white rounded-lg p-4 sm:p-6">
                         <h3 className="text-lg font-semibold mb-4">SKU Impact Analysis</h3>
                         <p className="text-sm text-muted-foreground mb-4">
@@ -2259,7 +2259,36 @@ export default function WarehousesPage() {
                         
                         {/* Top SKUs Stacked Bars */}
                         <div className="space-y-3">
-                          {(catvUploadResult?.data?.skuAnalysis || catvInventoryData?.data?.skuAnalysis || []).slice(0, 8).map((sku: any, index: number) => (
+                          {(() => {
+                            // Get SKU analysis data from API or generate it from pivot data
+                            const skuData = catvUploadResult?.data?.skuAnalysis || catvInventoryData?.data?.skuAnalysis;
+                            
+                            if (skuData && skuData.length > 0) {
+                              return skuData.slice(0, 8);
+                            }
+                            
+                            // Fallback: Generate SKU analysis from pivot data
+                            const pivotData = catvUploadResult?.data?.pivotData || catvInventoryData?.data?.pivotData || [];
+                            console.log('📊 Generating SKU analysis from', pivotData.length, 'pivot records');
+                            const skuAnalysis: any = {};
+                            
+                            pivotData.forEach((item: any) => {
+                              const sku = item.modelnumber;
+                              if (!sku) return;
+                              
+                              if (!skuAnalysis[sku]) {
+                                skuAnalysis[sku] = { model: sku, totalUnits: 0, receivedIn: 0, rmaOut: 0, shippedEmgOut: 0, wipInHouse: 0 };
+                              }
+                              
+                              skuAnalysis[sku].totalUnits++;
+                              if (item.wip === 1) skuAnalysis[sku].wipInHouse++;
+                              else if (item.shipped_to_emg === 1) skuAnalysis[sku].shippedEmgOut++;
+                              else if (item.shipped_to_jira === 1) skuAnalysis[sku].rmaOut++;
+                              else skuAnalysis[sku].receivedIn++;
+                            });
+                            
+                            return Object.values(skuAnalysis).sort((a: any, b: any) => b.totalUnits - a.totalUnits).slice(0, 8);
+                          })().map((sku: any, index: number) => (
                             <div key={index} className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <div className="font-semibold text-sm">{sku.model}</div>
