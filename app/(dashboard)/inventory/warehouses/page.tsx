@@ -109,6 +109,7 @@ export default function WarehousesPage() {
   const [catvFile, setCatvFile] = useState<File | null>(null);
   const [uploadingCatv, setUploadingCatv] = useState(false);
   const [catvUploadResult, setCatvUploadResult] = useState<any>(null);
+  const [catvSearchTerm, setCatvSearchTerm] = useState('');
 
   // Load existing files when opening edit modal
   useEffect(() => {
@@ -2239,12 +2240,12 @@ export default function WarehousesPage() {
                       </div>
                     </div>
 
-                    {/* Pivot Data Table */}
+                    {/* ALL UNITS - Scrollable Container */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-md font-semibold">Detailed Raw Data</h4>
+                        <h4 className="text-md font-semibold">All CATV Units - Live Data</h4>
                         <div className="text-sm text-muted-foreground">
-                          {catvUploadResult.data?.pivotRows?.toLocaleString()} total records
+                          {catvUploadResult.data?.pivotData?.length?.toLocaleString() || catvUploadResult.data?.pivotRows?.toLocaleString()} total units
                         </div>
                       </div>
                       
@@ -2253,56 +2254,97 @@ export default function WarehousesPage() {
                         <SemanticBDIIcon semantic="search" size={16} className="text-muted-foreground" />
                         <input
                           type="text"
-                          placeholder="Search by serial number, model, or line item..."
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          placeholder="Search by serial number, model, line item, or date..."
+                          value={catvSearchTerm}
+                          onChange={(e) => setCatvSearchTerm(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
+                        {catvSearchTerm && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCatvSearchTerm('')}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            ✕
+                          </Button>
+                        )}
                       </div>
 
-                      {/* Data Preview */}
+                      {/* ALL UNITS - Scrollable Table */}
                       <div className="bg-white border rounded-lg overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 text-left">Line Item</th>
-                                <th className="px-4 py-2 text-left">Serial Number</th>
-                                <th className="px-4 py-2 text-left">Model</th>
-                                <th className="px-4 py-2 text-left">ISO Week</th>
-                                <th className="px-4 py-2 text-left">Date</th>
-                                <th className="px-4 py-2 text-left">EMG Ship Date</th>
-                                <th className="px-4 py-2 text-left">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr className="border-t">
-                                <td className="px-4 py-2">1067696</td>
-                                <td className="px-4 py-2">2434-B12-30-3157</td>
-                                <td className="px-4 py-2">B12</td>
-                                <td className="px-4 py-2">15</td>
-                                <td className="px-4 py-2">45755</td>
-                                <td className="px-4 py-2">-</td>
-                                <td className="px-4 py-2">
-                                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">WIP</span>
-                                </td>
-                              </tr>
-                              <tr className="border-t">
-                                <td className="px-4 py-2">1067654</td>
-                                <td className="px-4 py-2">2434-B12-30-2895</td>
-                                <td className="px-4 py-2">B12</td>
-                                <td className="px-4 py-2">15</td>
-                                <td className="px-4 py-2">45755</td>
-                                <td className="px-4 py-2">-</td>
-                                <td className="px-4 py-2">
-                                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">WIP</span>
-                                </td>
-                              </tr>
-                              <tr className="border-t bg-gray-50">
-                                <td colSpan={7} className="px-4 py-3 text-center text-sm text-muted-foreground">
-                                  Showing sample data from {catvUploadResult.data?.pivotRows?.toLocaleString()} total records
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div className="max-h-96 overflow-y-auto">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-medium">Line Item</th>
+                                  <th className="px-3 py-2 text-left font-medium">Serial Number</th>
+                                  <th className="px-3 py-2 text-left font-medium">Model</th>
+                                  <th className="px-3 py-2 text-left font-medium">Week</th>
+                                  <th className="px-3 py-2 text-left font-medium">Date</th>
+                                  <th className="px-3 py-2 text-left font-medium">EMG Ship</th>
+                                  <th className="px-3 py-2 text-left font-medium">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {catvUploadResult.data?.pivotData?.filter((item: any) => {
+                                  if (!catvSearchTerm) return true;
+                                  const searchLower = catvSearchTerm.toLowerCase();
+                                  return (
+                                    item.serialnumber?.toLowerCase().includes(searchLower) ||
+                                    item.modelnumber?.toLowerCase().includes(searchLower) ||
+                                    item.lineitem?.toString().includes(searchLower) ||
+                                    item.datestamp?.toLowerCase().includes(searchLower)
+                                  );
+                                })?.map((item: any, index: number) => (
+                                  <tr key={index} className="border-t hover:bg-gray-50">
+                                    <td className="px-3 py-2 font-mono text-xs">{item.lineitem}</td>
+                                    <td className="px-3 py-2 font-mono text-xs">{item.serialnumber}</td>
+                                    <td className="px-3 py-2 font-semibold">{item.modelnumber}</td>
+                                    <td className="px-3 py-2 text-center">{item.iso_yearweek}</td>
+                                    <td className="px-3 py-2">{item.datestamp}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      {item.emg_ship_date || '-'}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      {item.wip === 1 ? (
+                                        <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                                          WIP
+                                        </span>
+                                      ) : item.shipped_to_emg === 1 ? (
+                                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                                          EMG
+                                        </span>
+                                      ) : item.shipped_to_jira === 1 ? (
+                                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                                          JIRA
+                                        </span>
+                                      ) : (
+                                        <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+                                          PENDING
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )) || (
+                                  <tr>
+                                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                                      No pivot data available
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                        
+                        {/* Scroll Indicator */}
+                        <div className="bg-gray-50 px-4 py-2 border-t text-center">
+                          <p className="text-xs text-muted-foreground">
+                            📊 Scroll to view all {catvUploadResult.data?.pivotData?.length?.toLocaleString() || '0'} units • 
+                            Mobile optimized • Shows real work progress
+                          </p>
                         </div>
                       </div>
                     </div>

@@ -198,6 +198,43 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Process and format the pivot data for display
+    const formattedPivotData = pivotData.slice(1).map((row: any) => {
+      if (Array.isArray(row) && row.length > 0) {
+        // Convert Excel date number to readable date
+        const excelDate = row[4]; // datestamp column
+        let formattedDate = '';
+        if (typeof excelDate === 'number') {
+          // Excel date conversion: Excel epoch starts Jan 1, 1900
+          const excelEpoch = new Date(1900, 0, 1);
+          const jsDate = new Date(excelEpoch.getTime() + (excelDate - 1) * 24 * 60 * 60 * 1000);
+          formattedDate = jsDate.toLocaleDateString();
+        } else {
+          formattedDate = excelDate || '';
+        }
+
+        return {
+          lineitem: row[0] || '',
+          serialnumber: row[1] || '',
+          modelnumber: row[2] || '',
+          iso_yearweek: row[3] || '',
+          datestamp: formattedDate, // Formatted date
+          emg_iso_yearweek: row[5] || '',
+          emg_ship_date: row[6] || '',
+          shipped_to_emg: row[7] || 0,
+          shipped_to_jira: row[8] || 0,
+          transferinvoice: row[9] || '',
+          jira_iso_yearweek: row[10] || '',
+          invoicedate: row[11] || '',
+          wip: row[12] || 0
+        };
+      }
+      return null;
+    }).filter(item => item !== null);
+
+    console.log(`📋 Formatted ${formattedPivotData.length} pivot records`);
+    console.log(`📋 Sample formatted record:`, formattedPivotData[0]);
+
     return NextResponse.json({
       success: true,
       message: `Successfully processed CATV inventory file: ${file.name}`,
@@ -208,7 +245,8 @@ export async function POST(request: NextRequest) {
         pivotRows: pivotData.length,
         metrics: metrics,
         sheets: workbook.SheetNames,
-        uploadDate: new Date().toISOString()
+        uploadDate: new Date().toISOString(),
+        pivotData: formattedPivotData // Include all formatted pivot data
       }
     });
 
