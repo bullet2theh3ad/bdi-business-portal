@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 CATV API POST request received');
+    
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,21 +72,28 @@ export async function POST(request: NextRequest) {
     );
 
     const { data: { user: authUser } } = await supabase.auth.getUser();
+    console.log('👤 Auth user:', authUser ? 'Found' : 'Not found');
+    
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user exists and has appropriate permissions
+    console.log('🔍 Looking up user in database...');
     const dbUser = await db
       .select()
       .from(users)
       .where(eq(users.authId, authUser.id))
       .limit(1);
 
+    console.log('👤 DB user found:', dbUser.length > 0 ? 'Yes' : 'No');
+    
     if (!dbUser.length) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    console.log('🔐 User role:', dbUser[0].role);
+    
     // For now, only allow super_admin to upload CATV reports
     if (dbUser[0].role !== 'super_admin') {
       return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
@@ -106,9 +115,15 @@ export async function POST(request: NextRequest) {
 
     // Read and parse the Excel file
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    console.log(`📥 File buffer size: ${buffer.byteLength} bytes`);
     
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
     console.log(`📋 CATV file sheets:`, workbook.SheetNames);
+    
+    if (!workbook.SheetNames.length) {
+      console.error('❌ No sheets found in workbook');
+      return NextResponse.json({ error: 'No sheets found in the uploaded file' }, { status: 400 });
+    }
 
     // Process Tab 1 (Summary metrics)
     const summarySheetName = workbook.SheetNames[0];
@@ -131,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     // Extract the 4 key metrics from the summary data
     // Looking for: Received (IN), Shipped via Jira (OUT), Shipped to EMG (OUT), WIP (IN HOUSE)
-    const metrics = {
+    let metrics = {
       receivedIn: 0,
       shippedJiraOut: 0, 
       shippedEmgOut: 0,
@@ -139,8 +154,38 @@ export async function POST(request: NextRequest) {
     };
 
     // Parse the summary data to extract weekly metrics
-    // This will need to be customized based on the actual file structure
     console.log(`🔍 Parsing CATV metrics from ${summaryData.length} rows`);
+    
+    // Find the metrics rows in the summary data
+    for (const row of summaryData) {
+      if (Array.isArray(row) && row.length > 0) {
+        const firstCell = row[0];
+        if (typeof firstCell === 'string') {
+          if (firstCell.includes('Received (IN)')) {
+            // Sum all numeric values in this row (excluding the label)
+            metrics.receivedIn = row.slice(1).reduce((sum: number, val: any) => {
+              return sum + (typeof val === 'number' ? val : 0);
+            }, 0);
+            console.log(`📈 Found Received (IN): ${metrics.receivedIn}`);
+          } else if (firstCell.includes('Shipped Via Jira (OUT)')) {
+            metrics.shippedJiraOut = row.slice(1).reduce((sum: number, val: any) => {
+              return sum + (typeof val === 'number' ? val : 0);
+            }, 0);
+            console.log(`📈 Found Shipped Via Jira (OUT): ${metrics.shippedJiraOut}`);
+          } else if (firstCell.includes('Count of EMG Shipped (OUT)')) {
+            metrics.shippedEmgOut = row.slice(1).reduce((sum: number, val: any) => {
+              return sum + (typeof val === 'number' ? val : 0);
+            }, 0);
+            console.log(`📈 Found Shipped to EMG (OUT): ${metrics.shippedEmgOut}`);
+          } else if (firstCell.includes('WIP')) {
+            metrics.wipInHouse = row.slice(1).reduce((sum: number, val: any) => {
+              return sum + (typeof val === 'number' ? val : 0);
+            }, 0);
+            console.log(`📈 Found WIP (IN HOUSE): ${metrics.wipInHouse}`);
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,
