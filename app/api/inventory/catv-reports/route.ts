@@ -162,26 +162,37 @@ export async function POST(request: NextRequest) {
         const firstCell = row[0];
         if (typeof firstCell === 'string') {
           if (firstCell.includes('Received (IN)')) {
-            // Sum all numeric values in this row (excluding the label)
-            metrics.receivedIn = row.slice(1).reduce((sum: number, val: any) => {
+            // Sum all numeric values EXCLUDING the Grand Total column (last column)
+            const weeklyValues = row.slice(1, -1); // Exclude first cell (label) and last cell (Grand Total)
+            metrics.receivedIn = weeklyValues.reduce((sum: number, val: any) => {
               return sum + (typeof val === 'number' ? val : 0);
             }, 0);
-            console.log(`📈 Found Received (IN): ${metrics.receivedIn}`);
+            console.log(`📈 Received (IN) weekly sum: ${metrics.receivedIn} (excluding Grand Total)`);
+            console.log(`📈 Grand Total in file: ${row[row.length - 1]} (should match calculated sum)`);
           } else if (firstCell.includes('Shipped Via Jira (OUT)')) {
-            metrics.shippedJiraOut = row.slice(1).reduce((sum: number, val: any) => {
+            // Sum all numeric values EXCLUDING the Grand Total column (last column)
+            const weeklyValues = row.slice(1, -1); // Exclude first cell (label) and last cell (Grand Total)
+            metrics.shippedJiraOut = weeklyValues.reduce((sum: number, val: any) => {
               return sum + (typeof val === 'number' ? val : 0);
             }, 0);
-            console.log(`📈 Found Shipped Via Jira (OUT): ${metrics.shippedJiraOut}`);
+            console.log(`📈 Shipped Via Jira (OUT) weekly sum: ${metrics.shippedJiraOut} (excluding Grand Total)`);
+            console.log(`📈 Grand Total in file: ${row[row.length - 1]} (should match calculated sum)`);
           } else if (firstCell.includes('Count of EMG Shipped (OUT)')) {
-            metrics.shippedEmgOut = row.slice(1).reduce((sum: number, val: any) => {
+            // Sum all numeric values EXCLUDING the Grand Total column (last column)
+            const weeklyValues = row.slice(1, -1); // Exclude first cell (label) and last cell (Grand Total)
+            metrics.shippedEmgOut = weeklyValues.reduce((sum: number, val: any) => {
               return sum + (typeof val === 'number' ? val : 0);
             }, 0);
-            console.log(`📈 Found Shipped to EMG (OUT): ${metrics.shippedEmgOut}`);
+            console.log(`📈 Shipped to EMG (OUT) weekly sum: ${metrics.shippedEmgOut} (excluding Grand Total)`);
+            console.log(`📈 Grand Total in file: ${row[row.length - 1]} (should match calculated sum)`);
           } else if (firstCell.includes('WIP')) {
-            metrics.wipInHouse = row.slice(1).reduce((sum: number, val: any) => {
+            // Sum all numeric values EXCLUDING the Grand Total column (last column)
+            const weeklyValues = row.slice(1, -1); // Exclude first cell (label) and last cell (Grand Total)
+            metrics.wipInHouse = weeklyValues.reduce((sum: number, val: any) => {
               return sum + (typeof val === 'number' ? val : 0);
             }, 0);
-            console.log(`📈 Found WIP (IN HOUSE): ${metrics.wipInHouse}`);
+            console.log(`📈 WIP (IN HOUSE) weekly sum: ${metrics.wipInHouse} (excluding Grand Total)`);
+            console.log(`📈 Grand Total in file: ${row[row.length - 1]} (should match calculated sum)`);
           }
         }
       }
