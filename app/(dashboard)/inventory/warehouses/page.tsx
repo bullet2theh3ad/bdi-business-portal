@@ -13,7 +13,7 @@ import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { User } from '@/lib/db/schema';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -2257,118 +2257,79 @@ export default function WarehousesPage() {
                           Top performing SKUs by total units processed • Shows most active models for in-house work
                         </p>
                         
-                        {/* Top SKUs Stacked Bars */}
-                        <div className="space-y-3">
-                          {(() => {
-                            // Get SKU analysis data from API or generate it from pivot data
-                            const skuData = catvUploadResult?.data?.skuAnalysis || catvInventoryData?.data?.skuAnalysis;
-                            
-                            if (skuData && skuData.length > 0) {
-                              return skuData.slice(0, 8);
-                            }
-                            
-                            // Fallback: Generate SKU analysis from pivot data
-                            const pivotData = catvUploadResult?.data?.pivotData || catvInventoryData?.data?.pivotData || [];
-                            console.log('📊 Generating SKU analysis from', pivotData.length, 'pivot records');
-                            const skuAnalysis: any = {};
-                            
-                            pivotData.forEach((item: any) => {
-                              const sku = item.modelnumber;
-                              if (!sku) return;
-                              
-                              if (!skuAnalysis[sku]) {
-                                skuAnalysis[sku] = { model: sku, totalUnits: 0, receivedIn: 0, rmaOut: 0, shippedEmgOut: 0, wipInHouse: 0 };
-                              }
-                              
-                              skuAnalysis[sku].totalUnits++;
-                              if (item.wip === 1) skuAnalysis[sku].wipInHouse++;
-                              else if (item.shipped_to_emg === 1) skuAnalysis[sku].shippedEmgOut++;
-                              else if (item.shipped_to_jira === 1) skuAnalysis[sku].rmaOut++;
-                              else skuAnalysis[sku].receivedIn++;
-                            });
-                            
-                            return Object.values(skuAnalysis).sort((a: any, b: any) => b.totalUnits - a.totalUnits).slice(0, 8);
-                          })().map((sku: any, index: number) => (
-                            <div key={index} className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="font-semibold text-sm">{sku.model}</div>
-                                <div className="text-xs text-muted-foreground">{sku.totalUnits.toLocaleString()} units</div>
-                              </div>
-                              
-                              {/* Stacked Bar */}
-                              <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
-                                <div className="h-full flex">
-                                  {/* Received (IN) - Green */}
-                                  <div 
-                                    className="bg-green-500 flex items-center justify-center text-white text-xs font-medium"
-                                    style={{ width: `${(sku.receivedIn / sku.totalUnits) * 100}%` }}
-                                  >
-                                    {sku.receivedIn > 0 && (
-                                      <span className="px-1">{sku.receivedIn}</span>
-                                    )}
-                                  </div>
-                                  {/* RMA Units - Blue */}
-                                  <div 
-                                    className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
-                                    style={{ width: `${(sku.rmaOut / sku.totalUnits) * 100}%` }}
-                                  >
-                                    {sku.rmaOut > 0 && (
-                                      <span className="px-1">{sku.rmaOut}</span>
-                                    )}
-                                  </div>
-                                  {/* Shipped to EMG - Purple */}
-                                  <div 
-                                    className="bg-purple-500 flex items-center justify-center text-white text-xs font-medium"
-                                    style={{ width: `${(sku.shippedEmgOut / sku.totalUnits) * 100}%` }}
-                                  >
-                                    {sku.shippedEmgOut > 0 && (
-                                      <span className="px-1">{sku.shippedEmgOut}</span>
-                                    )}
-                                  </div>
-                                  {/* WIP - Orange */}
-                                  <div 
-                                    className="bg-orange-500 flex items-center justify-center text-white text-xs font-medium"
-                                    style={{ width: `${(sku.wipInHouse / sku.totalUnits) * 100}%` }}
-                                  >
-                                    {sku.wipInHouse > 0 && (
-                                      <span className="px-1">{sku.wipInHouse}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* SKU Stats */}
-                              <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>🟢 IN: {sku.receivedIn}</span>
-                                <span>🔵 RMA: {sku.rmaOut}</span>
-                                <span>🟣 EMG: {sku.shippedEmgOut}</span>
-                                <span>🟠 WIP: {sku.wipInHouse}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Legend */}
-                        <div className="mt-6 p-3 bg-gray-50 rounded-lg">
-                          <div className="text-xs font-medium mb-2">Legend:</div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-green-500 rounded"></div>
-                              <span>Received (IN)</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                              <span>RMA Units</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                              <span>Shipped to EMG</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                              <span>WIP (In House)</span>
-                            </div>
-                          </div>
+                        {/* Vertical Stacked Bar Chart */}
+                        <div className="h-80 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={(() => {
+                                // Get SKU analysis data from API or generate it from pivot data
+                                const skuData = catvUploadResult?.data?.skuAnalysis || catvInventoryData?.data?.skuAnalysis;
+                                
+                                if (skuData && skuData.length > 0) {
+                                  return skuData.slice(0, 8);
+                                }
+                                
+                                // Fallback: Generate SKU analysis from pivot data
+                                const pivotData = catvUploadResult?.data?.pivotData || catvInventoryData?.data?.pivotData || [];
+                                console.log('📊 Generating SKU analysis from', pivotData.length, 'pivot records');
+                                const skuAnalysis: any = {};
+                                
+                                pivotData.forEach((item: any) => {
+                                  const sku = item.modelnumber;
+                                  if (!sku) return;
+                                  
+                                  if (!skuAnalysis[sku]) {
+                                    skuAnalysis[sku] = { 
+                                      model: sku, 
+                                      totalUnits: 0, 
+                                      'Received (IN)': 0, 
+                                      'RMA Units': 0, 
+                                      'Shipped to EMG': 0, 
+                                      'WIP (In House)': 0 
+                                    };
+                                  }
+                                  
+                                  skuAnalysis[sku].totalUnits++;
+                                  if (item.wip === 1) skuAnalysis[sku]['WIP (In House)']++;
+                                  else if (item.shipped_to_emg === 1) skuAnalysis[sku]['Shipped to EMG']++;
+                                  else if (item.shipped_to_jira === 1) skuAnalysis[sku]['RMA Units']++;
+                                  else skuAnalysis[sku]['Received (IN)']++;
+                                });
+                                
+                                return Object.values(skuAnalysis)
+                                  .sort((a: any, b: any) => b.totalUnits - a.totalUnits)
+                                  .slice(0, 8);
+                              })()}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis 
+                                dataKey="model" 
+                                angle={-45}
+                                textAnchor="end"
+                                height={80}
+                                fontSize={12}
+                              />
+                              <YAxis fontSize={12} />
+                              <Tooltip 
+                                formatter={(value: any, name: string) => [value.toLocaleString(), name]}
+                                labelFormatter={(label) => `SKU: ${label}`}
+                                contentStyle={{
+                                  backgroundColor: 'white',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  fontSize: '12px'
+                                }}
+                              />
+                              <Legend 
+                                wrapperStyle={{ fontSize: '12px' }}
+                              />
+                              <Bar dataKey="Received (IN)" stackId="a" fill="#10b981" />
+                              <Bar dataKey="RMA Units" stackId="a" fill="#3b82f6" />
+                              <Bar dataKey="Shipped to EMG" stackId="a" fill="#8b5cf6" />
+                              <Bar dataKey="WIP (In House)" stackId="a" fill="#f59e0b" />
+                            </BarChart>
+                          </ResponsiveContainer>
                         </div>
                       </div>
                     )}
