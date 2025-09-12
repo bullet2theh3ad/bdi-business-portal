@@ -1086,6 +1086,43 @@ export type EmgInventoryTracking = typeof emgInventoryTracking.$inferSelect;
 export type NewEmgInventoryTracking = typeof emgInventoryTracking.$inferInsert;
 export type EmgInventoryHistory = typeof emgInventoryHistory.$inferSelect;
 export type NewEmgInventoryHistory = typeof emgInventoryHistory.$inferInsert;
+
+// CATV Inventory Tracking Tables
+export const catvInventoryTracking = pgTable('catv_inventory_tracking', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Warehouse Information
+  warehouseCode: varchar('warehouse_code', { length: 10 }).default('CATV'),
+  
+  // Week Information (dynamic columns)
+  weekNumber: varchar('week_number', { length: 20 }), // Week identifier (e.g., "Week 15", "Week 16", etc.)
+  weekDate: date('week_date'), // Date for the week
+  
+  // Key Metrics (4 main rows from Tab 1)
+  receivedIn: integer('received_in').default(0), // Received (IN)
+  shippedJiraOut: integer('shipped_jira_out').default(0), // Shipped via Jira (OUT)
+  shippedEmgOut: integer('shipped_emg_out').default(0), // Shipped to EMG (OUT) - renamed from "Count of EMG Shipped (OUT)"
+  wipInHouse: integer('wip_in_house').default(0), // WIP (IN HOUSE)
+  
+  // Pivot Data (from Tab 2 - flexible JSON structure)
+  pivotData: jsonb('pivot_data').default({}), // Raw pivot table data for searchable display
+  
+  // Upload tracking
+  sourceFileName: varchar('source_file_name', { length: 255 }),
+  uploadDate: timestamp('upload_date').defaultNow(),
+  uploadedBy: uuid('uploaded_by').references(() => users.authId),
+  
+  // History tracking
+  firstSeen: timestamp('first_seen').defaultNow(),
+  lastUpdated: timestamp('last_updated').defaultNow(),
+  updateCount: integer('update_count').default(1),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type CatvInventoryTracking = typeof catvInventoryTracking.$inferSelect;
+export type NewCatvInventoryTracking = typeof catvInventoryTracking.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
 export type IntegrationSetting = typeof integrationSettings.$inferSelect;

@@ -104,6 +104,12 @@ export default function WarehousesPage() {
   const [emgUploadResult, setEmgUploadResult] = useState<any>(null);
   const [inventoryChartView, setInventoryChartView] = useState<'current' | 'trends'>('current');
 
+  // CATV Inventory Modal State
+  const [showCatvInventoryModal, setShowCatvInventoryModal] = useState(false);
+  const [catvFile, setCatvFile] = useState<File | null>(null);
+  const [uploadingCatv, setUploadingCatv] = useState(false);
+  const [catvUploadResult, setCatvUploadResult] = useState<any>(null);
+
   // Load existing files when opening edit modal
   useEffect(() => {
     if (selectedWarehouse) {
@@ -625,6 +631,17 @@ export default function WarehousesPage() {
                           size="sm" 
                           onClick={() => setShowEmgInventoryModal(true)}
                           className="w-full sm:w-auto bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                        >
+                          <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
+                          Inventory
+                        </Button>
+                      )}
+                      {warehouse.warehouseCode === 'CAT' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowCatvInventoryModal(true)}
+                          className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                         >
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
                           Inventory
@@ -2028,6 +2045,162 @@ export default function WarehousesPage() {
                 <p className="text-muted-foreground">No inventory data found. Upload a CSV report to get started.</p>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* CATV Inventory Modal */}
+      <Dialog open={showCatvInventoryModal} onOpenChange={setShowCatvInventoryModal}>
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="analytics" size={20} />
+              CATV Warehouse Inventory
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+            {/* Upload Section */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <SemanticBDIIcon semantic="plus" size={16} />
+                      Upload CATV Inventory Report
+                    </CardTitle>
+                    <CardDescription>
+                      Upload XLS files with 2 tabs: Summary chart (4 metrics by weeks) and Pivot data
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* File Upload Dropzone */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setCatvFile(file);
+                    }}
+                    className="hidden"
+                    id="catv-file-upload"
+                  />
+                  <label htmlFor="catv-file-upload" className="cursor-pointer">
+                    <SemanticBDIIcon semantic="upload" size={32} className="mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      XLS files only • Max 10MB
+                    </p>
+                  </label>
+                </div>
+
+                {catvFile && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <SemanticBDIIcon semantic="files" size={16} />
+                        <span className="text-sm font-medium">{catvFile.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({(catvFile.size / 1024 / 1024).toFixed(2)} MB)
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCatvFile(null)}
+                      >
+                        <span className="text-red-500">✕</span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={async () => {
+                    if (!catvFile) return;
+                    
+                    setUploadingCatv(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', catvFile);
+                      
+                      const response = await fetch('/api/inventory/catv-reports', {
+                        method: 'POST',
+                        body: formData,
+                      });
+                      
+                      const result = await response.json();
+                      setCatvUploadResult(result);
+                      
+                      if (result.success) {
+                        setCatvFile(null);
+                        // Refresh data if needed
+                      }
+                    } catch (error) {
+                      console.error('CATV upload error:', error);
+                    } finally {
+                      setUploadingCatv(false);
+                    }
+                  }}
+                  disabled={!catvFile || uploadingCatv}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {uploadingCatv ? 'Processing...' : 'Upload & Process CATV Report'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* CATV Inventory Display */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <SemanticBDIIcon semantic="chart" size={16} />
+                  CATV Inventory Metrics
+                </CardTitle>
+                <CardDescription>
+                  4 Key Metrics: Received (IN), Shipped via Jira (OUT), Shipped to EMG (OUT), WIP (IN HOUSE)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {catvUploadResult?.success ? (
+                  <div className="space-y-6">
+                    {/* Stacked Chart Placeholder */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 text-center">
+                      <h3 className="text-lg font-semibold mb-2">Weekly Inventory Metrics</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Chart showing: Received (IN), Shipped via Jira (OUT), Shipped to EMG (OUT), WIP (IN HOUSE)
+                      </p>
+                      <div className="mt-4 text-xs text-muted-foreground">
+                        📊 Chart visualization will be implemented here
+                      </div>
+                    </div>
+
+                    {/* Pivot Data Table */}
+                    <div className="space-y-4">
+                      <h4 className="text-md font-semibold">Detailed Pivot Data</h4>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-sm text-muted-foreground text-center">
+                          📋 Searchable pivot table will be displayed here
+                        </p>
+                        <div className="mt-2 text-xs text-muted-foreground text-center">
+                          Source: Tab 2 data from uploaded XLS file
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <SemanticBDIIcon semantic="inventory_items" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No CATV inventory data found. Upload an XLS report to get started.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </DialogContent>
       </Dialog>
