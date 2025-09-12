@@ -13,7 +13,7 @@ import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { User } from '@/lib/db/schema';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface UserWithOrganization extends User {
   organization?: {
