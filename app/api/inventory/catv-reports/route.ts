@@ -31,7 +31,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // For now, return placeholder data until we implement the full system
+    console.log('📊 Fetching stored CATV inventory data...');
+
+    // Try to get stored CATV data from database
+    try {
+      const storedData = await db
+        .select()
+        .from(catvInventoryTracking)
+        .orderBy(desc(catvInventoryTracking.uploadDate))
+        .limit(1);
+
+      if (storedData.length > 0) {
+        const latestData = storedData[0];
+        console.log(`📊 Found stored CATV data from: ${latestData.uploadDate}`);
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            fileName: latestData.sourceFileName,
+            metrics: {
+              receivedIn: latestData.receivedIn,
+              shippedJiraOut: latestData.shippedJiraOut,
+              shippedEmgOut: latestData.shippedEmgOut,
+              wipInHouse: latestData.wipInHouse
+            },
+            pivotData: latestData.pivotData || [],
+            lastUpdated: latestData.uploadDate,
+            weekNumber: latestData.weekNumber
+          }
+        });
+      }
+    } catch (dbError) {
+      console.log('📊 No stored CATV data found (table may not exist yet)');
+    }
+
+    // Return empty state if no data found
     return NextResponse.json({
       success: true,
       data: {
@@ -234,6 +268,30 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 Formatted ${formattedPivotData.length} pivot records`);
     console.log(`📋 Sample formatted record:`, formattedPivotData[0]);
+
+    // Store data in database (if table exists)
+    try {
+      console.log('💾 Storing CATV data in database...');
+      
+      const newRecord = {
+        warehouseCode: 'CATV',
+        weekNumber: 'Weeks 15-37', // Could be extracted from data
+        receivedIn: metrics.receivedIn,
+        shippedJiraOut: metrics.shippedJiraOut,
+        shippedEmgOut: metrics.shippedEmgOut,
+        wipInHouse: metrics.wipInHouse,
+        pivotData: formattedPivotData,
+        sourceFileName: file.name,
+        uploadedBy: authUser.id
+      };
+
+      await db.insert(catvInventoryTracking).values(newRecord);
+      console.log('✅ CATV data stored in database successfully');
+      
+    } catch (dbError) {
+      console.log('⚠️ Could not store in database (table may not exist yet):', dbError);
+      // Continue without database storage for now
+    }
 
     return NextResponse.json({
       success: true,

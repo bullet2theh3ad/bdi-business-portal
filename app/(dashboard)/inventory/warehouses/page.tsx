@@ -87,6 +87,7 @@ export default function WarehousesPage() {
   
   const { data: warehouses, mutate: mutateWarehouses } = useSWR<Warehouse[]>('/api/inventory/warehouses', fetcher);
   const { data: emgInventoryData, mutate: mutateEmgInventory } = useSWR('/api/inventory/emg-reports', fetcher);
+  const { data: catvInventoryData, mutate: mutateCatvInventory } = useSWR('/api/inventory/catv-reports', fetcher);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
@@ -2052,12 +2053,15 @@ export default function WarehousesPage() {
 
       {/* CATV Inventory Modal */}
       <Dialog open={showCatvInventoryModal} onOpenChange={setShowCatvInventoryModal}>
-        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }} aria-describedby="catv-inventory-description">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SemanticBDIIcon semantic="analytics" size={20} />
               CATV Warehouse Inventory
             </DialogTitle>
+            <div id="catv-inventory-description" className="sr-only">
+              Upload and manage CATV warehouse inventory reports with weekly metrics and detailed unit tracking
+            </div>
           </DialogHeader>
 
           <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -2104,7 +2108,7 @@ export default function WarehousesPage() {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <SemanticBDIIcon semantic="files" size={16} />
+                        <SemanticBDIIcon semantic="document" size={16} />
                         <span className="text-sm font-medium">{catvFile.name}</span>
                         <span className="text-xs text-muted-foreground">
                           ({(catvFile.size / 1024 / 1024).toFixed(2)} MB)
@@ -2149,6 +2153,8 @@ export default function WarehousesPage() {
                       
                       if (result.success) {
                         setCatvFile(null);
+                        setCatvUploadResult(null); // Clear old result
+                        mutateCatvInventory(); // Refresh stored data
                         alert('CATV file uploaded successfully!');
                       } else {
                         alert(`Upload failed: ${result.error || 'Unknown error'}`);
@@ -2172,7 +2178,7 @@ export default function WarehousesPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <SemanticBDIIcon semantic="chart" size={16} />
+                  <SemanticBDIIcon semantic="analytics" size={16} />
                   CATV Inventory Metrics
                 </CardTitle>
                 <CardDescription>
@@ -2180,7 +2186,7 @@ export default function WarehousesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {catvUploadResult?.success ? (
+                {(catvInventoryData?.data?.pivotData?.length > 0 || catvUploadResult?.success) ? (
                   <div className="space-y-6">
                     {/* File Upload Success Info */}
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -2189,10 +2195,10 @@ export default function WarehousesPage() {
                         <span className="font-medium">File Processed Successfully</span>
                       </div>
                       <div className="mt-2 text-sm text-green-700">
-                        <p><strong>File:</strong> {catvUploadResult.data?.fileName}</p>
-                        <p><strong>Summary Rows:</strong> {catvUploadResult.data?.summaryRows?.toLocaleString()}</p>
-                        <p><strong>Pivot Rows:</strong> {catvUploadResult.data?.pivotRows?.toLocaleString()}</p>
-                        <p><strong>Sheets:</strong> {catvUploadResult.data?.sheets?.join(', ')}</p>
+                        <p><strong>File:</strong> {catvInventoryData?.data?.fileName || catvUploadResult?.data?.fileName}</p>
+                        <p><strong>Last Updated:</strong> {catvInventoryData?.data?.lastUpdated ? new Date(catvInventoryData.data.lastUpdated).toLocaleString() : 'Just now'}</p>
+                        <p><strong>Week Range:</strong> {catvInventoryData?.data?.weekNumber || 'Weeks 15-37'}</p>
+                        <p><strong>Total Units:</strong> {(catvInventoryData?.data?.pivotData?.length || catvUploadResult?.data?.pivotData?.length || 0).toLocaleString()}</p>
                       </div>
                     </div>
 
@@ -2204,25 +2210,25 @@ export default function WarehousesPage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         <div className="bg-white rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-green-600">
-                            {catvUploadResult.data?.metrics?.receivedIn?.toLocaleString() || '0'}
+                            {(catvInventoryData?.data?.metrics?.receivedIn || catvUploadResult?.data?.metrics?.receivedIn || 0).toLocaleString()}
                           </div>
                           <div className="text-sm text-muted-foreground">Received (IN)</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-blue-600">
-                            {catvUploadResult.data?.metrics?.shippedJiraOut?.toLocaleString() || '0'}
+                            {(catvInventoryData?.data?.metrics?.shippedJiraOut || catvUploadResult?.data?.metrics?.shippedJiraOut || 0).toLocaleString()}
                           </div>
                           <div className="text-sm text-muted-foreground">Shipped via Jira (OUT)</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-purple-600">
-                            {catvUploadResult.data?.metrics?.shippedEmgOut?.toLocaleString() || '0'}
+                            {(catvInventoryData?.data?.metrics?.shippedEmgOut || catvUploadResult?.data?.metrics?.shippedEmgOut || 0).toLocaleString()}
                           </div>
                           <div className="text-sm text-muted-foreground">Shipped to EMG (OUT)</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-orange-600">
-                            {catvUploadResult.data?.metrics?.wipInHouse?.toLocaleString() || 'TBD'}
+                            {(catvInventoryData?.data?.metrics?.wipInHouse || catvUploadResult?.data?.metrics?.wipInHouse || 0).toLocaleString()}
                           </div>
                           <div className="text-sm text-muted-foreground">WIP (In House)</div>
                         </div>
@@ -2245,7 +2251,7 @@ export default function WarehousesPage() {
                       <div className="flex items-center justify-between">
                         <h4 className="text-md font-semibold">All CATV Units - Live Data</h4>
                         <div className="text-sm text-muted-foreground">
-                          {catvUploadResult.data?.pivotData?.length?.toLocaleString() || catvUploadResult.data?.pivotRows?.toLocaleString()} total units
+                          {(catvInventoryData?.data?.pivotData?.length || catvUploadResult?.data?.pivotData?.length || 0).toLocaleString()} total units
                         </div>
                       </div>
                       
@@ -2274,21 +2280,21 @@ export default function WarehousesPage() {
                       {/* ALL UNITS - Scrollable Table */}
                       <div className="bg-white border rounded-lg overflow-hidden">
                         <div className="max-h-96 overflow-y-auto">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead className="bg-gray-50 sticky top-0">
+                          <div className="overflow-x-auto min-w-full">
+                            <table className="w-full text-sm min-w-[700px]">
+                              <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                  <th className="px-3 py-2 text-left font-medium">Line Item</th>
-                                  <th className="px-3 py-2 text-left font-medium">Serial Number</th>
-                                  <th className="px-3 py-2 text-left font-medium">Model</th>
-                                  <th className="px-3 py-2 text-left font-medium">Week</th>
-                                  <th className="px-3 py-2 text-left font-medium">Date</th>
-                                  <th className="px-3 py-2 text-left font-medium">EMG Ship</th>
-                                  <th className="px-3 py-2 text-left font-medium">Status</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Line Item</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Serial Number</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Model</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Week</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Date</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm hidden sm:table-cell">EMG Ship</th>
+                                  <th className="px-2 sm:px-3 py-2 text-left font-medium text-xs sm:text-sm">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {catvUploadResult.data?.pivotData?.filter((item: any) => {
+                                {(catvInventoryData?.data?.pivotData || catvUploadResult?.data?.pivotData || []).filter((item: any) => {
                                   if (!catvSearchTerm) return true;
                                   const searchLower = catvSearchTerm.toLowerCase();
                                   return (
@@ -2299,15 +2305,15 @@ export default function WarehousesPage() {
                                   );
                                 })?.map((item: any, index: number) => (
                                   <tr key={index} className="border-t hover:bg-gray-50">
-                                    <td className="px-3 py-2 font-mono text-xs">{item.lineitem}</td>
-                                    <td className="px-3 py-2 font-mono text-xs">{item.serialnumber}</td>
-                                    <td className="px-3 py-2 font-semibold">{item.modelnumber}</td>
-                                    <td className="px-3 py-2 text-center">{item.iso_yearweek}</td>
-                                    <td className="px-3 py-2">{item.datestamp}</td>
-                                    <td className="px-3 py-2 text-center">
+                                    <td className="px-2 sm:px-3 py-2 font-mono text-xs">{item.lineitem}</td>
+                                    <td className="px-2 sm:px-3 py-2 font-mono text-xs">{item.serialnumber}</td>
+                                    <td className="px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">{item.modelnumber}</td>
+                                    <td className="px-2 sm:px-3 py-2 text-center text-xs">{item.iso_yearweek}</td>
+                                    <td className="px-2 sm:px-3 py-2 text-xs">{item.datestamp}</td>
+                                    <td className="px-2 sm:px-3 py-2 text-center text-xs hidden sm:table-cell">
                                       {item.emg_ship_date || '-'}
                                     </td>
-                                    <td className="px-3 py-2">
+                                    <td className="px-2 sm:px-3 py-2">
                                       {item.wip === 1 ? (
                                         <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
                                           WIP
@@ -2340,9 +2346,9 @@ export default function WarehousesPage() {
                         </div>
                         
                         {/* Scroll Indicator */}
-                        <div className="bg-gray-50 px-4 py-2 border-t text-center">
+                        <div className="bg-gray-50 px-2 sm:px-4 py-2 border-t text-center">
                           <p className="text-xs text-muted-foreground">
-                            📊 Scroll to view all {catvUploadResult.data?.pivotData?.length?.toLocaleString() || '0'} units • 
+                            📊 Scroll to view all {(catvInventoryData?.data?.pivotData?.length || catvUploadResult?.data?.pivotData?.length || 0).toLocaleString()} units • 
                             Mobile optimized • Shows real work progress
                           </p>
                         </div>
