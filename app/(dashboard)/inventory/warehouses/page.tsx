@@ -2322,14 +2322,23 @@ export default function WarehousesPage() {
                               />
                               <YAxis fontSize={12} />
                               <Tooltip 
-                                formatter={(value: any, name: string) => [value.toLocaleString(), name]}
+                                formatter={(value: any, name: string, props: any) => {
+                                  const totalReceived = props.payload['Received (IN)'] || 0;
+                                  const percentage = totalReceived > 0 ? ((value / totalReceived) * 100).toFixed(1) : '0.0';
+                                  return [
+                                    `${value.toLocaleString()} units (${percentage}%)`,
+                                    name
+                                  ];
+                                }}
                                 labelFormatter={(label) => `SKU: ${label}`}
                                 contentStyle={{
                                   backgroundColor: 'white',
                                   border: '1px solid #e5e7eb',
                                   borderRadius: '8px',
-                                  fontSize: '12px'
+                                  fontSize: '12px',
+                                  padding: '12px'
                                 }}
+                                labelStyle={{ fontWeight: 'bold', marginBottom: '8px' }}
                               />
                               <Legend 
                                 wrapperStyle={{ fontSize: '12px' }}
@@ -2340,6 +2349,71 @@ export default function WarehousesPage() {
                               <Bar dataKey="WIP (In House)" stackId="a" fill="#f59e0b" />
                             </BarChart>
                           </ResponsiveContainer>
+                        </div>
+                        
+                        {/* SKU Performance Summary */}
+                        <div className="mt-6 space-y-3">
+                          <h4 className="font-semibold text-sm">SKU Performance Metrics</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {(() => {
+                              // Get the same SKU data for percentage calculations
+                              const skuData = catvUploadResult?.data?.skuAnalysis || catvInventoryData?.data?.skuAnalysis;
+                              
+                              if (skuData && skuData.length > 0) {
+                                return skuData.slice(0, 6);
+                              }
+                              
+                              // Fallback: Generate from pivot data
+                              const pivotData = catvUploadResult?.data?.pivotData || catvInventoryData?.data?.pivotData || [];
+                              const skuAnalysis: any = {};
+                              
+                              pivotData.forEach((item: any) => {
+                                const sku = item.modelnumber;
+                                if (!sku) return;
+                                
+                                if (!skuAnalysis[sku]) {
+                                  skuAnalysis[sku] = { model: sku, totalUnits: 0, receivedIn: 0, rmaOut: 0, shippedEmgOut: 0, wipInHouse: 0 };
+                                }
+                                
+                                skuAnalysis[sku].totalUnits++;
+                                skuAnalysis[sku].receivedIn++;
+                                
+                                if (item.wip === 1) skuAnalysis[sku].wipInHouse++;
+                                if (item.shipped_to_emg === 1) skuAnalysis[sku].shippedEmgOut++;
+                                if (item.shipped_to_jira === 1) skuAnalysis[sku].rmaOut++;
+                              });
+                              
+                              return Object.values(skuAnalysis).sort((a: any, b: any) => b.totalUnits - a.totalUnits).slice(0, 6);
+                            })().map((sku: any, index: number) => (
+                              <div key={index} className="bg-gray-50 rounded-lg p-3">
+                                <div className="font-semibold text-sm mb-2">{sku.model}</div>
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex justify-between">
+                                    <span>Total Received:</span>
+                                    <span className="font-medium">{(sku.receivedIn || sku['Received (IN)'] || 0).toLocaleString()}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>RMA Rate:</span>
+                                    <span className="font-medium text-blue-600">
+                                      {((((sku.rmaOut || sku['RMA Units'] || 0) / (sku.receivedIn || sku['Received (IN)'] || 1)) * 100).toFixed(1))}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>EMG Shipped:</span>
+                                    <span className="font-medium text-purple-600">
+                                      {((((sku.shippedEmgOut || sku['Shipped to EMG'] || 0) / (sku.receivedIn || sku['Received (IN)'] || 1)) * 100).toFixed(1))}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>WIP Ratio:</span>
+                                    <span className="font-medium text-orange-600">
+                                      {((((sku.wipInHouse || sku['WIP (In House)'] || 0) / (sku.receivedIn || sku['Received (IN)'] || 1)) * 100).toFixed(1))}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
