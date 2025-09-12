@@ -2182,7 +2182,7 @@ export default function WarehousesPage() {
                   CATV Inventory Metrics
                 </CardTitle>
                 <CardDescription>
-                  4 Key Metrics: Received (IN), Shipped via Jira (OUT), Shipped to EMG (OUT), WIP (IN HOUSE)
+                  4 Key Metrics: Received (IN), RMA Units (OUT), Shipped to EMG (OUT), WIP (IN HOUSE)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -2218,7 +2218,7 @@ export default function WarehousesPage() {
                           <div className="text-xl sm:text-2xl font-bold text-blue-600">
                             {(catvInventoryData?.data?.metrics?.shippedJiraOut || catvUploadResult?.data?.metrics?.shippedJiraOut || 0).toLocaleString()}
                           </div>
-                          <div className="text-xs sm:text-sm text-muted-foreground">Shipped via Jira (OUT)</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">RMA Units (OUT)</div>
                         </div>
                         <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
                           <div className="text-xl sm:text-2xl font-bold text-purple-600">
@@ -2243,8 +2243,106 @@ export default function WarehousesPage() {
                         <p className="text-sm text-muted-foreground">
                           <strong>Total Weeks:</strong> 23 weeks of data
                         </p>
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Total SKUs:</strong> {catvUploadResult?.data?.totalSkus || catvInventoryData?.data?.totalSkus || 0} unique models
+                        </p>
                       </div>
                     </div>
+
+                    {/* SKU Impact Analysis */}
+                    {(catvUploadResult?.data?.skuAnalysis?.length > 0 || catvInventoryData?.data?.skuAnalysis?.length > 0) && (
+                      <div className="bg-white rounded-lg p-4 sm:p-6">
+                        <h3 className="text-lg font-semibold mb-4">SKU Impact Analysis</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Top performing SKUs by total units processed • Shows most active models for in-house work
+                        </p>
+                        
+                        {/* Top SKUs Stacked Bars */}
+                        <div className="space-y-3">
+                          {(catvUploadResult?.data?.skuAnalysis || catvInventoryData?.data?.skuAnalysis || []).slice(0, 8).map((sku: any, index: number) => (
+                            <div key={index} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="font-semibold text-sm">{sku.model}</div>
+                                <div className="text-xs text-muted-foreground">{sku.totalUnits.toLocaleString()} units</div>
+                              </div>
+                              
+                              {/* Stacked Bar */}
+                              <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                                <div className="h-full flex">
+                                  {/* Received (IN) - Green */}
+                                  <div 
+                                    className="bg-green-500 flex items-center justify-center text-white text-xs font-medium"
+                                    style={{ width: `${(sku.receivedIn / sku.totalUnits) * 100}%` }}
+                                  >
+                                    {sku.receivedIn > 0 && (
+                                      <span className="px-1">{sku.receivedIn}</span>
+                                    )}
+                                  </div>
+                                  {/* RMA Units - Blue */}
+                                  <div 
+                                    className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
+                                    style={{ width: `${(sku.rmaOut / sku.totalUnits) * 100}%` }}
+                                  >
+                                    {sku.rmaOut > 0 && (
+                                      <span className="px-1">{sku.rmaOut}</span>
+                                    )}
+                                  </div>
+                                  {/* Shipped to EMG - Purple */}
+                                  <div 
+                                    className="bg-purple-500 flex items-center justify-center text-white text-xs font-medium"
+                                    style={{ width: `${(sku.shippedEmgOut / sku.totalUnits) * 100}%` }}
+                                  >
+                                    {sku.shippedEmgOut > 0 && (
+                                      <span className="px-1">{sku.shippedEmgOut}</span>
+                                    )}
+                                  </div>
+                                  {/* WIP - Orange */}
+                                  <div 
+                                    className="bg-orange-500 flex items-center justify-center text-white text-xs font-medium"
+                                    style={{ width: `${(sku.wipInHouse / sku.totalUnits) * 100}%` }}
+                                  >
+                                    {sku.wipInHouse > 0 && (
+                                      <span className="px-1">{sku.wipInHouse}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* SKU Stats */}
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>🟢 IN: {sku.receivedIn}</span>
+                                <span>🔵 RMA: {sku.rmaOut}</span>
+                                <span>🟣 EMG: {sku.shippedEmgOut}</span>
+                                <span>🟠 WIP: {sku.wipInHouse}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Legend */}
+                        <div className="mt-6 p-3 bg-gray-50 rounded-lg">
+                          <div className="text-xs font-medium mb-2">Legend:</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 bg-green-500 rounded"></div>
+                              <span>Received (IN)</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                              <span>RMA Units</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                              <span>Shipped to EMG</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                              <span>WIP (In House)</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* ALL UNITS - Scrollable Container */}
                     <div className="space-y-4">
@@ -2307,7 +2405,7 @@ export default function WarehousesPage() {
                                         </span>
                                       ) : item.shipped_to_jira === 1 ? (
                                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                                          JIRA
+                                          RMA
                                         </span>
                                       ) : (
                                         <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -2374,7 +2472,7 @@ export default function WarehousesPage() {
                                         </span>
                                       ) : item.shipped_to_jira === 1 ? (
                                         <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
-                                          JIRA
+                                          RMA
                                         </span>
                                       ) : (
                                         <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">

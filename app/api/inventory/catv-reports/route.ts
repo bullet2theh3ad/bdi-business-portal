@@ -269,6 +269,56 @@ export async function POST(request: NextRequest) {
     console.log(`📋 Formatted ${formattedPivotData.length} pivot records`);
     console.log(`📋 Sample formatted record:`, formattedPivotData[0]);
 
+    // Analyze SKU performance and impact
+    const skuAnalysis: any = {};
+    formattedPivotData.forEach((item: any) => {
+      const sku = item.modelnumber;
+      if (!sku) return;
+      
+      if (!skuAnalysis[sku]) {
+        skuAnalysis[sku] = {
+          model: sku,
+          totalUnits: 0,
+          receivedIn: 0,
+          rmaOut: 0,
+          shippedEmgOut: 0,
+          wipInHouse: 0,
+          weeklyActivity: {}
+        };
+      }
+      
+      skuAnalysis[sku].totalUnits++;
+      
+      // Track weekly activity
+      const week = item.iso_yearweek;
+      if (!skuAnalysis[sku].weeklyActivity[week]) {
+        skuAnalysis[sku].weeklyActivity[week] = { in: 0, rma: 0, emg: 0, wip: 0 };
+      }
+      
+      // Categorize the unit
+      if (item.wip === 1) {
+        skuAnalysis[sku].wipInHouse++;
+        skuAnalysis[sku].weeklyActivity[week].wip++;
+      } else if (item.shipped_to_emg === 1) {
+        skuAnalysis[sku].shippedEmgOut++;
+        skuAnalysis[sku].weeklyActivity[week].emg++;
+      } else if (item.shipped_to_jira === 1) {
+        skuAnalysis[sku].rmaOut++;
+        skuAnalysis[sku].weeklyActivity[week].rma++;
+      } else {
+        skuAnalysis[sku].receivedIn++;
+        skuAnalysis[sku].weeklyActivity[week].in++;
+      }
+    });
+
+    // Sort SKUs by impact (total units)
+    const topSkus = Object.values(skuAnalysis)
+      .sort((a: any, b: any) => b.totalUnits - a.totalUnits)
+      .slice(0, 10); // Top 10 most impactful SKUs
+
+    console.log(`📊 SKU Analysis: Found ${Object.keys(skuAnalysis).length} unique SKUs`);
+    console.log(`📊 Top 3 SKUs:`, topSkus.slice(0, 3).map((s: any) => `${s.model}: ${s.totalUnits} units`));
+
     // Store data in database (if table exists)
     try {
       console.log('💾 Storing CATV data in database...');
@@ -304,7 +354,9 @@ export async function POST(request: NextRequest) {
         metrics: metrics,
         sheets: workbook.SheetNames,
         uploadDate: new Date().toISOString(),
-        pivotData: formattedPivotData // Include all formatted pivot data
+        pivotData: formattedPivotData, // Include all formatted pivot data
+        skuAnalysis: topSkus, // Top 10 most impactful SKUs
+        totalSkus: Object.keys(skuAnalysis).length
       }
     });
 
