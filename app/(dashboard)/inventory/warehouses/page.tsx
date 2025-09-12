@@ -2297,7 +2297,7 @@ export default function WarehousesPage() {
                                 </td>
                               </tr>
                               <tr className="border-t bg-gray-50">
-                                <td colspan="7" className="px-4 py-3 text-center text-sm text-muted-foreground">
+                                <td colSpan={7} className="px-4 py-3 text-center text-sm text-muted-foreground">
                                   Showing sample data from {catvUploadResult.data?.pivotRows?.toLocaleString()} total records
                                 </td>
                               </tr>
