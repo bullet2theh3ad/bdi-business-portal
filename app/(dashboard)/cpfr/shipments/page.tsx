@@ -615,11 +615,15 @@ export default function ShipmentsPage() {
     // Get the current shipment data for configuration fields
     const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
     
-    // Get full details for all three steps with complete data
-    const originFactory = manufacturingOrganizations.find((o: any) => o.id === shipmentForm.originFactoryId);
-    const shippingPartner = shippingOrganizations.find((o: any) => o.id === shipmentForm.shippingOrganizationId) || 
-                           (user?.organization?.type === 'shipping_logistics' ? user.organization : null);
-    const destinationWarehouse = allWarehouses.find((w: any) => w.id === shipmentForm.destinationWarehouseId);
+    // Get full warehouse details for all three steps (Origin Factory, Shipping Partner, Final Destination)
+    const originFactoryWarehouse = allWarehouses.find((w: any) => 
+      w.warehouseCode === 'MTN-FACTORY' || w.name?.includes('MTN') || w.type === 'manufacturing'
+    );
+    const shippingPartnerWarehouse = allWarehouses.find((w: any) => 
+      w.warehouseCode === 'OLM' || w.type === 'shipping_logistics' || w.name?.includes('OLM')
+    );
+    const destinationWarehouse = allWarehouses.find((w: any) => w.id === shipmentForm.destinationWarehouseId) ||
+                                 allWarehouses.find((w: any) => w.warehouseCode === 'EMG');
     
     // Helper function to get primary contact from CPFR contacts
     const getPrimaryContact = (cpfrContacts: any) => {
@@ -627,6 +631,14 @@ export default function ShipmentsPage() {
         return cpfrContacts.primary_contacts[0];
       }
       return null;
+    };
+    
+    // Helper function to get warehouse contacts
+    const getWarehouseContacts = (warehouse: any) => {
+      if (warehouse?.contacts && Array.isArray(warehouse.contacts)) {
+        return warehouse.contacts;
+      }
+      return [];
     };
     
     // Helper function to format capabilities
@@ -679,10 +691,10 @@ export default function ShipmentsPage() {
       
       // 3-Step Shipment Route Summary
       ['=== SHIPMENT ROUTE SUMMARY ===', '', '', '', '', '', ''],
-      ['Origin Factory', originFactory?.name || 'Not Set', '', '', '', '', ''],
-      ['Shipping Partner', shippingPartner?.name || 'Not Set', '', '', '', '', ''],
+      ['Origin Factory', originFactoryWarehouse?.name || 'Not Set', '', '', '', '', ''],
+      ['Shipping Partner', shippingPartnerWarehouse?.name || 'Not Set', '', '', '', '', ''],
       ['Final Destination', destinationWarehouse?.name || 'Not Set', '', '', '', '', ''],
-      ['Route Flow', `${originFactory?.code || 'Factory'} → ${shippingPartner?.code || 'Shipper'} → ${destinationWarehouse?.name || 'Warehouse'}`, '', '', '', '', ''],
+      ['Route Flow', `${originFactoryWarehouse?.warehouseCode || 'Factory'} → ${shippingPartnerWarehouse?.warehouseCode || 'Shipper'} → ${destinationWarehouse?.warehouseCode || 'Warehouse'}`, '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
       // Shipment Configuration Section
@@ -696,44 +708,69 @@ export default function ShipmentsPage() {
       ['Special Instructions', currentShipment?.notes || selectedShipment.notes || 'None', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
-      // Origin Factory Details
+      // Origin Factory Details (MTN-FACTORY Warehouse)
       ['=== ORIGIN FACTORY DETAILS ===', '', '', '', '', '', ''],
-      ['Factory Name', originFactory?.name || 'Not Available', '', '', '', '', ''],
-      ['Factory Code', originFactory?.code || 'Not Available', '', '', '', '', ''],
-      ['Factory Type', originFactory?.type || 'Not Available', '', '', '', '', ''],
-      ['Legal Name', originFactory?.legalName || 'Not Available', '', '', '', '', ''],
-      ['Primary Email', originFactory?.contactEmail || 'Not Available', '', '', '', '', ''],
-      ['Primary Phone', originFactory?.contactPhone || 'Not Available', '', '', '', '', ''],
-      ['Business Address', originFactory?.address || originFactory?.businessAddress || 'Not Available', '', '', '', '', ''],
-      ['Billing Address', originFactory?.billingAddress || 'Same as Business Address', '', '', '', '', ''],
-      ['DUNS Number', originFactory?.dunsNumber || 'Not Available', '', '', '', '', ''],
-      ['Tax ID', originFactory?.taxId || 'Not Available', '', '', '', '', ''],
-      ['Industry Code', originFactory?.industryCode || 'Not Available', '', '', '', '', ''],
-      ['Company Size', originFactory?.companySize || 'Not Available', '', '', '', '', ''],
+      ['Factory Name', originFactoryWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Code', originFactoryWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
+      ['Factory Type', originFactoryWarehouse?.type || 'Not Available', '', '', '', '', ''],
+      ['Full Address', originFactoryWarehouse?.address || 'Not Available', '', '', '', '', ''],
+      ['City', originFactoryWarehouse?.city || 'Not Available', '', '', '', '', ''],
+      ['State/Province', originFactoryWarehouse?.state || 'Not Available', '', '', '', '', ''],
+      ['Country', originFactoryWarehouse?.country || 'Not Available', '', '', '', '', ''],
+      ['Postal Code', originFactoryWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
+      ['Timezone', originFactoryWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
+      ['Operating Hours', originFactoryWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Name', originFactoryWarehouse?.contactName || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Email', originFactoryWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Phone', originFactoryWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Shipping Capabilities', formatCapabilities(originFactoryWarehouse?.capabilities), '', '', '', '', ''],
+      ['Main Capabilities', Array.isArray((originFactoryWarehouse as any)?.mainCapabilities) ? (originFactoryWarehouse as any).mainCapabilities.join(', ') : 'Not Available', '', '', '', '', ''],
+      ['Max Pallet Height', `${originFactoryWarehouse?.maxPalletHeightCm || 'N/A'} cm`, '', '', '', '', ''],
+      ['Max Pallet Weight', `${originFactoryWarehouse?.maxPalletWeightKg || 'N/A'} kg`, '', '', '', '', ''],
+      ['Loading Dock Count', originFactoryWarehouse?.loadingDockCount || 'N/A', '', '', '', '', ''],
+      ['Storage Capacity', `${originFactoryWarehouse?.storageCapacitySqm || 'N/A'} sqm`, '', '', '', '', ''],
+      ['Warehouse Notes', originFactoryWarehouse?.notes || 'None', '', '', '', '', ''],
+      // Additional Factory Contacts
+      ...((() => {
+        const factoryContacts = getWarehouseContacts(originFactoryWarehouse);
+        const contactRows: string[][] = [];
+        factoryContacts.forEach((contact: any, index: number) => {
+          contactRows.push(['Additional Contact ' + (index + 1), `${contact.name} - ${contact.email}${contact.phone ? ` - ${contact.phone}` : ''}${contact.isPrimary ? ' (PRIMARY)' : ''}`, '', '', '', '', '']);
+        });
+        return contactRows.length > 0 ? contactRows : [['Additional Contacts', 'None Available', '', '', '', '', '']];
+      })()),
       ['', '', '', '', '', '', ''],
       
-      // Shipping Partner Details  
+      // Shipping Partner Details (OLM Warehouse)
       ['=== SHIPPING PARTNER DETAILS ===', '', '', '', '', '', ''],
-      ['Shipper Name', shippingPartner?.name || 'Not Available', '', '', '', '', ''],
-      ['Shipper Code', shippingPartner?.code || 'Not Available', '', '', '', '', ''],
-      ['Shipper Type', shippingPartner?.type || 'Not Available', '', '', '', '', ''],
-      ['Legal Name', shippingPartner?.legalName || 'Not Available', '', '', '', '', ''],
-      ['Primary Email', shippingPartner?.contactEmail || 'Not Available', '', '', '', '', ''],
-      ['Primary Phone', shippingPartner?.contactPhone || 'Not Available', '', '', '', '', ''],
-      ['Business Address', shippingPartner?.address || shippingPartner?.businessAddress || 'Not Available', '', '', '', '', ''],
-      ['Billing Address', shippingPartner?.billingAddress || 'Same as Business Address', '', '', '', '', ''],
-      ['DUNS Number', shippingPartner?.dunsNumber || 'Not Available', '', '', '', '', ''],
-      ['Tax ID', shippingPartner?.taxId || 'Not Available', '', '', '', '', ''],
-      // CPFR Primary Contact
+      ['Shipper Name', shippingPartnerWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      ['Warehouse Code', shippingPartnerWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
+      ['Shipper Type', shippingPartnerWarehouse?.type || 'Not Available', '', '', '', '', ''],
+      ['Full Address', shippingPartnerWarehouse?.address || 'Not Available', '', '', '', '', ''],
+      ['City', shippingPartnerWarehouse?.city || 'Not Available', '', '', '', '', ''],
+      ['State/Province', shippingPartnerWarehouse?.state || 'Not Available', '', '', '', '', ''],
+      ['Country', shippingPartnerWarehouse?.country || 'Not Available', '', '', '', '', ''],
+      ['Postal Code', shippingPartnerWarehouse?.postalCode || 'Not Available', '', '', '', '', ''],
+      ['Timezone', shippingPartnerWarehouse?.timezone || 'Not Available', '', '', '', '', ''],
+      ['Operating Hours', shippingPartnerWarehouse?.operatingHours || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Name', shippingPartnerWarehouse?.contactName || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Email', shippingPartnerWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
+      ['Primary Contact Phone', shippingPartnerWarehouse?.contactPhone || 'Not Available', '', '', '', '', ''],
+      ['Shipping Capabilities', formatCapabilities(shippingPartnerWarehouse?.capabilities), '', '', '', '', ''],
+      ['Main Capabilities', Array.isArray((shippingPartnerWarehouse as any)?.mainCapabilities) ? (shippingPartnerWarehouse as any).mainCapabilities.join(', ') : 'Not Available', '', '', '', '', ''],
+      ['Max Pallet Height', `${shippingPartnerWarehouse?.maxPalletHeightCm || 'N/A'} cm`, '', '', '', '', ''],
+      ['Max Pallet Weight', `${shippingPartnerWarehouse?.maxPalletWeightKg || 'N/A'} kg`, '', '', '', '', ''],
+      ['Loading Dock Count', shippingPartnerWarehouse?.loadingDockCount || 'N/A', '', '', '', '', ''],
+      ['Storage Capacity', `${shippingPartnerWarehouse?.storageCapacitySqm || 'N/A'} sqm`, '', '', '', '', ''],
+      ['Warehouse Notes', shippingPartnerWarehouse?.notes || 'None', '', '', '', '', ''],
+      // Additional Shipping Partner Contacts
       ...((() => {
-        const primaryContact = getPrimaryContact(shippingPartner?.cpfrContacts);
-        return primaryContact ? [
-          ['CPFR Primary Contact Name', primaryContact.name || 'Not Available', '', '', '', '', ''],
-          ['CPFR Primary Contact Email', primaryContact.email || 'Not Available', '', '', '', '', ''],
-          ['CPFR Primary Contact Role', primaryContact.role || 'Not Available', '', '', '', '', ''],
-        ] : [
-          ['CPFR Primary Contact', 'No CPFR contact configured', '', '', '', '', '']
-        ];
+        const shipperContacts = getWarehouseContacts(shippingPartnerWarehouse);
+        const contactRows: string[][] = [];
+        shipperContacts.forEach((contact: any, index: number) => {
+          contactRows.push(['Additional Contact ' + (index + 1), `${contact.name} - ${contact.email}${contact.phone ? ` - ${contact.phone}` : ''}${contact.isPrimary ? ' (PRIMARY)' : ''}`, '', '', '', '', '']);
+        });
+        return contactRows.length > 0 ? contactRows : [['Additional Contacts', 'None Available', '', '', '', '', '']];
       })()),
       ['', '', '', '', '', '', ''],
       
@@ -755,6 +792,7 @@ export default function ShipmentsPage() {
       ['Loading Docks', destinationWarehouse?.loadingDockCount ? `${destinationWarehouse.loadingDockCount} loading docks` : 'Not Available', '', '', '', '', ''],
       ['Storage Capacity', destinationWarehouse?.storageCapacitySqm ? `${destinationWarehouse.storageCapacitySqm.toLocaleString()} m²` : 'Not Available', '', '', '', '', ''],
       ['Shipping Capabilities', formatCapabilities(destinationWarehouse?.capabilities), '', '', '', '', ''],
+      ['Main Capabilities', Array.isArray((destinationWarehouse as any)?.mainCapabilities) ? (destinationWarehouse as any).mainCapabilities.join(', ') : 'Not Available', '', '', '', '', ''],
       // Primary Contact
       ...((() => {
         const primaryContact = getPrimaryWarehouseContact(destinationWarehouse?.contacts);
@@ -768,6 +806,15 @@ export default function ShipmentsPage() {
           ['Primary Contact Email', destinationWarehouse?.contactEmail || 'Not Available', '', '', '', '', ''],
           ['Primary Contact Phone', destinationWarehouse?.contactPhone || 'Not Available', '', '', '', '', '']
         ];
+      })()),
+      // Additional Destination Contacts
+      ...((() => {
+        const destContacts = getWarehouseContacts(destinationWarehouse);
+        const contactRows: string[][] = [];
+        destContacts.forEach((contact: any, index: number) => {
+          contactRows.push(['Additional Contact ' + (index + 1), `${contact.name} - ${contact.email}${contact.phone ? ` - ${contact.phone}` : ''}${contact.isPrimary ? ' (PRIMARY)' : ''}`, '', '', '', '', '']);
+        });
+        return contactRows.length > 0 ? contactRows : [['Additional Contacts', 'None Available', '', '', '', '', '']];
       })()),
       ['Warehouse Notes', destinationWarehouse?.notes || 'None', '', '', '', '', '']
     ];
