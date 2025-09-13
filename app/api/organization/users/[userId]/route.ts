@@ -170,11 +170,35 @@ export async function DELETE(
 
     // 3. If no other memberships, delete the user completely
     if (otherMemberships.length === 0) {
+      // Delete from database first
       await db
         .delete(users)
         .where(eq(users.authId, userToDelete.authId));
       
-      console.log('Deleted user completely:', userToDelete.email);
+      console.log('Deleted user from database:', userToDelete.email);
+
+      // Also delete from Supabase auth to prevent future invitation conflicts
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseAdmin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.authId);
+        
+        if (deleteAuthError) {
+          console.error('Failed to delete Supabase auth user:', deleteAuthError);
+          // Don't fail the whole operation - database deletion succeeded
+        } else {
+          console.log('✅ Deleted Supabase auth user:', userToDelete.email);
+        }
+      } catch (authError) {
+        console.error('Error deleting Supabase auth user:', authError);
+        // Don't fail the whole operation - database deletion succeeded
+      }
+      
+      console.log('Deleted user completely (database + auth):', userToDelete.email);
     } else {
       console.log('User has other memberships, only removed from this organization');
     }

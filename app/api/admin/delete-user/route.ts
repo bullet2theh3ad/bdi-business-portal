@@ -96,7 +96,30 @@ export async function POST(request: NextRequest) {
       .delete(users)
       .where(eq(users.email, email));
 
-    console.log('🗑️ DELETE USER - Step 3: Cleaning up legacy invitations');
+    console.log('🗑️ DELETE USER - Step 3: Deleting Supabase auth user');
+
+    // 3. Also delete from Supabase auth to prevent future invitation conflicts
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.authId);
+      
+      if (deleteAuthError) {
+        console.error('🗑️ DELETE USER - Failed to delete Supabase auth user:', deleteAuthError);
+        // Don't fail the whole operation - database deletion succeeded
+      } else {
+        console.log('🗑️ DELETE USER - ✅ Deleted Supabase auth user:', userToDelete.email);
+      }
+    } catch (authError) {
+      console.error('🗑️ DELETE USER - Error deleting Supabase auth user:', authError);
+      // Don't fail the whole operation - database deletion succeeded
+    }
+
+    console.log('🗑️ DELETE USER - Step 4: Cleaning up legacy invitations');
 
     // 3. Clean up any legacy invitation tokens
     await db
