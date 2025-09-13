@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, organizations, organizationMembers, organizationInvitations } from '@/lib/db/schema';
@@ -233,29 +234,62 @@ export async function POST(
       );
     }
 
-    // Create user record (pending state - they'll need to complete signup)
+    // Create Supabase auth user FIRST (like the working flow)
+    const tempPassword = `BDI${Math.random().toString(36).substring(2, 8).toUpperCase()}!`;
+    
+    console.log('Creating Supabase auth user for invitation:', email);
+    
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: supabaseUser, error: supabaseError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: tempPassword,
+      email_confirm: true, // Skip email confirmation - user can login immediately
+      user_metadata: {
+        name: name.trim(),
+        invitation_signup: true,
+        organization_id: targetOrganization.id,
+        organization_name: targetOrganization.name,
+        invited_role: role
+      }
+    });
+
+    if (supabaseError || !supabaseUser.user) {
+      console.error('Failed to create Supabase user for invitation:', supabaseError);
+      return NextResponse.json(
+        { error: `Failed to create user account: ${supabaseError?.message || 'Unknown error'}` },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Created Supabase user for invitation:', supabaseUser.user.id);
+
+    // Create user record with REAL Supabase auth ID
     const [newUser] = await db
       .insert(users)
       .values({
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        passwordHash: 'invitation_pending', // Special marker for pending invitations
+        passwordHash: 'supabase_managed', // Supabase manages the password
         role: role,
         title: title?.trim(),
         department: department?.trim(),
-        authId: crypto.randomUUID(), // Generate a temporary UUID for now
-        isActive: false, // Will be activated when they complete signup
+        authId: supabaseUser.user.id, // Use REAL Supabase auth ID
+        isActive: true, // Immediately active since Supabase user is created
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
 
-    // Create organization membership
+    // Create organization membership with real Supabase auth ID
     await db
       .insert(organizationMembers)
       .values({
         organizationUuid: targetOrganization.id,
-        userAuthId: newUser.authId,
+        userAuthId: supabaseUser.user.id, // Use real Supabase auth ID
         role: role,
         joinedAt: new Date(),
       });
@@ -302,8 +336,17 @@ export async function POST(
                 
                 <p style="color: #6b7280; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
                   You've been invited to join <strong>${targetOrganization.name}</strong> on the BDI Business Portal. 
-                  Click the button below to create your account and get started with our CPFR supply chain management platform.
+                  Your account has been created and you can log in immediately with the credentials below.
                 </p>
+
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #1F295A; margin: 0 0 15px 0; font-size: 18px;">Login Credentials</h3>
+                  <p style="margin: 5px 0; color: #374151;"><strong>Email:</strong> ${email}</p>
+                  <p style="margin: 5px 0; color: #374151;"><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${tempPassword}</code></p>
+                  <p style="margin: 15px 0 5px 0; color: #6b7280; font-size: 14px;">
+                    <strong>Important:</strong> Please change your password after first login for security.
+                  </p>
+                </div>
 
                 <div style="text-align: center; margin: 35px 0;">
                   <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #1D897A, #6BC06F); color: white; text-decoration: none; padding: 15px 35px; border-radius: 25px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(29, 137, 122, 0.3);">

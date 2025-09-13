@@ -136,48 +136,38 @@ export async function POST(request: NextRequest) {
       department: validatedData.department,
     });
 
-    // Create the user (pending state)
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        name: validatedData.name,
-        email: validatedData.email,
-        passwordHash: 'invitation_pending', // Special marker for pending invitations
-        role: validatedData.role,
-        title: validatedData.title,
-        department: validatedData.department,
-        supplierCode: userOrganization.code, // Set supplier_code to organization code
-        authId: crypto.randomUUID(), // Generate a temporary UUID for now
-        isActive: false, // Will be activated when they complete signup
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-
-    console.log('🔍 INVITE DEBUG - User created successfully:', newUser);
-
-    // Create organization membership
-    await db
-      .insert(organizationMembers)
-      .values({
-        organizationUuid: userOrganization.id,
-        userAuthId: newUser.authId,
-        role: validatedData.role,
-        joinedAt: new Date(),
-      });
-
-    console.log('Created organization membership');
-
-    // Generate invitation token
+    // Store invitation in organization_invitations table (don't pre-create user)
     const invitationToken = Buffer.from(
       JSON.stringify({
         organizationId: userOrganization.id,
         organizationName: userOrganization.name,
+        organizationCode: userOrganization.code,
         adminEmail: validatedData.email,
+        adminName: validatedData.name,
         role: validatedData.role,
+        title: validatedData.title,
+        department: validatedData.department,
         timestamp: Date.now()
       })
     ).toString('base64url');
+
+    // Store invitation details for signup process
+    await db
+      .insert(organizationInvitations)
+      .values({
+        organizationId: userOrganization.id,
+        organizationCode: userOrganization.code,
+        invitedEmail: validatedData.email,
+        invitedName: validatedData.name,
+        invitedRole: validatedData.role,
+        invitationToken: invitationToken,
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        createdByUserId: dbUser.authId,
+        senderDomain: 'bdibusinessportal.com'
+      });
+
+    console.log('Created organization invitation record');
 
     // Send invitation email
     const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
