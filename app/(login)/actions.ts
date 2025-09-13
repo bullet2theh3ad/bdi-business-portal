@@ -10,7 +10,6 @@ import {
   organizationMembers,
   invitations,
   users,
-  organizationInvitations,
 } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -242,13 +241,16 @@ export async function signUp(prevState: any, formData: FormData) {
       
       // Parse the invitation token to get organization info
       let tokenData;
-      // Parse Base64URL JSON token (unified format)
+      // Parse Base64URL JSON token (new format)
       try {
         tokenData = JSON.parse(Buffer.from(token, 'base64url').toString());
         console.log('🔍 SIGNUP DEBUG - Token parsed successfully');
-        console.log('🔍 SIGNUP DEBUG - Organization:', tokenData.organizationName);
-        console.log('🔍 SIGNUP DEBUG - Role:', tokenData.role);
-        console.log('🔍 SIGNUP DEBUG - Email match:', !!tokenData.adminEmail);
+        console.log('🔍 SIGNUP DEBUG - Token data:', {
+          orgId: tokenData.orgId,
+          email: tokenData.email,
+          role: tokenData.role,
+          timestamp: tokenData.ts
+        });
       } catch (error) {
         console.error('🔍 SIGNUP DEBUG - Token parsing failed:', error);
         console.error('🔍 SIGNUP DEBUG - Token received:', token);
@@ -259,7 +261,20 @@ export async function signUp(prevState: any, formData: FormData) {
         };
       }
 
-      // Find the pending user by email (unified approach)
+      // Verify token data matches signup email
+      if (tokenData.email !== email) {
+        console.error('🔍 SIGNUP DEBUG - Email mismatch:', {
+          tokenEmail: tokenData.email,
+          signupEmail: email
+        });
+        return {
+          error: 'Invalid or expired invitation token.',
+          email,
+          password
+        };
+      }
+
+      // Find the pending user by email (original system)
       console.log('🔍 SIGNUP DEBUG - Looking for pending user');
       
       const [pendingUser] = await db
@@ -276,98 +291,103 @@ export async function signUp(prevState: any, formData: FormData) {
         
       console.log('🔍 SIGNUP DEBUG - Found pending user:', !!pendingUser);
 
-      if (pendingUser) {
-        // Get the organization from the user's membership
-        const [membership] = await db
-          .select({
-            organization: {
-              id: organizations.id,
-              name: organizations.name,
-              code: organizations.code,
-            },
-            role: organizationMembers.role,
-          })
-          .from(organizationMembers)
-          .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
-          .where(eq(organizationMembers.userAuthId, pendingUser.authId!))
-          .limit(1);
-
-        if (membership) {
-          targetOrganization = membership.organization;
-          userRole = membership.role;
-
-          // Delete old membership and user records
-          await db
-            .delete(organizationMembers)
-            .where(eq(organizationMembers.userAuthId, pendingUser.authId!));
-
-          await db
-            .delete(users)
-            .where(eq(users.id, pendingUser.id!));
-
-          // Create fresh user record with correct Supabase auth ID
-          [dbUser] = await db
-            .insert(users)
-            .values({
-                        authId: supabaseUser.id,
-          email: supabaseUser.email!,
-          name: pendingUser.name || name || supabaseUser.email!.split('@')[0],
-              role: userRole,
-              title: pendingUser.title,
-              department: pendingUser.department,
-              supplierCode: targetOrganization.code, // Set supplier_code to organization code
-              passwordHash: 'supabase_managed',
-              isActive: true,
-            })
-            .returning();
-
-          // Create fresh organization membership
-          await db
-            .insert(organizationMembers)
-            .values({
-              userAuthId: supabaseUser.id,
-              organizationUuid: targetOrganization.id,
-              role: userRole,
-            });
-
-          console.log('✅ Created fresh user from invitation:', dbUser?.email);
-          
-          // Activate the organization when the admin completes signup
-          await db
-            .update(organizations)
-            .set({
-              isActive: true,
-              updatedAt: new Date(),
-            })
-            .where(eq(organizations.id, targetOrganization.id));
-          
-          console.log('✅ Activated organization:', targetOrganization.name);
-          
-          // For invitation signups, automatically sign them in
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (signInError) {
-            console.error('Auto sign-in failed:', signInError);
-            // Don't return error - user was created successfully, they can sign in manually
-          } else {
-            console.log('✅ User automatically signed in after invitation signup');
-          }
-        } else {
-          return {
-            error: 'Invalid or expired invitation token.',
-            email,
-            password
-          };
-        }
-      } else {
+      if (!pendingUser) {
+        console.error('🔍 SIGNUP DEBUG - No pending user found for email:', email);
         return {
           error: 'Invalid or expired invitation token.',
           email,
           password
         };
+      }
+
+      // Get the organization from the user's membership
+      const [membership] = await db
+        .select({
+          organization: {
+            id: organizations.id,
+            name: organizations.name,
+            code: organizations.code,
+          },
+          role: organizationMembers.role,
+        })
+        .from(organizationMembers)
+        .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+        .where(eq(organizationMembers.userAuthId, pendingUser.authId!))
+        .limit(1);
+
+      if (!membership) {
+        console.error('🔍 SIGNUP DEBUG - No organization membership found');
+        return {
+          error: 'Invalid or expired invitation token.',
+          email,
+          password
+        };
+      }
+
+      targetOrganization = membership.organization;
+      userRole = membership.role;
+
+      console.log('🔍 SIGNUP DEBUG - Updating user with real Supabase auth ID');
+
+      // Delete old membership and user records
+      await db
+        .delete(organizationMembers)
+        .where(eq(organizationMembers.userAuthId, pendingUser.authId!));
+
+      await db
+        .delete(users)
+        .where(eq(users.id, pendingUser.id!));
+
+      // Create fresh user record with correct Supabase auth ID
+      [dbUser] = await db
+        .insert(users)
+        .values({
+          authId: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: pendingUser.name || name || supabaseUser.email!.split('@')[0],
+          role: userRole,
+          title: pendingUser.title,
+          department: pendingUser.department,
+          supplierCode: targetOrganization.code, // Set supplier_code to organization code
+          passwordHash: 'supabase_managed',
+          isActive: true,
+        })
+        .returning();
+
+      // Create fresh organization membership
+      await db
+        .insert(organizationMembers)
+        .values({
+          userAuthId: supabaseUser.id,
+          organizationUuid: targetOrganization.id,
+          role: userRole,
+        });
+
+      console.log('✅ Created fresh user from invitation:', dbUser?.email);
+      console.log('✅ Replaced pending user with real Supabase auth user');
+      
+      // Activate the organization when the admin completes signup
+      await db
+        .update(organizations)
+        .set({
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, targetOrganization.id));
+      
+      console.log('✅ Activated organization:', targetOrganization.name);
+      
+      // For invitation signups, automatically sign them in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (signInError) {
+        console.error('Auto sign-in failed:', signInError);
+        // Don't return error - user was created successfully, they can sign in manually
+      } else {
+        console.log('✅ User automatically signed in after invitation signup');
       }
     } else {
       // No invitation - create new user and organization (Super Admin signup)

@@ -23,16 +23,18 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   // Check if this is an invitation signup
   const isInvitationSignup = mode === 'signup' && token;
   
-  // Parse invitation token to get organization name
+  // Parse invitation token to get organization info
   let invitationOrgName = 'Loading...'; // fallback
   if (token) {
     try {
-      // Parse Base64URL JSON token (unified format)
+      // Parse Base64URL JSON token (new format) - browser compatible
       const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
       const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
       const tokenData = JSON.parse(atob(padded));
       console.log('Parsed invitation token:', tokenData);
-      invitationOrgName = tokenData.organizationName || 'Unknown Organization';
+      // New token format only has orgId, not organizationName
+      // We'll show a generic message since we don't have the org name in the token
+      invitationOrgName = 'your organization';
     } catch (error) {
       console.error('Error parsing invitation token:', error);
       invitationOrgName = 'Unknown Organization';

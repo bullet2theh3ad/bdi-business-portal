@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { organizations, users, organizationMembers } from '@/lib/db/schema';
+import crypto from 'crypto';
 import { eq, and } from 'drizzle-orm';
 import { Resend } from 'resend';
 import { z } from 'zod';
@@ -136,43 +137,72 @@ export async function POST(request: NextRequest) {
       department: validatedData.department,
     });
 
-    // Store invitation in organization_invitations table (don't pre-create user)
-    const invitationToken = Buffer.from(
-      JSON.stringify({
-        organizationId: userOrganization.id,
-        organizationName: userOrganization.name,
-        organizationCode: userOrganization.code,
-        adminEmail: validatedData.email,
-        adminName: validatedData.name,
+    // Create Supabase auth user first (like the working system)
+    console.log('Creating Supabase auth user for invitation:', validatedData.email);
+    
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Generate temporary password for the invitation
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+
+    const { data: supabaseUser, error: supabaseError } = await supabaseAdmin.auth.admin.createUser({
+      email: validatedData.email.trim().toLowerCase(),
+      password: tempPassword,
+      email_confirm: true, // Skip email confirmation - user can login immediately
+      user_metadata: {
+        name: validatedData.name.trim(),
+        invitation_signup: true,
+        organization_id: userOrganization.id,
+        organization_name: userOrganization.name,
+        invited_role: validatedData.role
+      }
+    });
+
+    if (supabaseError || !supabaseUser.user) {
+      console.error('Failed to create Supabase user for invitation:', supabaseError);
+      return NextResponse.json(
+        { error: `Failed to create user account: ${supabaseError?.message || 'Unknown error'}` },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Created Supabase user for invitation:', supabaseUser.user.id);
+
+    // Create user with real Supabase auth ID (not random UUID)
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        authId: supabaseUser.user.id, // Real Supabase auth ID
+        email: validatedData.email,
+        name: validatedData.name,
         role: validatedData.role,
         title: validatedData.title,
         department: validatedData.department,
-        timestamp: Date.now()
+        supplierCode: userOrganization.code,
+        passwordHash: 'supabase_managed', // Managed by Supabase
+        isActive: true, // Active immediately
+        invitationSenderDomain: 'bdibusinessportal.com',
+        invitationDeliveryStatus: 'pending',
       })
-    ).toString('base64url');
+      .returning();
 
-    // Store invitation details for signup process
+    // Create organization membership
     await db
-      .insert(organizationInvitations)
+      .insert(organizationMembers)
       .values({
-        organizationId: userOrganization.id,
-        organizationCode: userOrganization.code,
-        invitedEmail: validatedData.email,
-        invitedName: validatedData.name,
-        invitedRole: validatedData.role,
-        invitationToken: invitationToken,
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        createdByUserId: dbUser.authId,
-        senderDomain: 'bdibusinessportal.com'
+        userAuthId: supabaseUser.user.id,
+        organizationUuid: userOrganization.id!,
+        role: validatedData.role,
+        joinedAt: new Date(),
       });
 
-    console.log('Created organization invitation record');
+    console.log('Created user with Supabase auth - ready to login');
 
-    // Send invitation email
-    const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
-    
-    console.log('🔍 EMAIL DEBUG - Invitation URL generated:', inviteUrl);
+    // Send invitation email with login credentials
     console.log('🔍 EMAIL DEBUG - Resend configured:', !!resend);
     console.log('🔍 EMAIL DEBUG - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
     
@@ -203,8 +233,17 @@ export async function POST(request: NextRequest) {
                 
                 <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                   You've been invited to join <strong>${userOrganization.name}</strong> as a <strong>${validatedData.role}</strong> on the BDI Business Portal. 
-                  You'll have access to collaborative tools and data exchange capabilities.
+                  Your account has been created and you can log in immediately with the credentials below.
                 </p>
+
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #1F295A; margin: 0 0 15px 0; font-size: 18px;">Login Credentials</h3>
+                  <p style="margin: 5px 0; color: #374151;"><strong>Email:</strong> ${validatedData.email}</p>
+                  <p style="margin: 5px 0; color: #374151;"><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${tempPassword}</code></p>
+                  <p style="margin: 15px 0 5px 0; color: #6b7280; font-size: 14px;">
+                    <strong>Important:</strong> Please change your password after first login for security.
+                  </p>
+                </div>
 
                 <!-- Organization Details -->
                 <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #1D897A;">
@@ -219,13 +258,13 @@ export async function POST(request: NextRequest) {
 
                 <!-- CTA Button -->
                 <div style="text-align: center; margin: 35px 0;">
-                  <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #1D897A, #6BC06F); color: white; text-decoration: none; padding: 15px 35px; border-radius: 25px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(29, 137, 122, 0.3);">
-                    Join ${userOrganization.name}
+                  <a href="https://www.bdibusinessportal.com/sign-in" style="display: inline-block; background: linear-gradient(135deg, #1D897A, #6BC06F); color: white; text-decoration: none; padding: 15px 35px; border-radius: 25px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(29, 137, 122, 0.3);">
+                    Login to BDI Portal
                   </a>
                 </div>
 
                 <p style="color: #6b7280; font-size: 14px; line-height: 1.5; margin: 25px 0 0 0; text-align: center;">
-                  This invitation will expire in 7 days. If you have any questions, please contact your organization administrator.
+                  Use the credentials above to log in. Please change your password after first login for security.
                 </p>
               </div>
 
@@ -252,15 +291,22 @@ export async function POST(request: NextRequest) {
         // Don't fail the whole operation if email fails
       }
     } else {
-      console.log('🔍 EMAIL DEBUG - Resend not configured. Invitation URL:', inviteUrl);
+      console.log('🔍 EMAIL DEBUG - Resend not configured');
       console.log('🔍 EMAIL DEBUG - Check RESEND_API_KEY environment variable');
+      console.log('🔍 EMAIL DEBUG - User can login with:', validatedData.email, '/ password:', tempPassword);
     }
 
     return NextResponse.json({
       success: true,
-      user: { id: newUser.id, email: newUser.email, name: newUser.name },
-      invitationToken,
-      inviteUrl: resend ? 'Email sent' : inviteUrl
+      user: { 
+        id: newUser.id,
+        email: newUser.email, 
+        name: newUser.name,
+        role: newUser.role,
+        supabaseAuthId: supabaseUser.user.id
+      },
+      message: resend ? 'Invitation email sent with login credentials' : 'User created - check logs for credentials',
+      loginUrl: 'https://www.bdibusinessportal.com/sign-in'
     });
 
   } catch (error) {
