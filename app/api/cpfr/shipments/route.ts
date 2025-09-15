@@ -270,8 +270,25 @@ export async function POST(request: NextRequest) {
     const estimatedDeparture = body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Handle custom entries - convert "custom" to null for UUID fields
-    const originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || dbUser.organization?.id || null);
+    // Handle custom entries and invalid IDs - convert "custom" to null for UUID fields
+    let originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || null);
+    
+    // Validate that the organization ID exists - if not, use user's organization as fallback
+    if (originFactoryId) {
+      const { data: orgExists } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('id', originFactoryId)
+        .single();
+      
+      if (!orgExists) {
+        console.log(`⚠️ Invalid organization ID ${originFactoryId}, using user's organization as fallback`);
+        originFactoryId = dbUser.organization?.id || null;
+      }
+    } else {
+      // If no organization selected, use user's organization
+      originFactoryId = dbUser.organization?.id || null;
+    }
     const shippingPartnerId = body.shipperOrganizationId === 'custom' || body.shipperOrganizationId === 'lcl' ? null : (body.shipperOrganizationId || null);
     const destinationWarehouseId = body.destinationWarehouseId === 'custom' ? null : (body.destinationWarehouseId || null);
     
