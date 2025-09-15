@@ -570,6 +570,9 @@ export default function ShipmentsPage() {
         // Store the created shipment data
         setCreatedShipments(prev => new Map(prev.set(selectedShipment.id, result.shipment)));
         
+        // CRITICAL: Refresh shipments data to show updated notes and custom fields
+        mutateShipments();
+        
         // Upload documents if any were attached
         const currentDocs = currentShipmentDocs;
         if (currentDocs.length > 0) {
