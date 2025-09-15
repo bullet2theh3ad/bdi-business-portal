@@ -1614,6 +1614,21 @@ export default function InvoicesPage() {
                                 
                                 console.log('💰 Calculated total from line items:', calculatedTotal);
                                 
+                                // Map line items to correct field names
+                                const mappedLineItems = Array.isArray(lineItems) ? lineItems.map(item => ({
+                                  id: item.id,
+                                  skuId: item.skuId || item.sku_id,
+                                  skuCode: item.skuCode || item.sku_code || item.sku,
+                                  skuName: item.skuName || item.sku_name || item.name,
+                                  description: item.description,
+                                  quantity: item.quantity,
+                                  unitCost: item.unitCost || item.unit_cost,
+                                  unitPrice: item.unitPrice || item.unit_cost,
+                                  totalCost: item.totalCost || item.total_cost
+                                })) : [];
+                                
+                                console.log('🔄 Mapped line items:', mappedLineItems);
+                                
                                 setGeneratedInvoice({
                                   invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
                                   customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
@@ -1626,7 +1641,7 @@ export default function InvoicesPage() {
                                   totalValue: calculatedTotal,
                                   notes: `Generated from PO: ${po.purchaseOrderNumber}`,
                                   poReference: po.purchaseOrderNumber,
-                                  lineItems: Array.isArray(lineItems) ? lineItems : []
+                                  lineItems: mappedLineItems
                                 });
                                 setLoadingLineItems(false);
                               })
@@ -2057,21 +2072,23 @@ export default function InvoicesPage() {
                             </div>
                             
                             {/* Right: Logo and Company Info */}
-                            <div className="text-right">
-                              <div className="flex justify-end mb-2">
+                            <div className="flex flex-col items-end">
+                              <div className="mb-2">
                                 <img 
                                   src="/logos/PNG/Full Lockup Color.png" 
                                   alt="Boundless Devices Inc" 
-                                  className="h-10"
+                                  className="h-12"
                                 />
                               </div>
                               
-                              {/* Company Info - Centered Under Logo */}
-                              <div className="text-center text-xs text-gray-700">
-                                <div className="font-semibold">Boundless Devices, Inc.</div>
-                                <div>17875 Von Karman Ave, STE 150</div>
-                                <div>Irvine, CA 92614</div>
-                                <div className="mt-1">
+                              {/* Company Info - LEFT-JUSTIFIED under logo */}
+                              <div className="flex gap-6 text-xs text-gray-700">
+                                <div>
+                                  <div className="font-semibold">Boundless Devices, Inc.</div>
+                                  <div>17875 Von Karman Ave, STE 150</div>
+                                  <div>Irvine, CA 92614</div>
+                                </div>
+                                <div>
                                   <div>invoices@boundlessdevices.com</div>
                                   <div>+1 (949) 994-7791</div>
                                   <div>www.boundlessdevices.com</div>
@@ -2180,7 +2197,7 @@ export default function InvoicesPage() {
                         <div className="flex justify-end mb-4">
                           <div className="text-right">
                             <div className="text-2xl font-bold text-gray-900">
-                              ${(generatedInvoice.totalValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ${Number(generatedInvoice.totalValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             <div className="text-sm font-semibold text-gray-700">Total</div>
                           </div>
