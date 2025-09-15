@@ -1630,7 +1630,7 @@ export default function InvoicesPage() {
                                 console.log('🔄 Mapped line items:', mappedLineItems);
                                 
                                 setGeneratedInvoice({
-                                  invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
+                                  invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
                                   customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
                                   invoiceDate: new Date().toISOString().split('T')[0],
                                   requestedDeliveryWeek: po.requestedDeliveryWeek || '',
@@ -1648,7 +1648,7 @@ export default function InvoicesPage() {
                               .catch(error => {
                                 console.error('❌ Error loading PO line items:', error);
                                 setGeneratedInvoice({
-                                  invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
+                                  invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
                                   customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
                                   invoiceDate: new Date().toISOString().split('T')[0],
                                   requestedDeliveryWeek: po.requestedDeliveryWeek || '',
@@ -2063,25 +2063,13 @@ export default function InvoicesPage() {
                     {generatedInvoice ? (
                       /* Professional Invoice Template - Matching Exact Format */
                       <div className="bg-white">
-                        {/* Header with Logo and Company Info - Compact Layout */}
+                        {/* Header with Logo and Company Info - Fixed Layout */}
                         <div className="mb-4">
                           <div className="flex justify-between items-start">
-                            {/* Left: INVOICE Title */}
+                            {/* Left: INVOICE Title and Company Info */}
                             <div>
-                              <div className="text-2xl font-bold text-blue-600">INVOICE</div>
-                            </div>
-                            
-                            {/* Right: Logo and Company Info */}
-                            <div className="flex flex-col items-end">
-                              <div className="mb-2">
-                                <img 
-                                  src="/logos/PNG/Full Lockup Color.png" 
-                                  alt="Boundless Devices Inc" 
-                                  className="h-12"
-                                />
-                              </div>
-                              
-                              {/* Company Info - LEFT-JUSTIFIED under logo */}
+                              <div className="text-2xl font-bold text-blue-600 mb-2">INVOICE</div>
+                              {/* Company Info - Under INVOICE title */}
                               <div className="flex gap-6 text-xs text-gray-700">
                                 <div>
                                   <div className="font-semibold">Boundless Devices, Inc.</div>
@@ -2094,6 +2082,15 @@ export default function InvoicesPage() {
                                   <div>www.boundlessdevices.com</div>
                                 </div>
                               </div>
+                            </div>
+                            
+                            {/* Right: Logo Only */}
+                            <div>
+                              <img 
+                                src="/logos/PNG/Full Lockup Color.png" 
+                                alt="Boundless Devices Inc" 
+                                className="h-12"
+                              />
                             </div>
                           </div>
                         </div>
