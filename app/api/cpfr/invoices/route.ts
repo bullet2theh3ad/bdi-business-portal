@@ -207,6 +207,7 @@ export async function POST(request: NextRequest) {
           skuId: item.skuId,
           skuCode: item.sku || item.skuCode,
           skuName: item.skuName,
+          description: item.description || null, // NEW: Editable description
           quantity: quantity,
           unitCost: unitCost.toString(),
           lineTotal: parseFloat(lineTotal || 0).toString(),

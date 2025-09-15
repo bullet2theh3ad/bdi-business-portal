@@ -741,6 +741,7 @@ export const invoiceLineItems = pgTable('invoice_line_items', {
   // Line Item Details
   skuCode: varchar('sku_code', { length: 100 }).notNull(),
   skuName: varchar('sku_name', { length: 255 }).notNull(),
+  description: text('description'), // NEW: Manually editable description
   quantity: integer('quantity').notNull(),
   unitCost: numeric('unit_cost', { precision: 15, scale: 2 }).notNull(),
   lineTotal: numeric('line_total', { precision: 15, scale: 2 }).notNull().default('0.00'),

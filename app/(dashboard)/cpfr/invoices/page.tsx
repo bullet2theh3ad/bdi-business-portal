@@ -1680,12 +1680,65 @@ export default function InvoicesPage() {
                       </select>
                       {selectedPO && (
                         <div className="mt-3 p-3 bg-white rounded border">
-                          <p className="text-sm text-gray-600">
-                            <strong>PO #{selectedPO.purchaseOrderNumber}</strong><br />
-                            Customer: {selectedPO.customerName || selectedPO.organization?.name}<br />
-                            Value: ${selectedPO.totalValue?.toLocaleString()}<br />
-                            Delivery: Week {selectedPO.requestedDeliveryWeek}
-                          </p>
+                          <div className="flex justify-between items-start">
+                            <p className="text-sm text-gray-600 flex-1">
+                              <strong>PO #{selectedPO.purchaseOrderNumber}</strong><br />
+                              Customer: {selectedPO.customerName || selectedPO.organization?.name}<br />
+                              Value: ${selectedPO.totalValue?.toLocaleString()}<br />
+                              Delivery: Week {selectedPO.requestedDeliveryWeek}
+                            </p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                // Reload PO line items
+                                console.log(`🔄 Reloading line items for PO: ${selectedPO.id}`);
+                                setLoadingLineItems(true);
+                                
+                                fetch(`/api/cpfr/purchase-orders/${selectedPO.id}/line-items`)
+                                  .then(res => res.json())
+                                  .then(lineItems => {
+                                    console.log('🔄 Reloaded PO line items:', lineItems);
+                                    const mappedLineItems = Array.isArray(lineItems) ? lineItems.map(item => ({
+                                      id: item.id,
+                                      skuId: item.skuId || item.sku_id,
+                                      skuCode: item.skuCode || item.sku_code || item.sku,
+                                      skuName: item.skuName || item.sku_name || item.name,
+                                      description: item.description || `PO ${selectedPO.purchaseOrderNumber}`,
+                                      quantity: item.quantity,
+                                      unitCost: item.unitCost || item.unit_cost,
+                                      unitPrice: item.unitPrice || item.unit_cost,
+                                      totalCost: item.totalCost || item.total_cost
+                                    })) : [];
+                                    
+                                    setGeneratedInvoice((prev: any) => ({
+                                      ...prev,
+                                      lineItems: mappedLineItems
+                                    }));
+                                    setLoadingLineItems(false);
+                                  })
+                                  .catch(error => {
+                                    console.error('❌ Error reloading line items:', error);
+                                    setLoadingLineItems(false);
+                                  });
+                              }}
+                              className="ml-2 text-xs"
+                              disabled={loadingLineItems}
+                            >
+                              {loadingLineItems ? (
+                                <>
+                                  <SemanticBDIIcon semantic="loading" size={12} className="mr-1 animate-spin" />
+                                  Reloading...
+                                </>
+                              ) : (
+                                <>
+                                  <SemanticBDIIcon semantic="refresh" size={12} className="mr-1" />
+                                  Reload Items
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2174,7 +2227,7 @@ export default function InvoicesPage() {
                         </div>
 
                         {/* Bill To and Ship To Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                           <div>
                             <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bill to</h3>
                             <div className="text-gray-700">
@@ -2244,7 +2297,19 @@ export default function InvoicesPage() {
                                     <td className="border border-gray-300 px-2 py-2 text-xs">{index + 1}.</td>
                                     <td className="border border-gray-300 px-2 py-2 text-xs font-medium">{item.skuName || item.sku || 'Product Name'}</td>
                                     <td className="border border-gray-300 px-2 py-2 text-xs">{item.skuCode || item.sku}</td>
-                                    <td className="border border-gray-300 px-2 py-2 text-xs">{generatedInvoice.poReference}</td>
+                                    <td className="border border-gray-300 px-1 py-1 text-xs">
+                                      <input
+                                        type="text"
+                                        value={item.description || generatedInvoice.poReference}
+                                        onChange={(e) => {
+                                          const updatedLineItems = [...generatedInvoice.lineItems];
+                                          updatedLineItems[index] = {...item, description: e.target.value};
+                                          setGeneratedInvoice({...generatedInvoice, lineItems: updatedLineItems});
+                                        }}
+                                        className="w-full text-xs border-0 bg-transparent focus:bg-white focus:border focus:border-blue-300 rounded px-1"
+                                        placeholder="Enter description..."
+                                      />
+                                    </td>
                                     <td className="border border-gray-300 px-2 py-2 text-right text-xs">{(item.quantity || 0).toLocaleString()}</td>
                                     <td className="border border-gray-300 px-2 py-2 text-right text-xs">${(item.unitCost || item.unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td className="border border-gray-300 px-2 py-2 text-right text-xs font-semibold">${((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
