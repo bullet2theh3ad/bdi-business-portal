@@ -1926,6 +1926,11 @@ export default function SalesForecastsPage() {
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="">Select Shipping Mode</option>
+                      <optgroup label="⚡ Immediate/Express (Zero Lag)">
+                        <option value="ZERO_LAG_SAME_DAY">Zero Lag - Same Day (cross docking, special shipments)</option>
+                        <option value="ZERO_LAG_NEXT_DAY">Zero Lag - Next Day (express fulfillment)</option>
+                        <option value="ZERO_LAG_CUSTOM">Zero Lag - Custom Date (any lead time 1+ days)</option>
+                      </optgroup>
                       <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
                         <option value="AIR_7_DAYS">Air Express - 7 days door-to-door (urgent orders)</option>
                         <option value="AIR_14_DAYS">Air Standard - 14 days door-to-door (standard air)</option>
