@@ -169,17 +169,20 @@ export default function ShipmentsPage() {
   const [shipmentForm, setShipmentForm] = useState({
     // Step 1: Origin Factory
     originFactoryId: '',
+    customOriginFactory: '', // Custom origin entry
     
     // Step 2: Shipping Partner  
     shippingOrganizationId: '',
+    customShippingPartner: '', // Custom shipping partner entry
     
     // Step 3: Final Destination
     destinationWarehouseId: '',
+    customDestinationWarehouse: '', // Custom destination entry
     
     // Additional fields
     shipperReference: '',
     factoryWarehouseId: '', // Keep for backward compatibility
-    unitsPerCarton: 5,
+    unitsPerCarton: selectedShipment?.sku?.boxesPerCarton || 5,
     requestedQuantity: 0,
     notes: '',
     priority: 'standard',
@@ -247,7 +250,7 @@ export default function ShipmentsPage() {
           // Legacy/Additional fields
           shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
           factoryWarehouseId: shipmentData.factory_warehouse_id || shipmentData.factoryWarehouseId || '',
-          unitsPerCarton: shipmentData.units_per_carton || shipmentData.unitsPerCarton || 5,
+          unitsPerCarton: shipmentData.units_per_carton || shipmentData.unitsPerCarton || selectedShipment?.sku?.boxesPerCarton || 5,
           requestedQuantity: shipmentData.requested_quantity || shipmentData.requestedQuantity || selectedShipment.quantity,
           notes: shipmentData.notes || '',
           priority: shipmentData.priority || 'standard',
@@ -256,7 +259,12 @@ export default function ShipmentsPage() {
           deliveryLocation: shipmentData.delivery_location || shipmentData.deliveryLocation || '',
           estimatedShipDate: shipmentData.estimated_departure ? new Date(shipmentData.estimated_departure).toISOString().split('T')[0] : '',
           requestedDeliveryDate: shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toISOString().split('T')[0] : '',
-          overrideDefaults: false // Default to unchecked, user can check if they want to override
+          overrideDefaults: false, // Default to unchecked, user can check if they want to override
+          
+          // Custom entry fields
+          customOriginFactory: '',
+          customShippingPartner: '',
+          customDestinationWarehouse: ''
         };
         
         console.log('🔍 Setting form data:', formData);
@@ -308,7 +316,7 @@ export default function ShipmentsPage() {
           // Additional fields
           shipperReference: '',
           factoryWarehouseId: '',
-          unitsPerCarton: 5,
+          unitsPerCarton: selectedShipment?.sku?.boxesPerCarton || 5,
           requestedQuantity: 0,
           notes: '',
           priority: 'standard',
@@ -317,7 +325,12 @@ export default function ShipmentsPage() {
           deliveryLocation: '',
           estimatedShipDate: '',
           requestedDeliveryDate: '',
-          overrideDefaults: false
+          overrideDefaults: false,
+          
+          // Custom entry fields
+          customOriginFactory: '',
+          customShippingPartner: '',
+          customDestinationWarehouse: ''
         });
       }
     } else {
@@ -1431,25 +1444,56 @@ export default function ShipmentsPage() {
                         <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
                           🏭 Step 1: Origin Factory
                         </h4>
-                        <div>
-                          <Label htmlFor="originFactory">Manufacturing Partner *</Label>
-                          <select
-                            id="originFactory"
-                            value={shipmentForm.originFactoryId}
-                            onChange={(e) => setShipmentForm(prev => ({ ...prev, originFactoryId: e.target.value }))}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            required
-                          >
-                            <option value="">Select manufacturing partner...</option>
-                            {manufacturingOrganizations.map((org: any) => (
-                              <option key={org.id} value={org.id}>
-                                🏭 {org.name} ({org.code})
-                              </option>
-                            ))}
-                          </select>
-                          <div className="text-xs text-gray-600 mt-1">
-                            Select the factory/manufacturer (MTN, CBN, etc.)
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="originFactory">Manufacturing Partner *</Label>
+                            <select
+                              id="originFactory"
+                              value={shipmentForm.originFactoryId}
+                              onChange={(e) => {
+                                setShipmentForm(prev => ({ 
+                                  ...prev, 
+                                  originFactoryId: e.target.value,
+                                  customOriginFactory: e.target.value === 'custom' ? prev.customOriginFactory : ''
+                                }));
+                              }}
+                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                            >
+                              <option value="">Select manufacturing partner...</option>
+                              {manufacturingOrganizations.map((org: any) => (
+                                <option key={org.id} value={org.id}>
+                                  🏭 {org.name} ({org.code})
+                                </option>
+                              ))}
+                              {/* Add warehouses as potential origins for special cases */}
+                              {allWarehouses.filter((w: any) => w.warehouseCode !== 'MTN-FACTORY').map((warehouse: any) => (
+                                <option key={`warehouse-${warehouse.id}`} value={warehouse.id}>
+                                  📦 {warehouse.name} ({warehouse.warehouseCode}) - Special Origin
+                                </option>
+                              ))}
+                              <option value="custom">🔧 Custom Entry (Other Location)</option>
+                            </select>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Select factory/manufacturer, warehouse (e.g., EMG internal transfer), or custom entry
+                            </div>
                           </div>
+                          
+                          {/* Custom Origin Entry */}
+                          {shipmentForm.originFactoryId === 'custom' && (
+                            <div>
+                              <Label htmlFor="customOriginFactory">Custom Origin Location *</Label>
+                              <input
+                                id="customOriginFactory"
+                                type="text"
+                                value={shipmentForm.customOriginFactory || ''}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, customOriginFactory: e.target.value }))}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter custom origin location (e.g., EMG Internal Transfer, Customer Return, etc.)"
+                                required
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1458,30 +1502,56 @@ export default function ShipmentsPage() {
                         <h4 className="font-semibold text-green-800 mb-3 flex items-center">
                           🚚 Step 2: Shipping Partner
                         </h4>
-                        <div>
-                          <Label htmlFor="shippingPartner">Logistics Organization *</Label>
-                          <select
-                            id="shippingPartner"
-                            value={shipmentForm.shippingOrganizationId}
-                            onChange={(e) => setShipmentForm(prev => ({ ...prev, shippingOrganizationId: e.target.value }))}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                            required
-                          >
-                            <option value="">Select logistics partner...</option>
-                            {shippingOrganizations.map((org: any) => (
-                              <option key={org.id} value={org.id}>
-                                📦 {org.name} ({org.code})
-                              </option>
-                            ))}
-                            {(!Array.isArray(shippingOrganizations) || shippingOrganizations.length === 0) && user?.organization?.type === 'shipping_logistics' && (
-                              <option value={user.organization.id}>
-                                📦 {user.organization.name} ({user.organization.code})
-                              </option>
-                            )}
-                          </select>
-                          <div className="text-xs text-gray-600 mt-1">
-                            This gives the shipping partner full CPFR visibility
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="shippingPartner">Logistics Organization *</Label>
+                            <select
+                              id="shippingPartner"
+                              value={shipmentForm.shippingOrganizationId}
+                              onChange={(e) => {
+                                setShipmentForm(prev => ({ 
+                                  ...prev, 
+                                  shippingOrganizationId: e.target.value,
+                                  customShippingPartner: e.target.value === 'custom' ? prev.customShippingPartner : ''
+                                }));
+                              }}
+                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              required
+                            >
+                              <option value="">Select logistics partner...</option>
+                              {shippingOrganizations.map((org: any) => (
+                                <option key={org.id} value={org.id}>
+                                  📦 {org.name} ({org.code})
+                                </option>
+                              ))}
+                              {(!Array.isArray(shippingOrganizations) || shippingOrganizations.length === 0) && user?.organization?.type === 'shipping_logistics' && (
+                                <option value={user.organization.id}>
+                                  📦 {user.organization.name} ({user.organization.code})
+                                </option>
+                              )}
+                              <option value="lcl">🚢 LCL (Less than Container Load)</option>
+                              <option value="custom">🔧 Custom Entry (Other Shipper)</option>
+                            </select>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Select logistics partner, use LCL option, or enter custom shipper
+                            </div>
                           </div>
+                          
+                          {/* Custom Shipping Partner Entry */}
+                          {shipmentForm.shippingOrganizationId === 'custom' && (
+                            <div>
+                              <Label htmlFor="customShippingPartner">Custom Shipping Partner *</Label>
+                              <input
+                                id="customShippingPartner"
+                                type="text"
+                                value={shipmentForm.customShippingPartner || ''}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, customShippingPartner: e.target.value }))}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="Enter custom shipping partner (e.g., DHL Express, FedEx, Local Courier, etc.)"
+                                required
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1490,25 +1560,50 @@ export default function ShipmentsPage() {
                         <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
                           📦 Step 3: Final Destination
                         </h4>
-                        <div>
-                          <Label htmlFor="destinationWarehouse">Destination Warehouse *</Label>
-                          <select
-                            id="destinationWarehouse"
-                            value={shipmentForm.destinationWarehouseId}
-                            onChange={(e) => setShipmentForm(prev => ({ ...prev, destinationWarehouseId: e.target.value }))}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            required
-                          >
-                            <option value="">Select destination warehouse...</option>
-                            {allWarehouses.map((warehouse: any) => (
-                              <option key={warehouse.id} value={warehouse.id}>
-                                🏢 {warehouse.name}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="text-xs text-gray-600 mt-1">
-                            Select the final destination warehouse (EMG, Complete CATV, etc.)
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="destinationWarehouse">Destination Warehouse *</Label>
+                            <select
+                              id="destinationWarehouse"
+                              value={shipmentForm.destinationWarehouseId}
+                              onChange={(e) => {
+                                setShipmentForm(prev => ({ 
+                                  ...prev, 
+                                  destinationWarehouseId: e.target.value,
+                                  customDestinationWarehouse: e.target.value === 'custom' ? prev.customDestinationWarehouse : ''
+                                }));
+                              }}
+                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              required
+                            >
+                              <option value="">Select destination warehouse...</option>
+                              {allWarehouses.map((warehouse: any) => (
+                                <option key={warehouse.id} value={warehouse.id}>
+                                  🏢 {warehouse.name} ({warehouse.warehouseCode})
+                                </option>
+                              ))}
+                              <option value="custom">🔧 Custom Entry (Other Destination)</option>
+                            </select>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Select warehouse (EMG, Complete CATV, etc.) or enter custom destination
+                            </div>
                           </div>
+                          
+                          {/* Custom Destination Entry */}
+                          {shipmentForm.destinationWarehouseId === 'custom' && (
+                            <div>
+                              <Label htmlFor="customDestinationWarehouse">Custom Destination Location *</Label>
+                              <input
+                                id="customDestinationWarehouse"
+                                type="text"
+                                value={shipmentForm.customDestinationWarehouse || ''}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, customDestinationWarehouse: e.target.value }))}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="Enter custom destination (e.g., Direct to Customer, Amazon Warehouse, Retail Store, etc.)"
+                                required
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1664,7 +1759,7 @@ export default function ShipmentsPage() {
                                 id="unitsPerCarton"
                                 type="number"
                                 value={shipmentForm.unitsPerCarton}
-                                onChange={(e) => setShipmentForm(prev => ({ ...prev, unitsPerCarton: parseInt(e.target.value) || 5 }))}
+                                onChange={(e) => setShipmentForm(prev => ({ ...prev, unitsPerCarton: parseInt(e.target.value) || selectedShipment?.sku?.boxesPerCarton || 5 }))}
                                 className="mt-1"
                               />
                             </div>
