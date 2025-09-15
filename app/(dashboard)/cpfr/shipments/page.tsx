@@ -238,8 +238,8 @@ export default function ShipmentsPage() {
         console.log('   - destination_warehouse_id:', shipmentData.destination_warehouse_id);
         
         const formData = {
-          // Step 1: Origin Factory (from organization_id field)
-          originFactoryId: shipmentData.organization_id || shipmentData.organizationId || '',
+          // Step 1: Origin Factory (check warehouse origin first, then organization)
+          originFactoryId: shipmentData.origin_warehouse_id || shipmentData.organization_id || shipmentData.organizationId || '',
           
           // Step 2: Shipping Partner (handle custom entries)
           shippingOrganizationId: shipmentData.shipper_organization_id || shipmentData.shipperOrganizationId || 
