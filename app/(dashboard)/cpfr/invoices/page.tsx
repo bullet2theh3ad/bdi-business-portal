@@ -44,6 +44,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function InvoicesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: invoices, mutate: mutateInvoices } = useSWR<Invoice[]>('/api/cpfr/invoices', fetcher);
+  const { data: purchaseOrders } = useSWR<any[]>('/api/cpfr/purchase-orders', fetcher);
   
   // 🌍 Translation hooks
   const userLocale = getUserLocale(user);
@@ -122,9 +123,15 @@ export default function InvoicesPage() {
   };
   
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Generate Invoice modal states
+  const [selectedPO, setSelectedPO] = useState<any>(null);
+  const [generatedInvoice, setGeneratedInvoice] = useState<any>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [customTerms, setCustomTerms] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
@@ -285,16 +292,29 @@ export default function InvoicesPage() {
               <p className="text-sm sm:text-base text-muted-foreground">{tc('invoicesDescription', 'Manage customer invoices and billing')}</p>
             </div>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
-            // Clear all form state for a fresh invoice
-            setLineItems([]);
-            setUploadedDocs([]);
-            setCustomTerms(false);
-            setShowCreateModal(true);
-          }}>
-            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            {tc('enterInvoiceButton', 'Enter Invoice')}
-          </Button>
+          <div className="flex gap-2">
+            <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
+              // Clear all form state for a fresh invoice
+              setLineItems([]);
+              setUploadedDocs([]);
+              setCustomTerms(false);
+              setShowCreateModal(true);
+            }}>
+              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+              {tc('enterInvoiceButton', 'Enter Invoice')}
+            </Button>
+            
+            <Button 
+              variant="outline"
+              className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 hover:text-blue-800"
+              onClick={() => {
+                setShowGenerateModal(true);
+              }}
+            >
+              <SemanticBDIIcon semantic="magic" size={16} className="mr-2 text-blue-700" />
+              {tc('generateInvoiceButton', 'Generate Invoice')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1426,6 +1446,337 @@ export default function InvoicesPage() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Generate Invoice Modal - Full Screen with Real-time Preview */}
+      {showGenerateModal && (
+        <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
+          <DialogContent className="w-[98vw] h-[98vh] overflow-hidden p-0" style={{ maxWidth: 'none' }}>
+            <div className="flex flex-col md:flex-row h-full">
+              {/* Left Panel - Invoice Form (Mobile: Top, Desktop: Left 40%) */}
+              <div className="w-full md:w-2/5 border-r border-gray-200 overflow-y-auto">
+                <div className="p-6">
+                  <DialogHeader className="mb-6">
+                    <DialogTitle className="flex items-center text-2xl">
+                      <SemanticBDIIcon semantic="magic" size={24} className="mr-3 text-blue-600" />
+                      {tc('generateInvoiceTitle', 'Generate Invoice')}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {tc('generateInvoiceDescription', 'Select a Purchase Order and generate a professional invoice with real-time preview')}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <form className="space-y-6">
+                    {/* Step 1: Select Purchase Order */}
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h3 className="font-semibold text-blue-900 mb-3">Step 1: Select Purchase Order</h3>
+                      <select 
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={selectedPO?.id || ''}
+                        onChange={(e) => {
+                          const po = purchaseOrders?.find(p => p.id === e.target.value);
+                          setSelectedPO(po);
+                          // Auto-populate invoice data from PO
+                          if (po) {
+                            setGeneratedInvoice({
+                              invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
+                              customerName: po.customerName || po.organization?.name || '',
+                              invoiceDate: new Date().toISOString().split('T')[0],
+                              requestedDeliveryWeek: po.requestedDeliveryWeek || '',
+                              status: 'draft',
+                              terms: 'NET30',
+                              incoterms: po.incoterms || 'FOB',
+                              incotermsLocation: po.incotermsLocation || 'Shanghai Port',
+                              totalValue: po.totalValue || 0,
+                              notes: `Generated from PO: ${po.purchaseOrderNumber}`,
+                              poReference: po.purchaseOrderNumber,
+                              lineItems: po.lineItems || []
+                            });
+                          }
+                        }}
+                      >
+                        <option value="">Select a Purchase Order...</option>
+                        {purchaseOrders?.filter(po => po.status === 'approved' || po.status === 'confirmed')?.map(po => (
+                          <option key={po.id} value={po.id}>
+                            PO: {po.purchaseOrderNumber} - {po.customerName || po.organization?.name} - ${po.totalValue?.toLocaleString()}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedPO && (
+                        <div className="mt-3 p-3 bg-white rounded border">
+                          <p className="text-sm text-gray-600">
+                            <strong>PO #{selectedPO.purchaseOrderNumber}</strong><br />
+                            Customer: {selectedPO.customerName || selectedPO.organization?.name}<br />
+                            Value: ${selectedPO.totalValue?.toLocaleString()}<br />
+                            Delivery: Week {selectedPO.requestedDeliveryWeek}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {generatedInvoice && (
+                      <>
+                        {/* Step 2: Invoice Details */}
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <h3 className="font-semibold text-green-900 mb-3">Step 2: Invoice Details</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="genInvoiceNumber">Invoice Number</Label>
+                              <Input
+                                id="genInvoiceNumber"
+                                value={generatedInvoice.invoiceNumber}
+                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, invoiceNumber: e.target.value})}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="genInvoiceDate">Invoice Date</Label>
+                              <Input
+                                id="genInvoiceDate"
+                                type="date"
+                                value={generatedInvoice.invoiceDate}
+                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, invoiceDate: e.target.value})}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="genTerms">Payment Terms</Label>
+                              <select 
+                                id="genTerms"
+                                value={generatedInvoice.terms}
+                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, terms: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                              >
+                                <option value="NET30">NET 30</option>
+                                <option value="NET60">NET 60</option>
+                                <option value="NET90">NET 90</option>
+                                <option value="COD">Cash on Delivery</option>
+                                <option value="PREPAID">Prepaid</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label htmlFor="genIncoterms">Incoterms</Label>
+                              <select 
+                                id="genIncoterms"
+                                value={generatedInvoice.incoterms}
+                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, incoterms: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                              >
+                                <option value="FOB">FOB (Free on Board)</option>
+                                <option value="CIF">CIF (Cost, Insurance, Freight)</option>
+                                <option value="DDP">DDP (Delivered Duty Paid)</option>
+                                <option value="EXW">EXW (Ex Works)</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <Label htmlFor="genIncotermsLocation">Incoterms Location</Label>
+                            <Input
+                              id="genIncotermsLocation"
+                              value={generatedInvoice.incotermsLocation}
+                              onChange={(e) => setGeneratedInvoice({...generatedInvoice, incotermsLocation: e.target.value})}
+                              placeholder="e.g., Shanghai Port, Los Angeles"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Step 3: Notes */}
+                        <div className="bg-yellow-50 p-4 rounded-lg">
+                          <h3 className="font-semibold text-yellow-900 mb-3">Step 3: Additional Notes</h3>
+                          <textarea
+                            value={generatedInvoice.notes}
+                            onChange={(e) => setGeneratedInvoice({...generatedInvoice, notes: e.target.value})}
+                            placeholder="Special instructions, delivery requirements, etc."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 mt-1"
+                            rows={3}
+                          />
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => {
+                              setShowGenerateModal(false);
+                              setSelectedPO(null);
+                              setGeneratedInvoice(null);
+                            }}
+                            className="flex-1"
+                          >
+                            {tc('cancelButton', 'Cancel')}
+                          </Button>
+                          <Button 
+                            type="button"
+                            className="bg-blue-600 hover:bg-blue-700 flex-1"
+                            onClick={async () => {
+                              setIsGeneratingPDF(true);
+                              // TODO: Generate PDF export
+                              setTimeout(() => {
+                                setIsGeneratingPDF(false);
+                                alert('PDF export functionality coming soon!');
+                              }, 2000);
+                            }}
+                            disabled={isGeneratingPDF}
+                          >
+                            {isGeneratingPDF ? (
+                              <>
+                                <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin brightness-0 invert" />
+                                Generating PDF...
+                              </>
+                            ) : (
+                              <>
+                                <SemanticBDIIcon semantic="download" size={16} className="mr-2 brightness-0 invert" />
+                                Export Invoice PDF
+                              </>
+                            )}
+                          </Button>
+                          <Button 
+                            type="button"
+                            className="bg-green-600 hover:bg-green-700 flex-1"
+                            onClick={() => {
+                              // TODO: Save invoice to database
+                              alert('Save to database functionality coming soon!');
+                            }}
+                          >
+                            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+                            Save Invoice
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Panel - Real-time Invoice Preview (Mobile: Bottom, Desktop: Right 60%) */}
+              <div className="w-full md:w-3/5 bg-gray-50 overflow-y-auto">
+                <div className="p-6">
+                  <div className="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto">
+                    {generatedInvoice ? (
+                      /* Real-time Invoice Preview */
+                      <div className="space-y-6">
+                        {/* Invoice Header */}
+                        <div className="border-b-2 border-gray-200 pb-6">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h1 className="text-3xl font-bold text-gray-900">INVOICE</h1>
+                              <p className="text-lg text-gray-600 mt-1">#{generatedInvoice.invoiceNumber}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-blue-600">{user?.organization?.name || 'Your Company'}</div>
+                              <div className="text-gray-600 mt-2">
+                                <div>Invoice Date: {new Date(generatedInvoice.invoiceDate).toLocaleDateString()}</div>
+                                <div>PO Reference: {generatedInvoice.poReference}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bill To Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Bill To:</h3>
+                            <div className="text-gray-700">
+                              <div className="font-semibold text-lg">{generatedInvoice.customerName}</div>
+                              <div className="mt-1 text-gray-600">Customer Details</div>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Invoice Details:</h3>
+                            <div className="text-gray-700 space-y-1">
+                              <div><span className="font-medium">Terms:</span> {generatedInvoice.terms}</div>
+                              <div><span className="font-medium">Incoterms:</span> {generatedInvoice.incoterms}</div>
+                              <div><span className="font-medium">Location:</span> {generatedInvoice.incotermsLocation}</div>
+                              <div><span className="font-medium">Delivery Week:</span> {generatedInvoice.requestedDeliveryWeek}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Line Items Table */}
+                        {generatedInvoice.lineItems && generatedInvoice.lineItems.length > 0 && (
+                          <div className="mt-8">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Items:</h3>
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse border border-gray-300">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="border border-gray-300 px-4 py-3 text-left font-semibold">SKU</th>
+                                    <th className="border border-gray-300 px-4 py-3 text-right font-semibold">Quantity</th>
+                                    <th className="border border-gray-300 px-4 py-3 text-right font-semibold">Unit Price</th>
+                                    <th className="border border-gray-300 px-4 py-3 text-right font-semibold">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {generatedInvoice.lineItems.map((item: any, index: number) => (
+                                    <tr key={index} className="hover:bg-gray-50">
+                                      <td className="border border-gray-300 px-4 py-3">{item.skuCode || item.sku}</td>
+                                      <td className="border border-gray-300 px-4 py-3 text-right">{item.quantity?.toLocaleString()}</td>
+                                      <td className="border border-gray-300 px-4 py-3 text-right">${item.unitPrice?.toFixed(2)}</td>
+                                      <td className="border border-gray-300 px-4 py-3 text-right font-semibold">${(item.quantity * item.unitPrice)?.toFixed(2)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Total Section */}
+                        <div className="border-t-2 border-gray-200 pt-6">
+                          <div className="flex justify-end">
+                            <div className="w-64">
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span className="font-semibold">Subtotal:</span>
+                                <span>${generatedInvoice.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                              <div className="flex justify-between items-center py-3 bg-blue-50 px-4 rounded mt-2">
+                                <span className="text-xl font-bold text-blue-900">Total:</span>
+                                <span className="text-2xl font-bold text-blue-900">${generatedInvoice.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Notes Section */}
+                        {generatedInvoice.notes && (
+                          <div className="border-t border-gray-200 pt-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Notes:</h3>
+                            <p className="text-gray-700 whitespace-pre-wrap">{generatedInvoice.notes}</p>
+                          </div>
+                        )}
+
+                        {/* Footer */}
+                        <div className="border-t border-gray-200 pt-6 text-center text-sm text-gray-500">
+                          <p>Thank you for your business!</p>
+                          <p className="mt-1">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Placeholder when no PO selected */
+                      <div className="text-center py-16">
+                        <SemanticBDIIcon semantic="magic" size={64} className="mx-auto text-gray-300 mb-4" />
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">Real-time Invoice Preview</h3>
+                        <p className="text-gray-500">Select a Purchase Order to see the invoice preview here</p>
+                        <div className="mt-8 text-left bg-gray-50 p-6 rounded-lg max-w-md mx-auto">
+                          <h4 className="font-semibold text-gray-700 mb-2">Features:</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>✓ Real-time preview as you type</li>
+                            <li>✓ Professional invoice template</li>
+                            <li>✓ PDF export for sales teams</li>
+                            <li>✓ Mobile optimized design</li>
+                            <li>✓ Auto-populated from PO data</li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
