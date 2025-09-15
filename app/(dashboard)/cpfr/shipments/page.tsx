@@ -241,11 +241,14 @@ export default function ShipmentsPage() {
           // Step 1: Origin Factory (from organization_id field)
           originFactoryId: shipmentData.organization_id || shipmentData.organizationId || '',
           
-          // Step 2: Shipping Partner (from shipper_organization_id field)
-          shippingOrganizationId: shipmentData.shipper_organization_id || shipmentData.shipperOrganizationId || '',
+          // Step 2: Shipping Partner (handle custom entries)
+          shippingOrganizationId: shipmentData.shipper_organization_id || shipmentData.shipperOrganizationId || 
+            (shipmentData.shipper_reference?.includes('LCL') ? 'lcl' : 
+             shipmentData.shipper_reference && !shipmentData.shipper_organization_id ? 'custom' : ''),
           
-          // Step 3: Final Destination (from destination_warehouse_id field)
-          destinationWarehouseId: shipmentData.destination_warehouse_id || shipmentData.destinationWarehouseId || '',
+          // Step 3: Final Destination (handle custom entries)
+          destinationWarehouseId: shipmentData.destination_warehouse_id || shipmentData.destinationWarehouseId || 
+            (shipmentData.destination_custom_location && shipmentData.destination_custom_location !== 'Customer Warehouse' ? 'custom' : ''),
           
           // Legacy/Additional fields
           shipperReference: shipmentData.shipper_reference || shipmentData.shipperReference || '',
@@ -261,10 +264,10 @@ export default function ShipmentsPage() {
           requestedDeliveryDate: shipmentData.estimated_arrival ? new Date(shipmentData.estimated_arrival).toISOString().split('T')[0] : '',
           overrideDefaults: false, // Default to unchecked, user can check if they want to override
           
-          // Custom entry fields
-          customOriginFactory: '',
-          customShippingPartner: '',
-          customDestinationWarehouse: ''
+          // Custom entry fields (populate from existing data)
+          customOriginFactory: shipmentData.origin_custom_location || '',
+          customShippingPartner: (shipmentData.shipper_reference && !shipmentData.shipper_organization_id && !shipmentData.shipper_reference.includes('LCL')) ? shipmentData.shipper_reference : '',
+          customDestinationWarehouse: (shipmentData.destination_custom_location && shipmentData.destination_custom_location !== 'Customer Warehouse') ? shipmentData.destination_custom_location : ''
         };
         
         console.log('🔍 Setting form data:', formData);
