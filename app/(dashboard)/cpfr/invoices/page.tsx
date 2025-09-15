@@ -1483,11 +1483,11 @@ export default function InvoicesPage() {
       {/* Generate Invoice Modal - Full Screen with Real-time Preview */}
       {showGenerateModal && (
         <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
-          <DialogContent className="w-[98vw] h-[98vh] overflow-hidden p-0" style={{ maxWidth: 'none' }}>
+          <DialogContent className="w-[95vw] h-[90vh] p-0" style={{ maxWidth: 'none' }}>
             <div className="flex flex-col md:flex-row h-full">
               {/* Left Panel - Invoice Form (Mobile: Top, Desktop: Left 40%) */}
-              <div className="w-full md:w-2/5 border-r border-gray-200 flex flex-col h-full">
-                <div className="flex-1 overflow-y-auto p-6">
+              <div className="w-full md:w-2/5 border-r border-gray-200 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4" style={{ maxHeight: 'calc(90vh - 80px)' }}>
                   <DialogHeader className="mb-6">
                     <DialogTitle className="flex items-center text-2xl">
                       <SemanticBDIIcon semantic="magic" size={24} className="mr-3 text-blue-600" />
@@ -1696,8 +1696,8 @@ export default function InvoicesPage() {
                 
                 {/* Action Buttons - Fixed at bottom of left panel */}
                 {generatedInvoice && (
-                  <div className="border-t bg-white p-4">
-                    <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="border-t bg-white p-3 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button 
                         type="button" 
                         variant="outline" 
@@ -1765,9 +1765,9 @@ export default function InvoicesPage() {
               </div>
 
               {/* Right Panel - Real-time Invoice Preview (Mobile: Bottom, Desktop: Right 60%) */}
-              <div className="w-full md:w-3/5 bg-gray-50 overflow-y-auto">
-                <div className="p-6">
-                  <div className="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto">
+              <div className="w-full md:w-3/5 bg-gray-50 overflow-y-auto" style={{ maxHeight: '90vh' }}>
+                <div className="p-4">
+                  <div className="bg-white shadow-lg rounded-lg p-4 max-w-4xl mx-auto">
                     {generatedInvoice ? (
                       /* Real-time Invoice Preview */
                       <div className="space-y-6">
