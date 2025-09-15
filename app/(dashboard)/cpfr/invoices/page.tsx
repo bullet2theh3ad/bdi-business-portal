@@ -1486,8 +1486,8 @@ export default function InvoicesPage() {
           <DialogContent className="w-[98vw] h-[98vh] overflow-hidden p-0" style={{ maxWidth: 'none' }}>
             <div className="flex flex-col md:flex-row h-full">
               {/* Left Panel - Invoice Form (Mobile: Top, Desktop: Left 40%) */}
-              <div className="w-full md:w-2/5 border-r border-gray-200 overflow-y-auto h-full">
-                <div className="p-6">
+              <div className="w-full md:w-2/5 border-r border-gray-200 flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto p-6">
                   <DialogHeader className="mb-6">
                     <DialogTitle className="flex items-center text-2xl">
                       <SemanticBDIIcon semantic="magic" size={24} className="mr-3 text-blue-600" />
@@ -1689,74 +1689,79 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => {
-                              setShowGenerateModal(false);
-                              setSelectedPO(null);
-                              setGeneratedInvoice(null);
-                              setCustomPaymentTerms('');
-                              setShowCustomPaymentTerms(false);
-                            }}
-                            className="flex-1"
-                          >
-                            {tc('cancelButton', 'Cancel')}
-                          </Button>
-                          <Button 
-                            type="button"
-                            className="bg-blue-600 hover:bg-blue-700 flex-1"
-                            onClick={async () => {
-                              setIsGeneratingPDF(true);
-                              // TODO: Generate PDF export
-                              setTimeout(() => {
-                                setIsGeneratingPDF(false);
-                                alert('PDF export functionality coming soon!');
-                              }, 2000);
-                            }}
-                            disabled={isGeneratingPDF}
-                          >
-                            {isGeneratingPDF ? (
-                              <>
-                                <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin brightness-0 invert" />
-                                Generating PDF...
-                              </>
-                            ) : (
-                              <>
-                                <SemanticBDIIcon semantic="download" size={16} className="mr-2 brightness-0 invert" />
-                                Export Invoice PDF
-                              </>
-                            )}
-                          </Button>
-                          <Button 
-                            type="button"
-                            className={`flex-1 ${
-                              invoiceStatus === 'draft' 
-                                ? 'bg-gray-600 hover:bg-gray-700' 
-                                : 'bg-green-600 hover:bg-green-700'
-                            }`}
-                            onClick={() => {
-                              // TODO: Save invoice to database with status
-                              const statusMessage = invoiceStatus === 'draft' 
-                                ? 'Invoice saved as draft!' 
-                                : 'Invoice submitted for CFO approval!';
-                              alert(`${statusMessage}\n\nSave to database functionality coming soon!`);
-                            }}
-                          >
-                            <SemanticBDIIcon 
-                              semantic={invoiceStatus === 'draft' ? 'save' : 'send'} 
-                              size={16} 
-                              className="mr-2 brightness-0 invert" 
-                            />
-                            {invoiceStatus === 'draft' ? 'Save as Draft' : 'Submit for Approval'}
-                          </Button>
-                        </div>
                       </>
                     )}
                   </form>
                 </div>
+                
+                {/* Action Buttons - Fixed at bottom of left panel */}
+                {generatedInvoice && (
+                  <div className="border-t bg-white p-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowGenerateModal(false);
+                          setSelectedPO(null);
+                          setGeneratedInvoice(null);
+                          setCustomPaymentTerms('');
+                          setShowCustomPaymentTerms(false);
+                        }}
+                        className="flex-1"
+                      >
+                        {tc('cancelButton', 'Cancel')}
+                      </Button>
+                      <Button 
+                        type="button"
+                        className="bg-blue-600 hover:bg-blue-700 flex-1"
+                        onClick={async () => {
+                          setIsGeneratingPDF(true);
+                          // TODO: Generate PDF export
+                          setTimeout(() => {
+                            setIsGeneratingPDF(false);
+                            alert('PDF export functionality coming soon!');
+                          }, 2000);
+                        }}
+                        disabled={isGeneratingPDF}
+                      >
+                        {isGeneratingPDF ? (
+                          <>
+                            <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin brightness-0 invert" />
+                            Generating PDF...
+                          </>
+                        ) : (
+                          <>
+                            <SemanticBDIIcon semantic="download" size={16} className="mr-2 brightness-0 invert" />
+                            Export Invoice PDF
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        type="button"
+                        className={`flex-1 ${
+                          invoiceStatus === 'draft' 
+                            ? 'bg-gray-600 hover:bg-gray-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                        onClick={() => {
+                          // TODO: Save invoice to database with status
+                          const statusMessage = invoiceStatus === 'draft' 
+                            ? 'Invoice saved as draft!' 
+                            : 'Invoice submitted for CFO approval!';
+                          alert(`${statusMessage}\n\nSave to database functionality coming soon!`);
+                        }}
+                      >
+                        <SemanticBDIIcon 
+                          semantic={invoiceStatus === 'draft' ? 'save' : 'send'} 
+                          size={16} 
+                          className="mr-2 brightness-0 invert" 
+                        />
+                        {invoiceStatus === 'draft' ? 'Save as Draft' : 'Submit for Approval'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Panel - Real-time Invoice Preview (Mobile: Bottom, Desktop: Right 60%) */}
