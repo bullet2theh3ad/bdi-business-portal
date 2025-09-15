@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
     // For long-running queries, we should implement streaming or progress updates
     // TODO: Add Server-Sent Events (SSE) for real-time progress updates
 
-    // Gather business data context
-    const businessData = await gatherBusinessContext(supabase, context);
+    // Gather business data context with scope-aware limits
+    const businessData = await gatherBusinessContext(supabase, context, queryScope);
 
     console.log(`🧠 Using ${queryScope.toUpperCase()} analysis - optimized for ${queryScope} sources`);
     
@@ -135,10 +135,10 @@ ${JSON.stringify(businessData, null, 2)}
 
 MANDATORY: When analyzing queries, use the specified data sources based on user optimization choice.`;
 
-    // CONDITIONAL ANALYSIS based on user's queryScope selection
+    // CONDITIONAL ANALYSIS based on user's queryScope selection (Fast vs UNLIMITED)
     let answer: string;
     
-    if (queryScope === 'database') {
+    if (queryScope === 'database_fast' || queryScope === 'database_full') {
       // DATABASE ONLY - Fast response using just business data
       console.log('📊 Using DATABASE-ONLY analysis - fast response');
       const dbOnlyPrompt = baseSystemPrompt + `
@@ -176,7 +176,7 @@ Focus exclusively on the provided database records. Provide fast, accurate respo
       console.log(answer);
       console.log('=' .repeat(100));
       
-    } else if (queryScope === 'rag') {
+    } else if (queryScope === 'rag_fast' || queryScope === 'rag_full') {
       // RAG DOCUMENTS ONLY - May take time for comprehensive document analysis
       console.log('📁 Using RAG-ONLY analysis - comprehensive document intelligence');
       const ragOnlyPrompt = baseSystemPrompt + `
@@ -188,7 +188,9 @@ Focus exclusively on document content and file analysis. Provide comprehensive i
 - Contract terms and supplier agreements
 - No database records analysis for focused document intelligence`;
 
-      answer = await supabaseFileRAG.analyzeWithFiles(question, {}, ragOnlyPrompt); // Skip DB context
+      // Pass unlimited flag to file analysis
+      const isRagUnlimited = queryScope === 'rag_full';
+      answer = await supabaseFileRAG.analyzeWithFiles(question, {}, ragOnlyPrompt, isRagUnlimited); // Pass unlimited flag
       
     } else {
       // ALL SOURCES - Comprehensive but may take time
@@ -220,10 +222,13 @@ Look for connections, correlations, and discrepancies between database and docum
 }
 
 // Enhanced business context gathering with comprehensive database access
-async function gatherBusinessContext(supabase: any, requestContext: any) {
+async function gatherBusinessContext(supabase: any, requestContext: any, queryScope: string = 'all_unlimited') {
   try {
-    console.log('📊 Gathering comprehensive business context...');
+    console.log(`📊 Gathering ${queryScope.includes('full') || queryScope.includes('unlimited') ? 'UNLIMITED' : 'LIMITED'} business context...`);
 
+    // Determine if this is an unlimited query (NO LIMITS)
+    const isUnlimited = queryScope.includes('full') || queryScope.includes('unlimited');
+    
     // Create service client for full database access
     const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -314,17 +319,26 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       `),
       
       // EMG Inventory History - Changes over time
-      serviceSupabase.from('emg_inventory_history').select(`
-        id, upc, model, location, qty_on_hand, qty_change, change_type,
-        snapshot_date, source_file_name
-      `).order('snapshot_date', { ascending: false }).limit(100),
+      isUnlimited 
+        ? serviceSupabase.from('emg_inventory_history').select(`
+            id, upc, model, location, qty_on_hand, qty_change, change_type,
+            snapshot_date, source_file_name
+          `).order('snapshot_date', { ascending: false }) // NO LIMIT for unlimited mode
+        : serviceSupabase.from('emg_inventory_history').select(`
+            id, upc, model, location, qty_on_hand, qty_change, change_type,
+            snapshot_date, source_file_name
+          `).order('snapshot_date', { ascending: false }).limit(100),
       
       // ENHANCED: Additional tables for comprehensive business intelligence
       
       // Activity Logs - User activity tracking
-      serviceSupabase.from('activity_logs').select(`
-        id, team_id, user_id, action, timestamp, ip_address, organization_id
-      `).order('timestamp', { ascending: false }).limit(50),
+      isUnlimited
+        ? serviceSupabase.from('activity_logs').select(`
+            id, team_id, user_id, action, timestamp, ip_address, organization_id
+          `).order('timestamp', { ascending: false }) // NO LIMIT
+        : serviceSupabase.from('activity_logs').select(`
+            id, team_id, user_id, action, timestamp, ip_address, organization_id
+          `).order('timestamp', { ascending: false }).limit(50),
       
       // API Keys - Access management
       serviceSupabase.from('api_keys').select(`
@@ -333,9 +347,13 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       `),
       
       // CATV Inventory Tracking - CATV warehouse data
-      serviceSupabase.from('catv_inventory_tracking').select(`
-        id, sku, week_data, raw_data, metrics, created_at, updated_at
-      `).order('created_at', { ascending: false }).limit(10),
+      isUnlimited
+        ? serviceSupabase.from('catv_inventory_tracking').select(`
+            id, sku, week_data, raw_data, metrics, created_at, updated_at
+          `).order('created_at', { ascending: false }) // NO LIMIT
+        : serviceSupabase.from('catv_inventory_tracking').select(`
+            id, sku, week_data, raw_data, metrics, created_at, updated_at
+          `).order('created_at', { ascending: false }).limit(10),
       
       // JJOLM Tracking - Shipment tracking numbers
       serviceSupabase.from('jjolm_tracking').select(`

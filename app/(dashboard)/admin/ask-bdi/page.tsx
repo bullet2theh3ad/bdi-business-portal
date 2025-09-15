@@ -16,7 +16,7 @@ export default function AskBDIPage() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [progress, setProgress] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
-  const [queryScope, setQueryScope] = useState<'database' | 'rag' | 'all'>('all'); // Default to all sources
+  const [queryScope, setQueryScope] = useState<'database_fast' | 'database_full' | 'rag_fast' | 'rag_full' | 'all_unlimited'>('all_unlimited'); // Default to unlimited all sources
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages are added
@@ -244,66 +244,99 @@ export default function AskBDIPage() {
               />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex flex-wrap gap-2">
-                  {/* Query Optimization Buttons */}
+                  {/* Query Optimization Buttons - Fast vs Full Options */}
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setQueryScope('database');
-                      // Keep existing question but optimize for DB only
+                      setQueryScope('database_fast');
                     }}
                     disabled={isLoading}
                     className={`text-xs md:text-sm transition-all ${
-                      queryScope === 'database' 
+                      queryScope === 'database_fast' 
                         ? 'bg-blue-600 border-blue-700 text-white shadow-lg ring-2 ring-blue-300 font-semibold' 
                         : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-200'
                     }`}
-                    title="Search database only (Invoices, POs, SKUs, Shipments) - Fast response"
+                    title="Fast database search with limits - Quick response"
                   >
                     <Database className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    📊 DB
-                    <span className="ml-1 text-xs opacity-75">(Fast)</span>
+                    📊 DB Fast
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setQueryScope('rag');
-                      // Keep existing question but optimize for RAG only
+                      setQueryScope('database_full');
                     }}
                     disabled={isLoading}
                     className={`text-xs md:text-sm transition-all ${
-                      queryScope === 'rag' 
+                      queryScope === 'database_full' 
+                        ? 'bg-blue-800 border-blue-900 text-white shadow-lg ring-2 ring-blue-400 font-semibold' 
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-200'
+                    }`}
+                    title="UNLIMITED database search - ALL records, ALL data, NO LIMITS"
+                  >
+                    <Database className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                    📊 DB UNLIMITED
+                    <span className="ml-1 text-xs opacity-75">(ALL ROWS)</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setQueryScope('rag_fast');
+                    }}
+                    disabled={isLoading}
+                    className={`text-xs md:text-sm transition-all ${
+                      queryScope === 'rag_fast' 
                         ? 'bg-orange-600 border-orange-700 text-white shadow-lg ring-2 ring-orange-300 font-semibold' 
                         : 'bg-white border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-200'
                     }`}
-                    title="Search RAG documents only - May take time for comprehensive document analysis"
+                    title="Fast RAG search with file limits - Quick document analysis"
                   >
                     <FileSearch className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    📁 RAG
-                    <span className="ml-1 text-xs opacity-75">(May take time...)</span>
+                    📁 RAG Fast
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setQueryScope('all');
-                      // Keep existing question but use all sources
+                      setQueryScope('rag_full');
                     }}
                     disabled={isLoading}
                     className={`text-xs md:text-sm transition-all ${
-                      queryScope === 'all' 
-                        ? 'bg-green-600 border-green-700 text-white shadow-lg ring-2 ring-green-300 font-semibold' 
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-green-50 hover:border-green-200'
+                      queryScope === 'rag_full' 
+                        ? 'bg-orange-800 border-orange-900 text-white shadow-lg ring-2 ring-orange-400 font-semibold' 
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-200'
                     }`}
-                    title="Search all sources (Database + RAG documents) - Comprehensive but may take time"
+                    title="UNLIMITED RAG search - ALL files, ALL content, NO LIMITS"
+                  >
+                    <FileSearch className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                    📁 RAG UNLIMITED
+                    <span className="ml-1 text-xs opacity-75">(ALL FILES)</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setQueryScope('all_unlimited');
+                    }}
+                    disabled={isLoading}
+                    className={`text-xs md:text-sm transition-all ${
+                      queryScope === 'all_unlimited' 
+                        ? 'bg-red-600 border-red-700 text-white shadow-lg ring-2 ring-red-300 font-semibold' 
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-red-50 hover:border-red-200'
+                    }`}
+                    title="MAXIMUM POWER: ALL sources, ALL data, NO LIMITS - May take significant time"
                   >
                     <Database className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    🔄 ALL
-                    <span className="ml-1 text-xs opacity-75">(Comprehensive, may take time...)</span>
+                    🚀 UNLIMITED ALL
+                    <span className="ml-1 text-xs opacity-75">(MAXIMUM POWER)</span>
                   </Button>
                 </div>
                 <Button 

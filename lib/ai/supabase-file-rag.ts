@@ -59,7 +59,7 @@ export class SupabaseFileRAG {
           // Get root level items
           const { data: rootItems, error: rootError } = await this.serviceSupabase.storage
             .from(bucket.name)
-            .list('', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
+            .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } }); // Reduced for scaling
           
           // CRITICAL: Also explicitly check for rag-documents folder
           if (bucket.name === 'organization-documents') {
@@ -763,15 +763,17 @@ ${JSON.stringify(jsonData, null, 2).substring(0, 1500)}
   }
 
   // Generate file context for AI
-  async generateFileContext(query: string): Promise<string> {
+  async generateFileContext(query: string, isUnlimited: boolean = false): Promise<string> {
     try {
       console.log('📁 Generating file context for query...');
       
       // Also get database file metadata
       const dbFiles = await this.getFileMetadataFromDB(query);
       
-      // Get relevant files from storage
-      const relevantFiles = await this.searchFiles(query, 5);
+      // Get relevant files from storage with unlimited option
+      const maxFiles = isUnlimited ? 999999 : 5; // UNLIMITED = no practical limit
+      console.log(`📁 File search mode: ${isUnlimited ? 'UNLIMITED (ALL FILES)' : 'LIMITED (5 files)'}`);
+      const relevantFiles = await this.searchFiles(query, maxFiles);
       
       if (relevantFiles.length === 0) {
         return 'No relevant files found in Supabase storage.';
@@ -810,12 +812,12 @@ ${fileContents.join('\n---\n')}
   }
 
   // Enhanced AI analysis with file content and unified prompt
-  async analyzeWithFiles(query: string, businessData: any, customSystemPrompt?: string): Promise<string> {
+  async analyzeWithFiles(query: string, businessData: any, customSystemPrompt?: string, isUnlimited: boolean = false): Promise<string> {
     try {
       console.log('🧠 Starting enhanced analysis with file content...');
       
-      // Get file context
-      const fileContext = await this.generateFileContext(query);
+      // Get file context with unlimited flag
+      const fileContext = await this.generateFileContext(query, isUnlimited);
       
       // Create enhanced prompt with file data
       // Use custom unified prompt if provided, otherwise use enhanced default
