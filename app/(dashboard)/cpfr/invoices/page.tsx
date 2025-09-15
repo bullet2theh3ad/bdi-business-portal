@@ -135,6 +135,7 @@ export default function InvoicesPage() {
   const [customPaymentTerms, setCustomPaymentTerms] = useState('');
   const [showCustomPaymentTerms, setShowCustomPaymentTerms] = useState(false);
   const [invoiceStatus, setInvoiceStatus] = useState<'draft' | 'submitted'>('draft');
+  const [customerAddress, setCustomerAddress] = useState('');
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -402,61 +403,117 @@ export default function InvoicesPage() {
                       
                       {/* Action Buttons - Right under invoice number */}
                       <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
-                          setSelectedInvoice(invoice);
-                          setEditUploadedDocs([]);
+                        {(() => {
+                          // Check if this is a GENERATED invoice (has poReference) or ENTERED invoice
+                          const isGeneratedInvoice = invoice.notes && invoice.notes.includes('Generated from PO:');
                           
-                          // Fetch existing documents for this invoice
-                          try {
-                            const docsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/documents`);
-                            if (docsResponse.ok) {
-                              const docs = await docsResponse.json();
-                              setExistingDocs(docs);
-                              // Documents loaded successfully
-                            }
-                          } catch (error) {
-                            console.error('Error loading documents:', error);
-                            setExistingDocs([]);
-                          }
-
-                          // Fetch existing line items for this invoice
-                          try {
-                            // Fetching line items for invoice
-                            const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
-                            // Line items response received
+                          return (
+                            <>
+                              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
+                          
+                          if (isGeneratedInvoice) {
+                            // GENERATED INVOICE - Route to Generate Invoice modal with PO context
+                            console.log('🔄 Editing GENERATED invoice - routing to Generate Invoice modal');
                             
-                            if (lineItemsResponse.ok) {
-                              const lineItems = await lineItemsResponse.json();
-                              // Raw line items received from API
-                              
-                              const mappedItems = lineItems.map((item: any) => ({
-                                id: item.id,
-                                skuId: item.skuId,
-                                sku: item.skuCode || item.sku,
-                                skuName: item.skuName,
-                                quantity: parseInt(item.quantity),
-                                unitCost: parseFloat(item.unitCost),
-                                lineTotal: parseFloat(item.lineTotal)
-                              }));
-                              
-                              // Line items mapped for UI
-                              setEditLineItems(mappedItems);
+                            // Extract PO reference from notes
+                            const poReference = invoice.notes?.match(/Generated from PO: (.+)/)?.[1];
+                            if (poReference) {
+                              // Find the original PO
+                              const originalPO = purchaseOrders?.find(po => po.purchaseOrderNumber === poReference);
+                              if (originalPO) {
+                                setSelectedPO(originalPO);
+                                
+                                // Populate Generate Invoice modal with existing invoice data
+                                setGeneratedInvoice({
+                                  invoiceNumber: invoice.invoiceNumber,
+                                  customerName: invoice.customerName,
+                                  invoiceDate: invoice.invoiceDate,
+                                  requestedDeliveryWeek: invoice.requestedDeliveryWeek,
+                                  status: invoice.status,
+                                  terms: invoice.terms,
+                                  incoterms: invoice.incoterms,
+                                  incotermsLocation: invoice.incotermsLocation,
+                                  totalValue: invoice.totalValue,
+                                  notes: invoice.notes,
+                                  poReference: poReference,
+                                  lineItems: [] // Will be loaded from PO
+                                });
+                                
+                                // Set status for editing
+                                setInvoiceStatus(invoice.status === 'submitted' ? 'submitted' : 'draft');
+                                
+                                // Set custom payment terms if needed
+                                const standardTerms = ['NET30', 'NET60', 'NET90', 'COD', 'PREPAID'];
+                                if (!standardTerms.includes(invoice.terms)) {
+                                  setShowCustomPaymentTerms(true);
+                                  setCustomPaymentTerms(invoice.terms);
+                                }
+                                
+                                setShowGenerateModal(true);
+                              } else {
+                                alert('❌ Original Purchase Order not found for this generated invoice.');
+                              }
                             } else {
-                              const errorText = await lineItemsResponse.text();
-                              console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
+                              alert('❌ Cannot find PO reference for this generated invoice.');
+                            }
+                          } else {
+                            // ENTERED INVOICE - Use standard edit modal
+                            console.log('📝 Editing ENTERED invoice - using standard edit modal');
+                            setSelectedInvoice(invoice);
+                            setEditUploadedDocs([]);
+                            
+                            // Fetch existing documents for this invoice
+                            try {
+                              const docsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/documents`);
+                              if (docsResponse.ok) {
+                                const docs = await docsResponse.json();
+                                setExistingDocs(docs);
+                                // Documents loaded successfully
+                              }
+                            } catch (error) {
+                              console.error('Error loading documents:', error);
+                              setExistingDocs([]);
+                            }
+
+                            // Fetch existing line items for this invoice
+                            try {
+                              // Fetching line items for invoice
+                              const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
+                              // Line items response received
+                              
+                              if (lineItemsResponse.ok) {
+                                const lineItems = await lineItemsResponse.json();
+                                // Raw line items received from API
+                                
+                                const mappedItems = lineItems.map((item: any) => ({
+                                  id: item.id,
+                                  skuId: item.skuId,
+                                  sku: item.skuCode || item.sku,
+                                  skuName: item.skuName,
+                                  quantity: parseInt(item.quantity),
+                                  unitCost: parseFloat(item.unitCost),
+                                  lineTotal: parseFloat(item.lineTotal)
+                                }));
+                                
+                                // Line items mapped for UI
+                                setEditLineItems(mappedItems);
+                              } else {
+                                const errorText = await lineItemsResponse.text();
+                                console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
+                                setEditLineItems([]);
+                              }
+                            } catch (error) {
+                              console.error('Error loading line items:', error);
                               setEditLineItems([]);
                             }
-                          } catch (error) {
-                            console.error('Error loading line items:', error);
-                            setEditLineItems([]);
                           }
-                        }}>
-                          <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                          {tc('editButton', 'Edit')}
-                        </Button>
-                        
-                        {/* CFO Approval Button - Only show for submitted invoices and super_admin */}
-                        {invoice.status === 'submitted' && user?.role === 'super_admin' && (
+                              }}>
+                                <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
+                                {tc('editButton', isGeneratedInvoice ? 'Edit Generated' : 'Edit')}
+                              </Button>
+                              
+                              {/* CFO Approval Button - Only show for submitted invoices and super_admin */}
+                              {invoice.status === 'submitted' && user?.role === 'super_admin' && (
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -501,6 +558,9 @@ export default function InvoicesPage() {
                           <span className="mr-1 text-sm">🗑️</span>
                           {tc('deleteButton', 'Delete')}
                         </Button>
+                            </>
+                          );
+                        })()}
                       </div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm mb-3">
@@ -1565,7 +1625,7 @@ export default function InvoicesPage() {
                         <div className="bg-green-50 p-4 rounded-lg">
                           <h3 className="font-semibold text-green-900 mb-3">Step 2: Invoice Details</h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
+                            <div className="sm:col-span-2">
                               <Label htmlFor="genCustomerName">Customer Name *</Label>
                               <Input
                                 id="genCustomerName"
@@ -1574,6 +1634,17 @@ export default function InvoicesPage() {
                                 placeholder="Enter customer/company name"
                                 className="mt-1"
                                 required
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <Label htmlFor="genCustomerAddress">Customer Address</Label>
+                              <textarea
+                                id="genCustomerAddress"
+                                value={customerAddress}
+                                onChange={(e) => setCustomerAddress(e.target.value)}
+                                placeholder="Customer billing address (will be auto-scanned from PO documents if available)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                                rows={2}
                               />
                             </div>
                             <div>
@@ -1874,7 +1945,14 @@ export default function InvoicesPage() {
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Bill To:</h3>
                             <div className="text-gray-700">
                               <div className="font-semibold text-lg">{generatedInvoice.customerName}</div>
-                              <div className="mt-1 text-gray-600">Customer Details</div>
+                              {customerAddress && (
+                                <div className="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                                  {customerAddress}
+                                </div>
+                              )}
+                              {!customerAddress && (
+                                <div className="mt-1 text-gray-500 italic text-sm">Address will be auto-scanned from PO documents</div>
+                              )}
                             </div>
                           </div>
                           <div>
