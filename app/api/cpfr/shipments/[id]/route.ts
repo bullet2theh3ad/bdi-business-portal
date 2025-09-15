@@ -42,15 +42,28 @@ export async function PUT(
     const estimatedDeparture = body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : null;
     const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : null;
 
+    // Handle custom entries - convert "custom" to null for UUID fields (same as create API)
+    const originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || null);
+    const shippingPartnerId = body.shipperOrganizationId === 'custom' || body.shipperOrganizationId === 'lcl' ? null : (body.shipperOrganizationId || null);
+    const destinationWarehouseId = body.destinationWarehouseId === 'custom' ? null : (body.destinationWarehouseId || null);
+    
+    // Determine custom location text
+    const originCustomLocation = body.organizationId === 'custom' ? (body.customOriginFactory || 'Custom Origin') : null;
+    const shippingCustomPartner = body.shipperOrganizationId === 'custom' ? (body.customShippingPartner || 'Custom Shipper') : 
+                                 body.shipperOrganizationId === 'lcl' ? 'LCL (Less than Container Load)' : null;
+    const destinationCustomLocation = body.destinationWarehouseId === 'custom' ? (body.customDestinationWarehouse || 'Custom Destination') : null;
+
     // Prepare update data with proper validation
     const updateData: any = {
-      // 3-step flow data - CRITICAL UPDATE
-      organization_id: body.organizationId || null, // Step 1: Origin Factory
-      shipper_organization_id: body.shipperOrganizationId || null, // Step 2: Shipping Partner
-      destination_warehouse_id: body.destinationWarehouseId || null, // Step 3: Final Destination
+      // 3-step flow data - CRITICAL UPDATE (with custom entry support)
+      organization_id: originFactoryId, // Step 1: Origin Factory (null if custom)
+      origin_custom_location: originCustomLocation, // Custom origin text
+      shipper_organization_id: shippingPartnerId, // Step 2: Shipping Partner (null if custom/lcl)
+      destination_warehouse_id: destinationWarehouseId, // Step 3: Final Destination (null if custom)
+      destination_custom_location: destinationCustomLocation || body.destinationCustomLocation || null, // Custom destination text
       // Legacy/additional fields
       priority: body.priority || 'standard',
-      shipper_reference: body.shipperReference || null,
+      shipper_reference: shippingCustomPartner || body.shipperReference || null,
       factory_warehouse_id: body.factoryWarehouseId || null,
       incoterms: body.incoterms || 'EXW',
       notes: body.notes || null,
