@@ -700,6 +700,21 @@ export const invoices = pgTable('invoices', {
   incoterms: varchar('incoterms', { length: 20 }), // FOB, CIF, DDP, etc.
   incotermsLocation: varchar('incoterms_location', { length: 255 }),
   
+  // NEW: Address Fields
+  customerAddress: text('customer_address'),
+  shipToAddress: text('ship_to_address'),
+  shipDate: date('ship_date'),
+  
+  // NEW: Comprehensive Bank Information
+  bankName: varchar('bank_name', { length: 255 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 100 }),
+  bankRoutingNumber: varchar('bank_routing_number', { length: 50 }),
+  bankSwiftCode: varchar('bank_swift_code', { length: 50 }),
+  bankIban: varchar('bank_iban', { length: 100 }),
+  bankAddress: text('bank_address'),
+  bankCountry: varchar('bank_country', { length: 100 }),
+  bankCurrency: varchar('bank_currency', { length: 10 }).default('USD'),
+  
   // Financial
   totalValue: numeric('total_value', { precision: 15, scale: 2 }).notNull().default('0.00'),
   

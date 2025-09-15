@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Creating Invoice with data:', body);
 
-    // Insert invoice into database
+    // Insert invoice into database with all new fields
     const [newInvoice] = await db
       .insert(invoices)
       .values({
@@ -177,6 +177,19 @@ export async function POST(request: NextRequest) {
         totalValue: body.totalValue.toString(),
         notes: body.notes,
         createdBy: requestingUser.authId,
+        // NEW FIELDS: Addresses and shipping
+        customerAddress: body.customerAddress || null,
+        shipToAddress: body.shipToAddress || null,
+        shipDate: body.shipDate || null,
+        // NEW FIELDS: Bank information
+        bankName: body.bankName || null,
+        bankAccountNumber: body.bankAccountNumber || null,
+        bankRoutingNumber: body.bankRoutingNumber || null,
+        bankSwiftCode: body.bankSwiftCode || null,
+        bankIban: body.bankIban || null,
+        bankAddress: body.bankAddress || null,
+        bankCountry: body.bankCountry || null,
+        bankCurrency: body.bankCurrency || 'USD',
       })
       .returning();
 
@@ -184,15 +197,21 @@ export async function POST(request: NextRequest) {
 
     // Insert line items if provided
     if (body.lineItems && body.lineItems.length > 0) {
-      const lineItemsToInsert = body.lineItems.map((item: any) => ({
-        invoiceId: newInvoice.id,
-        skuId: item.skuId,
-        skuCode: item.sku,
-        skuName: item.skuName,
-        quantity: item.quantity,
-        unitCost: item.unitCost.toString(),
-        lineTotal: item.lineTotal.toString(),
-      }));
+      const lineItemsToInsert = body.lineItems.map((item: any) => {
+        const unitCost = parseFloat(item.unitCost || item.unitPrice || 0);
+        const quantity = parseInt(item.quantity || 0);
+        const lineTotal = item.lineTotal || item.totalCost || (quantity * unitCost);
+        
+        return {
+          invoiceId: newInvoice.id,
+          skuId: item.skuId,
+          skuCode: item.sku || item.skuCode,
+          skuName: item.skuName,
+          quantity: quantity,
+          unitCost: unitCost.toString(),
+          lineTotal: parseFloat(lineTotal || 0).toString(),
+        };
+      });
 
       const insertedLineItems = await db
         .insert(invoiceLineItems)

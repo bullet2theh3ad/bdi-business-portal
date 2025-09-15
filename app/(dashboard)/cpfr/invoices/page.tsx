@@ -139,9 +139,14 @@ export default function InvoicesPage() {
   const [shipToAddress, setShipToAddress] = useState('');
   const [shipDate, setShipDate] = useState('');
   const [bankInfo, setBankInfo] = useState({
+    bankName: 'California Bank and Trust',
     accountNumber: '',
     routing: '',
-    swift: ''
+    swift: '',
+    iban: '',
+    bankAddress: '',
+    bankCountry: 'United States',
+    currency: 'USD'
   });
   const [loadingLineItems, setLoadingLineItems] = useState(false);
   
@@ -1838,7 +1843,29 @@ export default function InvoicesPage() {
                         {/* Bank Information Section */}
                         <div className="bg-purple-50 p-4 rounded-lg">
                           <h3 className="font-semibold text-purple-900 mb-3">Bank Information</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <Label htmlFor="bankName">Bank Name</Label>
+                              <Input
+                                id="bankName"
+                                value={bankInfo.bankName}
+                                onChange={(e) => setBankInfo({...bankInfo, bankName: e.target.value})}
+                                placeholder="e.g., California Bank and Trust"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankCountry">Bank Country</Label>
+                              <Input
+                                id="bankCountry"
+                                value={bankInfo.bankCountry}
+                                onChange={(e) => setBankInfo({...bankInfo, bankCountry: e.target.value})}
+                                placeholder="e.g., United States"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                             <div>
                               <Label htmlFor="bankAccount">Account Number</Label>
                               <Input
@@ -1850,7 +1877,7 @@ export default function InvoicesPage() {
                               />
                             </div>
                             <div>
-                              <Label htmlFor="bankRouting">Routing</Label>
+                              <Label htmlFor="bankRouting">Routing Number</Label>
                               <Input
                                 id="bankRouting"
                                 value={bankInfo.routing}
@@ -1870,8 +1897,46 @@ export default function InvoicesPage() {
                               />
                             </div>
                           </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="bankIban">IBAN (International)</Label>
+                              <Input
+                                id="bankIban"
+                                value={bankInfo.iban}
+                                onChange={(e) => setBankInfo({...bankInfo, iban: e.target.value})}
+                                placeholder="e.g., GB29 NWBK 6016 1331 9268 19"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankCurrency">Currency</Label>
+                              <select
+                                id="bankCurrency"
+                                value={bankInfo.currency}
+                                onChange={(e) => setBankInfo({...bankInfo, currency: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 mt-1"
+                              >
+                                <option value="USD">USD - US Dollar</option>
+                                <option value="EUR">EUR - Euro</option>
+                                <option value="GBP">GBP - British Pound</option>
+                                <option value="CNY">CNY - Chinese Yuan</option>
+                                <option value="JPY">JPY - Japanese Yen</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <Label htmlFor="bankAddress">Bank Address</Label>
+                            <textarea
+                              id="bankAddress"
+                              value={bankInfo.bankAddress}
+                              onChange={(e) => setBankInfo({...bankInfo, bankAddress: e.target.value})}
+                              placeholder="Bank physical address for international transfers"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 mt-1"
+                              rows={2}
+                            />
+                          </div>
                           <p className="text-xs text-purple-600 mt-2">
-                            Bank information will appear at bottom of invoice for wire transfers
+                            Comprehensive bank information for domestic and international wire transfers
                           </p>
                         </div>
 
@@ -1979,7 +2044,7 @@ export default function InvoicesPage() {
                               return;
                             }
                             
-                            // Prepare invoice data for saving
+                            // Prepare invoice data for saving with all new fields
                             const invoiceData = {
                               invoiceNumber: generatedInvoice.invoiceNumber,
                               customerName: generatedInvoice.customerName,
@@ -1992,7 +2057,20 @@ export default function InvoicesPage() {
                               totalValue: generatedInvoice.totalValue,
                               notes: generatedInvoice.notes,
                               poReference: generatedInvoice.poReference,
-                              lineItems: generatedInvoice.lineItems || []
+                              lineItems: generatedInvoice.lineItems || [],
+                              // NEW FIELDS: Addresses and shipping
+                              customerAddress: customerAddress,
+                              shipToAddress: shipToAddress,
+                              shipDate: shipDate,
+                              // NEW FIELDS: Bank information
+                              bankName: bankInfo.bankName,
+                              bankAccountNumber: bankInfo.accountNumber,
+                              bankRoutingNumber: bankInfo.routing,
+                              bankSwiftCode: bankInfo.swift,
+                              bankIban: bankInfo.iban,
+                              bankAddress: bankInfo.bankAddress,
+                              bankCountry: bankInfo.bankCountry,
+                              bankCurrency: bankInfo.currency
                             };
 
                             console.log('Saving invoice:', invoiceData);
@@ -2201,12 +2279,16 @@ export default function InvoicesPage() {
                         </div>
 
                         {/* Bank Information */}
-                        {(bankInfo.accountNumber || bankInfo.routing || bankInfo.swift) && (
-                          <div className="border-t border-gray-200 pt-6 text-sm text-gray-700">
-                            <div className="font-semibold mb-2">California Bank and Trust</div>
+                        {(bankInfo.bankName || bankInfo.accountNumber || bankInfo.routing || bankInfo.swift) && (
+                          <div className="border-t border-gray-200 pt-4 text-xs text-gray-700">
+                            <div className="font-semibold mb-2">{bankInfo.bankName || 'Bank Information'}</div>
                             {bankInfo.accountNumber && <div>Account number: {bankInfo.accountNumber}</div>}
                             {bankInfo.routing && <div>Routing: {bankInfo.routing}</div>}
                             {bankInfo.swift && <div>Swift (International Wires Only): {bankInfo.swift}</div>}
+                            {bankInfo.iban && <div>IBAN: {bankInfo.iban}</div>}
+                            {bankInfo.bankAddress && <div>Bank Address: {bankInfo.bankAddress}</div>}
+                            {bankInfo.bankCountry && <div>Country: {bankInfo.bankCountry}</div>}
+                            {bankInfo.currency && <div>Currency: {bankInfo.currency}</div>}
                           </div>
                         )}
                       </div>
