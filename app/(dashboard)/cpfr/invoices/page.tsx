@@ -2014,25 +2014,36 @@ export default function InvoicesPage() {
                     {generatedInvoice ? (
                       /* Professional Invoice Template - Matching Exact Format */
                       <div className="bg-white">
-                        {/* Header with Logo and Company Info */}
-                        <div className="flex justify-between items-start mb-8">
-                          <div>
-                            <div className="text-4xl font-bold text-blue-600 mb-2">INVOICE</div>
-                          </div>
-                          <div className="text-right">
-                            <img 
-                              src="/logos/PNG/Full Lockup Color.png" 
-                              alt="Boundless Devices Inc" 
-                              className="h-16 mb-4"
-                            />
-                            <div className="text-sm text-gray-700">
-                              <div className="font-semibold">Boundless Devices, Inc.</div>
-                              <div>17875 Von Karman Ave, STE 150</div>
-                              <div>Irvine, CA 92614</div>
-                              <div className="mt-2">
-                                <div>invoices@boundlessdevices.com</div>
-                                <div>+1 (949) 994-7791</div>
-                                <div>www.boundlessdevices.com</div>
+                        {/* Header with Logo and Company Info - Exact Layout Match */}
+                        <div className="mb-8">
+                          <div className="flex justify-between items-start">
+                            {/* Left: INVOICE Title */}
+                            <div>
+                              <div className="text-4xl font-bold text-blue-600">INVOICE</div>
+                            </div>
+                            
+                            {/* Right: Logo and Company Info */}
+                            <div className="text-right">
+                              <div className="flex justify-end mb-4">
+                                <img 
+                                  src="/logos/PNG/Full Lockup Color.png" 
+                                  alt="Boundless Devices Inc" 
+                                  className="h-16"
+                                />
+                              </div>
+                              
+                              {/* Company Info - Three Column Layout */}
+                              <div className="flex justify-end gap-8 text-sm text-gray-700">
+                                <div>
+                                  <div className="font-semibold">Boundless Devices, Inc.</div>
+                                  <div>17875 Von Karman Ave, STE 150</div>
+                                  <div>Irvine, CA 92614</div>
+                                </div>
+                                <div>
+                                  <div>invoices@boundlessdevices.com</div>
+                                  <div>+1 (949) 994-7791</div>
+                                  <div>www.boundlessdevices.com</div>
+                                </div>
                               </div>
                             </div>
                           </div>
