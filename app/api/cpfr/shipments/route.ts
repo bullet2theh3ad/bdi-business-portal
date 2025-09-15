@@ -270,20 +270,32 @@ export async function POST(request: NextRequest) {
     const estimatedDeparture = body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Handle custom entries - convert "custom" to null for UUID fields
+    const originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || dbUser.organization?.id || null);
+    const shippingPartnerId = body.shipperOrganizationId === 'custom' || body.shipperOrganizationId === 'lcl' ? null : (body.shipperOrganizationId || null);
+    const destinationWarehouseId = body.destinationWarehouseId === 'custom' ? null : (body.destinationWarehouseId || null);
+    
+    // Determine custom location text
+    const originCustomLocation = body.organizationId === 'custom' ? (body.customOriginFactory || 'Custom Origin') : null;
+    const shippingCustomPartner = body.shipperOrganizationId === 'custom' ? (body.customShippingPartner || 'Custom Shipper') : 
+                                 body.shipperOrganizationId === 'lcl' ? 'LCL (Less than Container Load)' : null;
+    const destinationCustomLocation = body.destinationWarehouseId === 'custom' ? (body.customDestinationWarehouse || 'Custom Destination') : 'Customer Warehouse';
+
     const { data: newShipment, error: shipmentError } = await supabase
       .from('shipments')
       .insert({
         shipment_number: shipmentNumber,
         forecast_id: body.forecastId,
-        // 3-step flow data
-        organization_id: body.organizationId || dbUser.organization?.id || null, // Step 1: Origin Factory
-        shipper_organization_id: body.shipperOrganizationId || null, // Step 2: Shipping Partner
-        destination_warehouse_id: body.destinationWarehouseId || null, // Step 3: Final Destination
+        // 3-step flow data (with custom entry support)
+        organization_id: originFactoryId, // Step 1: Origin Factory (null if custom)
+        origin_custom_location: originCustomLocation, // Custom origin text
+        shipper_organization_id: shippingPartnerId, // Step 2: Shipping Partner (null if custom/lcl)
+        destination_warehouse_id: destinationWarehouseId, // Step 3: Final Destination (null if custom)
+        destination_custom_location: destinationCustomLocation, // Custom destination text (required field)
         // Legacy/additional fields
         priority: body.priority || 'standard',
-        shipper_reference: body.shipperReference || null,
+        shipper_reference: shippingCustomPartner || body.shipperReference || null, // Use custom shipper name in reference field
         factory_warehouse_id: body.factoryWarehouseId || null,
-        destination_custom_location: 'Customer Warehouse', // Required field
         destination_country: 'USA', // Default
         shipping_method: 'SEA_FCL', // Default
         container_type: '40ft', // Default
