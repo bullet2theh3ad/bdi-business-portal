@@ -2315,10 +2315,18 @@ export default function SalesForecastsPage() {
                         </div>
                       </div>
                       
-                      {/* Additional Details */}
+                      {/* Status History & Notes Display */}
                       {forecast.notes && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded">
-                          <p className="text-sm text-gray-700">{forecast.notes}</p>
+                        <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                            <SemanticBDIIcon semantic="notes" size={16} className="mr-2 text-blue-600" />
+                            Status History & Notes
+                          </h4>
+                          <div className="bg-white p-3 rounded border">
+                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                              {forecast.notes}
+                            </pre>
+                          </div>
                         </div>
                       )}
                     </div>

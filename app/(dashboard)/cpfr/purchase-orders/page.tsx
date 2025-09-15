@@ -1451,6 +1451,21 @@ export default function PurchaseOrdersPage() {
                 />
               </div>
 
+              {/* Status History & Notes Display */}
+              {selectedPurchaseOrder.notes && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                    <SemanticBDIIcon semantic="notes" size={16} className="mr-2 text-blue-600" />
+                    Status History & Notes
+                  </h4>
+                  <div className="bg-white p-3 rounded border">
+                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                      {selectedPurchaseOrder.notes}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-blue-100 p-4 rounded">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-blue-800">Total Value:</span>

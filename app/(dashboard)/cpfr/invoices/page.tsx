@@ -492,8 +492,19 @@ export default function InvoicesPage() {
                           <span className="font-bold text-green-600">${Number(invoice.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
+                      {/* Status History & Notes Display */}
                       {invoice.notes && (
-                        <p className="text-sm text-gray-600 mt-2">{invoice.notes}</p>
+                        <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                            <SemanticBDIIcon semantic="notes" size={16} className="mr-2 text-blue-600" />
+                            Status History & Notes
+                          </h4>
+                          <div className="bg-white p-3 rounded border">
+                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                              {invoice.notes}
+                            </pre>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
