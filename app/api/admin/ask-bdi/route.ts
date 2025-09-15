@@ -149,6 +149,14 @@ Focus exclusively on the provided database records. Provide fast, accurate respo
 - CPFR signals and business relationships
 - No document analysis required for speed optimization`;
 
+      // DEBUG: Show FULL prompt and response for debugging
+      console.log('🔍 DEBUG: FULL SYSTEM PROMPT BEING SENT TO AI:');
+      console.log('=' .repeat(100));
+      console.log(dbOnlyPrompt);
+      console.log('=' .repeat(100));
+      console.log('🔍 DEBUG: USER QUESTION:', question);
+      console.log('=' .repeat(100));
+      
       // Direct OpenAI call for database-only analysis (fast)
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const response = await openai.chat.completions.create({
@@ -161,6 +169,12 @@ Focus exclusively on the provided database records. Provide fast, accurate respo
         temperature: 0.1
       });
       answer = response.choices[0]?.message?.content || 'No response generated';
+      
+      // DEBUG: Show RAW AI response
+      console.log('🤖 DEBUG: RAW AI RESPONSE:');
+      console.log('=' .repeat(100));
+      console.log(answer);
+      console.log('=' .repeat(100));
       
     } else if (queryScope === 'rag') {
       // RAG DOCUMENTS ONLY - May take time for comprehensive document analysis
@@ -268,10 +282,10 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
         capabilities, storage_capacity_sqm, organization_id, is_active
       `),
       
-      // Purchase Orders
+      // Purchase Orders - FIXED FIELD NAMES
       serviceSupabase.from('purchase_orders').select(`
-        id, po_number, supplier_name, total_value, status,
-        delivery_date, created_at
+        id, purchase_order_number, supplier_name, total_value, status,
+        purchase_order_date, requested_delivery_date, organization_id, created_at
       `),
       
       // Invoice Line Items for SKU analysis
