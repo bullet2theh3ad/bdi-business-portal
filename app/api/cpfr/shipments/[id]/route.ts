@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { db } from '@/lib/db/drizzle';
+import { organizations, users, organizationMembers } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function PUT(
   request: NextRequest,
@@ -35,6 +38,28 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user with organization info for fallback validation (same as create API)
+    const [dbUser] = await db
+      .select({
+        id: users.id,
+        authId: users.authId,
+        organization: {
+          id: organizations.id,
+          name: organizations.name,
+          code: organizations.code,
+          type: organizations.type
+        }
+      })
+      .from(users)
+      .leftJoin(organizationMembers, eq(users.authId, organizationMembers.userAuthId))
+      .leftJoin(organizations, eq(organizationMembers.organizationUuid, organizations.id))
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     console.log('🔧 Updating shipment:', shipmentId, body);
 
@@ -43,9 +68,18 @@ export async function PUT(
     const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : null;
 
     // Handle custom entries - convert "custom" to null for UUID fields (same as create API)
-    const originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || null);
+    let originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || null);
     const shippingPartnerId = body.shipperOrganizationId === 'custom' || body.shipperOrganizationId === 'lcl' ? null : (body.shipperOrganizationId || null);
     const destinationWarehouseId = body.destinationWarehouseId === 'custom' ? null : (body.destinationWarehouseId || null);
+
+    // CRITICAL: Validate organization ID exists (same as create API)
+    if (originFactoryId) {
+      const orgExists = await db.select().from(organizations).where(eq(organizations.id, originFactoryId)).limit(1);
+      if (orgExists.length === 0) {
+        console.log(`🚨 Invalid organization ID: ${originFactoryId}, falling back to user's organization`);
+        originFactoryId = dbUser.organization?.id || null;
+      }
+    }
     
     // Determine custom location text
     const originCustomLocation = body.organizationId === 'custom' ? (body.customOriginFactory || 'Custom Origin') : null;

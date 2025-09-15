@@ -537,6 +537,10 @@ export default function ShipmentsPage() {
             organizationId: shipmentForm.originFactoryId, // Step 1: Origin Factory
             shipperOrganizationId: shipmentForm.shippingOrganizationId, // Step 2: Shipping Partner
             destinationWarehouseId: shipmentForm.destinationWarehouseId, // Step 3: Final Destination
+            // Custom entry fields - CRITICAL FOR UPDATES
+            customOriginFactory: shipmentForm.customOriginFactory,
+            customShippingPartner: shipmentForm.customShippingPartner,
+            customDestinationWarehouse: shipmentForm.customDestinationWarehouse,
             // Legacy fields for backward compatibility
             shippingOrganizationCode: shipmentForm.shippingOrganizationId, // Map to legacy field
             // Include other form fields (excluding the ones we already set above)
