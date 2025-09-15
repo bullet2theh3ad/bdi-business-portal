@@ -136,6 +136,13 @@ export default function InvoicesPage() {
   const [showCustomPaymentTerms, setShowCustomPaymentTerms] = useState(false);
   const [invoiceStatus, setInvoiceStatus] = useState<'draft' | 'submitted'>('draft');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [shipToAddress, setShipToAddress] = useState('');
+  const [shipDate, setShipDate] = useState('');
+  const [bankInfo, setBankInfo] = useState({
+    accountNumber: '',
+    routing: '',
+    swift: ''
+  });
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -1583,20 +1590,44 @@ export default function InvoicesPage() {
                           setShowCustomPaymentTerms(false);
                           // Auto-populate invoice data from PO
                           if (po) {
-                            setGeneratedInvoice({
-                              invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
-                              customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
-                              invoiceDate: new Date().toISOString().split('T')[0],
-                              requestedDeliveryWeek: po.requestedDeliveryWeek || '',
-                              status: 'draft',
-                              terms: 'NET30',
-                              incoterms: po.incoterms || 'FOB',
-                              incotermsLocation: po.incotermsLocation || 'Shanghai Port',
-                              totalValue: po.totalValue || 0,
-                              notes: `Generated from PO: ${po.purchaseOrderNumber}`,
-                              poReference: po.purchaseOrderNumber,
-                              lineItems: po.lineItems || []
-                            });
+                            // Fetch PO line items
+                            fetch(`/api/cpfr/purchase-orders/${po.id}/line-items`)
+                              .then(res => res.json())
+                              .then(lineItems => {
+                                console.log('📦 Loaded PO line items:', lineItems);
+                                
+                                setGeneratedInvoice({
+                                  invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
+                                  customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
+                                  invoiceDate: new Date().toISOString().split('T')[0],
+                                  requestedDeliveryWeek: po.requestedDeliveryWeek || '',
+                                  status: 'draft',
+                                  terms: 'NET30',
+                                  incoterms: po.incoterms || 'FOB',
+                                  incotermsLocation: po.incotermsLocation || 'Shanghai Port',
+                                  totalValue: po.totalValue || 0,
+                                  notes: `Generated from PO: ${po.purchaseOrderNumber}`,
+                                  poReference: po.purchaseOrderNumber,
+                                  lineItems: lineItems || []
+                                });
+                              })
+                              .catch(error => {
+                                console.error('Error loading PO line items:', error);
+                                setGeneratedInvoice({
+                                  invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
+                                  customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
+                                  invoiceDate: new Date().toISOString().split('T')[0],
+                                  requestedDeliveryWeek: po.requestedDeliveryWeek || '',
+                                  status: 'draft',
+                                  terms: 'NET30',
+                                  incoterms: po.incoterms || 'FOB',
+                                  incotermsLocation: po.incotermsLocation || 'Shanghai Port',
+                                  totalValue: po.totalValue || 0,
+                                  notes: `Generated from PO: ${po.purchaseOrderNumber}`,
+                                  poReference: po.purchaseOrderNumber,
+                                  lineItems: []
+                                });
+                              });
                           }
                         }}
                       >
@@ -1637,7 +1668,7 @@ export default function InvoicesPage() {
                               />
                             </div>
                             <div className="sm:col-span-2">
-                              <Label htmlFor="genCustomerAddress">Customer Address</Label>
+                              <Label htmlFor="genCustomerAddress">Bill To Address</Label>
                               <textarea
                                 id="genCustomerAddress"
                                 value={customerAddress}
@@ -1645,6 +1676,27 @@ export default function InvoicesPage() {
                                 placeholder="Customer billing address (will be auto-scanned from PO documents if available)"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
                                 rows={2}
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <Label htmlFor="genShipToAddress">Ship To Address</Label>
+                              <textarea
+                                id="genShipToAddress"
+                                value={shipToAddress}
+                                onChange={(e) => setShipToAddress(e.target.value)}
+                                placeholder="Shipping address (can be same as billing or different)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                                rows={2}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="genShipDate">Ship Date</Label>
+                              <Input
+                                id="genShipDate"
+                                type="date"
+                                value={shipDate}
+                                onChange={(e) => setShipDate(e.target.value)}
+                                className="mt-1"
                               />
                             </div>
                             <div>
@@ -1732,6 +1784,46 @@ export default function InvoicesPage() {
                               className="mt-1"
                             />
                           </div>
+                        </div>
+
+                        {/* Bank Information Section */}
+                        <div className="bg-purple-50 p-4 rounded-lg">
+                          <h3 className="font-semibold text-purple-900 mb-3">Bank Information</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <Label htmlFor="bankAccount">Account Number</Label>
+                              <Input
+                                id="bankAccount"
+                                value={bankInfo.accountNumber}
+                                onChange={(e) => setBankInfo({...bankInfo, accountNumber: e.target.value})}
+                                placeholder="e.g., 5803261154"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankRouting">Routing</Label>
+                              <Input
+                                id="bankRouting"
+                                value={bankInfo.routing}
+                                onChange={(e) => setBankInfo({...bankInfo, routing: e.target.value})}
+                                placeholder="e.g., 122232109"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankSwift">Swift Code</Label>
+                              <Input
+                                id="bankSwift"
+                                value={bankInfo.swift}
+                                onChange={(e) => setBankInfo({...bankInfo, swift: e.target.value})}
+                                placeholder="e.g., ZFNBUS55"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-purple-600 mt-2">
+                            Bank information will appear at bottom of invoice for wire transfers
+                          </p>
                         </div>
 
                         {/* Step 3: Notes & Status */}
@@ -1920,110 +2012,141 @@ export default function InvoicesPage() {
                 <div className="p-4">
                   <div className="bg-white shadow-lg rounded-lg p-4 max-w-4xl mx-auto">
                     {generatedInvoice ? (
-                      /* Real-time Invoice Preview */
-                      <div className="space-y-6">
-                        {/* Invoice Header */}
-                        <div className="border-b-2 border-gray-200 pb-6">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h1 className="text-3xl font-bold text-gray-900">INVOICE</h1>
-                              <p className="text-lg text-gray-600 mt-1">#{generatedInvoice.invoiceNumber}</p>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-blue-600">{user?.organization?.name || 'Your Company'}</div>
-                              <div className="text-gray-600 mt-2">
-                                <div>Invoice Date: {new Date(generatedInvoice.invoiceDate).toLocaleDateString()}</div>
-                                <div>PO Reference: {generatedInvoice.poReference}</div>
+                      /* Professional Invoice Template - Matching Exact Format */
+                      <div className="bg-white">
+                        {/* Header with Logo and Company Info */}
+                        <div className="flex justify-between items-start mb-8">
+                          <div>
+                            <div className="text-4xl font-bold text-blue-600 mb-2">INVOICE</div>
+                          </div>
+                          <div className="text-right">
+                            <img 
+                              src="/logos/PNG/Full Lockup Color.png" 
+                              alt="Boundless Devices Inc" 
+                              className="h-16 mb-4"
+                            />
+                            <div className="text-sm text-gray-700">
+                              <div className="font-semibold">Boundless Devices, Inc.</div>
+                              <div>17875 Von Karman Ave, STE 150</div>
+                              <div>Irvine, CA 92614</div>
+                              <div className="mt-2">
+                                <div>invoices@boundlessdevices.com</div>
+                                <div>+1 (949) 994-7791</div>
+                                <div>www.boundlessdevices.com</div>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Bill To Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Bill To and Ship To Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Bill To:</h3>
+                            <h3 className="font-semibold text-gray-900 mb-2">Bill to</h3>
                             <div className="text-gray-700">
-                              <div className="font-semibold text-lg">{generatedInvoice.customerName}</div>
+                              <div className="font-semibold">{generatedInvoice.customerName}</div>
                               {customerAddress && (
-                                <div className="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                                <div className="mt-1 whitespace-pre-line text-sm">
                                   {customerAddress}
                                 </div>
                               )}
-                              {!customerAddress && (
-                                <div className="mt-1 text-gray-500 italic text-sm">Address will be auto-scanned from PO documents</div>
-                              )}
                             </div>
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Invoice Details:</h3>
-                            <div className="text-gray-700 space-y-1">
-                              <div><span className="font-medium">Terms:</span> {generatedInvoice.terms}</div>
-                              <div><span className="font-medium">Incoterms:</span> {generatedInvoice.incoterms}</div>
-                              <div><span className="font-medium">Location:</span> {generatedInvoice.incotermsLocation}</div>
-                              <div><span className="font-medium">Delivery Week:</span> {generatedInvoice.requestedDeliveryWeek}</div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Ship to</h3>
+                            <div className="text-gray-700">
+                              <div className="font-semibold">{generatedInvoice.customerName}</div>
+                              {shipToAddress && (
+                                <div className="mt-1 whitespace-pre-line text-sm">
+                                  {shipToAddress}
+                                </div>
+                              )}
+                              {!shipToAddress && customerAddress && (
+                                <div className="mt-1 whitespace-pre-line text-sm">
+                                  {customerAddress}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Line Items Table */}
-                        {generatedInvoice.lineItems && generatedInvoice.lineItems.length > 0 && (
-                          <div className="mt-8">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Items:</h3>
-                            <div className="overflow-x-auto">
-                              <table className="w-full border-collapse border border-gray-300">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    <th className="border border-gray-300 px-4 py-3 text-left font-semibold">SKU</th>
-                                    <th className="border border-gray-300 px-4 py-3 text-right font-semibold">Quantity</th>
-                                    <th className="border border-gray-300 px-4 py-3 text-right font-semibold">Unit Price</th>
-                                    <th className="border border-gray-300 px-4 py-3 text-right font-semibold">Total</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {generatedInvoice.lineItems.map((item: any, index: number) => (
-                                    <tr key={index} className="hover:bg-gray-50">
-                                      <td className="border border-gray-300 px-4 py-3">{item.skuCode || item.sku}</td>
-                                      <td className="border border-gray-300 px-4 py-3 text-right">{item.quantity?.toLocaleString()}</td>
-                                      <td className="border border-gray-300 px-4 py-3 text-right">${item.unitPrice?.toFixed(2)}</td>
-                                      <td className="border border-gray-300 px-4 py-3 text-right font-semibold">${(item.quantity * item.unitPrice)?.toFixed(2)}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                        {/* Shipping Info and Invoice Details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                          <div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Shipping info</h3>
+                            <div className="text-sm text-gray-700">
+                              <div><span className="font-medium">Ship date:</span> {shipDate ? new Date(shipDate).toLocaleDateString() : 'TBD'}</div>
                             </div>
                           </div>
-                        )}
+                          <div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Invoice details</h3>
+                            <div className="text-sm text-gray-700">
+                              <div><span className="font-medium">Invoice no.:</span> {generatedInvoice.invoiceNumber.replace('INV-', '')}</div>
+                              <div><span className="font-medium">Terms:</span> {generatedInvoice.terms}</div>
+                              <div><span className="font-medium">Invoice date:</span> {new Date(generatedInvoice.invoiceDate).toLocaleDateString()}</div>
+                              <div><span className="font-medium">Due date:</span> {new Date(generatedInvoice.invoiceDate).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Line Items Table - Professional Format */}
+                        <div className="mb-8">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">#</th>
+                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">Product or service</th>
+                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">SKU</th>
+                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">Description</th>
+                                <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-sm">Qty</th>
+                                <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-sm">Rate</th>
+                                <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-sm">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {generatedInvoice.lineItems && generatedInvoice.lineItems.length > 0 ? (
+                                generatedInvoice.lineItems.map((item: any, index: number) => (
+                                  <tr key={index} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-3 text-sm">{index + 1}.</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-sm font-medium">{item.skuName || item.sku || 'Product Name'}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-sm">{item.skuCode || item.sku}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-sm">{generatedInvoice.poReference}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">{item.quantity?.toLocaleString()}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">${(item.unitCost || item.unitPrice || 0).toFixed(2)}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold">${((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={7} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                    Loading line items from Purchase Order...
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
 
                         {/* Total Section */}
-                        <div className="border-t-2 border-gray-200 pt-6">
-                          <div className="flex justify-end">
-                            <div className="w-64">
-                              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span className="font-semibold">Subtotal:</span>
-                                <span>${generatedInvoice.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <div className="flex justify-end mb-8">
+                          <div className="w-64">
+                            <div className="text-right">
+                              <div className="text-3xl font-bold text-gray-900">
+                                ${generatedInvoice.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </div>
-                              <div className="flex justify-between items-center py-3 bg-blue-50 px-4 rounded mt-2">
-                                <span className="text-xl font-bold text-blue-900">Total:</span>
-                                <span className="text-2xl font-bold text-blue-900">${generatedInvoice.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              </div>
+                              <div className="text-lg font-semibold text-gray-700 mt-1">Total</div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Notes Section */}
-                        {generatedInvoice.notes && (
-                          <div className="border-t border-gray-200 pt-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Notes:</h3>
-                            <p className="text-gray-700 whitespace-pre-wrap">{generatedInvoice.notes}</p>
+                        {/* Bank Information */}
+                        {(bankInfo.accountNumber || bankInfo.routing || bankInfo.swift) && (
+                          <div className="border-t border-gray-200 pt-6 text-sm text-gray-700">
+                            <div className="font-semibold mb-2">California Bank and Trust</div>
+                            {bankInfo.accountNumber && <div>Account number: {bankInfo.accountNumber}</div>}
+                            {bankInfo.routing && <div>Routing: {bankInfo.routing}</div>}
+                            {bankInfo.swift && <div>Swift (International Wires Only): {bankInfo.swift}</div>}
                           </div>
                         )}
-
-                        {/* Footer */}
-                        <div className="border-t border-gray-200 pt-6 text-center text-sm text-gray-500">
-                          <p>Thank you for your business!</p>
-                          <p className="mt-1">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
-                        </div>
                       </div>
                     ) : (
                       /* Placeholder when no PO selected */
