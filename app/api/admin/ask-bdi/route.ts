@@ -241,7 +241,20 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       purchaseOrdersResult,
       invoiceLineItemsResult,
       emgInventoryResult,
-      emgInventoryHistoryResult
+      emgInventoryHistoryResult,
+      // ENHANCED: Additional tables for comprehensive business intelligence
+      activityLogsResult,
+      apiKeysResult,
+      catvInventoryResult,
+      jjolmTrackingResult,
+      productionFilesResult,
+      organizationConnectionsResult,
+      organizationDocumentsResult,
+      ragDocumentsResult,
+      shipmentDocumentsResult,
+      shipmentTrackingResult,
+      purchaseOrderDocumentsResult,
+      invoiceDocumentsResult
     ] = await Promise.all([
       // Forecasts with full details
       serviceSupabase.from('sales_forecasts').select(`
@@ -304,7 +317,79 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
       serviceSupabase.from('emg_inventory_history').select(`
         id, upc, model, location, qty_on_hand, qty_change, change_type,
         snapshot_date, source_file_name
-      `).order('snapshot_date', { ascending: false }).limit(100)
+      `).order('snapshot_date', { ascending: false }).limit(100),
+      
+      // ENHANCED: Additional tables for comprehensive business intelligence
+      
+      // Activity Logs - User activity tracking
+      serviceSupabase.from('activity_logs').select(`
+        id, team_id, user_id, action, timestamp, ip_address, organization_id
+      `).order('timestamp', { ascending: false }).limit(50),
+      
+      // API Keys - Access management
+      serviceSupabase.from('api_keys').select(`
+        id, user_auth_id, organization_uuid, key_name, permissions,
+        rate_limit_per_hour, last_used_at, is_active, created_at
+      `),
+      
+      // CATV Inventory Tracking - CATV warehouse data
+      serviceSupabase.from('catv_inventory_tracking').select(`
+        id, sku, week_data, raw_data, metrics, created_at, updated_at
+      `).order('created_at', { ascending: false }).limit(10),
+      
+      // JJOLM Tracking - Shipment tracking numbers
+      serviceSupabase.from('jjolm_tracking').select(`
+        id, jjolm_number, container_number, vessel_name, departure_port,
+        arrival_port, estimated_departure, estimated_arrival, status, created_at
+      `),
+      
+      // Production Files - Manufacturing data
+      serviceSupabase.from('production_files').select(`
+        id, organization_id, file_name, file_type, file_size, upload_date,
+        processed_data, status, created_by, created_at
+      `).order('created_at', { ascending: false }).limit(20),
+      
+      // Organization Connections - Business relationships
+      serviceSupabase.from('organization_connections').select(`
+        id, organization_a_id, organization_b_id, connection_type,
+        status, established_date, notes, created_at
+      `),
+      
+      // Organization Documents - Document tracking
+      serviceSupabase.from('organization_documents').select(`
+        id, organization_id, document_name, document_type, file_path,
+        file_size, upload_date, created_by, created_at
+      `).order('created_at', { ascending: false }).limit(30),
+      
+      // RAG Documents - Document intelligence
+      serviceSupabase.from('rag_documents').select(`
+        id, company, file_name, file_path, file_size, tags,
+        upload_date, created_by, created_at
+      `).order('created_at', { ascending: false }).limit(20),
+      
+      // Shipment Documents - Logistics documentation
+      serviceSupabase.from('shipment_documents').select(`
+        id, shipment_id, document_name, document_type, file_path,
+        file_size, upload_date, created_by, created_at
+      `).order('created_at', { ascending: false }).limit(20),
+      
+      // Shipment Tracking - Logistics intelligence
+      serviceSupabase.from('shipment_tracking').select(`
+        id, shipment_id, tracking_number, carrier, status,
+        location, timestamp, notes, created_at
+      `).order('timestamp', { ascending: false }).limit(50),
+      
+      // Purchase Order Documents - PO documentation
+      serviceSupabase.from('purchase_order_documents').select(`
+        id, purchase_order_id, document_name, document_type, file_path,
+        file_size, upload_date, created_by, created_at
+      `).order('created_at', { ascending: false }).limit(20),
+      
+      // Invoice Documents - Invoice documentation
+      serviceSupabase.from('invoice_documents').select(`
+        id, invoice_id, document_name, document_type, file_path,
+        file_size, upload_date, created_by, created_at
+      `).order('created_at', { ascending: false }).limit(20)
     ]);
 
     // Calculate comprehensive business metrics
@@ -471,6 +556,86 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
           lastSnapshotDate: emgInventoryHistoryResult.data?.length ? 
             emgInventoryHistoryResult.data[0]?.snapshot_date : null
         }
+      },
+      
+      // ENHANCED: Additional business intelligence data
+      activityLogs: {
+        total: activityLogsResult.data?.length || 0,
+        recentActivity: activityLogsResult.data?.slice(0, 20) || [],
+        byAction: groupBy(activityLogsResult.data || [], 'action'),
+        byOrganization: groupBy(activityLogsResult.data || [], 'organization_id')
+      },
+      
+      apiKeys: {
+        total: apiKeysResult.data?.length || 0,
+        active: (apiKeysResult.data || []).filter((key: any) => key.is_active).length,
+        byOrganization: groupBy(apiKeysResult.data || [], 'organization_uuid'),
+        recentUsage: (apiKeysResult.data || []).filter((key: any) => key.last_used_at).slice(0, 10)
+      },
+      
+      catvInventory: {
+        total: catvInventoryResult.data?.length || 0,
+        latestData: catvInventoryResult.data?.slice(0, 5) || [],
+        byWeek: groupBy(catvInventoryResult.data || [], 'week_data')
+      },
+      
+      jjolmTracking: {
+        total: jjolmTrackingResult.data?.length || 0,
+        activeShipments: (jjolmTrackingResult.data || []).filter((jjolm: any) => jjolm.status !== 'delivered'),
+        byStatus: groupBy(jjolmTrackingResult.data || [], 'status'),
+        recentShipments: jjolmTrackingResult.data?.slice(0, 10) || []
+      },
+      
+      productionFiles: {
+        total: productionFilesResult.data?.length || 0,
+        byOrganization: groupBy(productionFilesResult.data || [], 'organization_id'),
+        byFileType: groupBy(productionFilesResult.data || [], 'file_type'),
+        byStatus: groupBy(productionFilesResult.data || [], 'status'),
+        recentFiles: productionFilesResult.data?.slice(0, 10) || []
+      },
+      
+      organizationConnections: {
+        total: organizationConnectionsResult.data?.length || 0,
+        byType: groupBy(organizationConnectionsResult.data || [], 'connection_type'),
+        byStatus: groupBy(organizationConnectionsResult.data || [], 'status'),
+        activeConnections: (organizationConnectionsResult.data || []).filter((conn: any) => conn.status === 'active')
+      },
+      
+      documentIntelligence: {
+        organizationDocs: {
+          total: organizationDocumentsResult.data?.length || 0,
+          byType: groupBy(organizationDocumentsResult.data || [], 'document_type'),
+          byOrganization: groupBy(organizationDocumentsResult.data || [], 'organization_id'),
+          recent: organizationDocumentsResult.data?.slice(0, 15) || []
+        },
+        ragDocs: {
+          total: ragDocumentsResult.data?.length || 0,
+          byCompany: groupBy(ragDocumentsResult.data || [], 'company'),
+          withTags: (ragDocumentsResult.data || []).filter((doc: any) => doc.tags && doc.tags.length > 0),
+          recent: ragDocumentsResult.data?.slice(0, 10) || []
+        },
+        shipmentDocs: {
+          total: shipmentDocumentsResult.data?.length || 0,
+          byType: groupBy(shipmentDocumentsResult.data || [], 'document_type'),
+          recent: shipmentDocumentsResult.data?.slice(0, 10) || []
+        },
+        purchaseOrderDocs: {
+          total: purchaseOrderDocumentsResult.data?.length || 0,
+          byType: groupBy(purchaseOrderDocumentsResult.data || [], 'document_type'),
+          recent: purchaseOrderDocumentsResult.data?.slice(0, 10) || []
+        },
+        invoiceDocs: {
+          total: invoiceDocumentsResult.data?.length || 0,
+          byType: groupBy(invoiceDocumentsResult.data || [], 'document_type'),
+          recent: invoiceDocumentsResult.data?.slice(0, 10) || []
+        }
+      },
+      
+      shipmentTracking: {
+        total: shipmentTrackingResult.data?.length || 0,
+        byCarrier: groupBy(shipmentTrackingResult.data || [], 'carrier'),
+        byStatus: groupBy(shipmentTrackingResult.data || [], 'status'),
+        recentTracking: shipmentTrackingResult.data?.slice(0, 20) || []
       },
       
       // Raw data for complex analysis (limited for performance)
