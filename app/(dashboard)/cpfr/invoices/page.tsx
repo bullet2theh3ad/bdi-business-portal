@@ -1603,11 +1603,16 @@ export default function InvoicesPage() {
                               .then(lineItems => {
                                 console.log('📦 Loaded PO line items:', lineItems);
                                 console.log(`📊 Line items count: ${Array.isArray(lineItems) ? lineItems.length : 'Not an array'}`);
+                                if (Array.isArray(lineItems) && lineItems.length > 0) {
+                                  console.log('📋 First line item structure:', lineItems[0]);
+                                }
                                 
                                 // Calculate total from line items
                                 const calculatedTotal = Array.isArray(lineItems) ? 
-                                  lineItems.reduce((sum, item) => sum + (item.totalCost || item.total_cost || 0), 0) : 
+                                  lineItems.reduce((sum, item) => sum + (item.totalCost || item.total_cost || (item.quantity * item.unitCost) || 0), 0) : 
                                   po.totalValue || 0;
+                                
+                                console.log('💰 Calculated total from line items:', calculatedTotal);
                                 
                                 setGeneratedInvoice({
                                   invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
@@ -1713,6 +1718,20 @@ export default function InvoicesPage() {
                                 onChange={(e) => setShipDate(e.target.value)}
                                 className="mt-1"
                               />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Label>Quick Address Actions</Label>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShipToAddress(customerAddress)}
+                                  className="text-xs"
+                                >
+                                  Copy Bill To → Ship To
+                                </Button>
+                              </div>
                             </div>
                             <div>
                               <Label htmlFor="genInvoiceNumber">Invoice Number</Label>
@@ -2024,37 +2043,35 @@ export default function InvoicesPage() {
 
               {/* Right Panel - Real-time Invoice Preview (Mobile: Bottom, Desktop: Right 60%) */}
               <div className="w-full md:w-3/5 bg-gray-50 overflow-y-auto" style={{ maxHeight: '90vh' }}>
-                <div className="p-4">
-                  <div className="bg-white shadow-lg rounded-lg p-4 max-w-4xl mx-auto">
+                <div className="p-2">
+                  <div className="bg-white shadow-lg rounded-lg p-3 max-w-2xl mx-auto text-xs">
                     {generatedInvoice ? (
                       /* Professional Invoice Template - Matching Exact Format */
                       <div className="bg-white">
-                        {/* Header with Logo and Company Info - Exact Layout Match */}
-                        <div className="mb-8">
+                        {/* Header with Logo and Company Info - Compact Layout */}
+                        <div className="mb-4">
                           <div className="flex justify-between items-start">
                             {/* Left: INVOICE Title */}
                             <div>
-                              <div className="text-4xl font-bold text-blue-600">INVOICE</div>
+                              <div className="text-2xl font-bold text-blue-600">INVOICE</div>
                             </div>
                             
                             {/* Right: Logo and Company Info */}
                             <div className="text-right">
-                              <div className="flex justify-end mb-4">
+                              <div className="flex justify-end mb-2">
                                 <img 
                                   src="/logos/PNG/Full Lockup Color.png" 
                                   alt="Boundless Devices Inc" 
-                                  className="h-16"
+                                  className="h-10"
                                 />
                               </div>
                               
-                              {/* Company Info - Three Column Layout */}
-                              <div className="flex justify-end gap-8 text-sm text-gray-700">
-                                <div>
-                                  <div className="font-semibold">Boundless Devices, Inc.</div>
-                                  <div>17875 Von Karman Ave, STE 150</div>
-                                  <div>Irvine, CA 92614</div>
-                                </div>
-                                <div>
+                              {/* Company Info - Centered Under Logo */}
+                              <div className="text-center text-xs text-gray-700">
+                                <div className="font-semibold">Boundless Devices, Inc.</div>
+                                <div>17875 Von Karman Ave, STE 150</div>
+                                <div>Irvine, CA 92614</div>
+                                <div className="mt-1">
                                   <div>invoices@boundlessdevices.com</div>
                                   <div>+1 (949) 994-7791</div>
                                   <div>www.boundlessdevices.com</div>
@@ -2065,9 +2082,9 @@ export default function InvoicesPage() {
                         </div>
 
                         {/* Bill To and Ship To Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Bill to</h3>
+                            <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bill to</h3>
                             <div className="text-gray-700">
                               <div className="font-semibold">{generatedInvoice.customerName}</div>
                               {customerAddress && (
@@ -2078,7 +2095,7 @@ export default function InvoicesPage() {
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Ship to</h3>
+                            <h3 className="font-semibold text-gray-900 mb-1 text-sm">Ship to</h3>
                             <div className="text-gray-700">
                               <div className="font-semibold">{generatedInvoice.customerName}</div>
                               {shipToAddress && (
@@ -2096,16 +2113,16 @@ export default function InvoicesPage() {
                         </div>
 
                         {/* Shipping Info and Invoice Details */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Shipping info</h3>
-                            <div className="text-sm text-gray-700">
+                            <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
+                            <div className="text-xs text-gray-700">
                               <div><span className="font-medium">Ship date:</span> {shipDate ? new Date(shipDate).toLocaleDateString() : 'TBD'}</div>
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Invoice details</h3>
-                            <div className="text-sm text-gray-700">
+                            <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
+                            <div className="text-xs text-gray-700">
                               <div><span className="font-medium">Invoice no.:</span> {generatedInvoice.invoiceNumber.replace('INV-', '')}</div>
                               <div><span className="font-medium">Terms:</span> {generatedInvoice.terms}</div>
                               <div><span className="font-medium">Invoice date:</span> {new Date(generatedInvoice.invoiceDate).toLocaleDateString()}</div>
@@ -2114,40 +2131,40 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
-                        {/* Line Items Table - Professional Format */}
-                        <div className="mb-8">
+                        {/* Line Items Table - Compact Format */}
+                        <div className="mb-4">
                           <table className="w-full border-collapse">
                             <thead>
                               <tr className="bg-gray-100">
-                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">#</th>
-                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">Product or service</th>
-                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">SKU</th>
-                                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-sm">Description</th>
-                                <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-sm">Qty</th>
-                                <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-sm">Rate</th>
-                                <th className="border border-gray-300 px-4 py-3 text-right font-semibold text-sm">Amount</th>
+                                <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">#</th>
+                                <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">Product or service</th>
+                                <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">SKU</th>
+                                <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">Description</th>
+                                <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Qty</th>
+                                <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Rate</th>
+                                <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Amount</th>
                               </tr>
                             </thead>
                             <tbody>
                               {generatedInvoice.lineItems && generatedInvoice.lineItems.length > 0 ? (
                                 generatedInvoice.lineItems.map((item: any, index: number) => (
                                   <tr key={index} className="hover:bg-gray-50">
-                                    <td className="border border-gray-300 px-4 py-3 text-sm">{index + 1}.</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-sm font-medium">{item.skuName || item.sku || 'Product Name'}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-sm">{item.skuCode || item.sku}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-sm">{generatedInvoice.poReference}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">{(item.quantity || 0).toLocaleString()}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">${(item.unitCost || item.unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold">${((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-xs">{index + 1}.</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-xs font-medium">{item.skuName || item.sku || 'Product Name'}</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-xs">{item.skuCode || item.sku}</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-xs">{generatedInvoice.poReference}</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-right text-xs">{(item.quantity || 0).toLocaleString()}</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-right text-xs">${(item.unitCost || item.unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td className="border border-gray-300 px-2 py-2 text-right text-xs font-semibold">${((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan={7} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                  <td colSpan={7} className="border border-gray-300 px-2 py-4 text-center text-gray-500 text-xs">
                                     {loadingLineItems ? (
                                       <>
-                                        <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin inline" />
-                                        Loading line items from Purchase Order...
+                                        <SemanticBDIIcon semantic="loading" size={12} className="mr-1 animate-spin inline" />
+                                        Loading line items...
                                       </>
                                     ) : (
                                       'No line items found for this Purchase Order'
@@ -2159,15 +2176,13 @@ export default function InvoicesPage() {
                           </table>
                         </div>
 
-                        {/* Total Section */}
-                        <div className="flex justify-end mb-8">
-                          <div className="w-64">
-                            <div className="text-right">
-                              <div className="text-3xl font-bold text-gray-900">
-                                ${generatedInvoice.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </div>
-                              <div className="text-lg font-semibold text-gray-700 mt-1">Total</div>
+                        {/* Total Section - Compact */}
+                        <div className="flex justify-end mb-4">
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-gray-900">
+                              ${(generatedInvoice.totalValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
+                            <div className="text-sm font-semibold text-gray-700">Total</div>
                           </div>
                         </div>
 
