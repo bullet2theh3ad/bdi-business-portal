@@ -166,11 +166,11 @@ export async function POST(request: NextRequest) {
     const [newInvoice] = await db
       .insert(invoices)
       .values({
-        invoiceNumber: body.poNumber, // Form field name is still poNumber
-        customerName: body.supplierName, // Form field name is still supplierName
-        invoiceDate: new Date(body.orderDate), // Form field name is still orderDate
+        invoiceNumber: body.invoiceNumber || body.poNumber, // Support both new and old field names
+        customerName: body.customerName || body.supplierName, // Support both new and old field names
+        invoiceDate: new Date(body.invoiceDate || body.orderDate), // Support both new and old field names
         requestedDeliveryWeek: body.requestedDeliveryWeek ? new Date(body.requestedDeliveryWeek) : null,
-        status: 'draft',
+        status: body.status || 'draft', // Use provided status or default to 'draft'
         terms: body.terms,
         incoterms: body.incoterms,
         incotermsLocation: body.incotermsLocation,
@@ -205,6 +205,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       message: 'Invoice created successfully!',
+      id: newInvoice.id,
       invoice: newInvoice
     });
 

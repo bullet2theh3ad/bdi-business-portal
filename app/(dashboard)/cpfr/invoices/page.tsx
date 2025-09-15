@@ -1744,20 +1744,82 @@ export default function InvoicesPage() {
                             ? 'bg-gray-600 hover:bg-gray-700' 
                             : 'bg-green-600 hover:bg-green-700'
                         }`}
-                        onClick={() => {
-                          // TODO: Save invoice to database with status
-                          const statusMessage = invoiceStatus === 'draft' 
-                            ? 'Invoice saved as draft!' 
-                            : 'Invoice submitted for CFO approval!';
-                          alert(`${statusMessage}\n\nSave to database functionality coming soon!`);
+                        disabled={isLoading}
+                        onClick={async () => {
+                          try {
+                            setIsLoading(true);
+                            
+                            // Prepare invoice data for saving
+                            const invoiceData = {
+                              invoiceNumber: generatedInvoice.invoiceNumber,
+                              customerName: generatedInvoice.customerName,
+                              invoiceDate: generatedInvoice.invoiceDate,
+                              requestedDeliveryWeek: generatedInvoice.requestedDeliveryWeek,
+                              status: invoiceStatus, // 'draft' or 'submitted'
+                              terms: generatedInvoice.terms,
+                              incoterms: generatedInvoice.incoterms,
+                              incotermsLocation: generatedInvoice.incotermsLocation,
+                              totalValue: generatedInvoice.totalValue,
+                              notes: generatedInvoice.notes,
+                              poReference: generatedInvoice.poReference,
+                              lineItems: generatedInvoice.lineItems || []
+                            };
+
+                            console.log('Saving invoice:', invoiceData);
+
+                            const response = await fetch('/api/cpfr/invoices', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify(invoiceData),
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+                              const statusMessage = invoiceStatus === 'draft' 
+                                ? 'Invoice saved as draft!' 
+                                : 'Invoice submitted for CFO approval!';
+                              
+                              alert(`✅ ${statusMessage}\n\nInvoice ID: ${result.id}`);
+                              
+                              // Refresh the invoice list
+                              mutateInvoices();
+                              
+                              // Close the modal
+                              setShowGenerateModal(false);
+                              setSelectedPO(null);
+                              setGeneratedInvoice(null);
+                              setCustomPaymentTerms('');
+                              setShowCustomPaymentTerms(false);
+                            } else {
+                              const error = await response.text();
+                              console.error('Failed to save invoice:', error);
+                              alert(`❌ Failed to save invoice: ${error}`);
+                            }
+                          } catch (error) {
+                            console.error('Error saving invoice:', error);
+                            alert(`❌ Error saving invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                          } finally {
+                            setIsLoading(false);
+                          }
                         }}
                       >
-                        <SemanticBDIIcon 
-                          semantic={invoiceStatus === 'draft' ? 'save' : 'send'} 
-                          size={16} 
-                          className="mr-2 brightness-0 invert" 
-                        />
-                        {invoiceStatus === 'draft' ? 'Save as Draft' : 'Submit for Approval'}
+                        {isLoading ? (
+                          <>
+                            <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin brightness-0 invert" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <SemanticBDIIcon 
+                              semantic={invoiceStatus === 'draft' ? 'save' : 'send'} 
+                              size={16} 
+                              className="mr-2 brightness-0 invert" 
+                            />
+                            {invoiceStatus === 'draft' ? 'Save as Draft' : 'Submit for Approval'}
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
