@@ -69,9 +69,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
     }
 
-    const { question, context, chatHistory } = await request.json();
+    const { question, queryScope = 'all', context, chatHistory } = await request.json();
 
-    console.log('🤖 Ask BDI Request:', { question, context });
+    console.log('🤖 Ask BDI Request:', { question, queryScope, context });
     
     // For long-running queries, we should implement streaming or progress updates
     // TODO: Add Server-Sent Events (SSE) for real-time progress updates
@@ -79,14 +79,13 @@ export async function POST(request: NextRequest) {
     // Gather business data context
     const businessData = await gatherBusinessContext(supabase, context);
 
-    console.log('🧠 Using UNIFIED analysis - combining database + files for complete intelligence');
+    console.log(`🧠 Using ${queryScope.toUpperCase()} analysis - optimized for ${queryScope} sources`);
     
-    // CRITICAL: ALWAYS use both data sources for complete analysis
-    // Build ultimate schema-aware prompt with CPFR expertise
+    // Build schema-aware prompt with CPFR expertise
     const schemaAwarePrompt = await schemaPromptBuilder.buildUltimatePrompt();
     
-    // Enhanced system prompt for unified financial analyst + CPFR expert
-    const unifiedSystemPrompt = schemaAwarePrompt + `
+    // Enhanced system prompt for financial analyst + CPFR expert (scope-aware)
+    const baseSystemPrompt = schemaAwarePrompt + `
 
 🎯 YOU ARE A SENIOR FINANCIAL ANALYST & CPFR EXPERT WITH DUAL DATA ACCESS:
 
@@ -127,13 +126,60 @@ ${JSON.stringify(businessData, null, 2)}
 - Current Page: ${context.currentPage}
 - Timestamp: ${context.timestamp}
 
-MANDATORY: When analyzing ANY query, consider BOTH document content AND database records. Look for connections, correlations, and discrepancies. Provide unified business intelligence that bridges both data sources.`;
+MANDATORY: When analyzing queries, use the specified data sources based on user optimization choice.`;
 
-    // ALL QUERIES NOW USE DEEP ANALYSIS - as requested by user
-    console.log('🧠 Using UNIFIED analysis - combining database + files for complete intelligence');
+    // CONDITIONAL ANALYSIS based on user's queryScope selection
+    let answer: string;
     
-    // Always use enhanced file RAG with unified prompt for comprehensive analysis
-    const answer = await supabaseFileRAG.analyzeWithFiles(question, businessData, unifiedSystemPrompt);
+    if (queryScope === 'database') {
+      // DATABASE ONLY - Fast response using just business data
+      console.log('📊 Using DATABASE-ONLY analysis - fast response');
+      const dbOnlyPrompt = baseSystemPrompt + `
+      
+🎯 DATABASE-ONLY ANALYSIS MODE:
+Focus exclusively on the provided database records. Provide fast, accurate responses based on:
+- Invoices, Purchase Orders, SKUs, Shipments data
+- CPFR signals and business relationships
+- No document analysis required for speed optimization`;
+
+      // Direct OpenAI call for database-only analysis (fast)
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: dbOnlyPrompt },
+          { role: 'user', content: question }
+        ],
+        max_tokens: 4000,
+        temperature: 0.1
+      });
+      answer = response.choices[0]?.message?.content || 'No response generated';
+      
+    } else if (queryScope === 'rag') {
+      // RAG DOCUMENTS ONLY - May take time for comprehensive document analysis
+      console.log('📁 Using RAG-ONLY analysis - comprehensive document intelligence');
+      const ragOnlyPrompt = baseSystemPrompt + `
+      
+🎯 RAG DOCUMENTS-ONLY ANALYSIS MODE:
+Focus exclusively on document content and file analysis. Provide comprehensive insights from:
+- Financial models, reports, and business documents
+- Technical specifications and production files
+- Contract terms and supplier agreements
+- No database records analysis for focused document intelligence`;
+
+      answer = await supabaseFileRAG.analyzeWithFiles(question, {}, ragOnlyPrompt); // Skip DB context
+      
+    } else {
+      // ALL SOURCES - Comprehensive but may take time
+      console.log('🔄 Using COMPREHENSIVE analysis - database + files for complete intelligence');
+      const comprehensivePrompt = baseSystemPrompt + `
+      
+🎯 COMPREHENSIVE ANALYSIS MODE:
+Analyze BOTH database records AND document content. Provide unified business intelligence that bridges both data sources.
+Look for connections, correlations, and discrepancies between database and documents.`;
+
+      answer = await supabaseFileRAG.analyzeWithFiles(question, businessData, comprehensivePrompt);
+    }
 
     console.log('🤖 Ask BDI Response generated successfully');
 

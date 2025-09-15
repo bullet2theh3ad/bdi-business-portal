@@ -16,6 +16,7 @@ export default function AskBDIPage() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [progress, setProgress] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [queryScope, setQueryScope] = useState<'database' | 'rag' | 'all'>('all'); // Default to all sources
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages are added
@@ -87,6 +88,7 @@ export default function AskBDIPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: currentQuestion,
+          queryScope: queryScope, // Pass optimization scope to backend
           context: { currentPage: 'ask-bdi', timestamp: new Date().toISOString() },
           chatHistory
         })
@@ -242,27 +244,66 @@ export default function AskBDIPage() {
               />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex flex-wrap gap-2">
+                  {/* Query Optimization Buttons */}
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setQuestion('List all files available to us')}
+                    onClick={() => {
+                      setQueryScope('database');
+                      // Keep existing question but optimize for DB only
+                    }}
                     disabled={isLoading}
-                    className="text-xs md:text-sm"
+                    className={`text-xs md:text-sm transition-all ${
+                      queryScope === 'database' 
+                        ? 'bg-blue-100 border-blue-300 text-blue-800 shadow-md' 
+                        : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                    }`}
+                    title="Search database only (Invoices, POs, SKUs, Shipments) - Fast response"
                   >
-                    <FileSearch className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    Files
+                    <Database className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                    📊 DB
+                    <span className="ml-1 text-xs opacity-75">(Fast)</span>
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setQuestion('Analyze the PL tab with full data extraction')}
+                    onClick={() => {
+                      setQueryScope('rag');
+                      // Keep existing question but optimize for RAG only
+                    }}
                     disabled={isLoading}
-                    className="text-xs md:text-sm"
+                    className={`text-xs md:text-sm transition-all ${
+                      queryScope === 'rag' 
+                        ? 'bg-orange-100 border-orange-300 text-orange-800 shadow-md' 
+                        : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+                    }`}
+                    title="Search RAG documents only - May take time for comprehensive document analysis"
+                  >
+                    <FileSearch className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                    📁 RAG
+                    <span className="ml-1 text-xs opacity-75">(May take time...)</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setQueryScope('all');
+                      // Keep existing question but use all sources
+                    }}
+                    disabled={isLoading}
+                    className={`text-xs md:text-sm transition-all ${
+                      queryScope === 'all' 
+                        ? 'bg-green-100 border-green-300 text-green-800 shadow-md' 
+                        : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                    }`}
+                    title="Search all sources (Database + RAG documents) - Comprehensive but may take time"
                   >
                     <Database className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    Deep PL
+                    🔄 ALL
+                    <span className="ml-1 text-xs opacity-75">(Comprehensive, may take time...)</span>
                   </Button>
                 </div>
                 <Button 
