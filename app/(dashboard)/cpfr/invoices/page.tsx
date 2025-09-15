@@ -400,7 +400,7 @@ export default function InvoicesPage() {
                               const mappedItems = lineItems.map((item: any) => ({
                                 id: item.id,
                                 skuId: item.skuId,
-                                sku: item.sku,
+                                sku: item.skuCode || item.sku,
                                 skuName: item.skuName,
                                 quantity: parseInt(item.quantity),
                                 unitCost: parseFloat(item.unitCost),
