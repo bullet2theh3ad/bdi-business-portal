@@ -1770,6 +1770,29 @@ export default function ShipmentsPage() {
                             />
                           </div>
 
+                          {/* Status History & Notes Display */}
+                          {(() => {
+                            const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
+                            const shipmentNotes = currentShipment?.notes;
+                            
+                            if (shipmentNotes) {
+                              return (
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                  <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                                    <SemanticBDIIcon semantic="notes" size={16} className="mr-2 text-blue-600" />
+                                    Status History & Notes
+                                  </h4>
+                                  <div className="bg-white p-3 rounded border">
+                                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                                      {shipmentNotes}
+                                    </pre>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+
                           {/* Cost Estimate Documents - Drag & Drop */}
                           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <h4 className="font-medium text-gray-800 mb-3 flex items-center">
