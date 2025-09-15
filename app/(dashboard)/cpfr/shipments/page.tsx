@@ -639,14 +639,24 @@ export default function ShipmentsPage() {
     const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
     
     // Get full warehouse details for all three steps (Origin Factory, Shipping Partner, Final Destination)
-    const originFactoryWarehouse = allWarehouses.find((w: any) => 
-      w.warehouseCode === 'MTN-FACTORY' || w.name?.includes('MTN') || w.type === 'manufacturing'
-    );
-    const shippingPartnerWarehouse = allWarehouses.find((w: any) => 
-      w.warehouseCode === 'OLM' || w.type === 'shipping_logistics' || w.name?.includes('OLM')
-    );
+    // DYNAMIC LOOKUP: Use actual selected data instead of hardcoded defaults
+    
+    // Step 1: Origin Factory - Check if it's a warehouse origin (like EMG) or organization
+    const originFactoryWarehouse = currentShipment?.origin_warehouse_id 
+      ? allWarehouses.find((w: any) => w.id === currentShipment.origin_warehouse_id)
+      : allWarehouses.find((w: any) => w.id === shipmentForm.originFactoryId) ||
+        allWarehouses.find((w: any) => w.warehouseCode === 'MTN-FACTORY'); // Fallback to MTN
+    
+    // Step 2: Shipping Partner - Use custom text or find warehouse
+    const shippingPartnerWarehouse = currentShipment?.shipper_organization_id
+      ? allWarehouses.find((w: any) => w.id === currentShipment.shipper_organization_id)
+      : allWarehouses.find((w: any) => w.id === shipmentForm.shippingOrganizationId) ||
+        allWarehouses.find((w: any) => w.warehouseCode === 'OLM'); // Fallback to OLM
+    
+    // Step 3: Final Destination - Use actual selection
     const destinationWarehouse = allWarehouses.find((w: any) => w.id === shipmentForm.destinationWarehouseId) ||
-                                 allWarehouses.find((w: any) => w.warehouseCode === 'EMG');
+                                 allWarehouses.find((w: any) => w.id === currentShipment?.destination_warehouse_id) ||
+                                 allWarehouses.find((w: any) => w.warehouseCode === 'EMG'); // Fallback to EMG
     
     // Helper function to get primary contact from CPFR contacts
     const getPrimaryContact = (cpfrContacts: any) => {
@@ -712,12 +722,39 @@ export default function ShipmentsPage() {
       ['Cost per Unit (SEA)', shippingData.costPerUnitSEA, '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
-      // 3-Step Shipment Route Summary
+      // 3-Step Shipment Route Summary - DYNAMIC based on actual selections
       ['=== SHIPMENT ROUTE SUMMARY ===', '', '', '', '', '', ''],
-      ['Origin Factory', originFactoryWarehouse?.name || 'Not Set', '', '', '', '', ''],
-      ['Shipping Partner', shippingPartnerWarehouse?.name || 'Not Set', '', '', '', '', ''],
-      ['Final Destination', destinationWarehouse?.name || 'Not Set', '', '', '', '', ''],
-      ['Route Flow', `${originFactoryWarehouse?.warehouseCode || 'Factory'} → ${shippingPartnerWarehouse?.warehouseCode || 'Shipper'} → ${destinationWarehouse?.warehouseCode || 'Warehouse'}`, '', '', '', '', ''],
+      ['Origin Factory', (() => {
+        if (currentShipment?.origin_custom_location || shipmentForm.customOriginFactory) {
+          return currentShipment?.origin_custom_location || shipmentForm.customOriginFactory || 'Custom Origin';
+        }
+        return originFactoryWarehouse?.name || 'Not Set';
+      })(), '', '', '', '', ''],
+      ['Shipping Partner', (() => {
+        if (currentShipment?.shipper_reference && !currentShipment?.shipper_organization_id) {
+          return currentShipment.shipper_reference;
+        }
+        if (shipmentForm.customShippingPartner) {
+          return shipmentForm.customShippingPartner;
+        }
+        if (shipmentForm.shippingOrganizationId === 'lcl') {
+          return 'LCL (Less than Container Load)';
+        }
+        return shippingPartnerWarehouse?.name || 'Not Set';
+      })(), '', '', '', '', ''],
+      ['Final Destination', (() => {
+        if (currentShipment?.destination_custom_location || shipmentForm.customDestinationWarehouse) {
+          return currentShipment?.destination_custom_location || shipmentForm.customDestinationWarehouse || 'Custom Destination';
+        }
+        return destinationWarehouse?.name || 'Not Set';
+      })(), '', '', '', '', ''],
+      ['Route Flow', (() => {
+        const origin = (currentShipment?.origin_custom_location || shipmentForm.customOriginFactory) ? 'CUSTOM' : (originFactoryWarehouse?.warehouseCode || 'Factory');
+        const shipper = (currentShipment?.shipper_reference && !currentShipment?.shipper_organization_id) ? 'CUSTOM' : 
+                       shipmentForm.shippingOrganizationId === 'lcl' ? 'LCL' : (shippingPartnerWarehouse?.warehouseCode || 'Shipper');
+        const destination = (currentShipment?.destination_custom_location || shipmentForm.customDestinationWarehouse) ? 'CUSTOM' : (destinationWarehouse?.warehouseCode || 'Warehouse');
+        return `${origin} → ${shipper} → ${destination}`;
+      })(), '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
       // Shipment Configuration Section
@@ -731,9 +768,16 @@ export default function ShipmentsPage() {
       ['Special Instructions', currentShipment?.notes || selectedShipment.notes || 'None', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
       
-      // Origin Factory Details (MTN-FACTORY Warehouse)
+      // Origin Factory Details - Dynamic based on actual selection
       ['=== ORIGIN FACTORY DETAILS ===', '', '', '', '', '', ''],
-      ['Factory Name', originFactoryWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      ['Factory Name', (() => {
+        // Handle custom origin
+        if (currentShipment?.origin_custom_location || shipmentForm.customOriginFactory) {
+          return currentShipment?.origin_custom_location || shipmentForm.customOriginFactory || 'Custom Origin';
+        }
+        // Handle warehouse origin (like EMG)
+        return originFactoryWarehouse?.name || 'Not Available';
+      })(), '', '', '', '', ''],
       ['Warehouse Code', originFactoryWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
       ['Factory Type', originFactoryWarehouse?.type || 'Not Available', '', '', '', '', ''],
       ['Full Address', originFactoryWarehouse?.address || 'Not Available', '', '', '', '', ''],
@@ -764,9 +808,22 @@ export default function ShipmentsPage() {
       })()),
       ['', '', '', '', '', '', ''],
       
-      // Shipping Partner Details (OLM Warehouse)
+      // Shipping Partner Details - Dynamic based on actual selection
       ['=== SHIPPING PARTNER DETAILS ===', '', '', '', '', '', ''],
-      ['Shipper Name', shippingPartnerWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      ['Shipper Name', (() => {
+        // Handle custom shipping partner
+        if (currentShipment?.shipper_reference && !currentShipment?.shipper_organization_id) {
+          return currentShipment.shipper_reference;
+        }
+        if (shipmentForm.customShippingPartner) {
+          return shipmentForm.customShippingPartner;
+        }
+        if (shipmentForm.shippingOrganizationId === 'lcl') {
+          return 'LCL (Less than Container Load)';
+        }
+        // Handle warehouse/organization shipping partner
+        return shippingPartnerWarehouse?.name || 'Not Available';
+      })(), '', '', '', '', ''],
       ['Warehouse Code', shippingPartnerWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
       ['Shipper Type', shippingPartnerWarehouse?.type || 'Not Available', '', '', '', '', ''],
       ['Full Address', shippingPartnerWarehouse?.address || 'Not Available', '', '', '', '', ''],
@@ -797,9 +854,16 @@ export default function ShipmentsPage() {
       })()),
       ['', '', '', '', '', '', ''],
       
-      // Destination Warehouse Details
-      ['=== DESTINATION WAREHOUSE DETAILS ===', '', '', '', '', '', ''],
-      ['Warehouse Name', destinationWarehouse?.name || 'Not Available', '', '', '', '', ''],
+      // Destination Warehouse Details - Dynamic based on actual selection
+      ['=== FINAL DESTINATION DETAILS ===', '', '', '', '', '', ''],
+      ['Destination Name', (() => {
+        // Handle custom destination
+        if (currentShipment?.destination_custom_location || shipmentForm.customDestinationWarehouse) {
+          return currentShipment?.destination_custom_location || shipmentForm.customDestinationWarehouse || 'Custom Destination';
+        }
+        // Handle warehouse destination
+        return destinationWarehouse?.name || 'Not Available';
+      })(), '', '', '', '', ''],
       ['Warehouse Code', destinationWarehouse?.warehouseCode || 'Not Available', '', '', '', '', ''],
       ['Warehouse Type', destinationWarehouse?.type || 'Not Available', '', '', '', '', ''],
       ['Full Address', destinationWarehouse?.address || 'Not Available', '', '', '', '', ''],
