@@ -256,8 +256,8 @@ export default function AskBDIPage() {
                     disabled={isLoading}
                     className={`text-xs md:text-sm transition-all ${
                       queryScope === 'database' 
-                        ? 'bg-blue-100 border-blue-300 text-blue-800 shadow-md' 
-                        : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                        ? 'bg-blue-600 border-blue-700 text-white shadow-lg ring-2 ring-blue-300 font-semibold' 
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-200'
                     }`}
                     title="Search database only (Invoices, POs, SKUs, Shipments) - Fast response"
                   >
@@ -276,8 +276,8 @@ export default function AskBDIPage() {
                     disabled={isLoading}
                     className={`text-xs md:text-sm transition-all ${
                       queryScope === 'rag' 
-                        ? 'bg-orange-100 border-orange-300 text-orange-800 shadow-md' 
-                        : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+                        ? 'bg-orange-600 border-orange-700 text-white shadow-lg ring-2 ring-orange-300 font-semibold' 
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-200'
                     }`}
                     title="Search RAG documents only - May take time for comprehensive document analysis"
                   >
@@ -296,8 +296,8 @@ export default function AskBDIPage() {
                     disabled={isLoading}
                     className={`text-xs md:text-sm transition-all ${
                       queryScope === 'all' 
-                        ? 'bg-green-100 border-green-300 text-green-800 shadow-md' 
-                        : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                        ? 'bg-green-600 border-green-700 text-white shadow-lg ring-2 ring-green-300 font-semibold' 
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-green-50 hover:border-green-200'
                     }`}
                     title="Search all sources (Database + RAG documents) - Comprehensive but may take time"
                   >
