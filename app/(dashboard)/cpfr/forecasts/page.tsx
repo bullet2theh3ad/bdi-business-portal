@@ -104,6 +104,20 @@ export default function SalesForecastsPage() {
 
   // Helper function to get available quantity for a SKU
   const getAvailableQuantity = (skuId: string) => {
+    // PRIORITY 1: Check if current forecast has attached PO - use PO quantity
+    if (selectedPurchaseOrder && purchaseOrders) {
+      const attachedPO = purchaseOrders.find(po => po.id === selectedPurchaseOrder);
+      if (attachedPO) {
+        // For now, use PO total value as indicator (line items fetched separately)
+        // TODO: Fetch PO line items to get exact SKU quantity
+        console.log(`📦 PO attached: ${attachedPO.purchaseOrderNumber}, using invoice fallback for now`);
+      }
+    }
+    
+    // PRIORITY 2: Check if current forecast has attached Invoice - use Invoice quantity
+    // (Invoice logic would go here if we add invoice attachment)
+    
+    // PRIORITY 3: Fallback to general inventory availability (from invoices/MOQ)
     if (!inventoryData?.availability) return 0;
     return inventoryData.availability[skuId]?.availableQuantity || 0;
   };
@@ -1749,6 +1763,12 @@ export default function SalesForecastsPage() {
                         
                         {/* CPFR Inventory Breakdown */}
                         <div className="bg-white p-2 rounded border text-xs space-y-1">
+                          {inventoryData?.availability?.[selectedSku.id]?.totalFromPOs > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-600">📦 Total from POs:</span>
+                              <span className="font-medium text-blue-600">{inventoryData.availability[selectedSku.id].totalFromPOs.toLocaleString()}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-600">📄 Total from Invoices:</span>
                             <span className="font-medium">{inventoryData?.availability?.[selectedSku.id]?.totalFromInvoices?.toLocaleString() || '0'}</span>
@@ -1764,7 +1784,14 @@ export default function SalesForecastsPage() {
                             <span className="font-bold text-green-600">{getAvailableQuantity(selectedSku.id).toLocaleString()}</span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            From {inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} invoice(s)
+                            From {inventoryData?.availability?.[selectedSku.id]?.sourcePOs > 0 
+                              ? `${inventoryData.availability[selectedSku.id].sourcePOs} PO(s)` 
+                              : `${inventoryData?.availability?.[selectedSku.id]?.sourceInvoices || 0} invoice(s)`}
+                            {inventoryData?.availability?.[selectedSku.id]?.primarySource && (
+                              <span className="ml-1 px-1 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                {inventoryData.availability[selectedSku.id].primarySource}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
