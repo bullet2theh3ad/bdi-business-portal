@@ -87,9 +87,11 @@ export async function POST(request: NextRequest) {
     // Enhanced system prompt for financial analyst + CPFR expert (scope-aware)
     const baseSystemPrompt = schemaAwarePrompt + `
 
-🎯 YOU ARE A SENIOR FINANCIAL ANALYST & CPFR EXPERT WITH DUAL DATA ACCESS:
+🎯 YOU ARE A SENIOR FINANCIAL ANALYST & CPFR EXPERT WITH COMPREHENSIVE BUSINESS INTELLIGENCE:
 
-📊 COMPLETE DATABASE ACCESS:
+📊 STRUCTURED FINANCIAL DATA ACCESS:
+Below is clean, legible JSON formatted for expert financial analysis:
+
 ${JSON.stringify(businessData, null, 2)}
 
 📄 DOCUMENT INTELLIGENCE: You have access to all business documents including:
@@ -113,8 +115,13 @@ ${JSON.stringify(businessData, null, 2)}
 - Transit signals: In-transit inventory and warehouse signals
 - Warehouse signals: Stock levels, allocation, and distribution
 
-💼 FINANCIAL ANALYSIS FOCUS:
-- Revenue impact of PIs and purchase orders
+💼 EXPERT FINANCIAL ANALYSIS MANDATE:
+- Perform deep financial analysis using the 3-layer structured data provided
+- Calculate total values, margins, cost breakdowns with precision
+- Analyze purchase order line items with SKU-level detail
+- Cross-reference quantities, unit costs, and total costs for accuracy
+- Provide executive-level financial insights with specific numbers
+- Use actual data values from the structured JSON, not generic estimates
 - Cash flow implications of payment terms
 - Inventory valuation and turnover analysis
 - Supplier relationship and pricing trends
@@ -374,7 +381,54 @@ async function gatherBusinessContext(supabase: any, requestContext: any) {
         total: purchaseOrdersResult.data?.length || 0,
         bySupplier: groupBy(purchaseOrdersResult.data || [], 'supplier_name'),
         byStatus: groupBy(purchaseOrdersResult.data || [], 'status'),
-        totalValue: (purchaseOrdersResult.data || []).reduce((sum: number, po: any) => sum + (parseFloat(po.total_value) || 0), 0)
+        totalValue: (purchaseOrdersResult.data || []).reduce((sum: number, po: any) => sum + (parseFloat(po.total_value) || 0), 0),
+        // DEEP 3-LAYER ANALYSIS: Include detailed PO records for financial analysis
+        detailedRecords: await Promise.all((purchaseOrdersResult.data || []).map(async (po: any) => {
+          // Layer 1: PO Details
+          const poDetails = {
+            id: po.id,
+            poNumber: po.purchase_order_number,
+            supplier: po.supplier_name,
+            totalValue: parseFloat(po.total_value) || 0,
+            status: po.status,
+            orderDate: po.purchase_order_date,
+            deliveryDate: po.requested_delivery_date,
+            terms: po.terms,
+            incoterms: po.incoterms
+          };
+          
+          // Layer 2: PO Line Items with SKU breakdown
+          const lineItemsResult = await serviceSupabase
+            .from('purchase_order_line_items')
+            .select('sku_id, sku_code, sku_name, quantity, unit_cost, total_cost')
+            .eq('purchase_order_id', po.id);
+          
+          // Layer 3: SKU specifications for each line item
+          const lineItemsWithSKUDetails = await Promise.all((lineItemsResult.data || []).map(async (item: any) => {
+            const skuDetails = await serviceSupabase
+              .from('product_skus')
+              .select('sku, name, category, subcategory, mfg, moq, lead_time_days, box_weight_kg, carton_weight_kg')
+              .eq('id', item.sku_id)
+              .single();
+            
+            return {
+              skuId: item.sku_id,
+              skuCode: item.sku_code,
+              skuName: item.sku_name,
+              quantity: item.quantity,
+              unitCost: parseFloat(item.unit_cost) || 0,
+              totalCost: parseFloat(item.total_cost) || 0,
+              skuDetails: skuDetails.data || null
+            };
+          }));
+          
+          return {
+            ...poDetails,
+            lineItems: lineItemsWithSKUDetails,
+            lineItemsCount: lineItemsWithSKUDetails.length,
+            totalLineValue: lineItemsWithSKUDetails.reduce((sum, item) => sum + item.totalCost, 0)
+          };
+        }))
       },
       
       // EMG Inventory Analysis
