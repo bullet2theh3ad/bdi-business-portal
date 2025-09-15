@@ -1389,13 +1389,19 @@ export default function SalesForecastsPage() {
                             const isSelected = selectedDeliveryWeek === isoWeek;
                             const isToday = currentDate.toDateString() === new Date().toDateString();
                             
-                            // Check if this week is too early based on lead time + shipping
-                            let isTooEarly = false;
-                            let weekHasTooEarlyDays = false;
-                            
-                            if (selectedSku && selectedShipping) {
+            // Check if this week is too early based on lead time + shipping
+            let isTooEarly = false;
+            let weekHasTooEarlyDays = false;
+            
+            // ZERO LAG EXCEPTION: Bypass all date restrictions for immediate shipping
+            const isZeroLag = selectedShipping?.startsWith('ZERO_LAG_');
+            
+            if (selectedSku && selectedShipping && !isZeroLag) {
                               const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
+                                // Zero Lag Options (immediate shipping)
+                                'ZERO_LAG_SAME_DAY': 0, 'ZERO_LAG_NEXT_DAY': 1, 'ZERO_LAG_CUSTOM': 0,
+                                // Standard Options
                                 'AIR_7_DAYS': 7, 'AIR_14_DAYS': 14, 'AIR_NLD': 14, 'AIR_AUT': 14,
                                 'SEA_ASIA_US_WEST': 45, 'SEA_ASIA_US_EAST': 52, 'SEA_WEST_EXPEDITED': 35,
                                 'SEA_ASIA_NLD': 45, 'SEA_ASIA_AUT': 45, 'TRUCK_EXPRESS': 10.5,
@@ -1427,10 +1433,13 @@ export default function SalesForecastsPage() {
                                 type="button"
                                 onClick={() => {
                                   if (isCurrentMonth) {
-                                    // If this week has any "Too Early" days, find the next valid week
-                                    if (weekHasTooEarlyDays && selectedSku && selectedShipping) {
+                                    // If this week has any "Too Early" days, find the next valid week (UNLESS Zero Lag)
+                                    if (weekHasTooEarlyDays && selectedSku && selectedShipping && !selectedShipping.startsWith('ZERO_LAG_')) {
                                       const leadTime = getEffectiveLeadTime();
                                       const shippingDays: { [key: string]: number } = {
+                                        // Zero Lag Options (immediate shipping)
+                                        'ZERO_LAG_SAME_DAY': 0, 'ZERO_LAG_NEXT_DAY': 1, 'ZERO_LAG_CUSTOM': 0,
+                                        // Standard Options
                                         'AIR_7_DAYS': 7, 'AIR_14_DAYS': 14, 'AIR_NLD': 14, 'AIR_AUT': 14,
                                         'SEA_ASIA_US_WEST': 45, 'SEA_ASIA_US_EAST': 52, 'SEA_WEST_EXPEDITED': 35,
                                         'SEA_ASIA_NLD': 45, 'SEA_ASIA_AUT': 45, 'TRUCK_EXPRESS': 10.5,
@@ -1582,6 +1591,11 @@ export default function SalesForecastsPage() {
                           <p className="font-bold text-xl text-purple-600 my-1">
                             {(() => {
                               const shippingDays: { [key: string]: number } = {
+                                // Zero Lag Options (immediate shipping)
+                                'ZERO_LAG_SAME_DAY': 0,
+                                'ZERO_LAG_NEXT_DAY': 1,
+                                'ZERO_LAG_CUSTOM': 0,
+                                // Standard Options
                                 'AIR_7_DAYS': 7,
                                 'AIR_14_DAYS': 14,
                                 'AIR_NLD': 14,
