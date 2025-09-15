@@ -1486,8 +1486,8 @@ export default function InvoicesPage() {
           <DialogContent className="w-[98vw] h-[98vh] overflow-hidden p-0" style={{ maxWidth: 'none' }}>
             <div className="flex flex-col md:flex-row h-full">
               {/* Left Panel - Invoice Form (Mobile: Top, Desktop: Left 40%) */}
-              <div className="w-full md:w-2/5 border-r border-gray-200 overflow-y-auto max-h-full">
-                <div className="p-6 min-h-full">
+              <div className="w-full md:w-2/5 border-r border-gray-200 overflow-y-auto h-full">
+                <div className="p-6">
                   <DialogHeader className="mb-6">
                     <DialogTitle className="flex items-center text-2xl">
                       <SemanticBDIIcon semantic="magic" size={24} className="mr-3 text-blue-600" />
@@ -1498,10 +1498,20 @@ export default function InvoicesPage() {
                     </DialogDescription>
                   </DialogHeader>
 
-                  <form className="space-y-6">
+                  <form className="space-y-6 pb-8">
                     {/* Step 1: Select Purchase Order */}
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-blue-900 mb-3">Step 1: Select Purchase Order</h3>
+                      {/* Debug Info */}
+                      {purchaseOrders && (
+                        <div className="text-xs text-blue-600 mb-2">
+                          Available POs: {purchaseOrders.length} total, {purchaseOrders.filter(po => po.status === 'approved' || po.status === 'confirmed' || po.status === 'draft' || po.status === 'sent').length} eligible
+                          {purchaseOrders.length > 0 && (
+                            <div>Statuses: {[...new Set(purchaseOrders.map(po => po.status))].join(', ')}</div>
+                          )}
+                        </div>
+                      )}
+                      
                       <select 
                         className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={selectedPO?.id || ''}
@@ -1531,7 +1541,7 @@ export default function InvoicesPage() {
                         }}
                       >
                         <option value="">Select a Purchase Order...</option>
-                        {purchaseOrders?.filter(po => po.status === 'approved' || po.status === 'confirmed')?.map(po => (
+                        {purchaseOrders?.filter(po => po.status === 'approved' || po.status === 'confirmed' || po.status === 'draft' || po.status === 'sent')?.map(po => (
                           <option key={po.id} value={po.id}>
                             PO: {po.purchaseOrderNumber} - {po.customerName || po.organization?.name} - ${po.totalValue?.toLocaleString()}
                           </option>
