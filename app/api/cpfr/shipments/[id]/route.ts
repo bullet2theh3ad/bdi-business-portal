@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { organizations, users, organizationMembers } from '@/lib/db/schema';
+import { organizations, users, organizationMembers, warehouses } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function PUT(
@@ -72,25 +72,42 @@ export async function PUT(
     const shippingPartnerId = body.shipperOrganizationId === 'custom' || body.shipperOrganizationId === 'lcl' ? null : (body.shipperOrganizationId || null);
     const destinationWarehouseId = body.destinationWarehouseId === 'custom' ? null : (body.destinationWarehouseId || null);
 
-    // CRITICAL: Validate organization ID exists (same as create API)
+    // CRITICAL: Validate origin factory ID exists in EITHER organizations OR warehouses
+    let warehouseExists: any[] = [];
     if (originFactoryId) {
+      // Check if it's an organization ID
       const orgExists = await db.select().from(organizations).where(eq(organizations.id, originFactoryId)).limit(1);
+      
+      // If not found in organizations, check warehouses (for special origins like EMG)
       if (orgExists.length === 0) {
-        console.log(`🚨 Invalid organization ID: ${originFactoryId}, falling back to user's organization`);
+        warehouseExists = await db.select().from(warehouses).where(eq(warehouses.id, originFactoryId)).limit(1);
+      }
+      
+      // Only fallback if ID doesn't exist in EITHER table
+      if (orgExists.length === 0 && warehouseExists.length === 0) {
+        console.log(`🚨 Invalid origin factory ID: ${originFactoryId} (not found in organizations or warehouses), falling back to user's organization`);
         originFactoryId = dbUser.organization?.id || null;
+      } else if (warehouseExists.length > 0) {
+        console.log(`✅ Valid warehouse origin: ${originFactoryId} (${warehouseExists[0]?.name}) - keeping user selection`);
+      } else {
+        console.log(`✅ Valid organization origin: ${originFactoryId} - keeping user selection`);
       }
     }
+    
+    // Determine if origin is a warehouse or organization
+    const isWarehouseOrigin = warehouseExists.length > 0;
     
     // Determine custom location text
     const originCustomLocation = body.organizationId === 'custom' ? (body.customOriginFactory || 'Custom Origin') : null;
     const shippingCustomPartner = body.shipperOrganizationId === 'custom' ? (body.customShippingPartner || 'Custom Shipper') : 
                                  body.shipperOrganizationId === 'lcl' ? 'LCL (Less than Container Load)' : null;
     const destinationCustomLocation = body.destinationWarehouseId === 'custom' ? (body.customDestinationWarehouse || 'Custom Destination') : null;
-
+    
     // Prepare update data with proper validation
     const updateData: any = {
       // 3-step flow data - CRITICAL UPDATE (with custom entry support)
-      organization_id: originFactoryId, // Step 1: Origin Factory (null if custom)
+      organization_id: isWarehouseOrigin ? dbUser.organization?.id || null : originFactoryId, // Use user's org for warehouse origins
+      origin_warehouse_id: isWarehouseOrigin ? originFactoryId : null, // Store warehouse ID separately
       origin_custom_location: originCustomLocation, // Custom origin text
       shipper_organization_id: shippingPartnerId, // Step 2: Shipping Partner (null if custom/lcl)
       destination_warehouse_id: destinationWarehouseId, // Step 3: Final Destination (null if custom)

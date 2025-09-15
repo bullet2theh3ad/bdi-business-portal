@@ -273,22 +273,43 @@ export async function POST(request: NextRequest) {
     // Handle custom entries and invalid IDs - convert "custom" to null for UUID fields
     let originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || null);
     
-    // Validate that the organization ID exists - if not, use user's organization as fallback
+    // Validate that the origin factory ID exists in EITHER organizations OR warehouses
+    let warehouseExists = null;
     if (originFactoryId) {
+      // Check if it's an organization ID
       const { data: orgExists } = await supabase
         .from('organizations')
-        .select('id')
+        .select('id, name')
         .eq('id', originFactoryId)
         .single();
       
+      // If not found in organizations, check warehouses (for special origins like EMG)
       if (!orgExists) {
-        console.log(`⚠️ Invalid organization ID ${originFactoryId}, using user's organization as fallback`);
+        const { data: warehouseData } = await supabase
+          .from('warehouses')
+          .select('id, name, warehouse_code')
+          .eq('id', originFactoryId)
+          .single();
+        warehouseExists = warehouseData;
+      }
+      
+      // Only fallback if ID doesn't exist in EITHER table
+      if (!orgExists && !warehouseExists) {
+        console.log(`🚨 Invalid origin factory ID ${originFactoryId} (not found in organizations or warehouses), using user's organization as fallback`);
         originFactoryId = dbUser.organization?.id || null;
+      } else if (warehouseExists) {
+        console.log(`✅ Valid warehouse origin: ${originFactoryId} (${warehouseExists.name}) - keeping user selection`);
+      } else {
+        console.log(`✅ Valid organization origin: ${originFactoryId} (${orgExists?.name}) - keeping user selection`);
       }
     } else {
       // If no organization selected, use user's organization
       originFactoryId = dbUser.organization?.id || null;
     }
+    
+    // Determine if origin is a warehouse or organization
+    const isWarehouseOrigin = warehouseExists !== null;
+    
     const shippingPartnerId = body.shipperOrganizationId === 'custom' || body.shipperOrganizationId === 'lcl' ? null : (body.shipperOrganizationId || null);
     const destinationWarehouseId = body.destinationWarehouseId === 'custom' ? null : (body.destinationWarehouseId || null);
     
@@ -304,7 +325,8 @@ export async function POST(request: NextRequest) {
         shipment_number: shipmentNumber,
         forecast_id: body.forecastId,
         // 3-step flow data (with custom entry support)
-        organization_id: originFactoryId, // Step 1: Origin Factory (null if custom)
+        organization_id: isWarehouseOrigin ? dbUser.organization?.id || null : originFactoryId, // Use user's org for warehouse origins
+        origin_warehouse_id: isWarehouseOrigin ? originFactoryId : null, // Store warehouse ID separately
         origin_custom_location: originCustomLocation, // Custom origin text
         shipper_organization_id: shippingPartnerId, // Step 2: Shipping Partner (null if custom/lcl)
         destination_warehouse_id: destinationWarehouseId, // Step 3: Final Destination (null if custom)
