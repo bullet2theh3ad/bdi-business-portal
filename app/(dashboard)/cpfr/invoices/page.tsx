@@ -143,6 +143,7 @@ export default function InvoicesPage() {
     routing: '',
     swift: ''
   });
+  const [loadingLineItems, setLoadingLineItems] = useState(false);
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -1590,11 +1591,23 @@ export default function InvoicesPage() {
                           setShowCustomPaymentTerms(false);
                           // Auto-populate invoice data from PO
                           if (po) {
-                            // Fetch PO line items
+                            // Fetch PO line items with enhanced debugging
+                            console.log(`🔍 Fetching line items for PO ID: ${po.id}`);
+                            setLoadingLineItems(true);
+                            
                             fetch(`/api/cpfr/purchase-orders/${po.id}/line-items`)
-                              .then(res => res.json())
+                              .then(res => {
+                                console.log(`📡 Line items API response status: ${res.status}`);
+                                return res.json();
+                              })
                               .then(lineItems => {
                                 console.log('📦 Loaded PO line items:', lineItems);
+                                console.log(`📊 Line items count: ${Array.isArray(lineItems) ? lineItems.length : 'Not an array'}`);
+                                
+                                // Calculate total from line items
+                                const calculatedTotal = Array.isArray(lineItems) ? 
+                                  lineItems.reduce((sum, item) => sum + (item.totalCost || item.total_cost || 0), 0) : 
+                                  po.totalValue || 0;
                                 
                                 setGeneratedInvoice({
                                   invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
@@ -1605,14 +1618,15 @@ export default function InvoicesPage() {
                                   terms: 'NET30',
                                   incoterms: po.incoterms || 'FOB',
                                   incotermsLocation: po.incotermsLocation || 'Shanghai Port',
-                                  totalValue: po.totalValue || 0,
+                                  totalValue: calculatedTotal,
                                   notes: `Generated from PO: ${po.purchaseOrderNumber}`,
                                   poReference: po.purchaseOrderNumber,
-                                  lineItems: lineItems || []
+                                  lineItems: Array.isArray(lineItems) ? lineItems : []
                                 });
+                                setLoadingLineItems(false);
                               })
                               .catch(error => {
-                                console.error('Error loading PO line items:', error);
+                                console.error('❌ Error loading PO line items:', error);
                                 setGeneratedInvoice({
                                   invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
                                   customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
@@ -1627,6 +1641,7 @@ export default function InvoicesPage() {
                                   poReference: po.purchaseOrderNumber,
                                   lineItems: []
                                 });
+                                setLoadingLineItems(false);
                               });
                           }
                         }}
@@ -2121,15 +2136,22 @@ export default function InvoicesPage() {
                                     <td className="border border-gray-300 px-4 py-3 text-sm font-medium">{item.skuName || item.sku || 'Product Name'}</td>
                                     <td className="border border-gray-300 px-4 py-3 text-sm">{item.skuCode || item.sku}</td>
                                     <td className="border border-gray-300 px-4 py-3 text-sm">{generatedInvoice.poReference}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">{item.quantity?.toLocaleString()}</td>
-                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">${(item.unitCost || item.unitPrice || 0).toFixed(2)}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">{(item.quantity || 0).toLocaleString()}</td>
+                                    <td className="border border-gray-300 px-4 py-3 text-right text-sm">${(item.unitCost || item.unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold">${((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
                                   <td colSpan={7} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                                    Loading line items from Purchase Order...
+                                    {loadingLineItems ? (
+                                      <>
+                                        <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin inline" />
+                                        Loading line items from Purchase Order...
+                                      </>
+                                    ) : (
+                                      'No line items found for this Purchase Order'
+                                    )}
                                   </td>
                                 </tr>
                               )}
