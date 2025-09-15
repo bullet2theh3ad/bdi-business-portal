@@ -1525,7 +1525,7 @@ export default function InvoicesPage() {
                           if (po) {
                             setGeneratedInvoice({
                               invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}`,
-                              customerName: po.customerName || po.organization?.name || '',
+                              customerName: po.customerName || po.organization?.name || po.supplierName || 'Customer Name Required',
                               invoiceDate: new Date().toISOString().split('T')[0],
                               requestedDeliveryWeek: po.requestedDeliveryWeek || '',
                               status: 'draft',
@@ -1565,6 +1565,17 @@ export default function InvoicesPage() {
                         <div className="bg-green-50 p-4 rounded-lg">
                           <h3 className="font-semibold text-green-900 mb-3">Step 2: Invoice Details</h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="genCustomerName">Customer Name *</Label>
+                              <Input
+                                id="genCustomerName"
+                                value={generatedInvoice.customerName}
+                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, customerName: e.target.value})}
+                                placeholder="Enter customer/company name"
+                                className="mt-1"
+                                required
+                              />
+                            </div>
                             <div>
                               <Label htmlFor="genInvoiceNumber">Invoice Number</Label>
                               <Input
@@ -1748,6 +1759,13 @@ export default function InvoicesPage() {
                         onClick={async () => {
                           try {
                             setIsLoading(true);
+                            
+                            // Validate required fields
+                            if (!generatedInvoice.customerName || generatedInvoice.customerName.trim() === '' || generatedInvoice.customerName === 'Customer Name Required') {
+                              alert('❌ Please enter a customer name before saving the invoice.');
+                              setIsLoading(false);
+                              return;
+                            }
                             
                             // Prepare invoice data for saving
                             const invoiceData = {
