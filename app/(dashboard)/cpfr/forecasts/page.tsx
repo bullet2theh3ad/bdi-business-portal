@@ -259,13 +259,18 @@ export default function SalesForecastsPage() {
     return weeks;
   };
 
-  // Helper to get ISO week
+  // Helper to get ISO week (standardized calculation)
   const getISOWeek = (date: Date) => {
-    const year = date.getFullYear();
-    const startOfYear = new Date(year, 0, 1);
-    const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-    const weekNumber = Math.ceil(dayOfYear / 7);
-    return `${year}-W${String(weekNumber).padStart(2, '0')}`;
+    const target = new Date(date.valueOf());
+    const dayNr = (date.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    const weekNum = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+    return `${target.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
   };
 
   // Helper function to get effective lead time based on selected option
