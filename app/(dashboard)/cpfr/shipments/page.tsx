@@ -1878,7 +1878,8 @@ export default function ShipmentsPage() {
                           {/* Status History & Notes Display */}
                           {(() => {
                             const currentShipment = actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id);
-                            const shipmentNotes = currentShipment?.notes;
+                            // Show notes from database OR from current form (for immediate display after updates)
+                            const shipmentNotes = currentShipment?.notes || shipmentForm.notes;
                             
                             if (shipmentNotes) {
                               return (
