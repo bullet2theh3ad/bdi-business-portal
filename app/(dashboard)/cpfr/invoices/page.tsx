@@ -28,7 +28,7 @@ interface Invoice {
   customerName: string;
   invoiceDate: string;
   requestedDeliveryWeek: string;
-  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered';
+  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered' | 'submitted' | 'approved' | 'rejected';
   terms: string; // NET30, NET60, etc.
   incoterms: string; // FOB, CIF, DDP, etc.
   incotermsLocation: string; // Shanghai Port, Los Angeles, etc.
@@ -132,6 +132,15 @@ export default function InvoicesPage() {
   const [selectedPO, setSelectedPO] = useState<any>(null);
   const [generatedInvoice, setGeneratedInvoice] = useState<any>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [customPaymentTerms, setCustomPaymentTerms] = useState('');
+  const [showCustomPaymentTerms, setShowCustomPaymentTerms] = useState(false);
+  const [invoiceStatus, setInvoiceStatus] = useState<'draft' | 'submitted'>('draft');
+  
+  // CFO Approval states
+  const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
+  const [selectedInvoiceForApproval, setSelectedInvoiceForApproval] = useState<any>(null);
+  const [approvalEmail, setApprovalEmail] = useState('');
+  const [approvalStatus, setApprovalStatus] = useState<'approved' | 'rejected'>('approved');
   const [statusFilter, setStatusFilter] = useState('all');
   const [customTerms, setCustomTerms] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
@@ -276,6 +285,9 @@ export default function InvoicesPage() {
       'confirmed': 'bg-green-100 text-green-800',
       'shipped': 'bg-purple-100 text-purple-800',
       'delivered': 'bg-emerald-100 text-emerald-800',
+      'submitted': 'bg-yellow-100 text-yellow-800',
+      'approved': 'bg-green-100 text-green-800',
+      'rejected': 'bg-red-100 text-red-800',
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -442,6 +454,24 @@ export default function InvoicesPage() {
                           <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                           {tc('editButton', 'Edit')}
                         </Button>
+                        
+                        {/* CFO Approval Button - Only show for submitted invoices and super_admin */}
+                        {invoice.status === 'submitted' && user?.role === 'super_admin' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full sm:w-auto text-blue-600 border-blue-300 hover:bg-blue-50"
+                            onClick={() => {
+                              setSelectedInvoiceForApproval(invoice);
+                              setApprovalEmail('');
+                              setApprovalStatus('approved');
+                              setShowCFOApprovalModal(true);
+                            }}
+                          >
+                            <SemanticBDIIcon semantic="check" size={14} className="mr-1" />
+                            CFO Review
+                          </Button>
+                        )}
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -1456,8 +1486,8 @@ export default function InvoicesPage() {
           <DialogContent className="w-[98vw] h-[98vh] overflow-hidden p-0" style={{ maxWidth: 'none' }}>
             <div className="flex flex-col md:flex-row h-full">
               {/* Left Panel - Invoice Form (Mobile: Top, Desktop: Left 40%) */}
-              <div className="w-full md:w-2/5 border-r border-gray-200 overflow-y-auto">
-                <div className="p-6">
+              <div className="w-full md:w-2/5 border-r border-gray-200 overflow-y-auto max-h-full">
+                <div className="p-6 min-h-full">
                   <DialogHeader className="mb-6">
                     <DialogTitle className="flex items-center text-2xl">
                       <SemanticBDIIcon semantic="magic" size={24} className="mr-3 text-blue-600" />
@@ -1478,6 +1508,9 @@ export default function InvoicesPage() {
                         onChange={(e) => {
                           const po = purchaseOrders?.find(p => p.id === e.target.value);
                           setSelectedPO(po);
+                          // Reset custom payment terms when selecting new PO
+                          setCustomPaymentTerms('');
+                          setShowCustomPaymentTerms(false);
                           // Auto-populate invoice data from PO
                           if (po) {
                             setGeneratedInvoice({
@@ -1545,8 +1578,16 @@ export default function InvoicesPage() {
                               <Label htmlFor="genTerms">Payment Terms</Label>
                               <select 
                                 id="genTerms"
-                                value={generatedInvoice.terms}
-                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, terms: e.target.value})}
+                                value={showCustomPaymentTerms ? 'CUSTOM' : generatedInvoice.terms}
+                                onChange={(e) => {
+                                  if (e.target.value === 'CUSTOM') {
+                                    setShowCustomPaymentTerms(true);
+                                    setGeneratedInvoice({...generatedInvoice, terms: customPaymentTerms || 'Custom Terms'});
+                                  } else {
+                                    setShowCustomPaymentTerms(false);
+                                    setGeneratedInvoice({...generatedInvoice, terms: e.target.value});
+                                  }
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
                               >
                                 <option value="NET30">NET 30</option>
@@ -1554,7 +1595,25 @@ export default function InvoicesPage() {
                                 <option value="NET90">NET 90</option>
                                 <option value="COD">Cash on Delivery</option>
                                 <option value="PREPAID">Prepaid</option>
+                                <option value="CUSTOM">✏️ Custom Terms (Enter Manually)</option>
                               </select>
+                              
+                              {showCustomPaymentTerms && (
+                                <div className="mt-2">
+                                  <Input
+                                    placeholder="Enter custom payment terms (e.g., NET 45, 2/10 NET 30, Upon Receipt, etc.)"
+                                    value={customPaymentTerms}
+                                    onChange={(e) => {
+                                      setCustomPaymentTerms(e.target.value);
+                                      setGeneratedInvoice({...generatedInvoice, terms: e.target.value});
+                                    }}
+                                    className="w-full"
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Examples: "NET 45", "2/10 NET 30", "Upon Receipt", "50% Deposit, Balance NET 30"
+                                  </p>
+                                </div>
+                              )}
                             </div>
                             <div>
                               <Label htmlFor="genIncoterms">Incoterms</Label>
@@ -1583,16 +1642,41 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
-                        {/* Step 3: Notes */}
+                        {/* Step 3: Notes & Status */}
                         <div className="bg-yellow-50 p-4 rounded-lg">
-                          <h3 className="font-semibold text-yellow-900 mb-3">Step 3: Additional Notes</h3>
-                          <textarea
-                            value={generatedInvoice.notes}
-                            onChange={(e) => setGeneratedInvoice({...generatedInvoice, notes: e.target.value})}
-                            placeholder="Special instructions, delivery requirements, etc."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 mt-1"
-                            rows={3}
-                          />
+                          <h3 className="font-semibold text-yellow-900 mb-3">Step 3: Additional Notes & Status</h3>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="genNotes">Notes</Label>
+                              <textarea
+                                id="genNotes"
+                                value={generatedInvoice.notes}
+                                onChange={(e) => setGeneratedInvoice({...generatedInvoice, notes: e.target.value})}
+                                placeholder="Special instructions, delivery requirements, etc."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 mt-1"
+                                rows={3}
+                              />
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="invoiceStatus">Invoice Status</Label>
+                              <select 
+                                id="invoiceStatus"
+                                value={invoiceStatus}
+                                onChange={(e) => setInvoiceStatus(e.target.value as 'draft' | 'submitted')}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 mt-1"
+                              >
+                                <option value="draft">📝 Save as Draft (Can edit later)</option>
+                                <option value="submitted">📤 Submit for CFO Approval</option>
+                              </select>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {invoiceStatus === 'draft' 
+                                  ? "Draft invoices can be edited and resubmitted anytime."
+                                  : "Submitted invoices will be sent to CFO for approval and cannot be edited."
+                                }
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Action Buttons */}
@@ -1604,6 +1688,8 @@ export default function InvoicesPage() {
                               setShowGenerateModal(false);
                               setSelectedPO(null);
                               setGeneratedInvoice(null);
+                              setCustomPaymentTerms('');
+                              setShowCustomPaymentTerms(false);
                             }}
                             className="flex-1"
                           >
@@ -1636,14 +1722,25 @@ export default function InvoicesPage() {
                           </Button>
                           <Button 
                             type="button"
-                            className="bg-green-600 hover:bg-green-700 flex-1"
+                            className={`flex-1 ${
+                              invoiceStatus === 'draft' 
+                                ? 'bg-gray-600 hover:bg-gray-700' 
+                                : 'bg-green-600 hover:bg-green-700'
+                            }`}
                             onClick={() => {
-                              // TODO: Save invoice to database
-                              alert('Save to database functionality coming soon!');
+                              // TODO: Save invoice to database with status
+                              const statusMessage = invoiceStatus === 'draft' 
+                                ? 'Invoice saved as draft!' 
+                                : 'Invoice submitted for CFO approval!';
+                              alert(`${statusMessage}\n\nSave to database functionality coming soon!`);
                             }}
                           >
-                            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-                            Save Invoice
+                            <SemanticBDIIcon 
+                              semantic={invoiceStatus === 'draft' ? 'save' : 'send'} 
+                              size={16} 
+                              className="mr-2 brightness-0 invert" 
+                            />
+                            {invoiceStatus === 'draft' ? 'Save as Draft' : 'Submit for Approval'}
                           </Button>
                         </div>
                       </>
@@ -1775,6 +1872,158 @@ export default function InvoicesPage() {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* CFO Approval Modal */}
+      {showCFOApprovalModal && selectedInvoiceForApproval && (
+        <Dialog open={showCFOApprovalModal} onOpenChange={setShowCFOApprovalModal}>
+          <DialogContent className="w-[90vw] max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-xl">
+                <SemanticBDIIcon semantic="check" size={24} className="mr-3 text-blue-600" />
+                CFO Invoice Approval
+              </DialogTitle>
+              <DialogDescription>
+                Review and approve/reject Invoice #{selectedInvoiceForApproval.invoiceNumber}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Invoice Summary */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-3">Invoice Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Invoice Number:</span> {selectedInvoiceForApproval.invoiceNumber}
+                  </div>
+                  <div>
+                    <span className="font-medium">Customer:</span> {selectedInvoiceForApproval.customerName}
+                  </div>
+                  <div>
+                    <span className="font-medium">Invoice Date:</span> {new Date(selectedInvoiceForApproval.invoiceDate).toLocaleDateString()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Total Value:</span> ${selectedInvoiceForApproval.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div>
+                    <span className="font-medium">Payment Terms:</span> {selectedInvoiceForApproval.terms}
+                  </div>
+                  <div>
+                    <span className="font-medium">Incoterms:</span> {selectedInvoiceForApproval.incoterms}
+                  </div>
+                </div>
+                {selectedInvoiceForApproval.notes && (
+                  <div className="mt-3">
+                    <span className="font-medium">Notes:</span> 
+                    <p className="text-gray-700 mt-1">{selectedInvoiceForApproval.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Approval Decision */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-3">CFO Decision</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="approvalStatus">Decision</Label>
+                    <select 
+                      id="approvalStatus"
+                      value={approvalStatus}
+                      onChange={(e) => setApprovalStatus(e.target.value as 'approved' | 'rejected')}
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="approved">✅ Approve Invoice</option>
+                      <option value="rejected">❌ Reject Invoice</option>
+                    </select>
+                  </div>
+
+                  {approvalStatus === 'approved' && (
+                    <div>
+                      <Label htmlFor="approvalEmail">Send Approved Invoice To (Email)</Label>
+                      <Input
+                        id="approvalEmail"
+                        type="email"
+                        placeholder="customer@company.com"
+                        value={approvalEmail}
+                        onChange={(e) => setApprovalEmail(e.target.value)}
+                        className="mt-1"
+                        required
+                      />
+                      <p className="text-xs text-blue-600 mt-1">
+                        The approved invoice PDF will be sent to this email address
+                      </p>
+                    </div>
+                  )}
+
+                  {approvalStatus === 'rejected' && (
+                    <div>
+                      <Label htmlFor="rejectionReason">Rejection Reason</Label>
+                      <textarea
+                        id="rejectionReason"
+                        placeholder="Please provide reason for rejection..."
+                        className="w-full px-3 py-2 border border-red-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 mt-1"
+                        rows={3}
+                      />
+                      <p className="text-xs text-red-600 mt-1">
+                        This reason will be sent to the invoice creator for revision
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowCFOApprovalModal(false);
+                    setSelectedInvoiceForApproval(null);
+                    setApprovalEmail('');
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button"
+                  className={`flex-1 ${
+                    approvalStatus === 'approved' 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                  onClick={() => {
+                    if (approvalStatus === 'approved' && !approvalEmail.trim()) {
+                      alert('Please enter an email address to send the approved invoice.');
+                      return;
+                    }
+                    
+                    // TODO: Implement CFO approval/rejection API
+                    const action = approvalStatus === 'approved' ? 'approved' : 'rejected';
+                    const message = approvalStatus === 'approved' 
+                      ? `Invoice ${selectedInvoiceForApproval.invoiceNumber} approved!\n\nPDF will be sent to: ${approvalEmail}`
+                      : `Invoice ${selectedInvoiceForApproval.invoiceNumber} rejected.\n\nRejection notification will be sent to invoice creator.`;
+                    
+                    alert(`${message}\n\nCFO approval functionality coming soon!`);
+                    
+                    // Close modal
+                    setShowCFOApprovalModal(false);
+                    setSelectedInvoiceForApproval(null);
+                    setApprovalEmail('');
+                  }}
+                >
+                  <SemanticBDIIcon 
+                    semantic={approvalStatus === 'approved' ? 'check' : 'close'} 
+                    size={16} 
+                    className="mr-2 brightness-0 invert" 
+                  />
+                  {approvalStatus === 'approved' ? 'Approve & Send Email' : 'Reject Invoice'}
+                </Button>
               </div>
             </div>
           </DialogContent>
