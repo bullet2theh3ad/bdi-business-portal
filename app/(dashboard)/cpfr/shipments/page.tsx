@@ -474,7 +474,7 @@ export default function ShipmentsPage() {
 
   // Get organizations by type for 3-step flow
   const manufacturingOrganizations = Array.isArray(organizations) 
-    ? organizations.filter((org: any) => ['contractor', 'oem_partner'].includes(org.type))
+    ? organizations.filter((org: any) => ['contractor', 'oem_partner', 'manufacturing', 'internal'].includes(org.type))
     : [];
     
   const shippingOrganizations = Array.isArray(organizations) 
