@@ -2361,35 +2361,46 @@ export default function InvoicesPage() {
                               
                               // Check if we need to trigger CFO modal (works for both create and edit)
                               if (invoiceStatus === 'submitted_to_finance') {
-                                console.log('🎯 TRIGGERING CFO MODAL AFTER SAVE - Invoice Status:', invoiceStatus);
-                                console.log('📋 Invoice Result:', result);
-                                console.log('👤 User:', user?.name);
-                                console.log('🔍 DEBUGGING RESULT FIELDS:');
-                                console.log('- invoiceNumber:', result.invoiceNumber);
-                                console.log('- invoice_number:', result.invoice_number);
-                                console.log('- customerName:', result.customerName);
-                                console.log('- customer_name:', result.customer_name);
-                                console.log('- totalValue:', result.totalValue);
-                                console.log('- total_value:', result.total_value);
-                                console.log('- ALL RESULT KEYS:', Object.keys(result));
+                                console.log('🎯 SUBMIT TO FINANCE: Starting PDF generation and CFO workflow');
                                 
-                                const invoiceWithSignature = {
-                                  ...result,  // This contains ALL the database data
-                                  salesSignatureName: user?.name || 'Sales Representative',
-                                  salesSignatureDate: new Date().toLocaleDateString(),
-                                  generatedInvoice: generatedInvoice,
-                                  selectedPO: selectedPO
-                                };
-                                
-                                console.log('📄 Invoice with Signature for CFO:', invoiceWithSignature);
-                                
-                                setCfoInvoiceData(invoiceWithSignature);
-                                setShowNewCFOModal(true);
-                                
-                                // Close the Generate modal immediately so CFO modal is on top
-                                setShowGenerateModal(false);
-                                
-                                console.log('✅ CFO Modal triggered and Generate modal closed!');
+                                try {
+                                  // Step 1: Generate PDF from invoice preview
+                                  console.log('📄 Step 1: Generating PDF...');
+                                  const pdfDataUrl = await generateInvoicePDF();
+                                  console.log('✅ PDF generated successfully');
+                                  
+                                  // Step 2: Convert to blob and upload to Supabase
+                                  console.log('☁️ Step 2: Uploading PDF to Supabase...');
+                                  const response = await fetch(pdfDataUrl);
+                                  const pdfBlob = await response.blob();
+                                  
+                                  const formData = new FormData();
+                                  formData.append('file', pdfBlob, `invoice-${result.id}-cfo-approval.pdf`);
+                                  formData.append('invoiceId', result.id);
+                                  
+                                  const uploadResponse = await fetch('/api/cpfr/invoices/pdf-upload', {
+                                    method: 'POST',
+                                    body: formData
+                                  });
+                                  
+                                  if (uploadResponse.ok) {
+                                    const uploadResult = await uploadResponse.json();
+                                    console.log('✅ PDF uploaded to Supabase:', uploadResult.url);
+                                    
+                                    // Step 3: Open CFO modal with PDF
+                                    setCfoInvoiceData(result);
+                                    setCfoInvoicePDFUrl(uploadResult.url);
+                                    setShowNewCFOModal(true);
+                                    setShowGenerateModal(false);
+                                    
+                                    console.log('✅ CFO Modal opened with PDF');
+                                  } else {
+                                    throw new Error('Failed to upload PDF');
+                                  }
+                                } catch (error) {
+                                  console.error('❌ Error in PDF workflow:', error);
+                                  alert('❌ Failed to generate PDF for CFO approval. Please try again.');
+                                }
                                 
                                 return; // Exit early
                               }
