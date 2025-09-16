@@ -6,12 +6,13 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const invoiceId = formData.get('invoiceId') as string;
+    const filePath = formData.get('filePath') as string;
 
-    if (!invoiceId) {
-      return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
+    if (!invoiceId && !filePath) {
+      return NextResponse.json({ error: 'Invoice ID or file path is required' }, { status: 400 });
     }
 
-    console.log('🔗 Getting signed PDF URL for invoice:', invoiceId);
+    console.log('🔗 Getting signed PDF URL for:', { invoiceId, filePath });
 
     // Use service role key to access storage
     const cookieStore = await cookies();
@@ -30,13 +31,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Generate signed URL for the PDF
-    const pdfFileName = `invoice-${invoiceId}-cfo-approval.pdf`;
-    const filePath = `invoices/${invoiceId}/${pdfFileName}`;
+    // Generate signed URL for the PDF using provided file path or construct from invoiceId
+    const targetFilePath = filePath || `invoices/${invoiceId}/invoice-${invoiceId}-cfo-approval.pdf`;
+    console.log('🔗 Using file path:', targetFilePath);
 
     const { data, error } = await supabase.storage
       .from('organization-documents')
-      .createSignedUrl(filePath, 3600); // 1 hour expiry
+      .createSignedUrl(targetFilePath, 3600); // 1 hour expiry
 
     if (error) {
       console.error('❌ Error creating signed URL:', error);

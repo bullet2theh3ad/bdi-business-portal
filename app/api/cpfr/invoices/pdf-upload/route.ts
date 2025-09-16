@@ -36,16 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
-    // Get signed URL for the uploaded PDF
-    const { data: signedUrlData } = await supabase.storage
-      .from('organization-documents')
-      .createSignedUrl(filePath, 3600); // 1 hour expiry
-
+    // Return file path instead of signed URL (no expiration)
     console.log('✅ PDF uploaded successfully to:', filePath);
+    console.log('🔑 OPTION 3: Returning file path instead of signed URL to prevent token expiration');
     
     return NextResponse.json({
       success: true,
-      url: signedUrlData?.signedUrl,
+      filePath: filePath, // Store this in database instead of signed URL
       path: filePath,
       fileName: file.name
     });

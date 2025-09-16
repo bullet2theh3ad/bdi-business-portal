@@ -2532,15 +2532,32 @@ export default function InvoicesPage() {
                                   
                                   if (uploadResponse.ok) {
                                     const uploadResult = await uploadResponse.json();
-                                    console.log('✅ PDF uploaded to Supabase:', uploadResult.url);
+                                    console.log('✅ PDF uploaded to Supabase, file path:', uploadResult.filePath);
                                     
-                                    // Step 3: Open CFO modal with PDF
-                                    setCfoInvoiceData(result);
-                                    setCfoInvoicePDFUrl(uploadResult.url);
-                                    setShowNewCFOModal(true);
-                                    setShowGenerateModal(false);
+                                    // Generate fresh signed URL from file path (no expiration issues)
+                                    const urlFormData = new FormData();
+                                    urlFormData.append('filePath', uploadResult.filePath);
                                     
-                                    console.log('✅ CFO Modal opened with PDF');
+                                    const signedUrlResponse = await fetch('/api/cpfr/invoices/pdf-url', {
+                                      method: 'POST',
+                                      body: urlFormData
+                                    });
+                                    
+                                    if (signedUrlResponse.ok) {
+                                      const { url: freshSignedUrl } = await signedUrlResponse.json();
+                                      console.log('🔑 Generated fresh signed URL for CFO modal');
+                                      
+                                      // Step 3: Open CFO modal with fresh signed URL
+                                      setCfoInvoiceData(result);
+                                      setCfoInvoicePDFUrl(freshSignedUrl);
+                                      setShowNewCFOModal(true);
+                                      setShowGenerateModal(false);
+                                      
+                                      console.log('✅ CFO Modal opened with PDF');
+                                    } else {
+                                      console.error('❌ Failed to generate signed URL');
+                                      alert('❌ Failed to generate PDF preview URL.');
+                                    }
                                   } else {
                                     throw new Error('Failed to upload PDF');
                                   }
@@ -3123,7 +3140,12 @@ export default function InvoicesPage() {
 
                           console.log('📧 SENDING INVOICE EMAIL');
                           
-                          // Step 1: Update invoice status to approved and store PDF URL
+                          // Step 1: Update invoice status to approved and store PDF FILE PATH
+                          // Extract file path from the current PDF URL
+                          const urlParts = cfoInvoicePDFUrl.split('/');
+                          const filePath = `invoices/${cfoInvoiceData.id}/${urlParts[urlParts.length - 1].split('?')[0]}`;
+                          console.log('💾 Storing file path instead of signed URL:', filePath);
+                          
                           const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
@@ -3131,7 +3153,7 @@ export default function InvoicesPage() {
                               status: 'approved_by_finance',
                               financeApproverName: user?.name,
                               financeApprovalDate: new Date().toISOString(),
-                              approvedPdfUrl: cfoInvoicePDFUrl // Store the working PDF URL
+                              approvedPdfUrl: filePath // Store FILE PATH, not signed URL
                             })
                           });
 
