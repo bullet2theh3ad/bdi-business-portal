@@ -2334,6 +2334,14 @@ export default function InvoicesPage() {
                                 console.log('🎯 TRIGGERING CFO MODAL AFTER SAVE - Invoice Status:', invoiceStatus);
                                 console.log('📋 Invoice Result:', result);
                                 console.log('👤 User:', user?.name);
+                                console.log('🔍 DEBUGGING RESULT FIELDS:');
+                                console.log('- invoiceNumber:', result.invoiceNumber);
+                                console.log('- invoice_number:', result.invoice_number);
+                                console.log('- customerName:', result.customerName);
+                                console.log('- customer_name:', result.customer_name);
+                                console.log('- totalValue:', result.totalValue);
+                                console.log('- total_value:', result.total_value);
+                                console.log('- ALL RESULT KEYS:', Object.keys(result));
                                 
                                 const invoiceWithSignature = {
                                   ...result,  // This contains ALL the database data
@@ -2822,9 +2830,9 @@ export default function InvoicesPage() {
                   <h3 className="font-semibold text-blue-900 mb-3">Invoice Submitted for Approval</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '') || pendingInvoiceForCFO.invoice_number?.replace('INV-', '') || 'N/A'}</p>
-                      <p><strong>Customer:</strong> {pendingInvoiceForCFO.customerName || pendingInvoiceForCFO.customer_name || 'N/A'}</p>
-                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(pendingInvoiceForCFO.totalValue || pendingInvoiceForCFO.total_value || 0).toLocaleString()}</span></p>
+                      <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoice_number?.replace('INV-', '') || 'N/A'}</p>
+                      <p><strong>Customer:</strong> {pendingInvoiceForCFO.customer_name || 'N/A'}</p>
+                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(pendingInvoiceForCFO.total_value || 0).toLocaleString()}</span></p>
                     </div>
                     <div>
                       <p><strong>Submitted by:</strong> {pendingInvoiceForCFO.salesSignatureName}</p>
@@ -2840,13 +2848,13 @@ export default function InvoicesPage() {
                   <div className="space-y-2 text-sm">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p><strong>Invoice Date:</strong> {(pendingInvoiceForCFO.invoiceDate || pendingInvoiceForCFO.invoice_date) ? new Date(pendingInvoiceForCFO.invoiceDate || pendingInvoiceForCFO.invoice_date).toLocaleDateString() : 'Not set'}</p>
+                        <p><strong>Invoice Date:</strong> {pendingInvoiceForCFO.invoice_date ? new Date(pendingInvoiceForCFO.invoice_date).toLocaleDateString() : 'Not set'}</p>
                         <p><strong>Terms:</strong> {pendingInvoiceForCFO.terms || 'Not specified'}</p>
                         <p><strong>Incoterms:</strong> {pendingInvoiceForCFO.incoterms || 'Not specified'}</p>
                       </div>
                       <div>
-                        <p><strong>Ship Date:</strong> {(pendingInvoiceForCFO.shipDate || pendingInvoiceForCFO.ship_date) ? new Date(pendingInvoiceForCFO.shipDate || pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'Not set'}</p>
-                        <p><strong>Location:</strong> {pendingInvoiceForCFO.incotermsLocation || pendingInvoiceForCFO.incoterms_location || 'Not specified'}</p>
+                        <p><strong>Ship Date:</strong> {pendingInvoiceForCFO.ship_date ? new Date(pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'Not set'}</p>
+                        <p><strong>Location:</strong> {pendingInvoiceForCFO.incoterms_location || 'Not specified'}</p>
                       </div>
                     </div>
                   </div>
@@ -2859,13 +2867,13 @@ export default function InvoicesPage() {
                     <div>
                       <h5 className="font-medium text-gray-700 mb-1">Bill To:</h5>
                       <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
-                        {pendingInvoiceForCFO.customerAddress || pendingInvoiceForCFO.customer_address || 'Customer Address'}
+                        {pendingInvoiceForCFO.customer_address || 'Customer Address'}
                       </div>
                     </div>
                     <div>
                       <h5 className="font-medium text-gray-700 mb-1">Ship To:</h5>
                       <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
-                        {pendingInvoiceForCFO.shipToAddress || pendingInvoiceForCFO.ship_to_address || 'Same as Bill To'}
+                        {pendingInvoiceForCFO.ship_to_address || 'Same as Bill To'}
                       </div>
                     </div>
                   </div>
@@ -2993,10 +3001,10 @@ export default function InvoicesPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bill to</h3>
                         <div className="text-gray-700">
-                          <div className="font-semibold">{pendingInvoiceForCFO.customerName || pendingInvoiceForCFO.customer_name}</div>
-                          {(pendingInvoiceForCFO.customerAddress || pendingInvoiceForCFO.customer_address) && (
+                          <div className="font-semibold">{pendingInvoiceForCFO.customer_name}</div>
+                          {pendingInvoiceForCFO.customer_address && (
                             <div className="mt-1 whitespace-pre-line text-sm">
-                              {pendingInvoiceForCFO.customerAddress || pendingInvoiceForCFO.customer_address}
+                              {pendingInvoiceForCFO.customer_address}
                             </div>
                           )}
                         </div>
@@ -3004,15 +3012,15 @@ export default function InvoicesPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Ship to</h3>
                         <div className="text-gray-700">
-                          <div className="font-semibold">{pendingInvoiceForCFO.customerName || pendingInvoiceForCFO.customer_name}</div>
-                          {(pendingInvoiceForCFO.shipToAddress || pendingInvoiceForCFO.ship_to_address) && (
+                          <div className="font-semibold">{pendingInvoiceForCFO.customer_name}</div>
+                          {pendingInvoiceForCFO.ship_to_address && (
                             <div className="mt-1 whitespace-pre-line text-sm">
-                              {pendingInvoiceForCFO.shipToAddress || pendingInvoiceForCFO.ship_to_address}
+                              {pendingInvoiceForCFO.ship_to_address}
                             </div>
                           )}
-                          {!(pendingInvoiceForCFO.shipToAddress || pendingInvoiceForCFO.ship_to_address) && (pendingInvoiceForCFO.customerAddress || pendingInvoiceForCFO.customer_address) && (
+                          {!pendingInvoiceForCFO.ship_to_address && pendingInvoiceForCFO.customer_address && (
                             <div className="mt-1 whitespace-pre-line text-sm">
-                              {pendingInvoiceForCFO.customerAddress || pendingInvoiceForCFO.customer_address}
+                              {pendingInvoiceForCFO.customer_address}
                             </div>
                           )}
                         </div>
@@ -3024,16 +3032,16 @@ export default function InvoicesPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
                         <div className="text-xs text-gray-700">
-                          <div><span className="font-medium">Ship date:</span> {(pendingInvoiceForCFO.shipDate || pendingInvoiceForCFO.ship_date) ? new Date(pendingInvoiceForCFO.shipDate || pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'TBD'}</div>
+                          <div><span className="font-medium">Ship date:</span> {pendingInvoiceForCFO.ship_date ? new Date(pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'TBD'}</div>
                         </div>
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
                         <div className="text-xs text-gray-700">
-                          <div><span className="font-medium">Invoice no.:</span> {(pendingInvoiceForCFO.invoiceNumber || pendingInvoiceForCFO.invoice_number)?.replace('INV-', '') || 'N/A'}</div>
+                          <div><span className="font-medium">Invoice no.:</span> {pendingInvoiceForCFO.invoice_number?.replace('INV-', '') || 'N/A'}</div>
                           <div><span className="font-medium">Terms:</span> {pendingInvoiceForCFO.terms || 'Not specified'}</div>
-                          <div><span className="font-medium">Invoice date:</span> {(pendingInvoiceForCFO.invoiceDate || pendingInvoiceForCFO.invoice_date) ? new Date(pendingInvoiceForCFO.invoiceDate || pendingInvoiceForCFO.invoice_date).toLocaleDateString() : 'Not set'}</div>
-                          <div><span className="font-medium">Due date:</span> {(pendingInvoiceForCFO.shipDate || pendingInvoiceForCFO.ship_date) ? new Date(pendingInvoiceForCFO.shipDate || pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'Not set'}</div>
+                          <div><span className="font-medium">Invoice date:</span> {pendingInvoiceForCFO.invoice_date ? new Date(pendingInvoiceForCFO.invoice_date).toLocaleDateString() : 'Not set'}</div>
+                          <div><span className="font-medium">Due date:</span> {pendingInvoiceForCFO.ship_date ? new Date(pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'Not set'}</div>
                         </div>
                       </div>
                     </div>
@@ -3076,23 +3084,23 @@ export default function InvoicesPage() {
                     <div className="flex justify-end mb-6">
                       <div className="text-right">
                         <div className="text-xs text-gray-600 mb-1">Total</div>
-                        <div className="text-xl font-bold text-blue-900">${Number(pendingInvoiceForCFO.totalValue || pendingInvoiceForCFO.total_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-xl font-bold text-blue-900">${Number(pendingInvoiceForCFO.total_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                     </div>
 
                     {/* Bank Information Section */}
                     {(user?.role === 'super_admin' || user?.role === 'admin_cfo') && (
                       <div className="border-t pt-4 mb-4">
-                        <div className="font-semibold mb-2">{pendingInvoiceForCFO.bankName || pendingInvoiceForCFO.bank_name || 'Bank Information'}</div>
+                        <div className="font-semibold mb-2">{pendingInvoiceForCFO.bank_name || 'Bank Information'}</div>
                         <div className="text-xs space-y-1 bg-gray-50 p-2 rounded">
-                          <div>Bank: {pendingInvoiceForCFO.bankName || pendingInvoiceForCFO.bank_name || 'Not specified'}</div>
-                          <div>Account: ****{((pendingInvoiceForCFO.bankAccountNumber || pendingInvoiceForCFO.bank_account_number) || '').slice(-4) || '****'}</div>
-                          <div>Routing: ****{((pendingInvoiceForCFO.bankRoutingNumber || pendingInvoiceForCFO.bank_routing_number) || '').slice(-4) || '****'}</div>
-                          <div>SWIFT: {pendingInvoiceForCFO.bankSwiftCode || pendingInvoiceForCFO.bank_swift_code || 'Not specified'}</div>
-                          <div>IBAN: ****{((pendingInvoiceForCFO.bankIban || pendingInvoiceForCFO.bank_iban) || '').slice(-4) || '****'}</div>
-                          <div>Address: {pendingInvoiceForCFO.bankAddress || pendingInvoiceForCFO.bank_address || 'Not specified'}</div>
-                          <div>Country: {pendingInvoiceForCFO.bankCountry || pendingInvoiceForCFO.bank_country || 'Not specified'}</div>
-                          <div>Currency: {pendingInvoiceForCFO.bankCurrency || pendingInvoiceForCFO.bank_currency || 'USD'}</div>
+                          <div>Bank: {pendingInvoiceForCFO.bank_name || 'Not specified'}</div>
+                          <div>Account: ****{(pendingInvoiceForCFO.bank_account_number || '').slice(-4) || '****'}</div>
+                          <div>Routing: ****{(pendingInvoiceForCFO.bank_routing_number || '').slice(-4) || '****'}</div>
+                          <div>SWIFT: {pendingInvoiceForCFO.bank_swift_code || 'Not specified'}</div>
+                          <div>IBAN: ****{(pendingInvoiceForCFO.bank_iban || '').slice(-4) || '****'}</div>
+                          <div>Address: {pendingInvoiceForCFO.bank_address || 'Not specified'}</div>
+                          <div>Country: {pendingInvoiceForCFO.bank_country || 'Not specified'}</div>
+                          <div>Currency: {pendingInvoiceForCFO.bank_currency || 'USD'}</div>
                         </div>
                       </div>
                     )}
