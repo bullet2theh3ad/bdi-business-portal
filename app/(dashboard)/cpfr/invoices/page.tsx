@@ -143,12 +143,12 @@ export default function InvoicesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           invoiceId: invoiceData.id,
-          invoiceNumber: invoiceData.invoice_number || invoiceData.invoiceNumber,
+          invoiceNumber: invoiceData.invoice_number || invoiceData.invoiceNumber || 'N/A',
           pdfUrl: pdfUrl,
           recipients: recipients,
           ccRecipients: ccRecipients,
-          customerName: invoiceData.customer_name || invoiceData.customerName,
-          totalValue: invoiceData.total_value || invoiceData.totalValue
+          customerName: invoiceData.customer_name || invoiceData.customerName || 'N/A',
+          totalValue: invoiceData.total_value || invoiceData.totalValue || '0'
         })
       });
 

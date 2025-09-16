@@ -23,10 +23,18 @@ export async function POST(request: NextRequest) {
       pdfUrl: pdfUrl ? 'Present' : 'Missing'
     });
 
+    console.log('📧 Full request body received:', body);
+
     // Validate required fields
     if (!invoiceNumber || !pdfUrl || !recipients) {
+      const missingFields = [];
+      if (!invoiceNumber) missingFields.push('invoiceNumber');
+      if (!pdfUrl) missingFields.push('pdfUrl');
+      if (!recipients) missingFields.push('recipients');
+      
+      console.log('❌ Missing required fields:', missingFields);
       return NextResponse.json(
-        { error: 'Missing required fields: invoiceNumber, pdfUrl, or recipients' },
+        { error: `Missing required fields: ${missingFields.join(', ')}` },
         { status: 400 }
       );
     }
