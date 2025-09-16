@@ -67,6 +67,31 @@ export default function InvoicesPage() {
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
 
+  // Simple PDF Generation Function
+  const generateInvoicePDF = async () => {
+    console.log('📄 Starting PDF generation...');
+    
+    const invoiceElement = document.querySelector('.invoice-preview-for-pdf');
+    if (!invoiceElement) {
+      throw new Error('Invoice preview element not found');
+    }
+
+    const canvas = await html2canvas(invoiceElement as HTMLElement, {
+      scale: 2,
+      backgroundColor: '#ffffff'
+    });
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgData = canvas.toDataURL('image/png');
+    
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    
+    return pdf.output('dataurlstring');
+  };
+
   // Fetch line items for all invoices when invoices are loaded
   useEffect(() => {
     if (invoices && invoices.length > 0) {
@@ -2405,7 +2430,7 @@ export default function InvoicesPage() {
               {/* Right Panel - Real-time Invoice Preview (Mobile: Bottom, Desktop: Right 60%) */}
               <div className="w-full md:w-3/5 bg-gray-50 overflow-y-auto" style={{ maxHeight: '90vh' }}>
                 <div className="p-2">
-                  <div className="bg-white shadow-lg rounded-lg p-3 max-w-2xl mx-auto text-xs">
+                  <div className="bg-white shadow-lg rounded-lg p-3 max-w-2xl mx-auto text-xs invoice-preview-for-pdf">
                     {generatedInvoice ? (
                       /* Professional Invoice Template - Matching Exact Format */
                       <div className="bg-white">
