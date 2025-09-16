@@ -573,13 +573,32 @@ export default function InvoicesPage() {
                           if (invoice.status === 'approved_by_finance') {
                             console.log('👁️ Viewing APPROVED invoice - opening view-only modal with resend option');
                             
-                            // Find the PDF for this approved invoice in Supabase storage
-                            const pdfFileName = `invoice-${invoice.id}-cfo-approval.pdf`;
-                            const pdfUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization-documents/invoices/${invoice.id}/${pdfFileName}`;
-                            
-                            setApprovedInvoiceData(invoice);
-                            setApprovedInvoicePDFUrl(pdfUrl);
-                            setShowApprovedInvoiceModal(true);
+                            try {
+                              // Get the signed PDF URL from Supabase
+                              console.log('🔗 Getting signed PDF URL for approved invoice');
+                              
+                              const formData = new FormData();
+                              formData.append('invoiceId', invoice.id);
+                              
+                              const urlResponse = await fetch('/api/cpfr/invoices/pdf-url', {
+                                method: 'POST',
+                                body: formData
+                              });
+                              
+                              if (urlResponse.ok) {
+                                const urlResult = await urlResponse.json();
+                                console.log('✅ Got signed PDF URL:', urlResult.url);
+                                setApprovedInvoiceData(invoice);
+                                setApprovedInvoicePDFUrl(urlResult.url);
+                                setShowApprovedInvoiceModal(true);
+                              } else {
+                                console.error('❌ Failed to get PDF URL');
+                                alert('❌ Could not load invoice PDF for viewing.');
+                              }
+                            } catch (error) {
+                              console.error('Error loading approved invoice PDF:', error);
+                              alert('❌ Could not load invoice PDF for viewing.');
+                            }
                             return;
                           }
                           
