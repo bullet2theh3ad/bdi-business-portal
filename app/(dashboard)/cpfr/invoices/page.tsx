@@ -133,6 +133,42 @@ export default function InvoicesPage() {
     return pdf.output('dataurlstring');
   };
 
+  // Function to add CFO signature to existing PDF data
+  const addCFOSignatureToPDF = async (originalPDFDataUrl: string, cfoName: string) => {
+    console.log('✍️ Adding CFO signature to existing PDF data URL');
+    
+    try {
+      // Parse the original PDF data URL to extract the base64 data
+      const base64Data = originalPDFDataUrl.split(',')[1];
+      
+      // Create a new PDF with the same content plus CFO signature
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Convert the base64 data back to an image for jsPDF
+      const imgData = originalPDFDataUrl;
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Add the original PDF content as an image
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      
+      // Add CFO signature overlay
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(0, 0, 0); // Black text
+      
+      const signatureY = pdfHeight - 25;
+      pdf.text(`Finance: ${cfoName}`, pdfWidth - 80, signatureY);
+      pdf.text(`Date: ${new Date().toLocaleDateString()}`, pdfWidth - 80, signatureY + 5);
+      
+      return pdf.output('dataurlstring');
+    } catch (error) {
+      console.error('Error adding CFO signature:', error);
+      throw error;
+    }
+  };
+
   // Fetch line items for all invoices when invoices are loaded
   useEffect(() => {
     if (invoices && invoices.length > 0) {
@@ -237,6 +273,7 @@ export default function InvoicesPage() {
   const [showNewCFOModal, setShowNewCFOModal] = useState(false);
   const [cfoInvoicePDFUrl, setCfoInvoicePDFUrl] = useState<string>('');
   const [cfoInvoiceData, setCfoInvoiceData] = useState<any>(null);
+  const [originalPDFDataUrl, setOriginalPDFDataUrl] = useState<string>('');
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -2428,7 +2465,8 @@ export default function InvoicesPage() {
                                     const uploadResult = await uploadResponse.json();
                                     console.log('✅ PDF uploaded to Supabase:', uploadResult.url);
                                     
-                                    // Step 3: Open CFO modal with PDF
+                                    // Step 3: Store original PDF data and open CFO modal
+                                    setOriginalPDFDataUrl(pdfDataUrl); // Store for CFO signature regeneration
                                     setCfoInvoiceData(result);
                                     setCfoInvoicePDFUrl(uploadResult.url);
                                     setShowNewCFOModal(true);
@@ -2937,10 +2975,15 @@ export default function InvoicesPage() {
                 <Button
                   onClick={async () => {
                     try {
-                      console.log('🎯 CFO APPROVING: Adding signature and regenerating PDF');
+                      console.log('🎯 CFO APPROVING: Adding signature to existing PDF');
                       
-                      // Step 1: Generate new PDF with CFO signature
-                      const signedPdfDataUrl = await generateInvoicePDF(true, user?.name || 'CFO');
+                      // Check if we have the original PDF data
+                      if (!originalPDFDataUrl) {
+                        throw new Error('Original PDF data not found');
+                      }
+                      
+                      // Step 1: Add CFO signature to existing PDF
+                      const signedPdfDataUrl = await addCFOSignatureToPDF(originalPDFDataUrl, user?.name || 'CFO');
                       console.log('✅ PDF with CFO signature generated');
                       
                       // Step 2: Upload signed PDF to Supabase
