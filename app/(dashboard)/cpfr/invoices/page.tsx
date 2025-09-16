@@ -2778,37 +2778,150 @@ export default function InvoicesPage() {
       {/* CFO Approval Modal */}
       {showCFOModal && pendingInvoiceForCFO && (
         <Dialog open={showCFOModal} onOpenChange={setShowCFOModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
+          <DialogContent className="max-w-[100vw] max-h-[100vh] w-full h-full p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-4 border-b">
+              <DialogTitle className="flex items-center text-xl">
                 <SemanticBDIIcon semantic="finance" size={24} className="mr-3 text-blue-600" />
-                CFO Approval Required
+                CFO Approval Required - Invoice #{pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}
               </DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-6">
-              {/* Invoice Summary */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">Invoice Submitted for Approval</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoiceNumber}</p>
-                    <p><strong>Customer:</strong> {pendingInvoiceForCFO.customerName}</p>
-                    <p><strong>Total Value:</strong> ${Number(pendingInvoiceForCFO.totalValue).toLocaleString()}</p>
+            {/* Two-column layout */}
+            <div className="flex flex-col lg:flex-row h-full">
+              {/* Left Column - CFO Actions */}
+              <div className="lg:w-1/2 p-6 space-y-6 overflow-y-auto">
+                {/* Invoice Summary Header */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-blue-900 mb-3">Invoice Submitted for Approval</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}</p>
+                      <p><strong>Customer:</strong> {pendingInvoiceForCFO.customerName}</p>
+                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(pendingInvoiceForCFO.totalValue).toLocaleString()}</span></p>
+                    </div>
+                    <div>
+                      <p><strong>Submitted by:</strong> {pendingInvoiceForCFO.salesSignatureName}</p>
+                      <p><strong>Date:</strong> {pendingInvoiceForCFO.salesSignatureDate}</p>
+                      <p><strong>Status:</strong> <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Pending Finance Approval</span></p>
+                    </div>
                   </div>
-                  <div>
-                    <p><strong>Submitted by:</strong> {pendingInvoiceForCFO.salesSignatureName}</p>
-                    <p><strong>Date:</strong> {pendingInvoiceForCFO.salesSignatureDate}</p>
-                    <p><strong>Status:</strong> <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Pending Finance Approval</span></p>
+                </div>
+
+                {/* Invoice Details */}
+                <div className="bg-white border rounded-lg p-4">
+                  <h4 className="font-semibold mb-3 text-gray-800">Invoice Details</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p><strong>Invoice Date:</strong> {new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString()}</p>
+                        <p><strong>Terms:</strong> {pendingInvoiceForCFO.terms}</p>
+                        <p><strong>Incoterms:</strong> {pendingInvoiceForCFO.incoterms}</p>
+                      </div>
+                      <div>
+                        <p><strong>Ship Date:</strong> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</p>
+                        <p><strong>Location:</strong> {pendingInvoiceForCFO.incotermsLocation}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Addresses */}
+                <div className="bg-white border rounded-lg p-4">
+                  <h4 className="font-semibold mb-3 text-gray-800">Addresses</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-1">Bill To:</h5>
+                      <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
+                        {pendingInvoiceForCFO.customerAddress || 'Customer Address'}
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-1">Ship To:</h5>
+                      <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
+                        {pendingInvoiceForCFO.shipToAddress || 'Same as Bill To'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CFO Actions */}
+                <div className="bg-gray-50 border rounded-lg p-4">
+                  <h4 className="font-semibold mb-3 text-gray-800">Finance Approval</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    As CFO, you can approve this invoice to submit it to the books, or reject it for revisions.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div className="text-sm bg-white p-3 rounded border">
+                      <p><strong>Approving as:</strong> {user?.name} (CFO)</p>
+                      <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          // Reject - close CFO modal and return to Generate modal
+                          setShowCFOModal(false);
+                          setPendingInvoiceForCFO(null);
+                          alert('❌ Invoice rejected and returned for revisions.');
+                        }}
+                        className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <SemanticBDIIcon semantic="close" size={16} className="mr-2" />
+                        Reject for Revisions
+                      </Button>
+                      
+                      <Button
+                        onClick={async () => {
+                          try {
+                            // Update invoice status to approved and add finance signature
+                            const response = await fetch(`/api/cpfr/invoices/${pendingInvoiceForCFO.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                status: 'approved_by_finance',
+                                financeApproverName: user?.name,
+                                financeSignatureDate: new Date().toLocaleDateString()
+                              })
+                            });
+
+                            if (response.ok) {
+                              alert('✅ Invoice approved and submitted to books!\n\nThe invoice has been finalized and is ready for processing.');
+                              
+                              // Close all modals and refresh
+                              setShowCFOModal(false);
+                              setShowGenerateModal(false);
+                              setPendingInvoiceForCFO(null);
+                              setSelectedPO(null);
+                              setGeneratedInvoice(null);
+                              setEditingInvoiceId(null);
+                              mutateInvoices();
+                            } else {
+                              alert('❌ Failed to approve invoice. Please try again.');
+                            }
+                          } catch (error) {
+                            console.error('Error approving invoice:', error);
+                            alert('❌ Error approving invoice. Please try again.');
+                          }
+                        }}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <SemanticBDIIcon semantic="check" size={16} className="mr-2 brightness-0 invert" />
+                        Submit to Books
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Invoice Preview */}
-              <div className="border rounded-lg p-4 bg-white">
-                <h4 className="font-semibold mb-4">Invoice Preview</h4>
-                <div className="text-xs bg-gray-50 p-4 rounded border max-h-96 overflow-y-auto">
-                  {/* Mini Invoice Preview */}
+              {/* Right Column - Full Invoice Preview */}
+              <div className="lg:w-1/2 bg-gray-50 p-6 overflow-y-auto border-l">
+                <h3 className="font-semibold mb-4 text-gray-800">Invoice Preview</h3>
+                
+                {/* Full Invoice Preview - Same as Generate Modal */}
+                <div className="bg-white p-3 rounded-lg shadow-sm text-xs max-w-2xl mx-auto">
+                  {/* Invoice Header */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h1 className="text-lg font-bold">INVOICE</h1>
@@ -2821,99 +2934,115 @@ export default function InvoicesPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <img src="/logo.png" alt="BDI Logo" className="h-8 mb-2" />
+                      <img src="/logo.png" alt="BDI Logo" className="h-12" />
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+
+                  {/* Bill To / Ship To */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
                     <div>
-                      <h4 className="font-semibold">Bill To:</h4>
-                      <div className="whitespace-pre-line">{pendingInvoiceForCFO.customerAddress || 'Customer Address'}</div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Bill to</h3>
+                      <div className="whitespace-pre-line text-gray-700">
+                        {pendingInvoiceForCFO.customerAddress || 'Customer Address'}
+                      </div>
                     </div>
                     <div>
-                      <h4 className="font-semibold">Ship To:</h4>
-                      <div className="whitespace-pre-line">{pendingInvoiceForCFO.shipToAddress || 'Same as Bill To'}</div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Ship to</h3>
+                      <div className="whitespace-pre-line text-gray-700">
+                        {pendingInvoiceForCFO.shipToAddress || 'Same as Bill To'}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="border-t pt-2 mb-4">
-                    <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoiceNumber}</p>
-                    <p><strong>Date:</strong> {new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString()}</p>
-                    <p><strong>Terms:</strong> {pendingInvoiceForCFO.terms}</p>
+                  {/* Invoice Details */}
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
+                      <div className="text-xs text-gray-700">
+                        <div><span className="font-medium">Ship date:</span> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
+                      <div className="text-xs text-gray-700">
+                        <div><span className="font-medium">Invoice no.:</span> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}</div>
+                        <div><span className="font-medium">Terms:</span> {pendingInvoiceForCFO.terms}</div>
+                        <div><span className="font-medium">Invoice date:</span> {new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString()}</div>
+                        <div><span className="font-medium">Due date:</span> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="text-center text-gray-600 py-4">
-                    <p>Full invoice preview available after approval</p>
+                  {/* Line Items */}
+                  <div className="mb-6">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2">#</th>
+                          <th className="text-left py-2">Product or service</th>
+                          <th className="text-left py-2">SKU</th>
+                          <th className="text-right py-2">Qty</th>
+                          <th className="text-right py-2">Rate</th>
+                          <th className="text-right py-2">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingInvoiceForCFO.generatedInvoice?.lineItems?.map((item: any, index: number) => (
+                          <tr key={index} className="border-b">
+                            <td className="py-2">{index + 1}</td>
+                            <td className="py-2">{item.skuName}</td>
+                            <td className="py-2">{item.skuCode}</td>
+                            <td className="py-2 text-right">{item.quantity?.toLocaleString()}</td>
+                            <td className="py-2 text-right">${item.unitCost?.toLocaleString()}</td>
+                            <td className="py-2 text-right">${item.lineTotal?.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
-              </div>
 
-              {/* CFO Actions */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-3">Finance Approval</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  As CFO, you can approve this invoice to submit it to the books, or reject it for revisions.
-                </p>
-                
-                <div className="flex justify-between items-center">
-                  <div className="text-sm">
-                    <p><strong>Approving as:</strong> {user?.name} (CFO)</p>
-                    <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
+                  {/* Total */}
+                  <div className="flex justify-end mb-6">
+                    <div className="text-right">
+                      <div className="text-lg font-bold">
+                        Total: ${Number(pendingInvoiceForCFO.totalValue).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="flex space-x-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Reject - close CFO modal and return to Generate modal
-                        setShowCFOModal(false);
-                        setPendingInvoiceForCFO(null);
-                        alert('❌ Invoice rejected and returned for revisions.');
-                      }}
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      <SemanticBDIIcon semantic="close" size={16} className="mr-2" />
-                      Reject for Revisions
-                    </Button>
-                    
-                    <Button
-                      onClick={async () => {
-                        try {
-                          // Update invoice status to approved and add finance signature
-                          const response = await fetch(`/api/cpfr/invoices/${pendingInvoiceForCFO.id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              status: 'approved_by_finance',
-                              financeApproverName: user?.name,
-                              financeSignatureDate: new Date().toLocaleDateString()
-                            })
-                          });
 
-                          if (response.ok) {
-                            alert('✅ Invoice approved and submitted to books!\n\nThe invoice has been finalized and is ready for processing.');
-                            
-                            // Close all modals and refresh
-                            setShowCFOModal(false);
-                            setShowGenerateModal(false);
-                            setPendingInvoiceForCFO(null);
-                            setSelectedPO(null);
-                            setGeneratedInvoice(null);
-                            setEditingInvoiceId(null);
-                            mutateInvoices();
-                          } else {
-                            alert('❌ Failed to approve invoice. Please try again.');
-                          }
-                        } catch (error) {
-                          console.error('Error approving invoice:', error);
-                          alert('❌ Error approving invoice. Please try again.');
-                        }
-                      }}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <SemanticBDIIcon semantic="check" size={16} className="mr-2 brightness-0 invert" />
-                      Submit to Books
-                    </Button>
+                  {/* Bank Information */}
+                  <div className="border-t pt-4 mb-4">
+                    <div className="font-semibold mb-2">Bank Information</div>
+                    <div className="text-xs space-y-1">
+                      <div>Bank: {pendingInvoiceForCFO.bankName || 'Not specified'}</div>
+                      <div>Account: ****{pendingInvoiceForCFO.bankAccountNumber?.slice(-4) || '****'}</div>
+                      <div>Routing: ****{pendingInvoiceForCFO.bankRoutingNumber?.slice(-4) || '****'}</div>
+                      <div>SWIFT: {pendingInvoiceForCFO.bankSwiftCode || 'Not specified'}</div>
+                      <div>Country: {pendingInvoiceForCFO.bankCountry || 'Not specified'}</div>
+                    </div>
+                  </div>
+
+                  {/* Signature Lines */}
+                  <div className="border-t pt-4 mt-6">
+                    <div className="flex justify-between items-start">
+                      {/* Sales Signature */}
+                      <div className="w-1/2 pr-4">
+                        <div className="border-b border-gray-400 mb-2 pb-8"></div>
+                        <div className="text-xs">
+                          <p className="font-semibold">Sales: {pendingInvoiceForCFO.salesSignatureName}</p>
+                          <p className="text-gray-600">Date: {pendingInvoiceForCFO.salesSignatureDate}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Finance Signature */}
+                      <div className="w-1/2 pl-4">
+                        <div className="border-b border-gray-400 mb-2 pb-8"></div>
+                        <div className="text-xs">
+                          <p className="font-semibold">Finance: ___________</p>
+                          <p className="text-gray-600">Date: ___________</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
