@@ -2307,6 +2307,12 @@ export default function InvoicesPage() {
                             if (response.ok) {
                               const result = await response.json();
                               
+                              console.log('🔍 DEBUGGING INVOICE STATUS CHECK:');
+                              console.log('📊 invoiceStatus value:', invoiceStatus);
+                              console.log('📊 invoiceStatus type:', typeof invoiceStatus);
+                              console.log('📊 Is submitted_to_finance?:', invoiceStatus === 'submitted_to_finance');
+                              console.log('📊 Is NOT submitted_to_finance?:', invoiceStatus !== 'submitted_to_finance');
+                              
                               if (invoiceStatus !== 'submitted_to_finance') {
                                 // Draft save - show success and close
                                 alert(`✅ Invoice saved as draft!\n\nInvoice ID: ${result.id}`);
@@ -2353,10 +2359,12 @@ export default function InvoicesPage() {
                                 setPendingInvoiceForCFO(invoiceWithSignature);
                                 setShowCFOModal(true);
                                 
-                                console.log('✅ CFO Modal triggered after save!');
+                                // Close the Generate modal immediately so CFO modal is on top
+                                setShowGenerateModal(false);
                                 
-                                // Don't close the Generate modal yet - CFO modal will handle it
-                                return; // Exit early to prevent closing modals
+                                console.log('✅ CFO Modal triggered and Generate modal closed!');
+                                
+                                return; // Exit early
                               }
                             } else {
                               const error = await response.text();
@@ -2798,9 +2806,8 @@ export default function InvoicesPage() {
       )}
 
       {/* CFO Approval Modal - Full Screen Overlay */}
-      {console.log('🔍 CFO Modal State:', { showCFOModal, pendingInvoiceForCFO: !!pendingInvoiceForCFO })}
       {showCFOModal && pendingInvoiceForCFO && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col">
           {/* Header */}
           <div className="p-6 pb-4 border-b bg-white shadow-sm">
             <div className="flex items-center justify-between">
