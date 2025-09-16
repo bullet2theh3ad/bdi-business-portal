@@ -349,6 +349,24 @@ export default function InvoicesPage() {
               variant="outline"
               className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 hover:text-blue-800"
               onClick={() => {
+                // Clear all states for NEW invoice generation
+                setSelectedPO(null);
+                setGeneratedInvoice(null);
+                setEditingInvoiceId(null); // CRITICAL: Clear editing mode
+                setCustomerAddress('');
+                setShipToAddress('');
+                setShipDate('');
+                setBankInfo({
+                  bankName: 'California Bank and Trust',
+                  accountNumber: '',
+                  routing: '',
+                  swift: '',
+                  iban: '',
+                  bankAddress: '',
+                  bankCountry: 'United States',
+                  currency: 'USD'
+                });
+                setShowBankDetails(false);
                 setShowGenerateModal(true);
               }}
             >
@@ -1652,6 +1670,58 @@ export default function InvoicesPage() {
                           setShowCustomPaymentTerms(false);
                           // Auto-populate invoice data from PO
                           if (po) {
+                            // Check if invoice already exists for this PO
+                            const existingInvoice = invoices?.find(inv => 
+                              inv.notes && inv.notes.includes(`Generated from PO: ${po.purchaseOrderNumber}`)
+                            );
+                            
+                            if (existingInvoice && !editingInvoiceId) {
+                              // Invoice already exists - switch to edit mode
+                              console.log('📋 Invoice already exists for this PO - switching to edit mode');
+                              setEditingInvoiceId(existingInvoice.id);
+                              
+                              // Load existing invoice data
+                              setGeneratedInvoice({
+                                invoiceNumber: existingInvoice.invoiceNumber,
+                                customerName: existingInvoice.customerName,
+                                invoiceDate: existingInvoice.invoiceDate,
+                                requestedDeliveryWeek: existingInvoice.requestedDeliveryWeek,
+                                status: existingInvoice.status,
+                                terms: existingInvoice.terms,
+                                incoterms: existingInvoice.incoterms,
+                                incotermsLocation: existingInvoice.incotermsLocation,
+                                totalValue: existingInvoice.totalValue,
+                                notes: existingInvoice.notes,
+                                poReference: po.purchaseOrderNumber,
+                                lineItems: []
+                              });
+                              
+                              // Load existing addresses and bank info
+                              setCustomerAddress(existingInvoice.customerAddress || '');
+                              setShipToAddress(existingInvoice.shipToAddress || '');
+                              setShipDate(existingInvoice.shipDate || '');
+                              setBankInfo({
+                                bankName: existingInvoice.bankName || 'California Bank and Trust',
+                                accountNumber: existingInvoice.bankAccountNumber || '',
+                                routing: existingInvoice.bankRoutingNumber || '',
+                                swift: existingInvoice.bankSwiftCode || '',
+                                iban: existingInvoice.bankIban || '',
+                                bankAddress: existingInvoice.bankAddress || '',
+                                bankCountry: existingInvoice.bankCountry || 'United States',
+                                currency: existingInvoice.bankCurrency || 'USD'
+                              });
+                              
+                              // Load existing line items
+                              fetch(`/api/cpfr/invoices/${existingInvoice.id}/line-items`)
+                                .then(res => res.json())
+                                .then(lineItems => {
+                                  console.log('📋 Loaded existing line items for edit mode:', lineItems);
+                                  setGeneratedInvoice((prev: any) => ({...prev, lineItems: lineItems || []}));
+                                });
+                              
+                              return; // Don't fetch PO line items, use existing invoice
+                            }
+                            
                             // Fetch PO line items with enhanced debugging
                             console.log(`🔍 Fetching line items for PO ID: ${po.id}`);
                             setLoadingLineItems(true);

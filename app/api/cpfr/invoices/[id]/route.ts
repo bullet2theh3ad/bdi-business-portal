@@ -130,3 +130,79 @@ export async function PUT(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params;
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user has admin access for deletion
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!requestingUser || !['super_admin', 'admin', 'admin_cfo'].includes(requestingUser.role)) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required for deletion' }, { status: 403 });
+    }
+
+    const invoiceId = params.id;
+    console.log('🗑️ DELETING Invoice ID:', invoiceId);
+
+    // Delete line items first (due to foreign key constraints)
+    const deletedLineItems = await db
+      .delete(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, invoiceId))
+      .returning();
+
+    console.log(`🗑️ Deleted ${deletedLineItems.length} line items`);
+
+    // Delete the invoice
+    const deletedInvoice = await db
+      .delete(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .returning();
+
+    if (deletedInvoice.length === 0) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    console.log('✅ Successfully deleted invoice:', deletedInvoice[0].invoiceNumber);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: `Invoice ${deletedInvoice[0].invoiceNumber} deleted successfully`,
+      deletedInvoice: deletedInvoice[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting invoice:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
