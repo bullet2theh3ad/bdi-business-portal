@@ -665,7 +665,7 @@ export default function InvoicesPage() {
                         </div>
                         <div>
                           <span className="text-gray-500">Delivery Week:</span>
-                          <p className="font-medium">{invoice.requestedDeliveryWeek}</p>
+                          <p className="font-medium">{invoice.shipDate ? new Date(invoice.shipDate).toLocaleDateString() : invoice.requestedDeliveryWeek || 'Not set'}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Terms:</span>
@@ -2284,6 +2284,8 @@ export default function InvoicesPage() {
                             };
 
                             console.log('Saving invoice:', invoiceData);
+                            console.log('🗓️ Invoice Date being sent:', invoiceData.invoiceDate);
+                            console.log('📅 Ship Date being sent:', invoiceData.shipDate);
 
                             // Determine if we're editing or creating
                             const isEditing = editingInvoiceId !== null;
