@@ -133,38 +133,32 @@ export default function InvoicesPage() {
     return pdf.output('dataurlstring');
   };
 
-  // Function to add CFO signature to existing PDF data
-  const addCFOSignatureToPDF = async (originalPDFDataUrl: string, cfoName: string) => {
-    console.log('✍️ Adding CFO signature to existing PDF data URL');
+  // Function to send invoice PDF via email
+  const sendInvoiceEmail = async (invoiceData: any, pdfUrl: string, recipients: string, ccRecipients: string) => {
+    console.log('📧 Sending invoice email to recipients');
     
     try {
-      // Parse the original PDF data URL to extract the base64 data
-      const base64Data = originalPDFDataUrl.split(',')[1];
-      
-      // Create a new PDF with the same content plus CFO signature
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Convert the base64 data back to an image for jsPDF
-      const imgData = originalPDFDataUrl;
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Add the original PDF content as an image
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      
-      // Add CFO signature overlay
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(0, 0, 0); // Black text
-      
-      const signatureY = pdfHeight - 25;
-      pdf.text(`Finance: ${cfoName}`, pdfWidth - 80, signatureY);
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, pdfWidth - 80, signatureY + 5);
-      
-      return pdf.output('dataurlstring');
+      const response = await fetch('/api/cpfr/invoices/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: invoiceData.id,
+          invoiceNumber: invoiceData.invoice_number || invoiceData.invoiceNumber,
+          pdfUrl: pdfUrl,
+          recipients: recipients,
+          ccRecipients: ccRecipients,
+          customerName: invoiceData.customer_name || invoiceData.customerName,
+          totalValue: invoiceData.total_value || invoiceData.totalValue
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error('Error adding CFO signature:', error);
+      console.error('Error sending invoice email:', error);
       throw error;
     }
   };
@@ -273,7 +267,8 @@ export default function InvoicesPage() {
   const [showNewCFOModal, setShowNewCFOModal] = useState(false);
   const [cfoInvoicePDFUrl, setCfoInvoicePDFUrl] = useState<string>('');
   const [cfoInvoiceData, setCfoInvoiceData] = useState<any>(null);
-  const [originalPDFDataUrl, setOriginalPDFDataUrl] = useState<string>('');
+  const [emailRecipients, setEmailRecipients] = useState<string>('scistulli@boundlessdevices.com');
+  const [emailCCRecipients, setEmailCCRecipients] = useState<string>('');
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -2465,8 +2460,7 @@ export default function InvoicesPage() {
                                     const uploadResult = await uploadResponse.json();
                                     console.log('✅ PDF uploaded to Supabase:', uploadResult.url);
                                     
-                                    // Step 3: Store original PDF data and open CFO modal
-                                    setOriginalPDFDataUrl(pdfDataUrl); // Store for CFO signature regeneration
+                                    // Step 3: Open CFO modal with PDF
                                     setCfoInvoiceData(result);
                                     setCfoInvoicePDFUrl(uploadResult.url);
                                     setShowNewCFOModal(true);
@@ -2951,89 +2945,106 @@ export default function InvoicesPage() {
               />
             </div>
 
-            {/* Simple Controls - Right side */}
-            <div className="w-64 p-4 border-l bg-gray-50">
-              <h3 className="font-semibold mb-4">CFO Actions</h3>
+            {/* Simple Email Controls - Right side */}
+            <div className="w-80 p-6 bg-gray-50 border-l flex flex-col">
+              <h3 className="text-lg font-semibold mb-4">Send Invoice</h3>
               
-              <div className="space-y-3">
-                <Button
+              <div className="space-y-4 flex-1">
+                <p className="text-sm text-gray-600">
+                  Review the invoice PDF and send to recipients:
+                </p>
+                
+                {/* Email Recipients */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Recipients (Required)
+                  </label>
+                  <textarea
+                    value={emailRecipients}
+                    onChange={(e) => setEmailRecipients(e.target.value)}
+                    placeholder="recipient1@company.com, recipient2@company.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    rows={2}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Separate multiple emails with commas
+                  </p>
+                </div>
+
+                {/* CC Recipients */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CC Recipients (Optional)
+                  </label>
+                  <textarea
+                    value={emailCCRecipients}
+                    onChange={(e) => setEmailCCRecipients(e.target.value)}
+                    placeholder="cc1@company.com, cc2@company.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    rows={2}
+                  />
+                </div>
+                
+                <Button 
                   variant="outline"
                   onClick={() => {
-                    const reason = prompt('Why are you rejecting this invoice?');
-                    if (reason) {
-                      alert(`❌ Invoice rejected.\n\nReason: ${reason}`);
-                      setShowNewCFOModal(false);
-                      setCfoInvoicePDFUrl('');
-                      setCfoInvoiceData(null);
-                    }
+                    setShowNewCFOModal(false);
+                    setCfoInvoicePDFUrl('');
+                    setCfoInvoiceData(null);
+                    setEmailRecipients('scistulli@boundlessdevices.com');
+                    setEmailCCRecipients('');
                   }}
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                  className="w-full"
                 >
-                  Reject for Revisions
+                  Cancel
                 </Button>
                 
                 <Button
                   onClick={async () => {
                     try {
-                      console.log('🎯 CFO APPROVING: Adding signature to existing PDF');
-                      
-                      // Check if we have the original PDF data
-                      if (!originalPDFDataUrl) {
-                        throw new Error('Original PDF data not found');
+                      if (!emailRecipients.trim()) {
+                        alert('❌ Please enter at least one email recipient.');
+                        return;
                       }
-                      
-                      // Step 1: Add CFO signature to existing PDF
-                      const signedPdfDataUrl = await addCFOSignatureToPDF(originalPDFDataUrl, user?.name || 'CFO');
-                      console.log('✅ PDF with CFO signature generated');
-                      
-                      // Step 2: Upload signed PDF to Supabase
-                      const response = await fetch(signedPdfDataUrl);
-                      const pdfBlob = await response.blob();
-                      
-                      const formData = new FormData();
-                      formData.append('file', pdfBlob, `invoice-${cfoInvoiceData.id}-approved-signed.pdf`);
-                      formData.append('invoiceId', cfoInvoiceData.id);
-                      
-                      const uploadResponse = await fetch('/api/cpfr/invoices/pdf-upload', {
-                        method: 'POST',
-                        body: formData
-                      });
-                      
-                      if (uploadResponse.ok) {
-                        const uploadResult = await uploadResponse.json();
-                        console.log('✅ Signed PDF uploaded:', uploadResult.url);
-                        
-                        // Step 3: Update invoice status to approved
-                        const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            status: 'approved_by_finance',
-                            financeApproverName: user?.name,
-                            financeSignatureDate: new Date().toLocaleDateString()
-                          })
-                        });
 
-                        if (statusResponse.ok) {
-                          // Step 4: Show updated PDF with signature
-                          setCfoInvoicePDFUrl(uploadResult.url);
-                          console.log('✅ Invoice approved and PDF updated with CFO signature');
-                          alert('✅ Invoice approved! PDF updated with your signature.\n\nReview the signed PDF and choose final action.');
-                          mutateInvoices();
-                        } else {
-                          alert('❌ Failed to update invoice status.');
-                        }
+                      console.log('📧 SENDING INVOICE EMAIL');
+                      
+                      // Step 1: Update invoice status to approved
+                      const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          status: 'approved_by_finance',
+                          financeApproverName: user?.name,
+                          financeApprovalDate: new Date().toISOString()
+                        })
+                      });
+
+                      if (statusResponse.ok) {
+                        // Step 2: Send email with PDF
+                        await sendInvoiceEmail(cfoInvoiceData, cfoInvoicePDFUrl, emailRecipients, emailCCRecipients);
+                        
+                        console.log('✅ Invoice approved and email sent');
+                        alert(`✅ Invoice approved and sent!\n\nRecipients: ${emailRecipients}\n${emailCCRecipients ? `CC: ${emailCCRecipients}` : ''}`);
+                        
+                        // Close modal and refresh
+                        setShowNewCFOModal(false);
+                        setCfoInvoicePDFUrl('');
+                        setCfoInvoiceData(null);
+                        setEmailRecipients('scistulli@boundlessdevices.com');
+                        setEmailCCRecipients('');
+                        mutateInvoices();
                       } else {
-                        alert('❌ Failed to upload signed PDF.');
+                        alert('❌ Failed to approve invoice.');
                       }
                     } catch (error) {
-                      console.error('Error in CFO approval process:', error);
-                      alert('❌ Error processing CFO approval.');
+                      console.error('Error sending invoice:', error);
+                      alert('❌ Error sending invoice email.');
                     }
                   }}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
                 >
-                  Submit to Books
+                  Submit to Books (Send Email)
                 </Button>
               </div>
             </div>
