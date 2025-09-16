@@ -5,6 +5,55 @@ import { db } from '@/lib/db/drizzle';
 import { users, invoices, invoiceLineItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get the invoice
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, id))
+      .limit(1);
+
+    if (!invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    console.log('🔍 INDIVIDUAL INVOICE API - Full invoice data:', invoice);
+    console.log('📄 PDF URL field check:', {
+      approvedPdfUrl: invoice.approvedPdfUrl
+    });
+
+    return NextResponse.json(invoice);
+
+  } catch (error) {
+    console.error('Error fetching invoice:', error);
+    return NextResponse.json({ error: 'Failed to fetch invoice' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

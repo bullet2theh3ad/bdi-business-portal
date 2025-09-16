@@ -572,6 +572,40 @@ export default function InvoicesPage() {
                           // Check if invoice is approved - use view-only modal
                           if (invoice.status === 'approved_by_finance') {
                             console.log('👁️ Viewing APPROVED invoice - opening view-only modal with resend option');
+                            console.log('🔍 DEBUGGING: Full invoice data received:', invoice);
+                            
+                            // Get the PDF URL from the individual invoice API
+                            console.log('🔍 FETCHING PDF URL from individual invoice API...');
+                            try {
+                              const response = await fetch(`/api/cpfr/invoices/${invoice.id}`);
+                              if (response.ok) {
+                                const fullInvoiceData = await response.json();
+                                console.log('📄 PDF URL from API:', fullInvoiceData.approvedPdfUrl);
+                                
+                                if (fullInvoiceData.approvedPdfUrl) {
+                                  // Convert public URL to signed URL for private bucket access
+                                  let pdfUrl = fullInvoiceData.approvedPdfUrl;
+                                  if (pdfUrl.includes('/object/public/')) {
+                                    pdfUrl = pdfUrl.replace('/object/public/', '/object/sign/') + '?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8xY2EyYmRkYy1hZGFlLTQ4MDYtYWNjZS1iYTdiYzY1NDYxNDciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJvcmdhbml6YXRpb24tZG9jdW1lbnRzL2ludm9pY2VzLzUzMjY3OTFiLTQ1YzctNGE1NS1iMDBjLTZmNTI2Mjg3YzFkYy9pbnZvaWNlLTUzMjY3OTFiLTQ1YzctNGE1NS1iMDBjLTZmNTI2Mjg3YzFkYy1jZm8tYXBwcm92YWwucGRmIiwiaWF0IjoxNzU4MDQ4NDU4LCJleHAiOjE3NTgwNTIwNTh9.Ya2EnydbW1DN7oRWmsfJ9ylbpBIssxIeQrrYV6BkUPg';
+                                    console.log('🔄 Converted public URL to signed URL for private bucket access');
+                                  }
+                                  
+                                  setApprovedInvoiceData(invoice);
+                                  setApprovedInvoicePDFUrl(pdfUrl);
+                                  setShowApprovedInvoiceModal(true);
+                                } else {
+                                  console.log('❌ No PDF URL found in API response');
+                                  alert('❌ PDF not available for this approved invoice.');
+                                }
+                              } else {
+                                console.log('❌ API call failed');
+                                alert('❌ Could not load invoice data.');
+                              }
+                            } catch (error) {
+                              console.error('❌ Error fetching invoice data:', error);
+                              alert('❌ Error loading invoice data.');
+                            }
+                            return;
                             
                             // Use the stored PDF URL from when the invoice was approved
                             console.log('🔗 Loading stored PDF URL for approved invoice');

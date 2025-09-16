@@ -718,6 +718,9 @@ export const invoices = pgTable('invoices', {
   // Financial
   totalValue: numeric('total_value', { precision: 15, scale: 2 }).notNull().default('0.00'),
   
+  // PDF Storage
+  approvedPdfUrl: text('approved_pdf_url'), // Store PDF URL for approved invoices
+  
   // Supporting Documents (JSON array of file paths/URLs)
   documents: jsonb('documents').default('[]'),
   
