@@ -119,16 +119,7 @@ export default function InvoicesPage() {
     
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     
-    // Add CFO signature if requested
-    if (includeCFOSignature && cfoName) {
-      console.log('✍️ Adding CFO signature to PDF:', cfoName);
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      // Position signature in the Finance area (right side of signature lines)
-      const signatureY = pdfHeight - 25;
-      pdf.text(`Finance: ${cfoName}`, pdfWidth - 80, signatureY);
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, pdfWidth - 80, signatureY + 5);
-    }
+    // CFO signature removed - handled via email workflow instead
     
     return pdf.output('dataurlstring');
   };
@@ -2785,18 +2776,11 @@ export default function InvoicesPage() {
                               <div className="border-b border-gray-400 mb-2 pb-8"></div>
                               <div className="text-xs">
                                 <p className="font-semibold">Sales: {user?.name || 'Sales Representative'}</p>
-                                <p className="text-gray-600">Date: {generatedInvoice?.salesSignatureDate || '___________'}</p>
+                                <p className="text-gray-600">Date: {new Date().toLocaleDateString()}</p>
                               </div>
                             </div>
                             
-                            {/* Finance Signature */}
-                            <div className="w-1/2 pl-4">
-                              <div className="border-b border-gray-400 mb-2 pb-8"></div>
-                              <div className="text-xs">
-                                <p className="font-semibold">Finance: {generatedInvoice?.financeApproverName || '___________'}</p>
-                                <p className="text-gray-600">Date: {generatedInvoice?.financeSignatureDate || '___________'}</p>
-                              </div>
-                            </div>
+                            {/* Finance Signature - Removed (handled via email workflow) */}
                           </div>
                         </div>
                       </div>
