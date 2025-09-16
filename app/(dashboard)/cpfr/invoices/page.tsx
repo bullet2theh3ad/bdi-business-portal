@@ -480,7 +480,7 @@ export default function InvoicesPage() {
                                     setGeneratedInvoice({
                                       invoiceNumber: invoice.invoiceNumber,
                                       customerName: invoice.customerName,
-                                      invoiceDate: invoice.invoiceDate,
+                                      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                                       requestedDeliveryWeek: invoice.requestedDeliveryWeek,
                                       status: invoice.status,
                                       terms: invoice.terms,
@@ -513,7 +513,7 @@ export default function InvoicesPage() {
                                     setGeneratedInvoice({
                                       invoiceNumber: invoice.invoiceNumber,
                                       customerName: invoice.customerName,
-                                      invoiceDate: invoice.invoiceDate,
+                                      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                                       requestedDeliveryWeek: invoice.requestedDeliveryWeek,
                                       status: invoice.status,
                                       terms: invoice.terms,
@@ -1684,7 +1684,7 @@ export default function InvoicesPage() {
                               setGeneratedInvoice({
                                 invoiceNumber: existingInvoice.invoiceNumber,
                                 customerName: existingInvoice.customerName,
-                                invoiceDate: existingInvoice.invoiceDate,
+                                invoiceDate: existingInvoice.invoiceDate ? new Date(existingInvoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                                 requestedDeliveryWeek: existingInvoice.requestedDeliveryWeek,
                                 status: existingInvoice.status,
                                 terms: existingInvoice.terms,
