@@ -2775,19 +2775,27 @@ export default function InvoicesPage() {
         </Dialog>
       )}
 
-      {/* CFO Approval Modal */}
+      {/* CFO Approval Modal - Full Screen Overlay */}
       {showCFOModal && pendingInvoiceForCFO && (
-        <Dialog open={showCFOModal} onOpenChange={setShowCFOModal}>
-          <DialogContent className="max-w-[100vw] max-h-[100vh] w-full h-full p-0 overflow-hidden">
-            <DialogHeader className="p-6 pb-4 border-b">
-              <DialogTitle className="flex items-center text-xl">
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          {/* Header */}
+          <div className="p-6 pb-4 border-b bg-white shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center text-xl font-semibold">
                 <SemanticBDIIcon semantic="finance" size={24} className="mr-3 text-blue-600" />
                 CFO Approval Required - Invoice #{pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}
-              </DialogTitle>
-            </DialogHeader>
+              </div>
+              <button
+                onClick={() => setShowCFOModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <span className="text-2xl text-gray-500 hover:text-gray-700">×</span>
+              </button>
+            </div>
+          </div>
             
-            {/* Two-column layout */}
-            <div className="flex flex-col lg:flex-row h-full">
+          {/* Two-column layout */}
+          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
               {/* Left Column - CFO Actions */}
               <div className="lg:w-1/2 p-6 space-y-6 overflow-y-auto">
                 {/* Invoice Summary Header */}
@@ -3047,8 +3055,7 @@ export default function InvoicesPage() {
                 </div>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
       )}
     </div>
   );
