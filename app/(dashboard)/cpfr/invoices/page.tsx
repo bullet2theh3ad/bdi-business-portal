@@ -77,16 +77,18 @@ export default function InvoicesPage() {
     }
 
     const canvas = await html2canvas(invoiceElement as HTMLElement, {
-      scale: 2,
+      scale: 2, // Back to 2 for crisp text quality
       backgroundColor: '#ffffff',
       useCORS: true,
       allowTaint: true,
       logging: false,
       onclone: (clonedDoc) => {
-        // Fix oklch colors
+        // Fix oklch colors AND replace custom fonts with system fonts
         const allElements = clonedDoc.querySelectorAll('*');
         allElements.forEach(el => {
           const computedStyle = window.getComputedStyle(el as Element);
+          
+          // Fix oklch colors
           if (computedStyle.color && computedStyle.color.includes('oklch')) {
             (el as HTMLElement).style.color = '#000';
           }
@@ -95,6 +97,13 @@ export default function InvoicesPage() {
           }
           if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
             (el as HTMLElement).style.borderColor = '#ccc';
+          }
+          
+          // Replace custom fonts with system fonts to reduce PDF size
+          const fontFamily = computedStyle.fontFamily;
+          if (fontFamily && (fontFamily.includes('Manrope') || fontFamily.includes('JetBrains') || fontFamily.includes('Share Tech'))) {
+            (el as HTMLElement).style.fontFamily = 'Arial, Helvetica, sans-serif';
+            console.log('🔤 Replaced custom font with system font for PDF');
           }
         });
         
@@ -112,16 +121,28 @@ export default function InvoicesPage() {
     });
 
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
+    
+    // Test JPEG with high quality for smaller file size
+    const imgData = canvas.toDataURL('image/jpeg', 0.95); // 95% quality for better text
+    console.log('📊 Canvas size:', canvas.width, 'x', canvas.height);
     
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    // Use JPEG with high quality
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     
     // CFO signature removed - handled via email workflow instead
     
-    return pdf.output('dataurlstring');
+    const pdfDataUrl = pdf.output('dataurlstring');
+    
+    // Calculate and log file size
+    const base64Data = pdfDataUrl.split(',')[1];
+    const fileSizeBytes = Math.round((base64Data.length * 3) / 4);
+    const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+    console.log('📄 PDF Size:', fileSizeBytes, 'bytes (', fileSizeMB, 'MB)');
+    
+    return pdfDataUrl;
   };
 
   // Function to send invoice PDF via email
