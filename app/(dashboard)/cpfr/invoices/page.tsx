@@ -2988,9 +2988,9 @@ export default function InvoicesPage() {
           </div>
 
           {/* PDF Viewer and Controls */}
-          <div className="flex-1 flex">
-            {/* PDF Viewer - Takes most space */}
-            <div className="flex-1 p-4">
+          <div className="flex-1 flex flex-col md:flex-row">
+            {/* PDF Viewer - Mobile: Top 60%, Desktop: Left side */}
+            <div className="flex-1 p-4 h-64 md:h-auto">
               <iframe
                 src={cfoInvoicePDFUrl}
                 className="w-full h-full border rounded"
@@ -2998,8 +2998,8 @@ export default function InvoicesPage() {
               />
             </div>
 
-            {/* Simple Email Controls - Right side */}
-            <div className="w-80 p-6 bg-gray-50 border-l flex flex-col">
+            {/* Simple Email Controls - Mobile: Bottom, Desktop: Right side */}
+            <div className="w-full md:w-80 p-6 bg-gray-50 border-t md:border-t-0 md:border-l flex flex-col">
               <h3 className="text-lg font-semibold mb-4">Send Invoice</h3>
               
               <div className="space-y-4 flex-1">
@@ -3239,9 +3239,9 @@ export default function InvoicesPage() {
           </div>
 
           {/* Content - PDF Viewer + Email Controls */}
-          <div className="flex-1 flex">
-            {/* PDF Viewer - Left side */}
-            <div className="flex-1 p-4">
+          <div className="flex-1 flex flex-col md:flex-row">
+            {/* PDF Viewer - Mobile: Top 60%, Desktop: Left side */}
+            <div className="flex-1 p-4 h-64 md:h-auto">
               <iframe
                 src={approvedInvoicePDFUrl}
                 className="w-full h-full border rounded"
@@ -3249,8 +3249,8 @@ export default function InvoicesPage() {
               />
             </div>
 
-            {/* Email Resend Controls - Right side */}
-            <div className="w-80 p-6 bg-gray-50 border-l flex flex-col">
+            {/* Email Resend Controls - Mobile: Bottom, Desktop: Right side */}
+            <div className="w-full md:w-80 p-6 bg-gray-50 border-t md:border-t-0 md:border-l flex flex-col">
               <h3 className="text-lg font-semibold mb-4">Resend Invoice</h3>
               
               <div className="space-y-4 flex-1">
