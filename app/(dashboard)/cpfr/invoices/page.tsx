@@ -83,7 +83,7 @@ export default function InvoicesPage() {
       allowTaint: true,
       logging: false,
       onclone: (clonedDoc) => {
-        // Remove all oklch references from computed styles
+        // Fix oklch colors
         const allElements = clonedDoc.querySelectorAll('*');
         allElements.forEach(el => {
           const computedStyle = window.getComputedStyle(el as Element);
@@ -96,6 +96,17 @@ export default function InvoicesPage() {
           if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
             (el as HTMLElement).style.borderColor = '#ccc';
           }
+        });
+        
+        // Fix input fields for PDF - replace with their values
+        const inputs = clonedDoc.querySelectorAll('input[type="text"]');
+        inputs.forEach(input => {
+          const inputEl = input as HTMLInputElement;
+          const span = clonedDoc.createElement('span');
+          span.textContent = inputEl.value || inputEl.placeholder || '';
+          span.className = inputEl.className;
+          span.style.cssText = inputEl.style.cssText;
+          inputEl.parentNode?.replaceChild(span, inputEl);
         });
       }
     });
