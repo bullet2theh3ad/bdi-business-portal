@@ -78,7 +78,23 @@ export default function InvoicesPage() {
 
     const canvas = await html2canvas(invoiceElement as HTMLElement, {
       scale: 2,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      onclone: (clonedDoc) => {
+        // Fix oklch color issues
+        const style = clonedDoc.createElement('style');
+        style.textContent = `
+          * { 
+            color: #000 !important; 
+            background-color: #fff !important; 
+            border-color: #ccc !important; 
+          }
+          .text-blue-600 { color: #2563eb !important; }
+          .text-gray-700 { color: #374151 !important; }
+          .bg-gray-100 { background-color: #f3f4f6 !important; }
+          .border-gray-300 { border-color: #d1d5db !important; }
+        `;
+        clonedDoc.head.appendChild(style);
+      }
     });
 
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -2843,336 +2859,89 @@ export default function InvoicesPage() {
         </Dialog>
       )}
 
-      {/* New Simple CFO Modal - PDF Viewer */}
-      {showNewCFOModal && cfoInvoiceData && (
+      {/* Super Simple CFO Modal - PDF Viewer Only */}
+      {showNewCFOModal && cfoInvoicePDFUrl && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
-          {/* Header */}
-          <div className="p-6 pb-4 border-b bg-white shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center text-xl font-semibold">
-                <SemanticBDIIcon semantic="finance" size={24} className="mr-3 text-blue-600" />
-                CFO Approval Required - Invoice #{(cfoInvoiceData?.invoice_number || cfoInvoiceData?.invoiceNumber)?.replace('INV-', '') || 'N/A'}
+          {/* Simple Header */}
+          <div className="p-4 border-b bg-white flex items-center justify-between">
+            <h2 className="text-xl font-semibold">CFO Approval Required</h2>
+            <button
+              onClick={() => {
+                setShowNewCFOModal(false);
+                setCfoInvoicePDFUrl('');
+                setCfoInvoiceData(null);
+              }}
+              className="text-2xl text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* PDF Viewer and Controls */}
+          <div className="flex-1 flex">
+            {/* PDF Viewer - Takes most space */}
+            <div className="flex-1 p-4">
+              <iframe
+                src={cfoInvoicePDFUrl}
+                className="w-full h-full border rounded"
+                title="Invoice PDF"
+              />
+            </div>
+
+            {/* Simple Controls - Right side */}
+            <div className="w-64 p-4 border-l bg-gray-50">
+              <h3 className="font-semibold mb-4">CFO Actions</h3>
+              
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const reason = prompt('Why are you rejecting this invoice?');
+                    if (reason) {
+                      alert(`❌ Invoice rejected.\n\nReason: ${reason}`);
+                      setShowNewCFOModal(false);
+                      setCfoInvoicePDFUrl('');
+                      setCfoInvoiceData(null);
+                    }
+                  }}
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  Reject for Revisions
+                </Button>
+                
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          status: 'approved_by_finance'
+                        })
+                      });
+
+                      if (response.ok) {
+                        alert('✅ Invoice approved and submitted to books!');
+                        setShowNewCFOModal(false);
+                        setCfoInvoicePDFUrl('');
+                        setCfoInvoiceData(null);
+                        mutateInvoices();
+                      } else {
+                        alert('❌ Failed to approve invoice.');
+                      }
+                    } catch (error) {
+                      alert('❌ Error approving invoice.');
+                    }
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Submit to Books
+                </Button>
               </div>
-              <button
-                onClick={() => setShowNewCFOModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <span className="text-2xl text-gray-500 hover:text-gray-700">×</span>
-              </button>
             </div>
           </div>
             
-          {/* Two-column layout */}
-          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-              {/* Left Column - CFO Actions */}
-              <div className="lg:w-1/2 p-6 space-y-6 overflow-y-auto">
-                {/* Invoice Summary Header */}
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-blue-900 mb-3">Invoice Submitted for Approval</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p><strong>Invoice #:</strong> {(cfoInvoiceData?.invoice_number || cfoInvoiceData?.invoiceNumber)?.replace('INV-', '') || 'N/A'}</p>
-                      <p><strong>Customer:</strong> {cfoInvoiceData?.customer_name || cfoInvoiceData?.customerName || 'N/A'}</p>
-                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(cfoInvoiceData?.total_value || cfoInvoiceData?.totalValue || 0).toLocaleString()}</span></p>
-                    </div>
-                    <div>
-                      <p><strong>Submitted by:</strong> {cfoInvoiceData?.salesSignatureName}</p>
-                      <p><strong>Date:</strong> {cfoInvoiceData?.salesSignatureDate}</p>
-                      <p><strong>Status:</strong> <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Pending Finance Approval</span></p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Invoice Details */}
-                <div className="bg-white border rounded-lg p-4">
-                  <h4 className="font-semibold mb-3 text-gray-800">Invoice Details</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p><strong>Invoice Date:</strong> {cfoInvoiceData.invoice_date ? new Date(cfoInvoiceData.invoice_date).toLocaleDateString() : 'Not set'}</p>
-                        <p><strong>Terms:</strong> {cfoInvoiceData.terms || 'Not specified'}</p>
-                        <p><strong>Incoterms:</strong> {cfoInvoiceData.incoterms || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p><strong>Ship Date:</strong> {cfoInvoiceData.ship_date ? new Date(cfoInvoiceData.ship_date).toLocaleDateString() : 'Not set'}</p>
-                        <p><strong>Location:</strong> {cfoInvoiceData.incoterms_location || 'Not specified'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Addresses */}
-                <div className="bg-white border rounded-lg p-4">
-                  <h4 className="font-semibold mb-3 text-gray-800">Addresses</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <h5 className="font-medium text-gray-700 mb-1">Bill To:</h5>
-                      <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
-                        {cfoInvoiceData.customer_address || 'Customer Address'}
-                      </div>
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-700 mb-1">Ship To:</h5>
-                      <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
-                        {cfoInvoiceData.ship_to_address || 'Same as Bill To'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CFO Actions */}
-                <div className="bg-gray-50 border rounded-lg p-4">
-                  <h4 className="font-semibold mb-3 text-gray-800">Finance Approval</h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    As CFO, you can approve this invoice to submit it to the books, or reject it for revisions.
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div className="text-sm bg-white p-3 rounded border">
-                      <p><strong>Approving as:</strong> {user?.name} (CFO)</p>
-                      <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          // Reject - close CFO modal and return to Generate modal
-                          setShowNewCFOModal(false);
-                          setCfoInvoiceData(null);
-                          alert('❌ Invoice rejected and returned for revisions.');
-                        }}
-                        className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        <SemanticBDIIcon semantic="close" size={16} className="mr-2" />
-                        Reject for Revisions
-                      </Button>
-                      
-                      <Button
-                        onClick={async () => {
-                          try {
-                            // Update invoice status to approved and add finance signature
-                            const response = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                status: 'approved_by_finance',
-                                financeApproverName: user?.name,
-                                financeSignatureDate: new Date().toLocaleDateString()
-                              })
-                            });
-
-                            if (response.ok) {
-                              alert('✅ Invoice approved and submitted to books!\n\nThe invoice has been finalized and is ready for processing.');
-                              
-                              // Close all modals and refresh
-                              setShowNewCFOModal(false);
-                              setShowGenerateModal(false);
-                              setCfoInvoiceData(null);
-                              setSelectedPO(null);
-                              setGeneratedInvoice(null);
-                              setEditingInvoiceId(null);
-                              mutateInvoices();
-                            } else {
-                              alert('❌ Failed to approve invoice. Please try again.');
-                            }
-                          } catch (error) {
-                            console.error('Error approving invoice:', error);
-                            alert('❌ Error approving invoice. Please try again.');
-                          }
-                        }}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <SemanticBDIIcon semantic="check" size={16} className="mr-2 brightness-0 invert" />
-                        Submit to Books
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Full Invoice Preview */}
-              <div className="lg:w-1/2 bg-gray-50 p-6 overflow-y-auto border-l">
-                <h3 className="font-semibold mb-4 text-gray-800">Invoice Preview</h3>
-                
-                {/* EXACT COPY of Generate Modal Invoice Preview */}
-                <div className="bg-white shadow-lg rounded-lg p-3 max-w-2xl mx-auto text-xs">
-                  {/* Professional Invoice Template - Matching Exact Format */}
-                  <div className="bg-white">
-                    {/* Header with Logo and Company Info - Fixed Layout */}
-                    <div className="mb-4">
-                      <div className="flex justify-between items-start">
-                        {/* Left: INVOICE Title and Company Info */}
-                        <div>
-                          <div className="text-2xl font-bold text-blue-600 mb-2">INVOICE</div>
-                          {/* Company Info - Under INVOICE title */}
-                          <div className="flex gap-6 text-xs text-gray-700">
-                            <div>
-                              <div className="font-semibold">Boundless Devices, Inc.</div>
-                              <div>17875 Von Karman Ave, STE 150</div>
-                              <div>Irvine, CA 92614</div>
-                            </div>
-                            <div>
-                              <div>invoices@boundlessdevices.com</div>
-                              <div>+1 (949) 994-7791</div>
-                              <div>www.boundlessdevices.com</div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Right: Logo Only */}
-                        <div>
-                          <img 
-                            src="/logos/PNG/Full Lockup Color.png" 
-                            alt="Boundless Devices Inc" 
-                            className="h-12"
-                            onError={(e) => {
-                              // Fallback to BDI text logo if image fails
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.parentElement!.innerHTML = '<div class="w-12 h-12 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">BDI</div>';
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bill To and Ship To Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bill to</h3>
-                        <div className="text-gray-700">
-                          <div className="font-semibold">{cfoInvoiceData.customer_name}</div>
-                          {cfoInvoiceData.customer_address && (
-                            <div className="mt-1 whitespace-pre-line text-sm">
-                              {cfoInvoiceData.customer_address}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Ship to</h3>
-                        <div className="text-gray-700">
-                          <div className="font-semibold">{cfoInvoiceData.customer_name}</div>
-                          {cfoInvoiceData.ship_to_address && (
-                            <div className="mt-1 whitespace-pre-line text-sm">
-                              {cfoInvoiceData.ship_to_address}
-                            </div>
-                          )}
-                          {!cfoInvoiceData.ship_to_address && cfoInvoiceData.customer_address && (
-                            <div className="mt-1 whitespace-pre-line text-sm">
-                              {cfoInvoiceData.customer_address}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Shipping Info and Invoice Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
-                        <div className="text-xs text-gray-700">
-                          <div><span className="font-medium">Ship date:</span> {cfoInvoiceData.ship_date ? new Date(cfoInvoiceData.ship_date).toLocaleDateString() : 'TBD'}</div>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
-                        <div className="text-xs text-gray-700">
-                          <div><span className="font-medium">Invoice no.:</span> {cfoInvoiceData.invoice_number?.replace('INV-', '') || 'N/A'}</div>
-                          <div><span className="font-medium">Terms:</span> {cfoInvoiceData.terms || 'Not specified'}</div>
-                          <div><span className="font-medium">Invoice date:</span> {cfoInvoiceData.invoice_date ? new Date(cfoInvoiceData.invoice_date).toLocaleDateString() : 'Not set'}</div>
-                          <div><span className="font-medium">Due date:</span> {cfoInvoiceData.ship_date ? new Date(cfoInvoiceData.ship_date).toLocaleDateString() : 'Not set'}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Line Items Table - Compact Format */}
-                    <div className="mb-4">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">#</th>
-                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">Product or service</th>
-                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">SKU</th>
-                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">Description</th>
-                            <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Qty</th>
-                            <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Rate</th>
-                            <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cfoInvoiceData.generatedInvoice?.lineItems?.map((item: any, index: number) => (
-                            <tr key={index}>
-                              <td className="border border-gray-300 px-2 py-2 text-center">{index + 1}</td>
-                              <td className="border border-gray-300 px-2 py-2">{item.skuName || item.description || 'Product'}</td>
-                              <td className="border border-gray-300 px-2 py-2">{item.skuCode || item.sku || 'N/A'}</td>
-                              <td className="border border-gray-300 px-2 py-2">{item.description || item.skuName || 'N/A'}</td>
-                              <td className="border border-gray-300 px-2 py-2 text-right">{Number(item.quantity || 0).toLocaleString()}</td>
-                              <td className="border border-gray-300 px-2 py-2 text-right">${Number(item.unitCost || 0).toLocaleString()}</td>
-                              <td className="border border-gray-300 px-2 py-2 text-right">${Number(item.lineTotal || 0).toLocaleString()}</td>
-                            </tr>
-                          )) || (
-                            <tr>
-                              <td colSpan={7} className="border border-gray-300 px-2 py-4 text-center text-gray-500">No line items available</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Total Section */}
-                    <div className="flex justify-end mb-6">
-                      <div className="text-right">
-                        <div className="text-xs text-gray-600 mb-1">Total</div>
-                        <div className="text-xl font-bold text-blue-900">${Number(cfoInvoiceData.total_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </div>
-                    </div>
-
-                    {/* Bank Information Section */}
-                    {(user?.role === 'super_admin' || user?.role === 'admin_cfo') && (
-                      <div className="border-t pt-4 mb-4">
-                        <div className="font-semibold mb-2">{cfoInvoiceData.bank_name || 'Bank Information'}</div>
-                        <div className="text-xs space-y-1 bg-gray-50 p-2 rounded">
-                          <div>Bank: {cfoInvoiceData.bank_name || 'Not specified'}</div>
-                          <div>Account: ****{(cfoInvoiceData.bank_account_number || '').slice(-4) || '****'}</div>
-                          <div>Routing: ****{(cfoInvoiceData.bank_routing_number || '').slice(-4) || '****'}</div>
-                          <div>SWIFT: {cfoInvoiceData.bank_swift_code || 'Not specified'}</div>
-                          <div>IBAN: ****{(cfoInvoiceData.bank_iban || '').slice(-4) || '****'}</div>
-                          <div>Address: {cfoInvoiceData.bank_address || 'Not specified'}</div>
-                          <div>Country: {cfoInvoiceData.bank_country || 'Not specified'}</div>
-                          <div>Currency: {cfoInvoiceData.bank_currency || 'USD'}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Signature Lines */}
-                    <div className="border-t pt-4 mt-6">
-                      <div className="flex justify-between items-start">
-                        {/* Sales Signature */}
-                        <div className="w-1/2 pr-4">
-                          <div className="border-b border-gray-400 mb-2 pb-8"></div>
-                          <div className="text-xs">
-                            <p className="font-semibold">Sales: {cfoInvoiceData.salesSignatureName}</p>
-                            <p className="text-gray-600">Date: {cfoInvoiceData.salesSignatureDate}</p>
-                          </div>
-                        </div>
-                        
-                        {/* Finance Signature */}
-                        <div className="w-1/2 pl-4">
-                          <div className="border-b border-gray-400 mb-2 pb-8"></div>
-                          <div className="text-xs">
-                            <p className="font-semibold">Finance: ___________</p>
-                            <p className="text-gray-600">Date: ___________</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        </div>
       )}
     </div>
   );
