@@ -12,6 +12,8 @@ import useSWR from 'swr';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -164,8 +166,11 @@ export default function InvoicesPage() {
   const [loadingLineItems, setLoadingLineItems] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
-  const [showCFOModal, setShowCFOModal] = useState(false);
-  const [pendingInvoiceForCFO, setPendingInvoiceForCFO] = useState<any>(null);
+  
+  // New Simple CFO Modal States
+  const [showNewCFOModal, setShowNewCFOModal] = useState(false);
+  const [cfoInvoicePDFUrl, setCfoInvoicePDFUrl] = useState<string>('');
+  const [cfoInvoiceData, setCfoInvoiceData] = useState<any>(null);
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -2353,8 +2358,8 @@ export default function InvoicesPage() {
                                 
                                 console.log('📄 Invoice with Signature for CFO:', invoiceWithSignature);
                                 
-                                setPendingInvoiceForCFO(invoiceWithSignature);
-                                setShowCFOModal(true);
+                                setCfoInvoiceData(invoiceWithSignature);
+                                setShowNewCFOModal(true);
                                 
                                 // Close the Generate modal immediately so CFO modal is on top
                                 setShowGenerateModal(false);
@@ -2802,18 +2807,18 @@ export default function InvoicesPage() {
         </Dialog>
       )}
 
-      {/* CFO Approval Modal - Full Screen Overlay */}
-      {showCFOModal && pendingInvoiceForCFO && (
+      {/* New Simple CFO Modal - PDF Viewer */}
+      {showNewCFOModal && cfoInvoiceData && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
           {/* Header */}
           <div className="p-6 pb-4 border-b bg-white shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center text-xl font-semibold">
                 <SemanticBDIIcon semantic="finance" size={24} className="mr-3 text-blue-600" />
-                CFO Approval Required - Invoice #{pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}
+                CFO Approval Required - Invoice #{(cfoInvoiceData?.invoice_number || cfoInvoiceData?.invoiceNumber)?.replace('INV-', '') || 'N/A'}
               </div>
               <button
-                onClick={() => setShowCFOModal(false)}
+                onClick={() => setShowNewCFOModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <span className="text-2xl text-gray-500 hover:text-gray-700">×</span>
@@ -2830,13 +2835,13 @@ export default function InvoicesPage() {
                   <h3 className="font-semibold text-blue-900 mb-3">Invoice Submitted for Approval</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoice_number?.replace('INV-', '') || 'N/A'}</p>
-                      <p><strong>Customer:</strong> {pendingInvoiceForCFO.customer_name || 'N/A'}</p>
-                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(pendingInvoiceForCFO.total_value || 0).toLocaleString()}</span></p>
+                      <p><strong>Invoice #:</strong> {(cfoInvoiceData?.invoice_number || cfoInvoiceData?.invoiceNumber)?.replace('INV-', '') || 'N/A'}</p>
+                      <p><strong>Customer:</strong> {cfoInvoiceData?.customer_name || cfoInvoiceData?.customerName || 'N/A'}</p>
+                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(cfoInvoiceData?.total_value || cfoInvoiceData?.totalValue || 0).toLocaleString()}</span></p>
                     </div>
                     <div>
-                      <p><strong>Submitted by:</strong> {pendingInvoiceForCFO.salesSignatureName}</p>
-                      <p><strong>Date:</strong> {pendingInvoiceForCFO.salesSignatureDate}</p>
+                      <p><strong>Submitted by:</strong> {cfoInvoiceData?.salesSignatureName}</p>
+                      <p><strong>Date:</strong> {cfoInvoiceData?.salesSignatureDate}</p>
                       <p><strong>Status:</strong> <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Pending Finance Approval</span></p>
                     </div>
                   </div>
@@ -2848,13 +2853,13 @@ export default function InvoicesPage() {
                   <div className="space-y-2 text-sm">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p><strong>Invoice Date:</strong> {pendingInvoiceForCFO.invoice_date ? new Date(pendingInvoiceForCFO.invoice_date).toLocaleDateString() : 'Not set'}</p>
-                        <p><strong>Terms:</strong> {pendingInvoiceForCFO.terms || 'Not specified'}</p>
-                        <p><strong>Incoterms:</strong> {pendingInvoiceForCFO.incoterms || 'Not specified'}</p>
+                        <p><strong>Invoice Date:</strong> {cfoInvoiceData.invoice_date ? new Date(cfoInvoiceData.invoice_date).toLocaleDateString() : 'Not set'}</p>
+                        <p><strong>Terms:</strong> {cfoInvoiceData.terms || 'Not specified'}</p>
+                        <p><strong>Incoterms:</strong> {cfoInvoiceData.incoterms || 'Not specified'}</p>
                       </div>
                       <div>
-                        <p><strong>Ship Date:</strong> {pendingInvoiceForCFO.ship_date ? new Date(pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'Not set'}</p>
-                        <p><strong>Location:</strong> {pendingInvoiceForCFO.incoterms_location || 'Not specified'}</p>
+                        <p><strong>Ship Date:</strong> {cfoInvoiceData.ship_date ? new Date(cfoInvoiceData.ship_date).toLocaleDateString() : 'Not set'}</p>
+                        <p><strong>Location:</strong> {cfoInvoiceData.incoterms_location || 'Not specified'}</p>
                       </div>
                     </div>
                   </div>
@@ -2867,13 +2872,13 @@ export default function InvoicesPage() {
                     <div>
                       <h5 className="font-medium text-gray-700 mb-1">Bill To:</h5>
                       <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
-                        {pendingInvoiceForCFO.customer_address || 'Customer Address'}
+                        {cfoInvoiceData.customer_address || 'Customer Address'}
                       </div>
                     </div>
                     <div>
                       <h5 className="font-medium text-gray-700 mb-1">Ship To:</h5>
                       <div className="whitespace-pre-line text-gray-600 bg-gray-50 p-2 rounded">
-                        {pendingInvoiceForCFO.ship_to_address || 'Same as Bill To'}
+                        {cfoInvoiceData.ship_to_address || 'Same as Bill To'}
                       </div>
                     </div>
                   </div>
@@ -2897,8 +2902,8 @@ export default function InvoicesPage() {
                         variant="outline"
                         onClick={() => {
                           // Reject - close CFO modal and return to Generate modal
-                          setShowCFOModal(false);
-                          setPendingInvoiceForCFO(null);
+                          setShowNewCFOModal(false);
+                          setCfoInvoiceData(null);
                           alert('❌ Invoice rejected and returned for revisions.');
                         }}
                         className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
@@ -2911,7 +2916,7 @@ export default function InvoicesPage() {
                         onClick={async () => {
                           try {
                             // Update invoice status to approved and add finance signature
-                            const response = await fetch(`/api/cpfr/invoices/${pendingInvoiceForCFO.id}`, {
+                            const response = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
@@ -2925,9 +2930,9 @@ export default function InvoicesPage() {
                               alert('✅ Invoice approved and submitted to books!\n\nThe invoice has been finalized and is ready for processing.');
                               
                               // Close all modals and refresh
-                              setShowCFOModal(false);
+                              setShowNewCFOModal(false);
                               setShowGenerateModal(false);
-                              setPendingInvoiceForCFO(null);
+                              setCfoInvoiceData(null);
                               setSelectedPO(null);
                               setGeneratedInvoice(null);
                               setEditingInvoiceId(null);
@@ -3001,10 +3006,10 @@ export default function InvoicesPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bill to</h3>
                         <div className="text-gray-700">
-                          <div className="font-semibold">{pendingInvoiceForCFO.customer_name}</div>
-                          {pendingInvoiceForCFO.customer_address && (
+                          <div className="font-semibold">{cfoInvoiceData.customer_name}</div>
+                          {cfoInvoiceData.customer_address && (
                             <div className="mt-1 whitespace-pre-line text-sm">
-                              {pendingInvoiceForCFO.customer_address}
+                              {cfoInvoiceData.customer_address}
                             </div>
                           )}
                         </div>
@@ -3012,15 +3017,15 @@ export default function InvoicesPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Ship to</h3>
                         <div className="text-gray-700">
-                          <div className="font-semibold">{pendingInvoiceForCFO.customer_name}</div>
-                          {pendingInvoiceForCFO.ship_to_address && (
+                          <div className="font-semibold">{cfoInvoiceData.customer_name}</div>
+                          {cfoInvoiceData.ship_to_address && (
                             <div className="mt-1 whitespace-pre-line text-sm">
-                              {pendingInvoiceForCFO.ship_to_address}
+                              {cfoInvoiceData.ship_to_address}
                             </div>
                           )}
-                          {!pendingInvoiceForCFO.ship_to_address && pendingInvoiceForCFO.customer_address && (
+                          {!cfoInvoiceData.ship_to_address && cfoInvoiceData.customer_address && (
                             <div className="mt-1 whitespace-pre-line text-sm">
-                              {pendingInvoiceForCFO.customer_address}
+                              {cfoInvoiceData.customer_address}
                             </div>
                           )}
                         </div>
@@ -3032,16 +3037,16 @@ export default function InvoicesPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
                         <div className="text-xs text-gray-700">
-                          <div><span className="font-medium">Ship date:</span> {pendingInvoiceForCFO.ship_date ? new Date(pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'TBD'}</div>
+                          <div><span className="font-medium">Ship date:</span> {cfoInvoiceData.ship_date ? new Date(cfoInvoiceData.ship_date).toLocaleDateString() : 'TBD'}</div>
                         </div>
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
                         <div className="text-xs text-gray-700">
-                          <div><span className="font-medium">Invoice no.:</span> {pendingInvoiceForCFO.invoice_number?.replace('INV-', '') || 'N/A'}</div>
-                          <div><span className="font-medium">Terms:</span> {pendingInvoiceForCFO.terms || 'Not specified'}</div>
-                          <div><span className="font-medium">Invoice date:</span> {pendingInvoiceForCFO.invoice_date ? new Date(pendingInvoiceForCFO.invoice_date).toLocaleDateString() : 'Not set'}</div>
-                          <div><span className="font-medium">Due date:</span> {pendingInvoiceForCFO.ship_date ? new Date(pendingInvoiceForCFO.ship_date).toLocaleDateString() : 'Not set'}</div>
+                          <div><span className="font-medium">Invoice no.:</span> {cfoInvoiceData.invoice_number?.replace('INV-', '') || 'N/A'}</div>
+                          <div><span className="font-medium">Terms:</span> {cfoInvoiceData.terms || 'Not specified'}</div>
+                          <div><span className="font-medium">Invoice date:</span> {cfoInvoiceData.invoice_date ? new Date(cfoInvoiceData.invoice_date).toLocaleDateString() : 'Not set'}</div>
+                          <div><span className="font-medium">Due date:</span> {cfoInvoiceData.ship_date ? new Date(cfoInvoiceData.ship_date).toLocaleDateString() : 'Not set'}</div>
                         </div>
                       </div>
                     </div>
@@ -3061,7 +3066,7 @@ export default function InvoicesPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {pendingInvoiceForCFO.generatedInvoice?.lineItems?.map((item: any, index: number) => (
+                          {cfoInvoiceData.generatedInvoice?.lineItems?.map((item: any, index: number) => (
                             <tr key={index}>
                               <td className="border border-gray-300 px-2 py-2 text-center">{index + 1}</td>
                               <td className="border border-gray-300 px-2 py-2">{item.skuName || item.description || 'Product'}</td>
@@ -3084,23 +3089,23 @@ export default function InvoicesPage() {
                     <div className="flex justify-end mb-6">
                       <div className="text-right">
                         <div className="text-xs text-gray-600 mb-1">Total</div>
-                        <div className="text-xl font-bold text-blue-900">${Number(pendingInvoiceForCFO.total_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-xl font-bold text-blue-900">${Number(cfoInvoiceData.total_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                     </div>
 
                     {/* Bank Information Section */}
                     {(user?.role === 'super_admin' || user?.role === 'admin_cfo') && (
                       <div className="border-t pt-4 mb-4">
-                        <div className="font-semibold mb-2">{pendingInvoiceForCFO.bank_name || 'Bank Information'}</div>
+                        <div className="font-semibold mb-2">{cfoInvoiceData.bank_name || 'Bank Information'}</div>
                         <div className="text-xs space-y-1 bg-gray-50 p-2 rounded">
-                          <div>Bank: {pendingInvoiceForCFO.bank_name || 'Not specified'}</div>
-                          <div>Account: ****{(pendingInvoiceForCFO.bank_account_number || '').slice(-4) || '****'}</div>
-                          <div>Routing: ****{(pendingInvoiceForCFO.bank_routing_number || '').slice(-4) || '****'}</div>
-                          <div>SWIFT: {pendingInvoiceForCFO.bank_swift_code || 'Not specified'}</div>
-                          <div>IBAN: ****{(pendingInvoiceForCFO.bank_iban || '').slice(-4) || '****'}</div>
-                          <div>Address: {pendingInvoiceForCFO.bank_address || 'Not specified'}</div>
-                          <div>Country: {pendingInvoiceForCFO.bank_country || 'Not specified'}</div>
-                          <div>Currency: {pendingInvoiceForCFO.bank_currency || 'USD'}</div>
+                          <div>Bank: {cfoInvoiceData.bank_name || 'Not specified'}</div>
+                          <div>Account: ****{(cfoInvoiceData.bank_account_number || '').slice(-4) || '****'}</div>
+                          <div>Routing: ****{(cfoInvoiceData.bank_routing_number || '').slice(-4) || '****'}</div>
+                          <div>SWIFT: {cfoInvoiceData.bank_swift_code || 'Not specified'}</div>
+                          <div>IBAN: ****{(cfoInvoiceData.bank_iban || '').slice(-4) || '****'}</div>
+                          <div>Address: {cfoInvoiceData.bank_address || 'Not specified'}</div>
+                          <div>Country: {cfoInvoiceData.bank_country || 'Not specified'}</div>
+                          <div>Currency: {cfoInvoiceData.bank_currency || 'USD'}</div>
                         </div>
                       </div>
                     )}
@@ -3112,8 +3117,8 @@ export default function InvoicesPage() {
                         <div className="w-1/2 pr-4">
                           <div className="border-b border-gray-400 mb-2 pb-8"></div>
                           <div className="text-xs">
-                            <p className="font-semibold">Sales: {pendingInvoiceForCFO.salesSignatureName}</p>
-                            <p className="text-gray-600">Date: {pendingInvoiceForCFO.salesSignatureDate}</p>
+                            <p className="font-semibold">Sales: {cfoInvoiceData.salesSignatureName}</p>
+                            <p className="text-gray-600">Date: {cfoInvoiceData.salesSignatureDate}</p>
                           </div>
                         </div>
                         
