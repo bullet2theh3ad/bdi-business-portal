@@ -162,6 +162,7 @@ export default function InvoicesPage() {
     currency: 'USD'
   });
   const [loadingLineItems, setLoadingLineItems] = useState(false);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -448,6 +449,7 @@ export default function InvoicesPage() {
                               const originalPO = purchaseOrders?.find(po => po.purchaseOrderNumber === poReference);
                               if (originalPO) {
                                 setSelectedPO(originalPO);
+                                setEditingInvoiceId(invoice.id); // Set editing mode
                                 
                                 // Load existing invoice line items and all data
                                 fetch(`/api/cpfr/invoices/${invoice.id}/line-items`)
@@ -2101,6 +2103,7 @@ export default function InvoicesPage() {
                           setGeneratedInvoice(null);
                           setCustomPaymentTerms('');
                           setShowCustomPaymentTerms(false);
+                          setEditingInvoiceId(null); // Clear editing mode
                         }}
                         className="flex-1"
                       >
@@ -2181,8 +2184,15 @@ export default function InvoicesPage() {
 
                             console.log('Saving invoice:', invoiceData);
 
-                            const response = await fetch('/api/cpfr/invoices', {
-                              method: 'POST',
+                            // Determine if we're editing or creating
+                            const isEditing = editingInvoiceId !== null;
+                            const apiUrl = isEditing ? `/api/cpfr/invoices/${editingInvoiceId}` : '/api/cpfr/invoices';
+                            const method = isEditing ? 'PUT' : 'POST';
+                            
+                            console.log(`${isEditing ? '✏️ UPDATING' : '➕ CREATING'} invoice with method: ${method}`);
+
+                            const response = await fetch(apiUrl, {
+                              method: method,
                               headers: {
                                 'Content-Type': 'application/json',
                               },
@@ -2206,6 +2216,7 @@ export default function InvoicesPage() {
                               setGeneratedInvoice(null);
                               setCustomPaymentTerms('');
                               setShowCustomPaymentTerms(false);
+                              setEditingInvoiceId(null); // Clear editing mode
                             } else {
                               const error = await response.text();
                               console.error('Failed to save invoice:', error);
