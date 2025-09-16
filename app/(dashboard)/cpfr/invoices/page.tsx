@@ -2309,6 +2309,10 @@ export default function InvoicesPage() {
                               
                               if (invoiceStatus === 'submitted_to_finance') {
                                 // Add sales signature and trigger CFO modal
+                                console.log('🎯 TRIGGERING CFO MODAL - Invoice Status:', invoiceStatus);
+                                console.log('📋 Invoice Result:', result);
+                                console.log('👤 User:', user?.name);
+                                
                                 const invoiceWithSignature = {
                                   ...result,
                                   salesSignatureName: user?.name || 'Sales Representative',
@@ -2317,8 +2321,12 @@ export default function InvoicesPage() {
                                   selectedPO: selectedPO
                                 };
                                 
+                                console.log('📄 Invoice with Signature:', invoiceWithSignature);
+                                
                                 setPendingInvoiceForCFO(invoiceWithSignature);
                                 setShowCFOModal(true);
+                                
+                                console.log('✅ CFO Modal should be visible now!');
                                 
                                 // Don't close the Generate modal yet - CFO modal will handle it
                               } else {
@@ -2776,6 +2784,7 @@ export default function InvoicesPage() {
       )}
 
       {/* CFO Approval Modal - Full Screen Overlay */}
+      {console.log('🔍 CFO Modal State:', { showCFOModal, pendingInvoiceForCFO: !!pendingInvoiceForCFO })}
       {showCFOModal && pendingInvoiceForCFO && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
           {/* Header */}
