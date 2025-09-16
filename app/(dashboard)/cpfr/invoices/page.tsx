@@ -2346,11 +2346,11 @@ export default function InvoicesPage() {
                                   shipDate: shipDate,
                                   bankName: bankInfo.bankName,
                                   bankAccountNumber: bankInfo.accountNumber,
-                                  bankRoutingNumber: bankInfo.routingNumber,
-                                  bankSwiftCode: bankInfo.swiftCode,
+                                  bankRoutingNumber: bankInfo.routing,
+                                  bankSwiftCode: bankInfo.swift,
                                   bankIban: bankInfo.iban,
                                   bankAddress: bankInfo.bankAddress,
-                                  bankCountry: bankInfo.country,
+                                  bankCountry: bankInfo.bankCountry,
                                   bankCurrency: bankInfo.currency
                                 };
                                 
@@ -2833,9 +2833,9 @@ export default function InvoicesPage() {
                   <h3 className="font-semibold text-blue-900 mb-3">Invoice Submitted for Approval</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}</p>
-                      <p><strong>Customer:</strong> {pendingInvoiceForCFO.customerName}</p>
-                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(pendingInvoiceForCFO.totalValue).toLocaleString()}</span></p>
+                      <p><strong>Invoice #:</strong> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '') || 'N/A'}</p>
+                      <p><strong>Customer:</strong> {pendingInvoiceForCFO.customerName || 'N/A'}</p>
+                      <p><strong>Total Value:</strong> <span className="text-lg font-bold text-green-600">${Number(pendingInvoiceForCFO.totalValue || 0).toLocaleString()}</span></p>
                     </div>
                     <div>
                       <p><strong>Submitted by:</strong> {pendingInvoiceForCFO.salesSignatureName}</p>
@@ -2851,13 +2851,13 @@ export default function InvoicesPage() {
                   <div className="space-y-2 text-sm">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p><strong>Invoice Date:</strong> {new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString()}</p>
-                        <p><strong>Terms:</strong> {pendingInvoiceForCFO.terms}</p>
-                        <p><strong>Incoterms:</strong> {pendingInvoiceForCFO.incoterms}</p>
+                        <p><strong>Invoice Date:</strong> {pendingInvoiceForCFO.invoiceDate ? new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString() : 'Not set'}</p>
+                        <p><strong>Terms:</strong> {pendingInvoiceForCFO.terms || 'Not specified'}</p>
+                        <p><strong>Incoterms:</strong> {pendingInvoiceForCFO.incoterms || 'Not specified'}</p>
                       </div>
                       <div>
                         <p><strong>Ship Date:</strong> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</p>
-                        <p><strong>Location:</strong> {pendingInvoiceForCFO.incotermsLocation}</p>
+                        <p><strong>Location:</strong> {pendingInvoiceForCFO.incotermsLocation || 'Not specified'}</p>
                       </div>
                     </div>
                   </div>
@@ -2957,127 +2957,176 @@ export default function InvoicesPage() {
               <div className="lg:w-1/2 bg-gray-50 p-6 overflow-y-auto border-l">
                 <h3 className="font-semibold mb-4 text-gray-800">Invoice Preview</h3>
                 
-                {/* Full Invoice Preview - Same as Generate Modal */}
-                <div className="bg-white p-3 rounded-lg shadow-sm text-xs max-w-2xl mx-auto">
-                  {/* Invoice Header */}
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h1 className="text-lg font-bold">INVOICE</h1>
-                      <div className="text-xs mt-2">
-                        <p className="font-semibold">Boundless Devices Inc</p>
-                        <p>343 S Highway 101, Ste 200</p>
-                        <p>Solana Beach, CA 92075</p>
-                        <p>Phone: (415) 516-5975</p>
-                        <p>Email: dzand@boundlessdevices.com</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <img src="/logo.png" alt="BDI Logo" className="h-12" />
-                    </div>
-                  </div>
-
-                  {/* Bill To / Ship To */}
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1">Bill to</h3>
-                      <div className="whitespace-pre-line text-gray-700">
-                        {pendingInvoiceForCFO.customerAddress || 'Customer Address'}
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1">Ship to</h3>
-                      <div className="whitespace-pre-line text-gray-700">
-                        {pendingInvoiceForCFO.shipToAddress || 'Same as Bill To'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Invoice Details */}
-                  <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
-                      <div className="text-xs text-gray-700">
-                        <div><span className="font-medium">Ship date:</span> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
-                      <div className="text-xs text-gray-700">
-                        <div><span className="font-medium">Invoice no.:</span> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '')}</div>
-                        <div><span className="font-medium">Terms:</span> {pendingInvoiceForCFO.terms}</div>
-                        <div><span className="font-medium">Invoice date:</span> {new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString()}</div>
-                        <div><span className="font-medium">Due date:</span> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Line Items */}
-                  <div className="mb-6">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2">#</th>
-                          <th className="text-left py-2">Product or service</th>
-                          <th className="text-left py-2">SKU</th>
-                          <th className="text-right py-2">Qty</th>
-                          <th className="text-right py-2">Rate</th>
-                          <th className="text-right py-2">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pendingInvoiceForCFO.generatedInvoice?.lineItems?.map((item: any, index: number) => (
-                          <tr key={index} className="border-b">
-                            <td className="py-2">{index + 1}</td>
-                            <td className="py-2">{item.skuName}</td>
-                            <td className="py-2">{item.skuCode}</td>
-                            <td className="py-2 text-right">{item.quantity?.toLocaleString()}</td>
-                            <td className="py-2 text-right">${item.unitCost?.toLocaleString()}</td>
-                            <td className="py-2 text-right">${item.lineTotal?.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex justify-end mb-6">
-                    <div className="text-right">
-                      <div className="text-lg font-bold">
-                        Total: ${Number(pendingInvoiceForCFO.totalValue).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bank Information */}
-                  <div className="border-t pt-4 mb-4">
-                    <div className="font-semibold mb-2">Bank Information</div>
-                    <div className="text-xs space-y-1">
-                      <div>Bank: {pendingInvoiceForCFO.bankName || 'Not specified'}</div>
-                      <div>Account: ****{pendingInvoiceForCFO.bankAccountNumber?.slice(-4) || '****'}</div>
-                      <div>Routing: ****{pendingInvoiceForCFO.bankRoutingNumber?.slice(-4) || '****'}</div>
-                      <div>SWIFT: {pendingInvoiceForCFO.bankSwiftCode || 'Not specified'}</div>
-                      <div>Country: {pendingInvoiceForCFO.bankCountry || 'Not specified'}</div>
-                    </div>
-                  </div>
-
-                  {/* Signature Lines */}
-                  <div className="border-t pt-4 mt-6">
-                    <div className="flex justify-between items-start">
-                      {/* Sales Signature */}
-                      <div className="w-1/2 pr-4">
-                        <div className="border-b border-gray-400 mb-2 pb-8"></div>
-                        <div className="text-xs">
-                          <p className="font-semibold">Sales: {pendingInvoiceForCFO.salesSignatureName}</p>
-                          <p className="text-gray-600">Date: {pendingInvoiceForCFO.salesSignatureDate}</p>
+                {/* EXACT COPY of Generate Modal Invoice Preview */}
+                <div className="bg-white shadow-lg rounded-lg p-3 max-w-2xl mx-auto text-xs">
+                  {/* Professional Invoice Template - Matching Exact Format */}
+                  <div className="bg-white">
+                    {/* Header with Logo and Company Info - Fixed Layout */}
+                    <div className="mb-4">
+                      <div className="flex justify-between items-start">
+                        {/* Left: INVOICE Title and Company Info */}
+                        <div>
+                          <div className="text-2xl font-bold text-blue-600 mb-2">INVOICE</div>
+                          {/* Company Info - Under INVOICE title */}
+                          <div className="flex gap-6 text-xs text-gray-700">
+                            <div>
+                              <div className="font-semibold">Boundless Devices, Inc.</div>
+                              <div>17875 Von Karman Ave, STE 150</div>
+                              <div>Irvine, CA 92614</div>
+                            </div>
+                            <div>
+                              <div>invoices@boundlessdevices.com</div>
+                              <div>+1 (949) 994-7791</div>
+                              <div>www.boundlessdevices.com</div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Right: Logo Only */}
+                        <div>
+                          <img 
+                            src="/logos/PNG/Full Lockup Color.png" 
+                            alt="Boundless Devices Inc" 
+                            className="h-12"
+                            onError={(e) => {
+                              // Fallback to BDI text logo if image fails
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement!.innerHTML = '<div class="w-12 h-12 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">BDI</div>';
+                            }}
+                          />
                         </div>
                       </div>
-                      
-                      {/* Finance Signature */}
-                      <div className="w-1/2 pl-4">
-                        <div className="border-b border-gray-400 mb-2 pb-8"></div>
-                        <div className="text-xs">
-                          <p className="font-semibold">Finance: ___________</p>
-                          <p className="text-gray-600">Date: ___________</p>
+                    </div>
+
+                    {/* Bill To and Ship To Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bill to</h3>
+                        <div className="text-gray-700">
+                          <div className="font-semibold">{pendingInvoiceForCFO.customerName}</div>
+                          {pendingInvoiceForCFO.customerAddress && (
+                            <div className="mt-1 whitespace-pre-line text-sm">
+                              {pendingInvoiceForCFO.customerAddress}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Ship to</h3>
+                        <div className="text-gray-700">
+                          <div className="font-semibold">{pendingInvoiceForCFO.customerName}</div>
+                          {pendingInvoiceForCFO.shipToAddress && (
+                            <div className="mt-1 whitespace-pre-line text-sm">
+                              {pendingInvoiceForCFO.shipToAddress}
+                            </div>
+                          )}
+                          {!pendingInvoiceForCFO.shipToAddress && pendingInvoiceForCFO.customerAddress && (
+                            <div className="mt-1 whitespace-pre-line text-sm">
+                              {pendingInvoiceForCFO.customerAddress}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Shipping Info and Invoice Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
+                        <div className="text-xs text-gray-700">
+                          <div><span className="font-medium">Ship date:</span> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'TBD'}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">Invoice details</h3>
+                        <div className="text-xs text-gray-700">
+                          <div><span className="font-medium">Invoice no.:</span> {pendingInvoiceForCFO.invoiceNumber?.replace('INV-', '') || 'N/A'}</div>
+                          <div><span className="font-medium">Terms:</span> {pendingInvoiceForCFO.terms || 'Not specified'}</div>
+                          <div><span className="font-medium">Invoice date:</span> {pendingInvoiceForCFO.invoiceDate ? new Date(pendingInvoiceForCFO.invoiceDate).toLocaleDateString() : 'Not set'}</div>
+                          <div><span className="font-medium">Due date:</span> {pendingInvoiceForCFO.shipDate ? new Date(pendingInvoiceForCFO.shipDate).toLocaleDateString() : 'Not set'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Line Items Table - Compact Format */}
+                    <div className="mb-4">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">#</th>
+                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">Product or service</th>
+                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">SKU</th>
+                            <th className="border border-gray-300 px-2 py-2 text-left font-semibold text-xs">Description</th>
+                            <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Qty</th>
+                            <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Rate</th>
+                            <th className="border border-gray-300 px-2 py-2 text-right font-semibold text-xs">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingInvoiceForCFO.generatedInvoice?.lineItems?.map((item: any, index: number) => (
+                            <tr key={index}>
+                              <td className="border border-gray-300 px-2 py-2 text-center">{index + 1}</td>
+                              <td className="border border-gray-300 px-2 py-2">{item.skuName || item.description || 'Product'}</td>
+                              <td className="border border-gray-300 px-2 py-2">{item.skuCode || item.sku || 'N/A'}</td>
+                              <td className="border border-gray-300 px-2 py-2">{item.description || item.skuName || 'N/A'}</td>
+                              <td className="border border-gray-300 px-2 py-2 text-right">{Number(item.quantity || 0).toLocaleString()}</td>
+                              <td className="border border-gray-300 px-2 py-2 text-right">${Number(item.unitCost || 0).toLocaleString()}</td>
+                              <td className="border border-gray-300 px-2 py-2 text-right">${Number(item.lineTotal || 0).toLocaleString()}</td>
+                            </tr>
+                          )) || (
+                            <tr>
+                              <td colSpan={7} className="border border-gray-300 px-2 py-4 text-center text-gray-500">No line items available</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Total Section */}
+                    <div className="flex justify-end mb-6">
+                      <div className="text-right">
+                        <div className="text-xs text-gray-600 mb-1">Total</div>
+                        <div className="text-xl font-bold text-blue-900">${Number(pendingInvoiceForCFO.totalValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+                    </div>
+
+                    {/* Bank Information Section */}
+                    {(user?.role === 'super_admin' || user?.role === 'admin_cfo') && (
+                      <div className="border-t pt-4 mb-4">
+                        <div className="font-semibold mb-2">{pendingInvoiceForCFO.bankName || 'Bank Information'}</div>
+                        <div className="text-xs space-y-1 bg-gray-50 p-2 rounded">
+                          <div>Bank: {pendingInvoiceForCFO.bankName || 'Not specified'}</div>
+                          <div>Account: ****{(pendingInvoiceForCFO.bankAccountNumber || '').slice(-4) || '****'}</div>
+                          <div>Routing: ****{(pendingInvoiceForCFO.bankRoutingNumber || '').slice(-4) || '****'}</div>
+                          <div>SWIFT: {pendingInvoiceForCFO.bankSwiftCode || 'Not specified'}</div>
+                          <div>IBAN: ****{(pendingInvoiceForCFO.bankIban || '').slice(-4) || '****'}</div>
+                          <div>Address: {pendingInvoiceForCFO.bankAddress || 'Not specified'}</div>
+                          <div>Country: {pendingInvoiceForCFO.bankCountry || 'Not specified'}</div>
+                          <div>Currency: {pendingInvoiceForCFO.bankCurrency || 'USD'}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Signature Lines */}
+                    <div className="border-t pt-4 mt-6">
+                      <div className="flex justify-between items-start">
+                        {/* Sales Signature */}
+                        <div className="w-1/2 pr-4">
+                          <div className="border-b border-gray-400 mb-2 pb-8"></div>
+                          <div className="text-xs">
+                            <p className="font-semibold">Sales: {pendingInvoiceForCFO.salesSignatureName}</p>
+                            <p className="text-gray-600">Date: {pendingInvoiceForCFO.salesSignatureDate}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Finance Signature */}
+                        <div className="w-1/2 pl-4">
+                          <div className="border-b border-gray-400 mb-2 pb-8"></div>
+                          <div className="text-xs">
+                            <p className="font-semibold">Finance: ___________</p>
+                            <p className="text-gray-600">Date: ___________</p>
+                          </div>
                         </div>
                       </div>
                     </div>
