@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,32 +11,45 @@ export async function GET(request: NextRequest) {
 
     console.log('📄 Direct PDF download request for:', filePath);
 
-    // Use service role key to access storage
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
+    // Use service role key to access storage - try direct client instead of SSR client
+    console.log('🔧 Creating Supabase client with service role key...');
+    console.log('🔧 URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log('🔧 Service key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     // First check if file exists
+    const directoryPath = filePath.split('/').slice(0, -1).join('/');
+    console.log('🔍 Checking directory:', directoryPath);
+    
     const { data: listData, error: listError } = await supabase.storage
       .from('organization-documents')
-      .list(filePath.split('/').slice(0, -1).join('/'));
+      .list(directoryPath);
 
     if (listError) {
       console.error('❌ Error checking file existence:', listError);
+      console.error('❌ List error details:', JSON.stringify(listError, null, 2));
     } else {
       console.log('📁 Files in directory:', listData?.map(f => f.name));
+      console.log('📁 Looking for file:', filePath.split('/').pop());
+      console.log('📁 Directory contents:', listData);
+    }
+
+    // Also try to check if the full path exists
+    const { data: fileInfo, error: fileError } = await supabase.storage
+      .from('organization-documents')
+      .list('', {
+        search: filePath
+      });
+    
+    if (fileError) {
+      console.error('❌ File search error:', fileError);
+    } else {
+      console.log('🔍 File search results:', fileInfo);
     }
 
     // Download the PDF file directly
