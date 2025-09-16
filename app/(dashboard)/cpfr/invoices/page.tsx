@@ -2776,11 +2776,18 @@ export default function InvoicesPage() {
                               <div className="border-b border-gray-400 mb-2 pb-8"></div>
                               <div className="text-xs">
                                 <p className="font-semibold">Sales: {user?.name || 'Sales Representative'}</p>
-                                <p className="text-gray-600">Date: {new Date().toLocaleDateString()}</p>
+                                <p className="text-gray-600">Date: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
                               </div>
                             </div>
                             
                             {/* Finance Signature - Removed (handled via email workflow) */}
+                          </div>
+                        </div>
+                        
+                        {/* Form Version - Lower Right Corner */}
+                        <div className="flex justify-end mt-8">
+                          <div className="text-xs text-gray-400">
+                            Form Version: {process.env.NEXT_PUBLIC_APP_VERSION || 'v1.659.722e5064'}
                           </div>
                         </div>
                       </div>
