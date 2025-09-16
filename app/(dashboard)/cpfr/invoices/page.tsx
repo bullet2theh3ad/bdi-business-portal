@@ -14,6 +14,7 @@ import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translat
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { createClient } from '@supabase/supabase-js';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -57,6 +58,10 @@ interface Invoice {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function InvoicesPage() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ); // For signed URL generation
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: invoices, mutate: mutateInvoices } = useSWR<Invoice[]>('/api/cpfr/invoices', fetcher);
   const { data: purchaseOrders } = useSWR<any[]>('/api/cpfr/purchase-orders', fetcher);
@@ -288,6 +293,7 @@ export default function InvoicesPage() {
   const [showApprovedInvoiceModal, setShowApprovedInvoiceModal] = useState(false);
   const [approvedInvoiceData, setApprovedInvoiceData] = useState<any>(null);
   const [approvedInvoicePDFUrl, setApprovedInvoicePDFUrl] = useState<string>('');
+  
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -595,12 +601,9 @@ export default function InvoicesPage() {
                                 console.log('📄 PDF URL from API:', fullInvoiceData.approvedPdfUrl);
                                 
                                 if (fullInvoiceData.approvedPdfUrl) {
-                                  // Convert public URL to signed URL for private bucket access
-                                  let pdfUrl = fullInvoiceData.approvedPdfUrl;
-                                  if (pdfUrl.includes('/object/public/')) {
-                                    pdfUrl = pdfUrl.replace('/object/public/', '/object/sign/') + '?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8xY2EyYmRkYy1hZGFlLTQ4MDYtYWNjZS1iYTdiYzY1NDYxNDciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJvcmdhbml6YXRpb24tZG9jdW1lbnRzL2ludm9pY2VzLzUzMjY3OTFiLTQ1YzctNGE1NS1iMDBjLTZmNTI2Mjg3YzFkYy9pbnZvaWNlLTUzMjY3OTFiLTQ1YzctNGE1NS1iMDBjLTZmNTI2Mjg3YzFkYy1jZm8tYXBwcm92YWwucGRmIiwiaWF0IjoxNzU4MDQ4NDU4LCJleHAiOjE3NTgwNTIwNTh9.Ya2EnydbW1DN7oRWmsfJ9ylbpBIssxIeQrrYV6BkUPg';
-                                    console.log('🔄 Converted public URL to signed URL for private bucket access');
-                                  }
+                                  // Use the PDF download API route instead of direct file access
+                                  const pdfUrl = `/api/cpfr/invoices/pdf-download?filePath=${encodeURIComponent(fullInvoiceData.approvedPdfUrl)}`;
+                                  console.log('🔗 Using PDF download API route:', pdfUrl);
                                   
                                   setApprovedInvoiceData(invoice);
                                   setApprovedInvoicePDFUrl(pdfUrl);
@@ -2534,29 +2537,21 @@ export default function InvoicesPage() {
                                     const uploadResult = await uploadResponse.json();
                                     console.log('✅ PDF uploaded to Supabase, file path:', uploadResult.filePath);
                                     
-                                    // Generate fresh signed URL from file path (no expiration issues)
-                                    const urlFormData = new FormData();
-                                    urlFormData.append('filePath', uploadResult.filePath);
+                                    // SIMPLEST SOLUTION: Use the working signed URL from upload API
+                                    console.log('💾 SIMPLEST APPROACH: Using working signed URL from upload API');
                                     
-                                    const signedUrlResponse = await fetch('/api/cpfr/invoices/pdf-url', {
-                                      method: 'POST',
-                                      body: urlFormData
-                                    });
-                                    
-                                    if (signedUrlResponse.ok) {
-                                      const { url: freshSignedUrl } = await signedUrlResponse.json();
-                                      console.log('🔑 Generated fresh signed URL for CFO modal');
+                                    if (uploadResult.url) {
+                                      console.log('✅ Using working signed URL from upload API');
                                       
-                                      // Step 3: Open CFO modal with fresh signed URL
+                                      // Step 3: Open CFO modal with working signed URL
                                       setCfoInvoiceData(result);
-                                      setCfoInvoicePDFUrl(freshSignedUrl);
+                                      setCfoInvoicePDFUrl(uploadResult.url);
                                       setShowNewCFOModal(true);
                                       setShowGenerateModal(false);
                                       
-                                      console.log('✅ CFO Modal opened with PDF');
+                                      console.log('✅ CFO Modal opened with upload API signed URL');
                                     } else {
-                                      console.error('❌ Failed to generate signed URL');
-                                      alert('❌ Failed to generate PDF preview URL.');
+                                      throw new Error('No signed URL returned from upload API');
                                     }
                                   } else {
                                     throw new Error('Failed to upload PDF');
@@ -3008,7 +3003,7 @@ export default function InvoicesPage() {
       )}
 
       {/* Super Simple CFO Modal - PDF Viewer Only */}
-      {showNewCFOModal && cfoInvoicePDFUrl && (
+      {showNewCFOModal && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
           {/* Simple Header */}
           <div className="p-4 border-b bg-white flex items-center justify-between">
@@ -3029,11 +3024,20 @@ export default function InvoicesPage() {
           <div className="flex-1 flex flex-col md:flex-row">
             {/* PDF Viewer - Mobile: Top 60%, Desktop: Left side */}
             <div className="flex-1 p-4 h-64 md:h-auto">
-              <iframe
-                src={cfoInvoicePDFUrl}
-                className="w-full h-full border rounded"
-                title="Invoice PDF"
-              />
+              {cfoInvoicePDFUrl ? (
+                <iframe
+                  src={cfoInvoicePDFUrl}
+                  className="w-full h-full border rounded"
+                  title="Invoice PDF"
+                />
+              ) : (
+                <div className="w-full h-full border rounded bg-gray-100 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600">Loading PDF...</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Simple Email Controls - Mobile: Bottom, Desktop: Right side */}

@@ -36,13 +36,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
-    // Return file path instead of signed URL (no expiration)
+    // SIMPLE SOLUTION: Return BOTH file path AND working signed URL
     console.log('✅ PDF uploaded successfully to:', filePath);
-    console.log('🔑 OPTION 3: Returning file path instead of signed URL to prevent token expiration');
+    
+    // Generate signed URL that actually works (like email system) - 180 days
+    const { data: signedUrlData } = await supabase.storage
+      .from('organization-documents')
+      .createSignedUrl(filePath, 15552000); // 180 days = 180 * 24 * 60 * 60
+    
+    console.log('🔑 SIMPLE OPTION 3: Returning both file path and working signed URL');
     
     return NextResponse.json({
       success: true,
-      filePath: filePath, // Store this in database instead of signed URL
+      filePath: filePath, // For database storage (permanent)
+      url: signedUrlData?.signedUrl, // For immediate CFO modal use
       path: filePath,
       fileName: file.name
     });
