@@ -83,16 +83,20 @@ export default function InvoicesPage() {
       allowTaint: true,
       logging: false,
       onclone: (clonedDoc) => {
-        // Only fix the specific oklch issue, preserve everything else
-        const style = clonedDoc.createElement('style');
-        style.textContent = `
-          /* Only override problematic oklch colors */
-          [style*="oklch"] { 
-            color: #000 !important; 
-            background-color: #fff !important; 
+        // Remove all oklch references from computed styles
+        const allElements = clonedDoc.querySelectorAll('*');
+        allElements.forEach(el => {
+          const computedStyle = window.getComputedStyle(el as Element);
+          if (computedStyle.color && computedStyle.color.includes('oklch')) {
+            (el as HTMLElement).style.color = '#000';
           }
-        `;
-        clonedDoc.head.appendChild(style);
+          if (computedStyle.backgroundColor && computedStyle.backgroundColor.includes('oklch')) {
+            (el as HTMLElement).style.backgroundColor = '#fff';
+          }
+          if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
+            (el as HTMLElement).style.borderColor = '#ccc';
+          }
+        });
       }
     });
 
