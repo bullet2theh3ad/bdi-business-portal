@@ -77,21 +77,36 @@ export default function InvoicesPage() {
     }
 
     const canvas = await html2canvas(invoiceElement as HTMLElement, {
-      scale: 2,
+      scale: 3,
       backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      height: invoiceElement.scrollHeight,
+      width: invoiceElement.scrollWidth,
+      scrollX: 0,
+      scrollY: 0,
       onclone: (clonedDoc) => {
-        // Fix oklch color issues
+        // Fix oklch color issues and ensure content visibility
         const style = clonedDoc.createElement('style');
         style.textContent = `
           * { 
             color: #000 !important; 
             background-color: #fff !important; 
-            border-color: #ccc !important; 
+            border-color: #ccc !important;
+            font-family: Arial, sans-serif !important;
+            line-height: 1.4 !important;
           }
           .text-blue-600 { color: #2563eb !important; }
           .text-gray-700 { color: #374151 !important; }
+          .text-gray-900 { color: #111827 !important; }
           .bg-gray-100 { background-color: #f3f4f6 !important; }
+          .bg-gray-50 { background-color: #f9fafb !important; }
           .border-gray-300 { border-color: #d1d5db !important; }
+          .font-semibold { font-weight: 600 !important; }
+          .font-bold { font-weight: 700 !important; }
+          div, p, span { display: block !important; }
+          table { border-collapse: collapse !important; width: 100% !important; }
+          td, th { padding: 8px !important; border: 1px solid #ccc !important; }
         `;
         clonedDoc.head.appendChild(style);
       }
