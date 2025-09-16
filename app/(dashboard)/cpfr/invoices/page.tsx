@@ -269,6 +269,8 @@ export default function InvoicesPage() {
   const [cfoInvoiceData, setCfoInvoiceData] = useState<any>(null);
   const [emailRecipients, setEmailRecipients] = useState<string>('scistulli@boundlessdevices.com');
   const [emailCCRecipients, setEmailCCRecipients] = useState<string>('');
+  const [showRejectForm, setShowRejectForm] = useState<boolean>(false);
+  const [rejectionReason, setRejectionReason] = useState<string>('');
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -2950,102 +2952,206 @@ export default function InvoicesPage() {
               <h3 className="text-lg font-semibold mb-4">Send Invoice</h3>
               
               <div className="space-y-4 flex-1">
-                <p className="text-sm text-gray-600">
-                  Review the invoice PDF and send to recipients:
-                </p>
-                
-                {/* Email Recipients */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Recipients (Required)
-                  </label>
-                  <textarea
-                    value={emailRecipients}
-                    onChange={(e) => setEmailRecipients(e.target.value)}
-                    placeholder="recipient1@company.com, recipient2@company.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    rows={2}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Separate multiple emails with commas
-                  </p>
-                </div>
+                {!showRejectForm ? (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      Review the invoice PDF and choose an action:
+                    </p>
+                    
+                    {/* Email Recipients */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Recipients (Required)
+                      </label>
+                      <textarea
+                        value={emailRecipients}
+                        onChange={(e) => setEmailRecipients(e.target.value)}
+                        placeholder="recipient1@company.com, recipient2@company.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        rows={2}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Separate multiple emails with commas
+                      </p>
+                    </div>
 
-                {/* CC Recipients */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CC Recipients (Optional)
-                  </label>
-                  <textarea
-                    value={emailCCRecipients}
-                    onChange={(e) => setEmailCCRecipients(e.target.value)}
-                    placeholder="cc1@company.com, cc2@company.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    rows={2}
-                  />
-                </div>
+                    {/* CC Recipients */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        CC Recipients (Optional)
+                      </label>
+                      <textarea
+                        value={emailCCRecipients}
+                        onChange={(e) => setEmailCCRecipients(e.target.value)}
+                        placeholder="cc1@company.com, cc2@company.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        rows={2}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      Please provide a reason for rejecting this invoice:
+                    </p>
+                    
+                    {/* Rejection Reason */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rejection Reason (Required)
+                      </label>
+                      <textarea
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Please specify why this invoice is being rejected..."
+                        className="w-full px-3 py-2 border border-red-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                        rows={4}
+                        required
+                      />
+                    </div>
+                  </>
+                )}
                 
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setShowNewCFOModal(false);
-                    setCfoInvoicePDFUrl('');
-                    setCfoInvoiceData(null);
-                    setEmailRecipients('scistulli@boundlessdevices.com');
-                    setEmailCCRecipients('');
-                  }}
-                  className="w-full"
-                >
-                  Cancel
-                </Button>
-                
-                <Button
-                  onClick={async () => {
-                    try {
-                      if (!emailRecipients.trim()) {
-                        alert('❌ Please enter at least one email recipient.');
-                        return;
-                      }
-
-                      console.log('📧 SENDING INVOICE EMAIL');
-                      
-                      // Step 1: Update invoice status to approved
-                      const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          status: 'approved_by_finance',
-                          financeApproverName: user?.name,
-                          financeApprovalDate: new Date().toISOString()
-                        })
-                      });
-
-                      if (statusResponse.ok) {
-                        // Step 2: Send email with PDF
-                        await sendInvoiceEmail(cfoInvoiceData, cfoInvoicePDFUrl, emailRecipients, emailCCRecipients);
-                        
-                        console.log('✅ Invoice approved and email sent');
-                        alert(`✅ Invoice approved and sent!\n\nRecipients: ${emailRecipients}\n${emailCCRecipients ? `CC: ${emailCCRecipients}` : ''}`);
-                        
-                        // Close modal and refresh
+                {!showRejectForm ? (
+                  <>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setShowRejectForm(true);
+                        setRejectionReason('');
+                      }}
+                      className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      Reject for Revisions
+                    </Button>
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
                         setShowNewCFOModal(false);
                         setCfoInvoicePDFUrl('');
                         setCfoInvoiceData(null);
                         setEmailRecipients('scistulli@boundlessdevices.com');
                         setEmailCCRecipients('');
-                        mutateInvoices();
-                      } else {
-                        alert('❌ Failed to approve invoice.');
-                      }
-                    } catch (error) {
-                      console.error('Error sending invoice:', error);
-                      alert('❌ Error sending invoice email.');
-                    }
-                  }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Submit to Books (Send Email)
-                </Button>
+                        setShowRejectForm(false);
+                        setRejectionReason('');
+                      }}
+                      className="w-full"
+                    >
+                      Cancel
+                    </Button>
+                    
+                    <Button
+                      onClick={async () => {
+                        try {
+                          if (!emailRecipients.trim()) {
+                            alert('❌ Please enter at least one email recipient.');
+                            return;
+                          }
+
+                          console.log('📧 SENDING INVOICE EMAIL');
+                          
+                          // Step 1: Update invoice status to approved
+                          const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              status: 'approved_by_finance',
+                              financeApproverName: user?.name,
+                              financeApprovalDate: new Date().toISOString()
+                            })
+                          });
+
+                          if (statusResponse.ok) {
+                            // Step 2: Send email with PDF
+                            await sendInvoiceEmail(cfoInvoiceData, cfoInvoicePDFUrl, emailRecipients, emailCCRecipients);
+                            
+                            console.log('✅ Invoice approved and email sent');
+                            alert(`✅ Invoice approved and sent!\n\nRecipients: ${emailRecipients}\n${emailCCRecipients ? `CC: ${emailCCRecipients}` : ''}`);
+                            
+                            // Close modal and refresh
+                            setShowNewCFOModal(false);
+                            setCfoInvoicePDFUrl('');
+                            setCfoInvoiceData(null);
+                            setEmailRecipients('scistulli@boundlessdevices.com');
+                            setEmailCCRecipients('');
+                            setShowRejectForm(false);
+                            setRejectionReason('');
+                            mutateInvoices();
+                          } else {
+                            alert('❌ Failed to approve invoice.');
+                          }
+                        } catch (error) {
+                          console.error('Error sending invoice:', error);
+                          alert('❌ Error sending invoice email.');
+                        }
+                      }}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Submit to Books (Send Email)
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setShowRejectForm(false);
+                        setRejectionReason('');
+                      }}
+                      className="w-full"
+                    >
+                      Back to Approval
+                    </Button>
+                    
+                    <Button
+                      onClick={async () => {
+                        try {
+                          if (!rejectionReason.trim()) {
+                            alert('❌ Please enter a rejection reason.');
+                            return;
+                          }
+
+                          console.log('❌ REJECTING INVOICE');
+                          
+                          // Update invoice status to rejected
+                          const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              status: 'rejected_by_finance',
+                              rejectionReason: rejectionReason,
+                              financeApproverName: user?.name
+                            })
+                          });
+
+                          if (statusResponse.ok) {
+                            console.log('✅ Invoice rejected with reason');
+                            alert(`❌ Invoice rejected!\n\nReason: ${rejectionReason}\n\nThe invoice creator will be notified.`);
+                            
+                            // Close modal and refresh
+                            setShowNewCFOModal(false);
+                            setCfoInvoicePDFUrl('');
+                            setCfoInvoiceData(null);
+                            setEmailRecipients('scistulli@boundlessdevices.com');
+                            setEmailCCRecipients('');
+                            setShowRejectForm(false);
+                            setRejectionReason('');
+                            mutateInvoices();
+                          } else {
+                            alert('❌ Failed to reject invoice.');
+                          }
+                        } catch (error) {
+                          console.error('Error rejecting invoice:', error);
+                          alert('❌ Error rejecting invoice.');
+                        }
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Confirm Rejection
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

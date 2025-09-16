@@ -51,10 +51,21 @@ export async function PUT(
     
     console.log('✏️ UPDATING Invoice ID:', invoiceId, 'with data:', body);
 
-    // Update invoice in database with all fields
-    const [updatedInvoice] = await db
-      .update(invoices)
-      .set({
+    // Check if this is a status-only update (from CFO approval/rejection)
+    const isStatusOnlyUpdate = Object.keys(body).length <= 4 && 
+      (body.status || body.financeApproverName || body.financeApprovalDate || body.rejectionReason);
+
+    let updateData: any = {};
+
+    if (isStatusOnlyUpdate) {
+      // Status-only update - only update the fields that are provided
+      if (body.status) updateData.status = body.status;
+      if (body.financeApproverName) updateData.notes = (body.notes || '') + `\n[Finance Approved by: ${body.financeApproverName}]`;
+      if (body.rejectionReason) updateData.notes = (body.notes || '') + `\n[Rejected by Finance: ${body.rejectionReason}]`;
+      updateData.updatedAt = new Date();
+    } else {
+      // Full invoice update - update all fields
+      updateData = {
         invoiceNumber: body.invoiceNumber || body.poNumber,
         customerName: body.customerName || body.supplierName,
         invoiceDate: new Date(body.invoiceDate || body.orderDate),
@@ -63,7 +74,7 @@ export async function PUT(
         terms: body.terms,
         incoterms: body.incoterms,
         incotermsLocation: body.incotermsLocation,
-        totalValue: body.totalValue.toString(),
+        totalValue: body.totalValue ? body.totalValue.toString() : undefined,
         notes: body.notes,
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
@@ -79,7 +90,13 @@ export async function PUT(
         bankCountry: body.bankCountry || null,
         bankCurrency: body.bankCurrency || 'USD',
         updatedAt: new Date(),
-      })
+      };
+    }
+
+    // Update invoice in database
+    const [updatedInvoice] = await db
+      .update(invoices)
+      .set(updateData)
       .where(eq(invoices.id, invoiceId))
       .returning();
 
