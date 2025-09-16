@@ -80,13 +80,6 @@ export async function POST(request: NextRequest) {
             Please find the approved invoice attached to this email:
           </p>
           
-          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <strong>Invoice Details:</strong><br>
-            <span style="color: #6b7280;">Invoice Number:</span> <strong>${invoiceNumber}</strong><br>
-            ${customerName ? `<span style="color: #6b7280;">Customer:</span> <strong>${customerName}</strong><br>` : ''}
-            ${totalValue ? `<span style="color: #6b7280;">Total Value:</span> <strong>$${Number(totalValue).toLocaleString()}</strong><br>` : ''}
-            <span style="color: #6b7280;">Date Sent:</span> <strong>${currentDate}</strong>
-          </div>
           
           <p style="color: #374151; line-height: 1.6;">
             The invoice PDF is attached to this email. Please review and process accordingly.

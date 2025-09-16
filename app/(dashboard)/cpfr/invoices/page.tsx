@@ -3064,6 +3064,7 @@ export default function InvoicesPage() {
 
                           if (statusResponse.ok) {
                             // Step 2: Send email with PDF
+                            console.log('📧 CFO Invoice Data being sent:', cfoInvoiceData);
                             await sendInvoiceEmail(cfoInvoiceData, cfoInvoicePDFUrl, emailRecipients, emailCCRecipients);
                             
                             console.log('✅ Invoice approved and email sent');
