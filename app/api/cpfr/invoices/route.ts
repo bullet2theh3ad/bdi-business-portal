@@ -81,6 +81,18 @@ export async function GET(request: NextRequest) {
           notes: invoices.notes,
           createdAt: invoices.createdAt,
           createdBy: invoices.createdBy,
+          // NEW FIELDS: Addresses and bank info
+          customerAddress: invoices.customerAddress,
+          shipToAddress: invoices.shipToAddress,
+          shipDate: invoices.shipDate,
+          bankName: invoices.bankName,
+          bankAccountNumber: invoices.bankAccountNumber,
+          bankRoutingNumber: invoices.bankRoutingNumber,
+          bankSwiftCode: invoices.bankSwiftCode,
+          bankIban: invoices.bankIban,
+          bankAddress: invoices.bankAddress,
+          bankCountry: invoices.bankCountry,
+          bankCurrency: invoices.bankCurrency,
         })
         .from(invoices)
         .orderBy(invoices.createdAt);
@@ -107,6 +119,18 @@ export async function GET(request: NextRequest) {
           notes: invoices.notes,
           createdAt: invoices.createdAt,
           createdBy: invoices.createdBy,
+          // NEW FIELDS: Addresses and bank info
+          customerAddress: invoices.customerAddress,
+          shipToAddress: invoices.shipToAddress,
+          shipDate: invoices.shipDate,
+          bankName: invoices.bankName,
+          bankAccountNumber: invoices.bankAccountNumber,
+          bankRoutingNumber: invoices.bankRoutingNumber,
+          bankSwiftCode: invoices.bankSwiftCode,
+          bankIban: invoices.bankIban,
+          bankAddress: invoices.bankAddress,
+          bankCountry: invoices.bankCountry,
+          bankCurrency: invoices.bankCurrency,
         })
         .from(invoices)
         .where(eq(invoices.customerName, orgCode))

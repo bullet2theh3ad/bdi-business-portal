@@ -37,6 +37,19 @@ interface Invoice {
   notes?: string;
   createdBy: string;
   createdAt: string;
+  // NEW FIELDS: Addresses and shipping
+  customerAddress?: string;
+  shipToAddress?: string;
+  shipDate?: string;
+  // NEW FIELDS: Bank information
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankRoutingNumber?: string;
+  bankSwiftCode?: string;
+  bankIban?: string;
+  bankAddress?: string;
+  bankCountry?: string;
+  bankCurrency?: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -436,21 +449,61 @@ export default function InvoicesPage() {
                               if (originalPO) {
                                 setSelectedPO(originalPO);
                                 
-                                // Populate Generate Invoice modal with existing invoice data
-                                setGeneratedInvoice({
-                                  invoiceNumber: invoice.invoiceNumber,
-                                  customerName: invoice.customerName,
-                                  invoiceDate: invoice.invoiceDate,
-                                  requestedDeliveryWeek: invoice.requestedDeliveryWeek,
-                                  status: invoice.status,
-                                  terms: invoice.terms,
-                                  incoterms: invoice.incoterms,
-                                  incotermsLocation: invoice.incotermsLocation,
-                                  totalValue: invoice.totalValue,
-                                  notes: invoice.notes,
-                                  poReference: poReference,
-                                  lineItems: [] // Will be loaded from PO
-                                });
+                                // Load existing invoice line items and all data
+                                fetch(`/api/cpfr/invoices/${invoice.id}/line-items`)
+                                  .then(res => res.json())
+                                  .then(existingLineItems => {
+                                    console.log('📋 Loaded existing invoice line items:', existingLineItems);
+                                    
+                                    // Populate Generate Invoice modal with existing invoice data
+                                    setGeneratedInvoice({
+                                      invoiceNumber: invoice.invoiceNumber,
+                                      customerName: invoice.customerName,
+                                      invoiceDate: invoice.invoiceDate,
+                                      requestedDeliveryWeek: invoice.requestedDeliveryWeek,
+                                      status: invoice.status,
+                                      terms: invoice.terms,
+                                      incoterms: invoice.incoterms,
+                                      incotermsLocation: invoice.incotermsLocation,
+                                      totalValue: invoice.totalValue,
+                                      notes: invoice.notes,
+                                      poReference: poReference,
+                                      lineItems: existingLineItems || []
+                                    });
+                                    
+                                    // Load saved address and bank data
+                                    setCustomerAddress(invoice.customerAddress || '');
+                                    setShipToAddress(invoice.shipToAddress || '');
+                                    setShipDate(invoice.shipDate || '');
+                                    setBankInfo({
+                                      bankName: invoice.bankName || 'California Bank and Trust',
+                                      accountNumber: invoice.bankAccountNumber || '',
+                                      routing: invoice.bankRoutingNumber || '',
+                                      swift: invoice.bankSwiftCode || '',
+                                      iban: invoice.bankIban || '',
+                                      bankAddress: invoice.bankAddress || '',
+                                      bankCountry: invoice.bankCountry || 'United States',
+                                      currency: invoice.bankCurrency || 'USD'
+                                    });
+                                  })
+                                  .catch(error => {
+                                    console.error('Error loading existing invoice line items:', error);
+                                    // Still populate basic invoice data even if line items fail
+                                    setGeneratedInvoice({
+                                      invoiceNumber: invoice.invoiceNumber,
+                                      customerName: invoice.customerName,
+                                      invoiceDate: invoice.invoiceDate,
+                                      requestedDeliveryWeek: invoice.requestedDeliveryWeek,
+                                      status: invoice.status,
+                                      terms: invoice.terms,
+                                      incoterms: invoice.incoterms,
+                                      incotermsLocation: invoice.incotermsLocation,
+                                      totalValue: invoice.totalValue,
+                                      notes: invoice.notes,
+                                      poReference: poReference,
+                                      lineItems: []
+                                    });
+                                  });
                                 
                                 // Set status for editing
                                 setInvoiceStatus(invoice.status === 'submitted' ? 'submitted' : 'draft');
