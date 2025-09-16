@@ -163,6 +163,7 @@ export default function InvoicesPage() {
   });
   const [loadingLineItems, setLoadingLineItems] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [showBankDetails, setShowBankDetails] = useState(false);
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -1948,20 +1949,36 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
-                        {/* Bank Information Section */}
-                        <div className="bg-purple-50 p-4 rounded-lg">
-                          <h3 className="font-semibold text-purple-900 mb-3">Bank Information</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <Label htmlFor="bankName">Bank Name</Label>
-                              <Input
-                                id="bankName"
-                                value={bankInfo.bankName}
-                                onChange={(e) => setBankInfo({...bankInfo, bankName: e.target.value})}
-                                placeholder="e.g., California Bank and Trust"
-                                className="mt-1"
-                              />
+                        {/* Bank Information Section - CFO/Super Admin Only */}
+                        {(user?.role === 'super_admin' || user?.role === 'admin_cfo') && (
+                          <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+                            <div className="flex justify-between items-center mb-3">
+                              <h3 className="font-semibold text-purple-900">🔒 Bank Information (CFO Access)</h3>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowBankDetails(!showBankDetails)}
+                                className="text-xs"
+                              >
+                                <SemanticBDIIcon semantic={showBankDetails ? 'hide' : 'show'} size={12} className="mr-1" />
+                                {showBankDetails ? 'Hide Details' : 'Show Details'}
+                              </Button>
                             </div>
+                            {showBankDetails ? (
+                              // FULL BANK DETAILS - Visible when toggled
+                              <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                    <Label htmlFor="bankName">Bank Name</Label>
+                                    <Input
+                                      id="bankName"
+                                      value={bankInfo.bankName}
+                                      onChange={(e) => setBankInfo({...bankInfo, bankName: e.target.value})}
+                                      placeholder="e.g., California Bank and Trust"
+                                      className="mt-1"
+                                    />
+                                  </div>
                             <div>
                               <Label htmlFor="bankCountry">Bank Country</Label>
                               <Input
@@ -2043,10 +2060,24 @@ export default function InvoicesPage() {
                               rows={2}
                             />
                           </div>
-                          <p className="text-xs text-purple-600 mt-2">
-                            Comprehensive bank information for domestic and international wire transfers
-                          </p>
-                        </div>
+                                <p className="text-xs text-purple-600 mt-2">
+                                  Comprehensive bank information for domestic and international wire transfers
+                                </p>
+                              </>
+                            ) : (
+                              // OBFUSCATED BANK DETAILS - Hidden by default
+                              <div className="bg-gray-100 p-4 rounded text-center">
+                                <p className="text-sm text-gray-600 mb-2">🔒 Bank Details Hidden</p>
+                                <p className="text-xs text-gray-500">
+                                  {bankInfo.bankName ? `Bank: ${bankInfo.bankName}` : 'No bank information entered'}
+                                  <br />
+                                  {bankInfo.accountNumber ? `Account: ****${bankInfo.accountNumber.slice(-4)}` : ''}
+                                  {bankInfo.routing ? ` | Routing: ****${bankInfo.routing.slice(-4)}` : ''}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Step 3: Notes & Status */}
                         <div className="bg-yellow-50 p-4 rounded-lg">
@@ -2359,8 +2390,32 @@ export default function InvoicesPage() {
                                 generatedInvoice.lineItems.map((item: any, index: number) => (
                                   <tr key={index} className="hover:bg-gray-50">
                                     <td className="border border-gray-300 px-2 py-2 text-xs">{index + 1}.</td>
-                                    <td className="border border-gray-300 px-2 py-2 text-xs font-medium">{item.skuName || item.sku || 'Product Name'}</td>
-                                    <td className="border border-gray-300 px-2 py-2 text-xs">{item.skuCode || item.sku}</td>
+                                    <td className="border border-gray-300 px-1 py-1 text-xs">
+                                      <input
+                                        type="text"
+                                        value={item.skuName || item.sku || 'Product Name'}
+                                        onChange={(e) => {
+                                          const updatedLineItems = [...generatedInvoice.lineItems];
+                                          updatedLineItems[index] = {...item, skuName: e.target.value};
+                                          setGeneratedInvoice({...generatedInvoice, lineItems: updatedLineItems});
+                                        }}
+                                        className="w-full text-xs border-0 bg-transparent focus:bg-white focus:border focus:border-blue-300 rounded px-1 font-medium"
+                                        placeholder="Product name..."
+                                      />
+                                    </td>
+                                    <td className="border border-gray-300 px-1 py-1 text-xs">
+                                      <input
+                                        type="text"
+                                        value={item.skuCode || item.sku}
+                                        onChange={(e) => {
+                                          const updatedLineItems = [...generatedInvoice.lineItems];
+                                          updatedLineItems[index] = {...item, skuCode: e.target.value, sku: e.target.value};
+                                          setGeneratedInvoice({...generatedInvoice, lineItems: updatedLineItems});
+                                        }}
+                                        className="w-full text-xs border-0 bg-transparent focus:bg-white focus:border focus:border-blue-300 rounded px-1"
+                                        placeholder="SKU code..."
+                                      />
+                                    </td>
                                     <td className="border border-gray-300 px-1 py-1 text-xs">
                                       <input
                                         type="text"
@@ -2407,17 +2462,27 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
-                        {/* Bank Information */}
+                        {/* Bank Information - Role-based Display */}
                         {(bankInfo.bankName || bankInfo.accountNumber || bankInfo.routing || bankInfo.swift) && (
                           <div className="border-t border-gray-200 pt-4 text-xs text-gray-700">
                             <div className="font-semibold mb-2">{bankInfo.bankName || 'Bank Information'}</div>
-                            {bankInfo.accountNumber && <div>Account number: {bankInfo.accountNumber}</div>}
-                            {bankInfo.routing && <div>Routing: {bankInfo.routing}</div>}
-                            {bankInfo.swift && <div>Swift (International Wires Only): {bankInfo.swift}</div>}
-                            {bankInfo.iban && <div>IBAN: {bankInfo.iban}</div>}
-                            {bankInfo.bankAddress && <div>Bank Address: {bankInfo.bankAddress}</div>}
-                            {bankInfo.bankCountry && <div>Country: {bankInfo.bankCountry}</div>}
-                            {bankInfo.currency && <div>Currency: {bankInfo.currency}</div>}
+                            {(user?.role === 'super_admin' || user?.role === 'admin_cfo') ? (
+                              // FULL DETAILS for CFO/Super Admin
+                              <>
+                                {bankInfo.accountNumber && <div>Account number: {showBankDetails ? bankInfo.accountNumber : `****${bankInfo.accountNumber.slice(-4)}`}</div>}
+                                {bankInfo.routing && <div>Routing: {showBankDetails ? bankInfo.routing : `****${bankInfo.routing.slice(-4)}`}</div>}
+                                {bankInfo.swift && <div>Swift (International Wires Only): {bankInfo.swift}</div>}
+                                {bankInfo.iban && <div>IBAN: {showBankDetails ? bankInfo.iban : `****${bankInfo.iban.slice(-4)}`}</div>}
+                                {bankInfo.bankAddress && <div>Bank Address: {bankInfo.bankAddress}</div>}
+                                {bankInfo.bankCountry && <div>Country: {bankInfo.bankCountry}</div>}
+                                {bankInfo.currency && <div>Currency: {bankInfo.currency}</div>}
+                              </>
+                            ) : (
+                              // OBFUSCATED for other roles
+                              <div className="text-gray-500 italic">
+                                Bank details available to CFO and Super Admin only
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
