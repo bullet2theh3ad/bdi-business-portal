@@ -2307,29 +2307,7 @@ export default function InvoicesPage() {
                             if (response.ok) {
                               const result = await response.json();
                               
-                              if (invoiceStatus === 'submitted_to_finance') {
-                                // Add sales signature and trigger CFO modal
-                                console.log('🎯 TRIGGERING CFO MODAL - Invoice Status:', invoiceStatus);
-                                console.log('📋 Invoice Result:', result);
-                                console.log('👤 User:', user?.name);
-                                
-                                const invoiceWithSignature = {
-                                  ...result,
-                                  salesSignatureName: user?.name || 'Sales Representative',
-                                  salesSignatureDate: new Date().toLocaleDateString(),
-                                  generatedInvoice: generatedInvoice,
-                                  selectedPO: selectedPO
-                                };
-                                
-                                console.log('📄 Invoice with Signature:', invoiceWithSignature);
-                                
-                                setPendingInvoiceForCFO(invoiceWithSignature);
-                                setShowCFOModal(true);
-                                
-                                console.log('✅ CFO Modal should be visible now!');
-                                
-                                // Don't close the Generate modal yet - CFO modal will handle it
-                              } else {
+                              if (invoiceStatus !== 'submitted_to_finance') {
                                 // Draft save - show success and close
                                 alert(`✅ Invoice saved as draft!\n\nInvoice ID: ${result.id}`);
                                 
@@ -2344,6 +2322,42 @@ export default function InvoicesPage() {
                               
                               // Always refresh the invoice list
                               mutateInvoices();
+                              
+                              // Check if we need to trigger CFO modal (works for both create and edit)
+                              if (invoiceStatus === 'submitted_to_finance') {
+                                console.log('🎯 TRIGGERING CFO MODAL AFTER SAVE - Invoice Status:', invoiceStatus);
+                                console.log('📋 Invoice Result:', result);
+                                console.log('👤 User:', user?.name);
+                                
+                                const invoiceWithSignature = {
+                                  ...result,
+                                  salesSignatureName: user?.name || 'Sales Representative',
+                                  salesSignatureDate: new Date().toLocaleDateString(),
+                                  generatedInvoice: generatedInvoice,
+                                  selectedPO: selectedPO,
+                                  customerAddress: customerAddress,
+                                  shipToAddress: shipToAddress,
+                                  shipDate: shipDate,
+                                  bankName: bankInfo.bankName,
+                                  bankAccountNumber: bankInfo.accountNumber,
+                                  bankRoutingNumber: bankInfo.routingNumber,
+                                  bankSwiftCode: bankInfo.swiftCode,
+                                  bankIban: bankInfo.iban,
+                                  bankAddress: bankInfo.bankAddress,
+                                  bankCountry: bankInfo.country,
+                                  bankCurrency: bankInfo.currency
+                                };
+                                
+                                console.log('📄 Invoice with Signature for CFO:', invoiceWithSignature);
+                                
+                                setPendingInvoiceForCFO(invoiceWithSignature);
+                                setShowCFOModal(true);
+                                
+                                console.log('✅ CFO Modal triggered after save!');
+                                
+                                // Don't close the Generate modal yet - CFO modal will handle it
+                                return; // Exit early to prevent closing modals
+                              }
                             } else {
                               const error = await response.text();
                               console.error('Failed to save invoice:', error);
