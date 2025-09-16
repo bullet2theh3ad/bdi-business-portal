@@ -30,7 +30,7 @@ interface Invoice {
   customerName: string;
   invoiceDate: string;
   requestedDeliveryWeek: string;
-  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered' | 'submitted' | 'approved' | 'rejected';
+  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered' | 'submitted' | 'approved' | 'rejected' | 'submitted_to_finance' | 'approved_by_finance' | 'rejected_by_finance';
   terms: string; // NET30, NET60, etc.
   incoterms: string; // FOB, CIF, DDP, etc.
   incotermsLocation: string; // Shanghai Port, Los Angeles, etc.
@@ -271,6 +271,11 @@ export default function InvoicesPage() {
   const [emailCCRecipients, setEmailCCRecipients] = useState<string>('');
   const [showRejectForm, setShowRejectForm] = useState<boolean>(false);
   const [rejectionReason, setRejectionReason] = useState<string>('');
+  
+  // Approved Invoice View Modal States
+  const [showApprovedInvoiceModal, setShowApprovedInvoiceModal] = useState(false);
+  const [approvedInvoiceData, setApprovedInvoiceData] = useState<any>(null);
+  const [approvedInvoicePDFUrl, setApprovedInvoicePDFUrl] = useState<string>('');
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -563,6 +568,20 @@ export default function InvoicesPage() {
                           return (
                             <>
                               <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={async () => {
+                          
+                          // Check if invoice is approved - use view-only modal
+                          if (invoice.status === 'approved_by_finance') {
+                            console.log('👁️ Viewing APPROVED invoice - opening view-only modal with resend option');
+                            
+                            // Find the PDF for this approved invoice in Supabase storage
+                            const pdfFileName = `invoice-${invoice.id}-cfo-approval.pdf`;
+                            const pdfUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization-documents/invoices/${invoice.id}/${pdfFileName}`;
+                            
+                            setApprovedInvoiceData(invoice);
+                            setApprovedInvoicePDFUrl(pdfUrl);
+                            setShowApprovedInvoiceModal(true);
+                            return;
+                          }
                           
                           if (isGeneratedInvoice) {
                             // GENERATED INVOICE - Route to Generate Invoice modal with PO context
@@ -3157,6 +3176,132 @@ export default function InvoicesPage() {
             </div>
           </div>
             
+        </div>
+      )}
+
+      {/* Approved Invoice View-Only Modal */}
+      {showApprovedInvoiceModal && approvedInvoicePDFUrl && (
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+          {/* Header */}
+          <div className="p-4 border-b bg-white flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Approved Invoice - View Only</h2>
+              <p className="text-sm text-gray-600">
+                Invoice: {approvedInvoiceData?.invoice_number || approvedInvoiceData?.invoiceNumber} | 
+                Status: Finance Approved ✅
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowApprovedInvoiceModal(false);
+                setApprovedInvoicePDFUrl('');
+                setApprovedInvoiceData(null);
+                setEmailRecipients('scistulli@boundlessdevices.com');
+                setEmailCCRecipients('');
+              }}
+              className="text-2xl text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content - PDF Viewer + Email Controls */}
+          <div className="flex-1 flex">
+            {/* PDF Viewer - Left side */}
+            <div className="flex-1 p-4">
+              <iframe
+                src={approvedInvoicePDFUrl}
+                className="w-full h-full border rounded"
+                title="Approved Invoice PDF"
+              />
+            </div>
+
+            {/* Email Resend Controls - Right side */}
+            <div className="w-80 p-6 bg-gray-50 border-l flex flex-col">
+              <h3 className="text-lg font-semibold mb-4">Resend Invoice</h3>
+              
+              <div className="space-y-4 flex-1">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm text-green-800 font-medium">✅ Finance Approved</p>
+                  <p className="text-xs text-green-600">This invoice has been approved and cannot be edited.</p>
+                </div>
+                
+                {/* Email Recipients */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Recipients (Required)
+                  </label>
+                  <textarea
+                    value={emailRecipients}
+                    onChange={(e) => setEmailRecipients(e.target.value)}
+                    placeholder="recipient1@company.com, recipient2@company.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    rows={2}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Separate multiple emails with commas
+                  </p>
+                </div>
+
+                {/* CC Recipients */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CC Recipients (Optional)
+                  </label>
+                  <textarea
+                    value={emailCCRecipients}
+                    onChange={(e) => setEmailCCRecipients(e.target.value)}
+                    placeholder="cc1@company.com, cc2@company.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    rows={2}
+                  />
+                </div>
+                
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setShowApprovedInvoiceModal(false);
+                    setApprovedInvoicePDFUrl('');
+                    setApprovedInvoiceData(null);
+                    setEmailRecipients('scistulli@boundlessdevices.com');
+                    setEmailCCRecipients('');
+                  }}
+                  className="w-full"
+                >
+                  Close
+                </Button>
+                
+                <Button
+                  onClick={async () => {
+                    try {
+                      if (!emailRecipients.trim()) {
+                        alert('❌ Please enter at least one email recipient.');
+                        return;
+                      }
+
+                      console.log('📧 RESENDING APPROVED INVOICE EMAIL');
+                      
+                      // Send email with PDF (no status update needed - already approved)
+                      await sendInvoiceEmail(approvedInvoiceData, approvedInvoicePDFUrl, emailRecipients, emailCCRecipients);
+                      
+                      console.log('✅ Approved invoice resent successfully');
+                      alert(`✅ Invoice resent successfully!\n\nRecipients: ${emailRecipients}\n${emailCCRecipients ? `CC: ${emailCCRecipients}` : ''}`);
+                      
+                      // Reset email fields but keep modal open
+                      setEmailRecipients('scistulli@boundlessdevices.com');
+                      setEmailCCRecipients('');
+                    } catch (error) {
+                      console.error('Error resending invoice:', error);
+                      alert('❌ Error resending invoice email.');
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Resend Email
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
