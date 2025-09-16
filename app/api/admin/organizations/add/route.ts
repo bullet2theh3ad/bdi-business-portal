@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-in" 
+                  <a href="https://www.bdibusinessportal.com/sign-in" 
                      style="background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
                     Login to Portal
                   </a>
@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
       loginInfo: {
         email: validatedData.adminEmail,
         tempPassword: tempPassword, // Include in response for Super Admin reference
-        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-in`
+        loginUrl: 'https://www.bdibusinessportal.com/sign-in'
       }
     });
     
