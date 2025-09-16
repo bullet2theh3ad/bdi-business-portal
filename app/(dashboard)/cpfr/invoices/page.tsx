@@ -573,17 +573,20 @@ export default function InvoicesPage() {
                           if (invoice.status === 'approved_by_finance') {
                             console.log('👁️ Viewing APPROVED invoice - opening view-only modal with resend option');
                             
-                            // Use the same PDF URL construction as the working email system
-                            console.log('🔗 Constructing PDF URL for approved invoice (same as email system)');
+                            // Use the stored PDF URL from when the invoice was approved
+                            console.log('🔗 Loading stored PDF URL for approved invoice');
                             
-                            const pdfFileName = `invoice-${invoice.id}-cfo-approval.pdf`;
-                            const pdfUrl = `https://parrkjrpmvtpkmteuewb.supabase.co/storage/v1/object/public/organization-documents/invoices/${invoice.id}/${pdfFileName}`;
+                            const storedPdfUrl = (invoice as any).approved_pdf_url || (invoice as any).approvedPdfUrl;
                             
-                            console.log('📄 PDF URL constructed:', pdfUrl);
-                            
-                            setApprovedInvoiceData(invoice);
-                            setApprovedInvoicePDFUrl(pdfUrl);
-                            setShowApprovedInvoiceModal(true);
+                            if (storedPdfUrl) {
+                              console.log('✅ Found stored PDF URL:', storedPdfUrl);
+                              setApprovedInvoiceData(invoice);
+                              setApprovedInvoicePDFUrl(storedPdfUrl);
+                              setShowApprovedInvoiceModal(true);
+                            } else {
+                              console.log('❌ No stored PDF URL found for approved invoice');
+                              alert('❌ PDF not available for this approved invoice. Please contact support.');
+                            }
                             return;
                           }
                           
@@ -3074,14 +3077,15 @@ export default function InvoicesPage() {
 
                           console.log('📧 SENDING INVOICE EMAIL');
                           
-                          // Step 1: Update invoice status to approved
+                          // Step 1: Update invoice status to approved and store PDF URL
                           const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               status: 'approved_by_finance',
                               financeApproverName: user?.name,
-                              financeApprovalDate: new Date().toISOString()
+                              financeApprovalDate: new Date().toISOString(),
+                              approvedPdfUrl: cfoInvoicePDFUrl // Store the working PDF URL
                             })
                           });
 

@@ -62,6 +62,7 @@ export async function PUT(
       if (body.status) updateData.status = body.status;
       if (body.financeApproverName) updateData.notes = (body.notes || '') + `\n[Finance Approved by: ${body.financeApproverName}]`;
       if (body.rejectionReason) updateData.notes = (body.notes || '') + `\n[Rejected by Finance: ${body.rejectionReason}]`;
+      if (body.approvedPdfUrl) updateData.approvedPdfUrl = body.approvedPdfUrl; // Store PDF URL
       updateData.updatedAt = new Date();
     } else {
       // Full invoice update - update all fields
