@@ -68,8 +68,8 @@ export default function InvoicesPage() {
   const { data: organizations } = useSWR('/api/admin/organizations?includeInternal=true', fetcher);
 
   // Simple PDF Generation Function
-  const generateInvoicePDF = async () => {
-    console.log('📄 Starting PDF generation...');
+  const generateInvoicePDF = async (includeCFOSignature = false, cfoName = '') => {
+    console.log('📄 Starting PDF generation...', includeCFOSignature ? 'with CFO signature' : 'sales only');
     
     const invoiceElement = document.querySelector('.invoice-preview-for-pdf');
     if (!invoiceElement) {
@@ -118,6 +118,17 @@ export default function InvoicesPage() {
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    
+    // Add CFO signature if requested
+    if (includeCFOSignature && cfoName) {
+      console.log('✍️ Adding CFO signature to PDF:', cfoName);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      // Position signature in the Finance area (right side of signature lines)
+      const signatureY = pdfHeight - 25;
+      pdf.text(`Finance: ${cfoName}`, pdfWidth - 80, signatureY);
+      pdf.text(`Date: ${new Date().toLocaleDateString()}`, pdfWidth - 80, signatureY + 5);
+    }
     
     return pdf.output('dataurlstring');
   };
@@ -2926,25 +2937,55 @@ export default function InvoicesPage() {
                 <Button
                   onClick={async () => {
                     try {
-                      const response = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          status: 'approved_by_finance'
-                        })
+                      console.log('🎯 CFO APPROVING: Adding signature and regenerating PDF');
+                      
+                      // Step 1: Generate new PDF with CFO signature
+                      const signedPdfDataUrl = await generateInvoicePDF(true, user?.name || 'CFO');
+                      console.log('✅ PDF with CFO signature generated');
+                      
+                      // Step 2: Upload signed PDF to Supabase
+                      const response = await fetch(signedPdfDataUrl);
+                      const pdfBlob = await response.blob();
+                      
+                      const formData = new FormData();
+                      formData.append('file', pdfBlob, `invoice-${cfoInvoiceData.id}-approved-signed.pdf`);
+                      formData.append('invoiceId', cfoInvoiceData.id);
+                      
+                      const uploadResponse = await fetch('/api/cpfr/invoices/pdf-upload', {
+                        method: 'POST',
+                        body: formData
                       });
+                      
+                      if (uploadResponse.ok) {
+                        const uploadResult = await uploadResponse.json();
+                        console.log('✅ Signed PDF uploaded:', uploadResult.url);
+                        
+                        // Step 3: Update invoice status to approved
+                        const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            status: 'approved_by_finance',
+                            financeApproverName: user?.name,
+                            financeSignatureDate: new Date().toLocaleDateString()
+                          })
+                        });
 
-                      if (response.ok) {
-                        alert('✅ Invoice approved and submitted to books!');
-                        setShowNewCFOModal(false);
-                        setCfoInvoicePDFUrl('');
-                        setCfoInvoiceData(null);
-                        mutateInvoices();
+                        if (statusResponse.ok) {
+                          // Step 4: Show updated PDF with signature
+                          setCfoInvoicePDFUrl(uploadResult.url);
+                          console.log('✅ Invoice approved and PDF updated with CFO signature');
+                          alert('✅ Invoice approved! PDF updated with your signature.\n\nReview the signed PDF and choose final action.');
+                          mutateInvoices();
+                        } else {
+                          alert('❌ Failed to update invoice status.');
+                        }
                       } else {
-                        alert('❌ Failed to approve invoice.');
+                        alert('❌ Failed to upload signed PDF.');
                       }
                     } catch (error) {
-                      alert('❌ Error approving invoice.');
+                      console.error('Error in CFO approval process:', error);
+                      alert('❌ Error processing CFO approval.');
                     }
                   }}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
