@@ -573,32 +573,17 @@ export default function InvoicesPage() {
                           if (invoice.status === 'approved_by_finance') {
                             console.log('👁️ Viewing APPROVED invoice - opening view-only modal with resend option');
                             
-                            try {
-                              // Get the signed PDF URL from Supabase
-                              console.log('🔗 Getting signed PDF URL for approved invoice');
-                              
-                              const formData = new FormData();
-                              formData.append('invoiceId', invoice.id);
-                              
-                              const urlResponse = await fetch('/api/cpfr/invoices/pdf-url', {
-                                method: 'POST',
-                                body: formData
-                              });
-                              
-                              if (urlResponse.ok) {
-                                const urlResult = await urlResponse.json();
-                                console.log('✅ Got signed PDF URL:', urlResult.url);
-                                setApprovedInvoiceData(invoice);
-                                setApprovedInvoicePDFUrl(urlResult.url);
-                                setShowApprovedInvoiceModal(true);
-                              } else {
-                                console.error('❌ Failed to get PDF URL');
-                                alert('❌ Could not load invoice PDF for viewing.');
-                              }
-                            } catch (error) {
-                              console.error('Error loading approved invoice PDF:', error);
-                              alert('❌ Could not load invoice PDF for viewing.');
-                            }
+                            // Use the same PDF URL construction as the working email system
+                            console.log('🔗 Constructing PDF URL for approved invoice (same as email system)');
+                            
+                            const pdfFileName = `invoice-${invoice.id}-cfo-approval.pdf`;
+                            const pdfUrl = `https://parrkjrpmvtpkmteuewb.supabase.co/storage/v1/object/public/organization-documents/invoices/${invoice.id}/${pdfFileName}`;
+                            
+                            console.log('📄 PDF URL constructed:', pdfUrl);
+                            
+                            setApprovedInvoiceData(invoice);
+                            setApprovedInvoicePDFUrl(pdfUrl);
+                            setShowApprovedInvoiceModal(true);
                             return;
                           }
                           
