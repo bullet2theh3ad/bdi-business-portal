@@ -882,9 +882,9 @@ ${result.email?.sent
                   </div>
                 </div>
 
-                {/* User Invitation Management */}
+                {/* User Invitation Management - HIDDEN */}
                 <Separator />
-                <div>
+                <div className="hidden">
                   <h3 className="text-lg font-semibold mb-4">Invite Users to {selectedOrg.name}</h3>
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <div className="flex items-center space-x-2 mb-3">
