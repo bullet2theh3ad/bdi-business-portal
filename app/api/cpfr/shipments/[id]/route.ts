@@ -101,7 +101,7 @@ export async function PUT(
     const originCustomLocation = body.organizationId === 'custom' ? (body.customOriginFactory || 'Custom Origin') : null;
     const shippingCustomPartner = body.shipperOrganizationId === 'custom' ? (body.customShippingPartner || 'Custom Shipper') : 
                                  body.shipperOrganizationId === 'lcl' ? 'LCL (Less than Container Load)' : null;
-    const destinationCustomLocation = body.destinationWarehouseId === 'custom' ? (body.customDestinationWarehouse || 'Custom Destination') : null;
+    const destinationCustomLocation = body.destinationWarehouseId === 'custom' ? (body.customDestinationWarehouse || 'Custom Destination') : 'Customer Warehouse';
     
     // Prepare update data with proper validation
     const updateData: any = {
@@ -111,7 +111,7 @@ export async function PUT(
       origin_custom_location: originCustomLocation, // Custom origin text
       shipper_organization_id: shippingPartnerId, // Step 2: Shipping Partner (null if custom/lcl)
       destination_warehouse_id: destinationWarehouseId, // Step 3: Final Destination (null if custom)
-      destination_custom_location: destinationCustomLocation || body.destinationCustomLocation || null, // Custom destination text
+      destination_custom_location: destinationCustomLocation || body.destinationCustomLocation || 'Customer Warehouse', // Custom destination text (required NOT NULL)
       // Legacy/additional fields
       priority: body.priority || 'standard',
       shipper_reference: body.shipperReference || shippingCustomPartner || null,
