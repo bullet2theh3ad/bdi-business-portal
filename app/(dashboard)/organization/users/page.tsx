@@ -41,18 +41,35 @@ export default function OrganizationUsersPage() {
 
     setIsInviting(true);
     try {
-      const response = await fetch('/api/organization/users/invite', {
+      console.log('🔍 ORG INVITE - Using BDI Admin system for invitation');
+      console.log('🔍 ORG INVITE - User organization:', (user as any).organization);
+      
+      // Get the current user's organization ID
+      const userOrganization = (user as any).organization;
+      if (!userOrganization?.id) {
+        throw new Error('Organization information not available');
+      }
+
+      // Use BDI Admin API endpoint that sends passwords
+      const response = await fetch(`/api/admin/organizations/${userOrganization.id}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inviteForm)
+        body: JSON.stringify({
+          name: inviteForm.name,
+          email: inviteForm.email,
+          role: inviteForm.role,
+          title: inviteForm.title,
+          department: inviteForm.department
+        })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send invitation');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send invitation');
       }
 
       const result = await response.json();
-      // User invitation sent successfully
+      console.log('✅ ORG INVITE - User created successfully:', result);
       
       // Reset form and close modal
       setInviteForm({
@@ -67,10 +84,10 @@ export default function OrganizationUsersPage() {
       // Refresh users list
       mutateOrgUsers();
       
-      alert('User invitation sent successfully!');
+      alert(`✅ User invitation sent successfully!\n\nLogin credentials have been emailed to ${inviteForm.email}`);
     } catch (error) {
-      console.error('Error sending invitation:', error);
-      alert('Failed to send invitation. Please try again.');
+      console.error('❌ ORG INVITE - Error sending invitation:', error);
+      alert(`Failed to send invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsInviting(false);
     }
@@ -192,14 +209,10 @@ export default function OrganizationUsersPage() {
               <p className="text-muted-foreground">{tc('organizationUsersDescription', 'Manage team members and user access')}</p>
             </div>
           </div>
-          {/* Organization-level invites disabled - use BDI Admin → Organizations → Manage Users instead */}
-          <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <SemanticBDIIcon semantic="info" size={16} />
-              <span className="font-medium">User Management</span>
-            </div>
-            <p className="mt-1">User invitations are managed by BDI Admin through Organizations → Manage Users</p>
-          </div>
+          <Button className="bg-bdi-green-1 hover:bg-bdi-green-2" onClick={() => setShowInviteModal(true)}>
+            <SemanticBDIIcon semantic="users" size={16} className="mr-2 brightness-0 invert" />
+            Invite User
+          </Button>
         </div>
       </div>
 
@@ -276,16 +289,13 @@ export default function OrganizationUsersPage() {
                 <SemanticBDIIcon semantic="users" size={48} className="mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No Users Yet</h3>
                 <p className="text-muted-foreground mb-4">Get started by inviting your first team member</p>
-                <div className="text-center">
-                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <SemanticBDIIcon semantic="info" size={16} />
-                      <span className="font-medium">User Management</span>
-                    </div>
-                    <p>User invitations are managed by BDI Admin</p>
-                    <p className="text-xs mt-1">Go to Organizations → Manage Users</p>
-                  </div>
-                </div>
+                <Button 
+                  className="bg-bdi-green-1 hover:bg-bdi-green-2" 
+                  onClick={() => setShowInviteModal(true)}
+                >
+                  <SemanticBDIIcon semantic="users" size={16} className="mr-2 brightness-0 invert" />
+                  Invite User
+                </Button>
               </div>
             </div>
           ) : (
@@ -430,8 +440,8 @@ export default function OrganizationUsersPage() {
       )}
 
       {/* User Invitation Modal */}
-      {/* Organization-level invites disabled - using BDI Admin system instead */}
-      {false && showInviteModal && (
+      {/* User Invitation Modal - Now using BDI Admin system */}
+      {showInviteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <CardHeader>
@@ -439,7 +449,7 @@ export default function OrganizationUsersPage() {
                 <SemanticBDIIcon semantic="users" size={24} className="mr-2" />
                 Invite User to {(user as any).organization?.name}
               </CardTitle>
-              <CardDescription>Send an invitation to join your organization</CardDescription>
+              <CardDescription>Send an invitation with login credentials via email</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
