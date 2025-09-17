@@ -78,11 +78,67 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   
+  // Password change state
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
   // Only show Quick Actions for BDI users (Super Admin)
   const isBDIUser = user?.role === 'super_admin';
   
   // For now, show all API keys (organization filtering to be implemented later)
   const orgApiKeys = allApiKeys;
+
+  // Password change handler
+  const handlePasswordChange = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      alert('Please fill in all password fields');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      alert('New password must be at least 8 characters long');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const response = await fetch('/api/user/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert('✅ Password changed successfully!');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        alert(`❌ Failed to change password: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert('❌ Failed to change password. Please try again.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -235,6 +291,93 @@ export default function SettingsPage() {
                   <div className="mt-2 text-sm text-gray-600">
                     Current: <Badge variant="outline">{user?.preferredLanguage === 'zh' ? '🇨🇳 中文' : user?.preferredLanguage === 'vi' ? '🇻🇳 Tiếng Việt' : user?.preferredLanguage === 'es' ? '🇪🇸 Español' : '🇺🇸 English'}</Badge>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 🔐 Password Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <SemanticBDIIcon semantic="security" size={20} className="mr-2" />
+                Password Management
+              </CardTitle>
+              <CardDescription>Change your account password for enhanced security</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    placeholder="Enter your current password"
+                    className="mt-1"
+                    disabled={isChangingPassword}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="Enter new password (min. 8 characters)"
+                    className="mt-1"
+                    disabled={isChangingPassword}
+                    minLength={8}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Confirm your new password"
+                    className="mt-1"
+                    disabled={isChangingPassword}
+                    minLength={8}
+                  />
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={handlePasswordChange}
+                    disabled={isChangingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                    className="bg-bdi-green-1 hover:bg-bdi-green-2"
+                  >
+                    {isChangingPassword ? (
+                      <>
+                        <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin brightness-0 invert" />
+                        Changing Password...
+                      </>
+                    ) : (
+                      <>
+                        <SemanticBDIIcon semantic="security" size={16} className="mr-2 brightness-0 invert" />
+                        Change Password
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <SemanticBDIIcon semantic="info" size={14} />
+                    <span className="font-medium">Security Tips</span>
+                  </div>
+                  <ul className="text-xs space-y-1 ml-4">
+                    <li>• Use at least 8 characters</li>
+                    <li>• Include uppercase, lowercase, numbers, and symbols</li>
+                    <li>• Don't reuse passwords from other accounts</li>
+                  </ul>
                 </div>
               </div>
             </CardContent>
