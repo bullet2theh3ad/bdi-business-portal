@@ -2396,14 +2396,30 @@ export default function InvoicesPage() {
                         type="button"
                         className="bg-blue-600 hover:bg-blue-700 flex-1"
                         onClick={async () => {
-                          setIsGeneratingPDF(true);
-                          // TODO: Generate PDF export
-                          setTimeout(() => {
+                          try {
+                            setIsGeneratingPDF(true);
+                            console.log('📄 Exporting invoice PDF preview...');
+                            
+                            // Generate PDF from current invoice preview
+                            const pdfDataUrl = await generateInvoicePDF(false); // No CFO signature for preview
+                            
+                            // Create download link
+                            const link = document.createElement('a');
+                            link.href = pdfDataUrl;
+                            link.download = `invoice-preview-${generatedInvoice?.invoiceNumber || 'draft'}-${new Date().toISOString().split('T')[0]}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            
+                            console.log('✅ Invoice PDF exported successfully');
+                          } catch (error) {
+                            console.error('❌ Error exporting PDF:', error);
+                            alert('Failed to export PDF. Please try again.');
+                          } finally {
                             setIsGeneratingPDF(false);
-                            alert('PDF export functionality coming soon!');
-                          }, 2000);
+                          }
                         }}
-                        disabled={isGeneratingPDF}
+                        disabled={isGeneratingPDF || !generatedInvoice}
                       >
                         {isGeneratingPDF ? (
                           <>
