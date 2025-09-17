@@ -639,9 +639,9 @@ export default function InvoicesPage() {
                             return;
                           }
                           
-                          if (invoice.status === 'rejected_by_finance') {
-                            // REJECTED INVOICE - Route to Generate Invoice modal for comprehensive editing
-                            console.log('🔄 Editing REJECTED invoice - routing to Generate Invoice modal for full revision');
+                          if (invoice.status === 'rejected_by_finance' || invoice.status === 'submitted_to_finance') {
+                            // REJECTED OR SUBMITTED INVOICE - Route to Generate Invoice modal for comprehensive editing
+                            console.log('🔄 Editing REJECTED/SUBMITTED invoice - routing to Generate Invoice modal for full revision');
                             
                             // Extract PO reference from notes (handle rejection notes format)
                             let poReference = invoice.notes?.match(/Generated from PO: (.+?)(?:\n|$)/)?.[1];
@@ -881,6 +881,7 @@ export default function InvoicesPage() {
                                 <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                                 {tc('editButton', 
                                   invoice.status === 'rejected_by_finance' ? 'Revise Rejected' :
+                                  invoice.status === 'submitted_to_finance' ? 'Edit Submitted' :
                                   isGeneratedInvoice ? 'Edit Generated' : 'Edit'
                                 )}
                               </Button>
