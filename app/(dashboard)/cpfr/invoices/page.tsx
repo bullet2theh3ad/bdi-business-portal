@@ -284,8 +284,8 @@ export default function InvoicesPage() {
   const [showNewCFOModal, setShowNewCFOModal] = useState(false);
   const [cfoInvoicePDFUrl, setCfoInvoicePDFUrl] = useState<string>('');
   const [cfoInvoiceData, setCfoInvoiceData] = useState<any>(null);
-  const [emailRecipients, setEmailRecipients] = useState<string>('scistulli@boundlessdevices.com');
-  const [emailCCRecipients, setEmailCCRecipients] = useState<string>('');
+  const [emailRecipients, setEmailRecipients] = useState<string>('boundless_devices_inc+sales@assist.intuit.com');
+  const [emailCCRecipients, setEmailCCRecipients] = useState<string>('invoices@boundlessdevices.com, dzand@boundlessdevices.com, scistulli@boundlessdevices.com');
   const [showRejectForm, setShowRejectForm] = useState<boolean>(false);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   
@@ -3140,8 +3140,8 @@ export default function InvoicesPage() {
                         setShowNewCFOModal(false);
                         setCfoInvoicePDFUrl('');
                         setCfoInvoiceData(null);
-                        setEmailRecipients('scistulli@boundlessdevices.com');
-                        setEmailCCRecipients('');
+                        setEmailRecipients('boundless_devices_inc+sales@assist.intuit.com');
+                        setEmailCCRecipients('invoices@boundlessdevices.com, dzand@boundlessdevices.com, scistulli@boundlessdevices.com');
                         setShowRejectForm(false);
                         setRejectionReason('');
                       }}
