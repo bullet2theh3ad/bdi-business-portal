@@ -639,9 +639,100 @@ export default function InvoicesPage() {
                             return;
                           }
                           
-                          if (isGeneratedInvoice || invoice.status === 'rejected_by_finance') {
-                            // GENERATED INVOICE OR REJECTED INVOICE - Route to Generate Invoice modal with PO context
-                            console.log('🔄 Editing GENERATED/REJECTED invoice - routing to Generate Invoice modal');
+                          if (invoice.status === 'rejected_by_finance') {
+                            // REJECTED INVOICE - Route to Generate Invoice modal for comprehensive editing
+                            console.log('🔄 Editing REJECTED invoice - routing to Generate Invoice modal for full revision');
+                            
+                            // Extract PO reference from notes (handle rejection notes format)
+                            let poReference = invoice.notes?.match(/Generated from PO: (.+?)(?:\n|$)/)?.[1];
+                            
+                            // If not found, try to extract from invoice number pattern
+                            if (!poReference && invoice.invoiceNumber) {
+                              // Try to extract from invoice number format like "INV-MT-EY20250710A-2025-1709"
+                              const invoiceMatch = invoice.invoiceNumber.match(/INV-(.+?)-\d{4}-\d+/);
+                              if (invoiceMatch) {
+                                poReference = invoiceMatch[1];
+                              }
+                            }
+                            
+                            if (poReference) {
+                              // Find the original PO
+                              const originalPO = purchaseOrders?.find(po => po.purchaseOrderNumber === poReference);
+                              if (originalPO) {
+                                setSelectedPO(originalPO);
+                                setEditingInvoiceId(invoice.id); // Set editing mode
+                                
+                                // Load existing invoice data for revision
+                                fetch(`/api/cpfr/invoices/${invoice.id}/line-items`)
+                                  .then(res => res.json())
+                                  .then(existingLineItems => {
+                                    console.log('📋 Loaded rejected invoice data for revision:', existingLineItems);
+                                    
+                                    // Populate Generate Invoice modal with existing invoice data
+                                    setGeneratedInvoice({
+                                      invoiceNumber: invoice.invoiceNumber,
+                                      customerName: invoice.customerName,
+                                      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                      requestedDeliveryWeek: invoice.requestedDeliveryWeek,
+                                      status: 'draft', // Reset to draft for revision
+                                      terms: invoice.terms,
+                                      incoterms: invoice.incoterms,
+                                      incotermsLocation: invoice.incotermsLocation,
+                                      totalValue: invoice.totalValue,
+                                      notes: invoice.notes,
+                                      poReference: poReference,
+                                      lineItems: existingLineItems.map((item: any) => ({
+                                        id: item.id,
+                                        skuId: item.skuId,
+                                        sku: item.skuCode,
+                                        skuCode: item.skuCode,
+                                        skuName: item.skuName,
+                                        description: item.description,
+                                        quantity: item.quantity,
+                                        unitCost: parseFloat(item.unitCost),
+                                        unitPrice: parseFloat(item.unitCost),
+                                        lineTotal: parseFloat(item.lineTotal),
+                                        totalCost: parseFloat(item.lineTotal)
+                                      }))
+                                    });
+                                    
+                                    // Load bank info if available
+                                    setBankInfo({
+                                      bankName: invoice.bankName || 'California Bank and Trust',
+                                      accountNumber: invoice.bankAccountNumber || '',
+                                      routing: invoice.bankRoutingNumber || '',
+                                      swift: invoice.bankSwiftCode || '',
+                                      iban: invoice.bankIban || '',
+                                      bankAddress: invoice.bankAddress || '',
+                                      bankCountry: invoice.bankCountry || 'United States',
+                                      currency: invoice.bankCurrency || 'USD'
+                                    });
+                                    
+                                    setCustomerAddress(invoice.customerAddress || '');
+                                    setShipToAddress(invoice.shipToAddress || '');
+                                    setShipDate(invoice.shipDate || '');
+                                    
+                                    // Set invoice status to draft for editing
+                                    setInvoiceStatus('draft');
+                                    
+                                    setShowGenerateModal(true);
+                                  })
+                                  .catch(error => {
+                                    console.error('Error loading rejected invoice data:', error);
+                                    alert('❌ Error loading invoice data for editing.');
+                                  });
+                              } else {
+                                alert('❌ Cannot find original Purchase Order for this rejected invoice.');
+                              }
+                            } else {
+                              alert('❌ Cannot find PO reference for this rejected invoice.');
+                            }
+                            return;
+                          }
+                          
+                          if (isGeneratedInvoice) {
+                            // GENERATED INVOICE - Route to Generate Invoice modal with PO context
+                            console.log('🔄 Editing GENERATED invoice - routing to Generate Invoice modal');
                             
                             // Extract PO reference from notes (handle rejection notes format)
                             let poReference = invoice.notes?.match(/Generated from PO: (.+?)(?:\n|$)/)?.[1];
@@ -736,8 +827,8 @@ export default function InvoicesPage() {
                               alert('❌ Cannot find PO reference for this generated invoice.');
                             }
                           } else {
-                            // ENTERED INVOICE - Use standard edit modal
-                            console.log('📝 Editing ENTERED invoice - using standard edit modal');
+                            // ENTERED INVOICE OR SUBMITTED_TO_FINANCE - Use standard edit modal
+                            console.log('📝 Editing ENTERED/SUBMITTED invoice - using standard edit modal');
                             setSelectedInvoice(invoice);
                             setEditUploadedDocs([]);
                             
@@ -788,7 +879,10 @@ export default function InvoicesPage() {
                           }
                               }}>
                                 <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                                {tc('editButton', (isGeneratedInvoice || invoice.status === 'rejected_by_finance') ? 'Edit Generated' : 'Edit')}
+                                {tc('editButton', 
+                                  invoice.status === 'rejected_by_finance' ? 'Revise Rejected' :
+                                  isGeneratedInvoice ? 'Edit Generated' : 'Edit'
+                                )}
                               </Button>
                               
                               {/* CFO Approval Button - Only show for submitted invoices and super_admin */}
