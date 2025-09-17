@@ -305,7 +305,7 @@ export async function POST(
       })
     ).toString('base64url');
 
-    const inviteUrl = `https://www.bdibusinessportal.com/sign-up?token=${invitationToken}`;
+    const inviteUrl = `https://www.bdibusinessportal.com/sign-in`;
     
     console.log('📧 EMAIL PROCESS - Invitation URL generated');
     console.log('📧 EMAIL PROCESS - Resend configured:', !!resend);

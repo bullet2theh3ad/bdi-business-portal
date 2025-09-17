@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
                 <h3 style="margin-top: 0; color: #1f2937;">Your Login Credentials:</h3>
                 <p><strong>Email:</strong> ${validatedData.email}</p>
                 <p><strong>Temporary Password:</strong> <code style="background-color: #e5e7eb; padding: 2px 4px; border-radius: 4px;">${tempPassword}</code></p>
-                <p><strong>Login URL:</strong> <a href="https://bdibusinessportal.com/sign-in">https://bdibusinessportal.com/sign-in</a></p>
+                <p><strong>Login URL:</strong> <a href="https://www.bdibusinessportal.com/sign-in">https://www.bdibusinessportal.com/sign-in</a></p>
               </div>
               
               <p><strong>Important:</strong> Please change your password after your first login for security.</p>
