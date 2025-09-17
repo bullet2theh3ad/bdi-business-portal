@@ -639,9 +639,9 @@ export default function InvoicesPage() {
                             return;
                           }
                           
-                          if (isGeneratedInvoice) {
-                            // GENERATED INVOICE - Route to Generate Invoice modal with PO context
-                            console.log('🔄 Editing GENERATED invoice - routing to Generate Invoice modal');
+                          if (isGeneratedInvoice || invoice.status === 'rejected_by_finance') {
+                            // GENERATED INVOICE OR REJECTED INVOICE - Route to Generate Invoice modal with PO context
+                            console.log('🔄 Editing GENERATED/REJECTED invoice - routing to Generate Invoice modal');
                             
                             // Extract PO reference from notes
                             const poReference = invoice.notes?.match(/Generated from PO: (.+)/)?.[1];
@@ -778,7 +778,7 @@ export default function InvoicesPage() {
                           }
                               }}>
                                 <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                                {tc('editButton', isGeneratedInvoice ? 'Edit Generated' : 'Edit')}
+                                {tc('editButton', (isGeneratedInvoice || invoice.status === 'rejected_by_finance') ? 'Edit Generated' : 'Edit')}
                               </Button>
                               
                               {/* CFO Approval Button - Only show for submitted invoices and super_admin */}

@@ -4,6 +4,66 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, invoices, invoiceLineItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// 📧 Send rejection notification email
+async function sendRejectionNotification(invoiceData: any, rejectionReason: string, rejectorName: string) {
+  console.log('📧 REJECTION NOTIFICATION - Invoice rejected:', invoiceData.invoiceNumber);
+  
+  if (!resend) {
+    console.log('📧 REJECTION NOTIFICATION - Resend not configured, skipping email');
+    return;
+  }
+
+  try {
+    const { data: emailData, error: emailError } = await resend.emails.send({
+      from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
+      to: ['invoices@boundlessdevices.com'],
+      cc: ['dzand@boundlessdevices.com'],
+      subject: `❌ Invoice Rejected for Revisions - ${invoiceData.invoiceNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #dc2626;">❌ Invoice Rejected for Revisions</h2>
+          
+          <p>Hello Team,</p>
+          
+          <p>Invoice <strong>${invoiceData.invoiceNumber}</strong> has been rejected by <strong>${rejectorName}</strong> and requires revisions:</p>
+          
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+            <h3 style="margin-top: 0; color: #991b1b;">Rejection Details:</h3>
+            <p><strong>Invoice Number:</strong> ${invoiceData.invoiceNumber}</p>
+            <p><strong>Customer:</strong> ${invoiceData.customerName}</p>
+            <p><strong>Total Value:</strong> $${Number(invoiceData.totalValue).toLocaleString()}</p>
+            <p><strong>Rejected by:</strong> ${rejectorName}</p>
+            <p><strong>Rejection Date:</strong> ${new Date().toLocaleString()}</p>
+            
+            <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; margin-top: 15px;">
+              <h4 style="margin-top: 0; color: #991b1b;">Rejection Reason:</h4>
+              <p style="margin: 0; font-style: italic; color: #374151;">"${rejectionReason}"</p>
+            </div>
+          </div>
+          
+          <p><strong>Next Steps:</strong> Please review the rejection reason and make necessary revisions before resubmitting.</p>
+          
+          <p><a href="https://bdibusinessportal.com/cpfr/invoices" style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Invoices</a></p>
+          
+          <p>Best regards,<br>BDI Business Portal Team</p>
+        </div>
+      `
+    });
+
+    if (emailError) {
+      console.error('📧 REJECTION NOTIFICATION - Email failed:', emailError);
+    } else {
+      console.log('📧 REJECTION NOTIFICATION - Email sent successfully to invoices@boundlessdevices.com:', emailData?.id);
+    }
+
+  } catch (error) {
+    console.error('📧 REJECTION NOTIFICATION - Error sending email:', error);
+  }
+}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -187,6 +247,17 @@ export async function PUT(
         .returning();
 
       console.log('✅ Updated line items:', insertedLineItems.length);
+    }
+
+    // 📧 Send rejection notification if invoice was rejected
+    if (body.status === 'rejected_by_finance' && body.rejectionReason) {
+      console.log('📧 REJECTION NOTIFICATION - Invoice rejected, sending notification');
+      try {
+        await sendRejectionNotification(updatedInvoice, body.rejectionReason, body.financeApproverName || 'Finance Team');
+      } catch (emailError) {
+        console.error('⚠️ Failed to send rejection notification (invoice update still successful):', emailError);
+        // Don't fail the invoice update if email fails
+      }
     }
     
     return NextResponse.json({ 
