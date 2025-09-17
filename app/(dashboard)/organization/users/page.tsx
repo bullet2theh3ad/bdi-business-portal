@@ -50,8 +50,8 @@ export default function OrganizationUsersPage() {
         throw new Error('Organization information not available');
       }
 
-      // Use BDI Admin API endpoint that sends passwords
-      const response = await fetch(`/api/admin/organizations/${userOrganization.id}/users`, {
+      // Use organization admin API endpoint that sends passwords
+      const response = await fetch('/api/organization/users/invite-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
