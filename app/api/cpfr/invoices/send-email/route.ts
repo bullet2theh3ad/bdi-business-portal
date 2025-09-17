@@ -39,9 +39,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse recipients
-    const toEmails = recipients.split(',').map((email: string) => email.trim()).filter(Boolean);
-    const ccEmails = ccRecipients ? ccRecipients.split(',').map((email: string) => email.trim()).filter(Boolean) : [];
+    // Parse recipients - but override for "submit to books" (CFO approved invoices)
+    let toEmails = recipients.split(',').map((email: string) => email.trim()).filter(Boolean);
+    let ccEmails = ccRecipients ? ccRecipients.split(',').map((email: string) => email.trim()).filter(Boolean) : [];
+    
+    // 📚 SUBMIT TO BOOKS: Override recipients for CFO approved invoices going to QuickBooks
+    // Check if this is a "submit to books" email (approved invoice with specific characteristics)
+    if (invoiceNumber && pdfUrl && (recipients.includes('invoices@boundlessdevices.com') || recipients.includes('scistulli@boundlessdevices.com'))) {
+      console.log('📚 SUBMIT TO BOOKS - Detected CFO approved invoice, using QuickBooks recipients');
+      
+      // TO: QuickBooks integration email
+      toEmails = ['boundless_devices_inc+sales@assist.intuit.com'];
+      
+      // CC: Pre-populated finance team
+      ccEmails = [
+        'invoices@boundlessdevices.com',
+        'dzand@boundlessdevices.com', 
+        'scistulli@boundlessdevices.com'
+      ];
+      
+      console.log('📚 SUBMIT TO BOOKS - TO:', toEmails);
+      console.log('📚 SUBMIT TO BOOKS - CC:', ccEmails);
+    }
 
     // Download the PDF from Supabase
     console.log('📄 Downloading PDF from:', pdfUrl);
