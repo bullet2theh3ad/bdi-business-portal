@@ -4,6 +4,61 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, invoices, invoiceLineItems, organizations, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// 📧 Send finance notification when invoice submitted for approval
+async function sendFinanceNotification(invoiceData: any, submitterName: string) {
+  console.log('📧 FINANCE NOTIFICATION - Invoice submitted to finance:', invoiceData.invoiceNumber);
+  
+  if (!resend) {
+    console.log('📧 FINANCE NOTIFICATION - Resend not configured, skipping email');
+    return;
+  }
+
+  try {
+    const { data: emailData, error: emailError } = await resend.emails.send({
+      from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
+      to: ['invoices@boundlessdevices.com'],
+      subject: `🔔 Invoice Ready for Finance Review - ${invoiceData.invoiceNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">🔔 Invoice Submitted for Finance Approval</h2>
+          
+          <p>Hello Finance Team,</p>
+          
+          <p>A new invoice has been submitted by <strong>${submitterName}</strong> and requires finance review and approval:</p>
+          
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">Invoice Details:</h3>
+            <p><strong>Invoice Number:</strong> ${invoiceData.invoiceNumber}</p>
+            <p><strong>Customer:</strong> ${invoiceData.customerName}</p>
+            <p><strong>Total Value:</strong> $${Number(invoiceData.totalValue).toLocaleString()}</p>
+            <p><strong>Terms:</strong> ${invoiceData.terms}</p>
+            <p><strong>Submitted by:</strong> ${submitterName}</p>
+            <p><strong>Submission Date:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+          
+          <p><strong>Next Steps:</strong> Please log into the BDI Business Portal to review and approve this invoice.</p>
+          
+          <p><a href="https://bdibusinessportal.com/cpfr/invoices" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review Invoice</a></p>
+          
+          <p>Best regards,<br>BDI Business Portal Team</p>
+        </div>
+      `
+    });
+
+    if (emailError) {
+      console.error('📧 FINANCE NOTIFICATION - Email failed:', emailError);
+    } else {
+      console.log('📧 FINANCE NOTIFICATION - Email sent successfully to invoices@boundlessdevices.com:', emailData?.id);
+    }
+
+  } catch (error) {
+    console.error('📧 FINANCE NOTIFICATION - Error sending email:', error);
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -244,6 +299,17 @@ export async function POST(request: NextRequest) {
         .returning();
 
       console.log('Created line items:', insertedLineItems.length);
+    }
+
+    // 📧 Send finance notification if invoice submitted to finance
+    if (newInvoice.status === 'submitted_to_finance') {
+      console.log('📧 FINANCE NOTIFICATION - Invoice submitted to finance, sending notification');
+      try {
+        await sendFinanceNotification(newInvoice, requestingUser.name || requestingUser.email);
+      } catch (emailError) {
+        console.error('⚠️ Failed to send finance notification (invoice creation still successful):', emailError);
+        // Don't fail the invoice creation if email fails
+      }
     }
     
     return NextResponse.json({ 

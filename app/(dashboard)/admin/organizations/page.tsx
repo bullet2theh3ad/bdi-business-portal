@@ -640,7 +640,25 @@ ${result.email?.sent
                         variant="outline" 
                         size="sm" 
                         className="w-full sm:w-auto justify-center sm:justify-start bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
-                        onClick={() => setSelectedOrgForCpfr(org)}
+                        onClick={async () => {
+                          // Fetch fresh organization data with CPFR contacts
+                          try {
+                            const response = await fetch(`/api/admin/organizations/${org.id}/cpfr-contacts`);
+                            if (response.ok) {
+                              const freshData = await response.json();
+                              setSelectedOrgForCpfr({
+                                ...org,
+                                cpfrContacts: freshData.cpfrContacts
+                              });
+                            } else {
+                              console.log('Failed to fetch CPFR contacts, using cached data');
+                              setSelectedOrgForCpfr(org);
+                            }
+                          } catch (error) {
+                            console.error('Error fetching CPFR contacts:', error);
+                            setSelectedOrgForCpfr(org);
+                          }
+                        }}
                       >
                         <SemanticBDIIcon semantic="collaboration" size={14} className="mr-2 sm:mr-1" />
                         <span className="sm:hidden">CPFR Contacts</span>
