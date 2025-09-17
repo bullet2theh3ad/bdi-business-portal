@@ -85,6 +85,11 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: ''
   });
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
   
   // Only show Quick Actions for BDI users (Super Admin)
   const isBDIUser = user?.role === 'super_admin';
@@ -128,6 +133,11 @@ export default function SettingsPage() {
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
+        });
+        setPasswordVisibility({
+          current: false,
+          new: false,
+          confirm: false
         });
       } else {
         alert(`❌ Failed to change password: ${result.error || 'Unknown error'}`);
@@ -309,43 +319,85 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="current-password">Current Password</Label>
-                  <Input
-                    id="current-password"
-                    type="password"
-                    value={passwordForm.currentPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                    placeholder="Enter your current password"
-                    className="mt-1"
-                    disabled={isChangingPassword}
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      id="current-password"
+                      type={passwordVisibility.current ? "text" : "password"}
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      placeholder="Enter your current password"
+                      className="pr-10"
+                      disabled={isChangingPassword}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setPasswordVisibility(prev => ({ ...prev, current: !prev.current }))}
+                      disabled={isChangingPassword}
+                    >
+                      <SemanticBDIIcon 
+                        semantic={passwordVisibility.current ? "hide" : "show"} 
+                        size={16} 
+                        className="text-gray-400 hover:text-gray-600" 
+                      />
+                    </button>
+                  </div>
                 </div>
                 
                 <div>
                   <Label htmlFor="new-password">New Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                    placeholder="Enter new password (min. 8 characters)"
-                    className="mt-1"
-                    disabled={isChangingPassword}
-                    minLength={8}
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      id="new-password"
+                      type={passwordVisibility.new ? "text" : "password"}
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Enter new password (min. 8 characters)"
+                      className="pr-10"
+                      disabled={isChangingPassword}
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setPasswordVisibility(prev => ({ ...prev, new: !prev.new }))}
+                      disabled={isChangingPassword}
+                    >
+                      <SemanticBDIIcon 
+                        semantic={passwordVisibility.new ? "hide" : "show"} 
+                        size={16} 
+                        className="text-gray-400 hover:text-gray-600" 
+                      />
+                    </button>
+                  </div>
                 </div>
                 
                 <div>
                   <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    placeholder="Confirm your new password"
-                    className="mt-1"
-                    disabled={isChangingPassword}
-                    minLength={8}
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      id="confirm-password"
+                      type={passwordVisibility.confirm ? "text" : "password"}
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="Confirm your new password"
+                      className="pr-10"
+                      disabled={isChangingPassword}
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setPasswordVisibility(prev => ({ ...prev, confirm: !prev.confirm }))}
+                      disabled={isChangingPassword}
+                    >
+                      <SemanticBDIIcon 
+                        semantic={passwordVisibility.confirm ? "hide" : "show"} 
+                        size={16} 
+                        className="text-gray-400 hover:text-gray-600" 
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4">
