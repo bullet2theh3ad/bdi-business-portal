@@ -192,10 +192,14 @@ export default function OrganizationUsersPage() {
               <p className="text-muted-foreground">{tc('organizationUsersDescription', 'Manage team members and user access')}</p>
             </div>
           </div>
-          <Button className="bg-bdi-green-1 hover:bg-bdi-green-2" onClick={() => setShowInviteModal(true)}>
-            <SemanticBDIIcon semantic="users" size={16} className="mr-2 brightness-0 invert" />
-            Invite User
-          </Button>
+          {/* Organization-level invites disabled - use BDI Admin → Organizations → Manage Users instead */}
+          <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="info" size={16} />
+              <span className="font-medium">User Management</span>
+            </div>
+            <p className="mt-1">User invitations are managed by BDI Admin through Organizations → Manage Users</p>
+          </div>
         </div>
       </div>
 
@@ -272,13 +276,16 @@ export default function OrganizationUsersPage() {
                 <SemanticBDIIcon semantic="users" size={48} className="mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No Users Yet</h3>
                 <p className="text-muted-foreground mb-4">Get started by inviting your first team member</p>
-                <Button 
-                  className="bg-bdi-green-1 hover:bg-bdi-green-2" 
-                  onClick={() => setShowInviteModal(true)}
-                >
-                  <SemanticBDIIcon semantic="users" size={16} className="mr-2 brightness-0 invert" />
-                  Invite User
-                </Button>
+                <div className="text-center">
+                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <SemanticBDIIcon semantic="info" size={16} />
+                      <span className="font-medium">User Management</span>
+                    </div>
+                    <p>User invitations are managed by BDI Admin</p>
+                    <p className="text-xs mt-1">Go to Organizations → Manage Users</p>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -423,7 +430,8 @@ export default function OrganizationUsersPage() {
       )}
 
       {/* User Invitation Modal */}
-      {showInviteModal && (
+      {/* Organization-level invites disabled - using BDI Admin system instead */}
+      {false && showInviteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <CardHeader>
