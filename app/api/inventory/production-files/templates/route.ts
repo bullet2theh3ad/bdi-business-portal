@@ -112,8 +112,11 @@ export async function POST(request: NextRequest) {
       .eq('auth_id', authUser.id)
       .single();
 
-    if (!userData || userData.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
+    // Allow super_admin OR organization admins for template uploads
+    const isAuthorized = userData && (userData.role === 'super_admin' || userData.role === 'admin');
+    
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     const formData = await request.formData();

@@ -40,8 +40,11 @@ export async function POST(request: NextRequest) {
       .where(eq(users.authId, authUser.id))
       .limit(1);
 
-    if (!dbUser.length || dbUser[0].role !== 'super_admin') {
-      return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
+    // Allow super_admin OR organization admins for template uploads
+    const isAuthorized = dbUser[0].role === 'super_admin' || dbUser[0].role === 'admin';
+    
+    if (!dbUser.length || !isAuthorized) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     const formData = await request.formData();

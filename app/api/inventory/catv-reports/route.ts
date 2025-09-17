@@ -128,9 +128,13 @@ export async function POST(request: NextRequest) {
 
     console.log('🔐 User role:', dbUser[0].role);
     
-    // For now, only allow super_admin to upload CATV reports
-    if (dbUser[0].role !== 'super_admin') {
-      return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
+    // Allow super_admin OR organization members (admin/member roles)
+    const isAuthorized = dbUser[0].role === 'super_admin' || 
+      dbUser[0].role === 'admin' || 
+      dbUser[0].role === 'member';
+    
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Organization member access required' }, { status: 403 });
     }
 
     const formData = await request.formData();

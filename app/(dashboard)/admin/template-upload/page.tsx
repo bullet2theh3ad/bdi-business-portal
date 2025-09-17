@@ -15,12 +15,12 @@ export default function TemplateUploadPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
 
-  // Only allow super_admin access
-  if (!user || user.role !== 'super_admin') {
+  // Allow super_admin and admin access for template uploads
+  if (!user || !['super_admin', 'admin'].includes(user.role)) {
     return (
       <div className="flex-1 p-8 text-center">
         <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-        <p className="text-muted-foreground mt-2">Super Admin access required</p>
+        <p className="text-muted-foreground mt-2">Admin access required</p>
       </div>
     );
   }

@@ -71,6 +71,21 @@ export async function POST(
 
     const userData = dbUser[0];
 
+    // Get the warehouse details to determine the correct organization path
+    const { data: warehouseData, error: warehouseError } = await supabase
+      .from('warehouses')
+      .select('*, organizations!inner(id, code, name)')
+      .eq('id', warehouseId)
+      .single();
+
+    if (warehouseError || !warehouseData) {
+      return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 });
+    }
+
+    // Use the warehouse owner's organization for the file path, not the user's organization
+    const warehouseOwnerOrgId = warehouseData.organizations.id;
+    console.log(`📁 Uploading to warehouse ${warehouseId} owned by ${warehouseData.organizations.code}`);
+
     const formData = await request.formData();
     const uploadedFiles = [];
     
@@ -78,9 +93,9 @@ export async function POST(
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('file') && value && typeof value === 'object' && 'name' in value && 'size' in value) {
         try {
-          // Upload to Supabase Storage - warehouse directory structure
+          // Upload to Supabase Storage - use warehouse owner's organization path
           const fileName = `${Date.now()}_${value.name}`;
-          const filePath = `${userData.organizationId || 'unknown'}/warehouses/${warehouseId}/${fileName}`;
+          const filePath = `${warehouseOwnerOrgId}/warehouses/${warehouseId}/${fileName}`;
           
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('organization-documents')
@@ -152,13 +167,25 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user organization ID first
-    const orgId = await getUserOrgId(authUser.id);
+    // Get warehouse details to determine the correct organization path
+    const { data: warehouseData, error: warehouseError } = await supabase
+      .from('warehouses')
+      .select('*, organizations!inner(id, code, name)')
+      .eq('id', warehouseId)
+      .single();
+
+    if (warehouseError || !warehouseData) {
+      return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 });
+    }
+
+    // Use the warehouse owner's organization for the file path
+    const warehouseOwnerOrgId = warehouseData.organizations.id;
+    console.log(`📁 Listing files for warehouse ${warehouseId} owned by ${warehouseData.organizations.code}`);
     
     // List files in the warehouse directory from storage
     const { data: files, error } = await supabase.storage
       .from('organization-documents')
-      .list(`${orgId}/warehouses/${warehouseId}`);
+      .list(`${warehouseOwnerOrgId}/warehouses/${warehouseId}`);
 
     if (error) {
       console.error('Error fetching warehouse documents:', error);
@@ -171,7 +198,7 @@ export async function GET(
       .map(file => ({
         fileName: file.name,
         fileSize: file.metadata?.size || 0,
-        filePath: `${orgId}/warehouses/${warehouseId}/${file.name}`
+        filePath: `${warehouseOwnerOrgId}/warehouses/${warehouseId}/${file.name}`
       }));
 
     return NextResponse.json(documents);

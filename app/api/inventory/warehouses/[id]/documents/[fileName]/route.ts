@@ -35,24 +35,20 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user organization ID for file path
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select(`
-        *,
-        organization_members!inner(
-          organization_uuid
-        )
-      `)
-      .eq('auth_id', authUser.id)
+    // Get warehouse details to determine the correct organization path
+    const { data: warehouseData, error: warehouseError } = await supabase
+      .from('warehouses')
+      .select('*, organizations!inner(id, code, name)')
+      .eq('id', warehouseId)
       .single();
 
-    if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (warehouseError || !warehouseData) {
+      return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 });
     }
 
-    const orgId = userData.organization_members[0]?.organization_uuid;
-    const filePath = `${orgId}/warehouses/${warehouseId}/${fileName}`;
+    // Use the warehouse owner's organization for the file path
+    const warehouseOwnerOrgId = warehouseData.organizations.id;
+    const filePath = `${warehouseOwnerOrgId}/warehouses/${warehouseId}/${fileName}`;
 
     console.log('📁 Generating download for:', filePath);
 
