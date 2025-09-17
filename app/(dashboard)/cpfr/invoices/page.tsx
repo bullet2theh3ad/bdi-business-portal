@@ -643,8 +643,18 @@ export default function InvoicesPage() {
                             // GENERATED INVOICE OR REJECTED INVOICE - Route to Generate Invoice modal with PO context
                             console.log('🔄 Editing GENERATED/REJECTED invoice - routing to Generate Invoice modal');
                             
-                            // Extract PO reference from notes
-                            const poReference = invoice.notes?.match(/Generated from PO: (.+)/)?.[1];
+                            // Extract PO reference from notes (handle rejection notes format)
+                            let poReference = invoice.notes?.match(/Generated from PO: (.+?)(?:\n|$)/)?.[1];
+                            
+                            // If not found, try to extract from invoice number pattern
+                            if (!poReference && invoice.invoiceNumber) {
+                              // Try to extract from invoice number format like "INV-MT-EY20250710A-2025-1709"
+                              const invoiceMatch = invoice.invoiceNumber.match(/INV-(.+?)-\d{4}-\d+/);
+                              if (invoiceMatch) {
+                                poReference = invoiceMatch[1];
+                              }
+                            }
+                            
                             if (poReference) {
                               // Find the original PO
                               const originalPO = purchaseOrders?.find(po => po.purchaseOrderNumber === poReference);
