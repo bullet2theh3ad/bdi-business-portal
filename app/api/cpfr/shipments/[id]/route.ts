@@ -114,7 +114,7 @@ export async function PUT(
       destination_custom_location: destinationCustomLocation || body.destinationCustomLocation || null, // Custom destination text
       // Legacy/additional fields
       priority: body.priority || 'standard',
-      shipper_reference: shippingCustomPartner || body.shipperReference || null,
+      shipper_reference: body.shipperReference || shippingCustomPartner || null,
       factory_warehouse_id: body.factoryWarehouseId || null,
       incoterms: body.incoterms || 'EXW',
       notes: body.notes || null,

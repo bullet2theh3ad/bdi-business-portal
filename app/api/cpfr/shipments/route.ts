@@ -333,7 +333,7 @@ export async function POST(request: NextRequest) {
         destination_custom_location: destinationCustomLocation, // Custom destination text (required field)
         // Legacy/additional fields
         priority: body.priority || 'standard',
-        shipper_reference: shippingCustomPartner || body.shipperReference || null, // Use custom shipper name in reference field
+        shipper_reference: body.shipperReference || shippingCustomPartner || null, // Prioritize JJOLM number over custom shipper name
         factory_warehouse_id: body.factoryWarehouseId || null,
         destination_country: 'USA', // Default
         shipping_method: 'SEA_FCL', // Default
