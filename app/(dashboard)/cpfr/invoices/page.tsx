@@ -915,7 +915,7 @@ export default function InvoicesPage() {
                               try {
                                 console.log('🎯 CFO APPROVE: Opening CFO modal for invoice:', invoice.id);
                                 
-                                // Get the PDF URL for this invoice
+                                // Try to get the PDF URL for this invoice
                                 const formData = new FormData();
                                 formData.append('invoiceId', invoice.id);
                                 
@@ -924,18 +924,58 @@ export default function InvoicesPage() {
                                   body: formData
                                 });
                                 
+                                let pdfUrl = '';
                                 if (pdfResponse.ok) {
                                   const pdfResult = await pdfResponse.json();
-                                  
-                                  // Open CFO modal with invoice data and PDF URL
-                                  setCfoInvoiceData(invoice);
-                                  setCfoInvoicePDFUrl(pdfResult.url);
-                                  setShowNewCFOModal(true);
-                                  
-                                  console.log('✅ CFO Modal opened for approval');
+                                  pdfUrl = pdfResult.url;
+                                  console.log('✅ Found existing PDF for CFO approval');
                                 } else {
-                                  throw new Error('Failed to get PDF URL');
+                                  console.log('⚠️ No existing PDF found - will generate new one for CFO approval');
+                                  
+                                  // Generate PDF for CFO approval if it doesn't exist
+                                  try {
+                                    console.log('📄 Generating PDF for CFO approval...');
+                                    
+                                    // Set the invoice data for PDF generation
+                                    setSelectedInvoiceForApproval(invoice);
+                                    
+                                    // Generate PDF (this uses the existing generateInvoicePDF function)
+                                    const pdfDataUrl = await generateInvoicePDF();
+                                    console.log('✅ PDF generated successfully');
+                                    
+                                    // Convert to blob and upload to Supabase
+                                    const response = await fetch(pdfDataUrl);
+                                    const pdfBlob = await response.blob();
+                                    
+                                    const uploadFormData = new FormData();
+                                    uploadFormData.append('file', pdfBlob, `invoice-${invoice.id}-cfo-approval.pdf`);
+                                    uploadFormData.append('invoiceId', invoice.id);
+                                    
+                                    const uploadResponse = await fetch('/api/cpfr/invoices/pdf-upload', {
+                                      method: 'POST',
+                                      body: uploadFormData
+                                    });
+                                    
+                                    if (uploadResponse.ok) {
+                                      const uploadResult = await uploadResponse.json();
+                                      pdfUrl = uploadResult.url;
+                                      console.log('✅ PDF uploaded and URL obtained for CFO approval');
+                                    } else {
+                                      throw new Error('Failed to upload PDF for CFO approval');
+                                    }
+                                  } catch (pdfError) {
+                                    console.error('❌ Error generating PDF for CFO approval:', pdfError);
+                                    alert('❌ Failed to generate PDF for approval. The CFO modal will open without PDF preview.');
+                                    pdfUrl = ''; // Open modal without PDF
+                                  }
                                 }
+                                
+                                // Open CFO modal with invoice data and PDF URL (may be empty)
+                                setCfoInvoiceData(invoice);
+                                setCfoInvoicePDFUrl(pdfUrl);
+                                setShowNewCFOModal(true);
+                                
+                                console.log('✅ CFO Modal opened for approval', pdfUrl ? 'with PDF' : 'without PDF');
                               } catch (error) {
                                 console.error('❌ Error opening CFO modal:', error);
                                 alert('❌ Failed to open approval modal. Please try again.');
@@ -3233,8 +3273,9 @@ export default function InvoicesPage() {
               ) : (
                 <div className="w-full h-full border rounded bg-gray-100 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">Loading PDF...</p>
+                    <div className="text-4xl mb-4">📄</div>
+                    <p className="text-sm text-gray-600">PDF Preview Not Available</p>
+                    <p className="text-xs text-gray-500 mt-2">You can still approve or reject this invoice</p>
                   </div>
                 </div>
               )}
