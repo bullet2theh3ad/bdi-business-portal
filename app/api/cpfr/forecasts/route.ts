@@ -345,6 +345,7 @@ export async function POST(request: NextRequest) {
           status: body.status || 'draft',
           notes: body.notes || '',
           moq_override: body.moqOverride || false,
+          custom_exw_date: body.customExwDate || null, // Store custom EXW date from Lead Time Options
           created_by: requestingUser.authId,
           // Set sales signal based on status
           sales_signal: body.status === 'submitted' ? 'submitted' : 'unknown',

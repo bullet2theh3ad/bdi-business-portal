@@ -266,9 +266,37 @@ export async function POST(request: NextRequest) {
     // Generate shipment number
     const shipmentNumber = `BDI-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
+    // Get custom EXW date from forecast if available
+    let customExwDate = null;
+    if (body.forecastId) {
+      try {
+        const { data: forecastData } = await supabase
+          .from('sales_forecasts')
+          .select('custom_exw_date')
+          .eq('id', body.forecastId)
+          .single();
+        
+        if (forecastData?.custom_exw_date) {
+          customExwDate = forecastData.custom_exw_date;
+          console.log('✅ Found custom EXW date from forecast:', customExwDate);
+        }
+      } catch (error) {
+        console.log('⚠️ Could not fetch custom EXW date from forecast:', error);
+      }
+    }
+
     // Create shipment in database using correct column names from create-shipments-table.sql
-    const estimatedDeparture = body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    // Use custom EXW date from forecast if available, otherwise use provided estimatedShipDate, otherwise default
+    const estimatedDeparture = customExwDate ? 
+      new Date(customExwDate).toISOString() : 
+      (body.estimatedShipDate ? new Date(body.estimatedShipDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
     const estimatedArrival = body.requestedDeliveryDate ? new Date(body.requestedDeliveryDate).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    
+    console.log('📅 EXW Date calculation:', {
+      customExwFromForecast: customExwDate,
+      providedEstimatedShipDate: body.estimatedShipDate,
+      finalEstimatedDeparture: estimatedDeparture
+    });
 
     // Handle custom entries and invalid IDs - convert "custom" to null for UUID fields
     let originFactoryId = body.organizationId === 'custom' ? null : (body.organizationId || null);

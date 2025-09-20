@@ -353,6 +353,7 @@ export default function SalesForecastsPage() {
           moqOverride: moqOverride,
           notes: formData.get('notes'),
           status: salesForecastStatus,
+          customExwDate: customDate || null, // Include custom EXW date from Lead Time Options
         }),
       });
 
