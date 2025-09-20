@@ -117,7 +117,8 @@ export async function GET(request: NextRequest) {
           warehouse_signal,
           notes,
           created_by,
-          created_at
+          created_at,
+          custom_exw_date
         `)
         .order('created_at', { ascending: false });
 

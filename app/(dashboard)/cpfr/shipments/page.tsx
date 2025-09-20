@@ -38,6 +38,7 @@ interface SalesForecast {
   shippingPreference: string;
   notes?: string;
   createdAt: string;
+  customExwDate?: string; // Custom EXW date from Lead Time Options
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -959,6 +960,22 @@ export default function ShipmentsPage() {
     const [year, week] = forecast.deliveryWeek.split('-W').map(Number);
     const deliveryDate = new Date(year, 0, 1 + (week - 1) * 7);
     
+    // Check if forecast has custom EXW date - if so, use it instead of calculation
+    if (forecast.customExwDate) {
+      const customExwDate = new Date(forecast.customExwDate);
+      const departureDate = new Date(customExwDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days after EXW
+      
+      console.log('✅ Using custom EXW date from forecast:', forecast.customExwDate);
+      
+      return {
+        salesDate: new Date(forecast.createdAt),
+        exwDate: customExwDate,
+        departureDate,
+        arrivalDate: deliveryDate,
+        transitDays: Math.ceil((deliveryDate.getTime() - customExwDate.getTime()) / (24 * 60 * 60 * 1000))
+      };
+    }
+    
     // Extract shipping days from shipping preference (e.g., "SEA_ASIA_US_WEST" or "AIR_14_DAYS")
     let shippingDays = 7; // Default
     
@@ -974,6 +991,8 @@ export default function ShipmentsPage() {
     
     const exwDate = new Date(deliveryDate.getTime() - (shippingDays * 24 * 60 * 60 * 1000));
     const departureDate = new Date(exwDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days after EXW
+    
+    console.log('📅 Using calculated EXW date for forecast:', forecast.id);
     
     return {
       salesDate: new Date(forecast.createdAt),
