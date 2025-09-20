@@ -258,7 +258,31 @@ export default function InvoicesPage() {
   
   // Generate Invoice modal states
   const [selectedPO, setSelectedPO] = useState<any>(null);
-  const [generatedInvoice, setGeneratedInvoice] = useState<any>(null);
+  const [generatedInvoice, setGeneratedInvoice] = useState<any>({
+    invoiceNumber: '',
+    customerName: '',
+    invoiceDate: '',
+    requestedDeliveryWeek: '',
+    status: 'draft',
+    terms: '',
+    incoterms: '',
+    incotermsLocation: '',
+    totalValue: '',
+    notes: '',
+    poReference: '',
+    lineItems: [],
+    bankName: '',
+    bankAccountNumber: '',
+    bankRoutingNumber: '',
+    bankSwiftCode: '',
+    bankIban: '',
+    bankAddress: '',
+    bankCountry: '',
+    bankCurrency: 'USD',
+    customerAddress: '',
+    shipToAddress: '',
+    shipDate: ''
+  });
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [customPaymentTerms, setCustomPaymentTerms] = useState('');
   const [showCustomPaymentTerms, setShowCustomPaymentTerms] = useState(false);
@@ -827,55 +851,66 @@ export default function InvoicesPage() {
                               alert('❌ Cannot find PO reference for this generated invoice.');
                             }
                           } else {
-                            // ENTERED INVOICE OR SUBMITTED_TO_FINANCE - Use standard edit modal
-                            console.log('📝 Editing ENTERED/SUBMITTED invoice - using standard edit modal');
-                            setSelectedInvoice(invoice);
-                            setEditUploadedDocs([]);
+                            // ENTERED INVOICE (Draft/Manual) - Use Generate Invoice modal for consistency
+                            console.log('📝 Editing ENTERED invoice - using Generate Invoice modal for consistency');
                             
-                            // Fetch existing documents for this invoice
-                            try {
-                              const docsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/documents`);
-                              if (docsResponse.ok) {
-                                const docs = await docsResponse.json();
-                                setExistingDocs(docs);
-                                // Documents loaded successfully
-                              }
-                            } catch (error) {
-                              console.error('Error loading documents:', error);
-                              setExistingDocs([]);
-                            }
-
-                            // Fetch existing line items for this invoice
-                            try {
-                              // Fetching line items for invoice
-                              const lineItemsResponse = await fetch(`/api/cpfr/invoices/${invoice.id}/line-items`);
-                              // Line items response received
-                              
-                              if (lineItemsResponse.ok) {
-                                const lineItems = await lineItemsResponse.json();
-                                // Raw line items received from API
+                            // For manually entered invoices, we don't have a PO, so create a minimal context
+                            setSelectedPO(null); // No PO for manually entered invoices
+                            setEditingInvoiceId(invoice.id); // Set editing mode
+                            
+                            // Load existing invoice line items and populate the Generate Invoice modal
+                            fetch(`/api/cpfr/invoices/${invoice.id}/line-items`)
+                              .then(res => res.json())
+                              .then(existingLineItems => {
+                                console.log('📋 Loaded entered invoice data for editing:', existingLineItems);
                                 
-                                const mappedItems = lineItems.map((item: any) => ({
-                                  id: item.id,
-                                  skuId: item.skuId,
-                                  sku: item.skuCode || item.sku,
-                                  skuName: item.skuName,
-                                  quantity: parseInt(item.quantity),
-                                  unitCost: parseFloat(item.unitCost),
-                                  lineTotal: parseFloat(item.lineTotal)
-                                }));
+                                // Populate Generate Invoice modal with existing invoice data
+                                setGeneratedInvoice({
+                                  invoiceNumber: invoice.invoiceNumber || '',
+                                  customerName: invoice.customerName || '',
+                                  invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                  requestedDeliveryWeek: invoice.requestedDeliveryWeek || '',
+                                  status: invoice.status || 'draft',
+                                  terms: invoice.terms || '',
+                                  incoterms: invoice.incoterms || '',
+                                  incotermsLocation: invoice.incotermsLocation || '',
+                                  totalValue: invoice.totalValue || '',
+                                  notes: invoice.notes || '',
+                                  poReference: '', // No PO reference for manually entered
+                                  lineItems: existingLineItems.map((item: any) => ({
+                                    id: item.id,
+                                    skuId: item.skuId,
+                                    sku: item.skuCode || '',
+                                    skuCode: item.skuCode || '',
+                                    skuName: item.skuName || '',
+                                    description: item.description || '',
+                                    quantity: item.quantity || 0,
+                                    unitCost: parseFloat(item.unitCost || 0),
+                                    unitPrice: parseFloat(item.unitCost || 0),
+                                    lineTotal: parseFloat(item.lineTotal || 0),
+                                    totalCost: parseFloat(item.lineTotal || 0),
+                                  })),
+                                  // Bank details
+                                  bankName: invoice.bankName || '',
+                                  bankAccountNumber: invoice.bankAccountNumber || '',
+                                  bankRoutingNumber: invoice.bankRoutingNumber || '',
+                                  bankSwiftCode: invoice.bankSwiftCode || '',
+                                  bankIban: invoice.bankIban || '',
+                                  bankAddress: invoice.bankAddress || '',
+                                  bankCountry: invoice.bankCountry || '',
+                                  bankCurrency: invoice.bankCurrency || 'USD',
+                                  // Address details
+                                  customerAddress: invoice.customerAddress || '',
+                                  shipToAddress: invoice.shipToAddress || '',
+                                  shipDate: invoice.shipDate || '',
+                                });
                                 
-                                // Line items mapped for UI
-                                setEditLineItems(mappedItems);
-                              } else {
-                                const errorText = await lineItemsResponse.text();
-                                console.error('Failed to fetch line items:', lineItemsResponse.status, errorText);
-                                setEditLineItems([]);
-                              }
-                            } catch (error) {
-                              console.error('Error loading line items:', error);
-                              setEditLineItems([]);
-                            }
+                                setShowGenerateModal(true);
+                              })
+                              .catch(error => {
+                                console.error('Error loading entered invoice data:', error);
+                                alert('❌ Error loading invoice data for editing.');
+                              });
                           }
                               }}>
                                 <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
@@ -915,70 +950,51 @@ export default function InvoicesPage() {
                               try {
                                 console.log('🎯 CFO APPROVE: Opening CFO modal for invoice:', invoice.id);
                                 
-                                // Try to get the PDF URL for this invoice
-                                const formData = new FormData();
-                                formData.append('invoiceId', invoice.id);
-                                
-                                const pdfResponse = await fetch('/api/cpfr/invoices/pdf-url', {
-                                  method: 'POST',
-                                  body: formData
-                                });
-                                
-                                let pdfUrl = '';
-                                if (pdfResponse.ok) {
-                                  const pdfResult = await pdfResponse.json();
-                                  pdfUrl = pdfResult.url;
-                                  console.log('✅ Found existing PDF for CFO approval');
-                                } else {
-                                  console.log('⚠️ No existing PDF found - will generate new one for CFO approval');
+                                // Get the stored PDF file path from the database
+                                const response = await fetch(`/api/cpfr/invoices/${invoice.id}`);
+                                if (response.ok) {
+                                  const invoiceData = await response.json();
+                                  console.log('📄 Invoice data from API:', invoiceData);
                                   
-                                  // Generate PDF for CFO approval if it doesn't exist
-                                  try {
-                                    console.log('📄 Generating PDF for CFO approval...');
+                                  if (invoiceData.approvedPdfUrl) {
+                                    console.log('✅ Found stored PDF file path:', invoiceData.approvedPdfUrl);
                                     
-                                    // Set the invoice data for PDF generation
-                                    setSelectedInvoiceForApproval(invoice);
+                                    // Use the PDF download API to get the PDF
+                                    const pdfUrl = `/api/cpfr/invoices/pdf-download?filePath=${encodeURIComponent(invoiceData.approvedPdfUrl)}`;
+                                    console.log('🔗 Using PDF download API route:', pdfUrl);
                                     
-                                    // Generate PDF (this uses the existing generateInvoicePDF function)
-                                    const pdfDataUrl = await generateInvoicePDF();
-                                    console.log('✅ PDF generated successfully');
+                                    setCfoInvoiceData(invoice);
+                                    setCfoInvoicePDFUrl(pdfUrl);
+                                    setShowNewCFOModal(true);
                                     
-                                    // Convert to blob and upload to Supabase
-                                    const response = await fetch(pdfDataUrl);
-                                    const pdfBlob = await response.blob();
+                                    console.log('✅ CFO Modal opened with PDF preview');
+                                  } else {
+                                    console.log('⚠️ No PDF file path in database - trying standard path for existing invoices');
                                     
-                                    const uploadFormData = new FormData();
-                                    uploadFormData.append('file', pdfBlob, `invoice-${invoice.id}-cfo-approval.pdf`);
-                                    uploadFormData.append('invoiceId', invoice.id);
+                                    // For existing invoices, try the standard PDF path
+                                    const expectedFilePath = `invoices/${invoice.id}/invoice-${invoice.id}-cfo-approval.pdf`;
+                                    const pdfUrl = `/api/cpfr/invoices/pdf-download?filePath=${encodeURIComponent(expectedFilePath)}`;
+                                    console.log('🔗 Trying expected PDF path:', expectedFilePath);
                                     
-                                    const uploadResponse = await fetch('/api/cpfr/invoices/pdf-upload', {
-                                      method: 'POST',
-                                      body: uploadFormData
-                                    });
+                                    setCfoInvoiceData(invoice);
+                                    setCfoInvoicePDFUrl(pdfUrl);
+                                    setShowNewCFOModal(true);
                                     
-                                    if (uploadResponse.ok) {
-                                      const uploadResult = await uploadResponse.json();
-                                      pdfUrl = uploadResult.url;
-                                      console.log('✅ PDF uploaded and URL obtained for CFO approval');
-                                    } else {
-                                      throw new Error('Failed to upload PDF for CFO approval');
-                                    }
-                                  } catch (pdfError) {
-                                    console.error('❌ Error generating PDF for CFO approval:', pdfError);
-                                    alert('❌ Failed to generate PDF for approval. The CFO modal will open without PDF preview.');
-                                    pdfUrl = ''; // Open modal without PDF
+                                    console.log('✅ CFO Modal opened with expected PDF path');
                                   }
+                                } else {
+                                  console.error('❌ Failed to fetch invoice data');
+                                  // Open without PDF if API call fails
+                                  setCfoInvoiceData(invoice);
+                                  setCfoInvoicePDFUrl('');
+                                  setShowNewCFOModal(true);
                                 }
-                                
-                                // Open CFO modal with invoice data and PDF URL (may be empty)
-                                setCfoInvoiceData(invoice);
-                                setCfoInvoicePDFUrl(pdfUrl);
-                                setShowNewCFOModal(true);
-                                
-                                console.log('✅ CFO Modal opened for approval', pdfUrl ? 'with PDF' : 'without PDF');
                               } catch (error) {
                                 console.error('❌ Error opening CFO modal:', error);
-                                alert('❌ Failed to open approval modal. Please try again.');
+                                // Open without PDF if anything fails
+                                setCfoInvoiceData(invoice);
+                                setCfoInvoicePDFUrl('');
+                                setShowNewCFOModal(true);
                               }
                             }}
                           >
@@ -2051,23 +2067,23 @@ export default function InvoicesPage() {
                               console.log('📋 Invoice already exists for this PO - switching to edit mode');
                               setEditingInvoiceId(existingInvoice.id);
                               
-                              // Load existing invoice data
+                              // Load existing invoice data (ensure no null values)
                               setGeneratedInvoice({
-                                invoiceNumber: existingInvoice.invoiceNumber,
-                                customerName: existingInvoice.customerName,
+                                invoiceNumber: existingInvoice.invoiceNumber || '',
+                                customerName: existingInvoice.customerName || '',
                                 invoiceDate: existingInvoice.invoiceDate ? new Date(existingInvoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                                requestedDeliveryWeek: existingInvoice.requestedDeliveryWeek,
-                                status: existingInvoice.status,
-                                terms: existingInvoice.terms,
-                                incoterms: existingInvoice.incoterms,
-                                incotermsLocation: existingInvoice.incotermsLocation,
-                                totalValue: existingInvoice.totalValue,
-                                notes: existingInvoice.notes,
+                                requestedDeliveryWeek: existingInvoice.requestedDeliveryWeek || '',
+                                status: existingInvoice.status || 'draft',
+                                terms: existingInvoice.terms || '',
+                                incoterms: existingInvoice.incoterms || '',
+                                incotermsLocation: existingInvoice.incotermsLocation || '',
+                                totalValue: existingInvoice.totalValue || '',
+                                notes: existingInvoice.notes || '',
                                 poReference: po.purchaseOrderNumber,
                                 lineItems: []
                               });
                               
-                              // Load existing addresses and bank info
+                              // Load existing addresses and bank info (ensure no null values)
                               setCustomerAddress(existingInvoice.customerAddress || '');
                               setShipToAddress(existingInvoice.shipToAddress || '');
                               setShipDate(existingInvoice.shipDate || '');
@@ -2742,6 +2758,30 @@ export default function InvoicesPage() {
                                     const uploadResult = await uploadResponse.json();
                                     console.log('✅ PDF uploaded to Supabase, file path:', uploadResult.filePath);
                                     
+                                    // Store the PDF file path in the database for CFO approval
+                                    if (uploadResult.filePath) {
+                                      try {
+                                        const updateResponse = await fetch(`/api/cpfr/invoices/${result.id}`, {
+                                          method: 'PUT',
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          },
+                                          body: JSON.stringify({
+                                            status: 'submitted_to_finance', // Keep current status
+                                            approvedPdfUrl: uploadResult.filePath
+                                          }),
+                                        });
+                                        
+                                        if (updateResponse.ok) {
+                                          console.log('✅ PDF file path stored in database for CFO approval');
+                                        } else {
+                                          console.error('⚠️ Failed to store PDF file path in database');
+                                        }
+                                      } catch (error) {
+                                        console.error('⚠️ Error storing PDF file path:', error);
+                                      }
+                                    }
+                                    
                                     // NEW FLOW: Close modals and return to list - CFO will use Approve button
                                     setShowGenerateModal(false);
                                     setShowCreateModal(false);
@@ -2930,7 +2970,7 @@ export default function InvoicesPage() {
                                     <td className="border border-gray-300 px-1 py-1 text-xs">
                                       <input
                                         type="text"
-                                        value={item.description || generatedInvoice.poReference}
+                                        value={item.description || generatedInvoice.poReference || ''}
                                         onChange={(e) => {
                                           const updatedLineItems = [...generatedInvoice.lineItems];
                                           updatedLineItems[index] = {...item, description: e.target.value};
