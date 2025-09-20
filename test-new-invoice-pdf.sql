@@ -24,3 +24,4 @@ SELECT
 FROM invoices 
 WHERE status = 'approved_by_finance'
 ORDER BY updated_at DESC;
+

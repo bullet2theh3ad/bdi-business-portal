@@ -903,6 +903,50 @@ export default function InvoicesPage() {
                             CFO Review
                           </Button>
                         )}
+                        
+                        {/* NEW: Approve Button for CFO/Super Admin */}
+                        {(user?.role === 'super_admin' || user?.role === 'admin_cfo') && 
+                         (invoice.status === 'submitted_to_finance' || invoice.status === 'rejected_by_finance') && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full sm:w-auto bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
+                            onClick={async () => {
+                              try {
+                                console.log('🎯 CFO APPROVE: Opening CFO modal for invoice:', invoice.id);
+                                
+                                // Get the PDF URL for this invoice
+                                const formData = new FormData();
+                                formData.append('invoiceId', invoice.id);
+                                
+                                const pdfResponse = await fetch('/api/cpfr/invoices/pdf-url', {
+                                  method: 'POST',
+                                  body: formData
+                                });
+                                
+                                if (pdfResponse.ok) {
+                                  const pdfResult = await pdfResponse.json();
+                                  
+                                  // Open CFO modal with invoice data and PDF URL
+                                  setCfoInvoiceData(invoice);
+                                  setCfoInvoicePDFUrl(pdfResult.url);
+                                  setShowNewCFOModal(true);
+                                  
+                                  console.log('✅ CFO Modal opened for approval');
+                                } else {
+                                  throw new Error('Failed to get PDF URL');
+                                }
+                              } catch (error) {
+                                console.error('❌ Error opening CFO modal:', error);
+                                alert('❌ Failed to open approval modal. Please try again.');
+                              }
+                            }}
+                          >
+                            <span className="mr-1 text-sm">✅</span>
+                            Approve
+                          </Button>
+                        )}
+                        
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -2630,9 +2674,9 @@ export default function InvoicesPage() {
                               // Always refresh the invoice list
                               mutateInvoices();
                               
-                              // Check if we need to trigger CFO modal (works for both create and edit)
+                              // NEW FLOW: For submitted_to_finance, just generate PDF and return to list
                               if (invoiceStatus === 'submitted_to_finance') {
-                                console.log('🎯 SUBMIT TO FINANCE: Starting PDF generation and CFO workflow');
+                                console.log('🎯 SUBMIT TO FINANCE: Starting PDF generation for CFO approval workflow');
                                 
                                 try {
                                   // Step 1: Generate PDF from invoice preview
@@ -2658,22 +2702,13 @@ export default function InvoicesPage() {
                                     const uploadResult = await uploadResponse.json();
                                     console.log('✅ PDF uploaded to Supabase, file path:', uploadResult.filePath);
                                     
-                                    // SIMPLEST SOLUTION: Use the working signed URL from upload API
-                                    console.log('💾 SIMPLEST APPROACH: Using working signed URL from upload API');
+                                    // NEW FLOW: Close modals and return to list - CFO will use Approve button
+                                    setShowGenerateModal(false);
+                                    setShowCreateModal(false);
                                     
-                                    if (uploadResult.url) {
-                                      console.log('✅ Using working signed URL from upload API');
-                                      
-                                      // Step 3: Open CFO modal with working signed URL
-                                      setCfoInvoiceData(result);
-                                      setCfoInvoicePDFUrl(uploadResult.url);
-                                      setShowNewCFOModal(true);
-                                      setShowGenerateModal(false);
-                                      
-                                      console.log('✅ CFO Modal opened with upload API signed URL');
-                                    } else {
-                                      throw new Error('No signed URL returned from upload API');
-                                    }
+                                    console.log('✅ Invoice submitted to finance - returning to list for CFO approval via Approve button');
+                                    
+                                    alert(`✅ Invoice ${result.invoiceNumber} has been submitted to finance!\n\nThe CFO will be notified and can approve it using the Approve button in the invoice list.`);
                                   } else {
                                     throw new Error('Failed to upload PDF');
                                   }
@@ -3090,24 +3125,68 @@ export default function InvoicesPage() {
                       ? 'bg-green-600 hover:bg-green-700' 
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
-                  onClick={() => {
+                  onClick={async () => {
                     if (approvalStatus === 'approved' && !approvalEmail.trim()) {
                       alert('Please enter an email address to send the approved invoice.');
                       return;
                     }
                     
-                    // TODO: Implement CFO approval/rejection API
-                    const action = approvalStatus === 'approved' ? 'approved' : 'rejected';
-                    const message = approvalStatus === 'approved' 
-                      ? `Invoice ${selectedInvoiceForApproval.invoiceNumber} approved!\n\nPDF will be sent to: ${approvalEmail}`
-                      : `Invoice ${selectedInvoiceForApproval.invoiceNumber} rejected.\n\nRejection notification will be sent to invoice creator.`;
+                    if (approvalStatus === 'rejected') {
+                      const rejectionReasonElement = document.getElementById('rejectionReason') as HTMLTextAreaElement;
+                      if (!rejectionReasonElement?.value.trim()) {
+                        alert('Please provide a rejection reason.');
+                        return;
+                      }
+                    }
                     
-                    alert(`${message}\n\nCFO approval functionality coming soon!`);
-                    
-                    // Close modal
-                    setShowCFOApprovalModal(false);
-                    setSelectedInvoiceForApproval(null);
-                    setApprovalEmail('');
+                    try {
+                      console.log('🎯 CFO APPROVAL: Processing', approvalStatus, 'for invoice:', selectedInvoiceForApproval?.id);
+                      
+                      const action = approvalStatus === 'approved' ? 'approved' : 'rejected';
+                      const rejectionReasonElement = document.getElementById('rejectionReason') as HTMLTextAreaElement;
+                      
+                      const response = await fetch('/api/cpfr/invoices/cfo-approval', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          invoiceId: selectedInvoiceForApproval?.id,
+                          action: action,
+                          approvalEmail: approvalStatus === 'approved' ? approvalEmail : null,
+                          rejectionReason: approvalStatus === 'rejected' ? rejectionReasonElement?.value : null,
+                        }),
+                      });
+                      
+                      if (response.ok) {
+                        const result = await response.json();
+                        
+                        const message = approvalStatus === 'approved' 
+                          ? `✅ Invoice ${selectedInvoiceForApproval.invoiceNumber} approved!\n\nPDF will be sent to: ${approvalEmail}`
+                          : `❌ Invoice ${selectedInvoiceForApproval.invoiceNumber} rejected.\n\nRejection notification will be sent to invoice creator.`;
+                        
+                        alert(message);
+                        
+                        // Refresh invoice list
+                        mutateInvoices();
+                        
+                        // Close modal
+                        setShowCFOApprovalModal(false);
+                        setSelectedInvoiceForApproval(null);
+                        setApprovalEmail('');
+                        setShowNewCFOModal(false);
+                        setCfoInvoiceData(null);
+                        setCfoInvoicePDFUrl('');
+                        
+                        console.log('✅ CFO approval processed successfully');
+                      } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to process approval');
+                      }
+                    } catch (error) {
+                      console.error('❌ Error processing CFO approval:', error);
+                      alert(`❌ Failed to ${approvalStatus === 'approved' ? 'approve' : 'reject'} invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
                   }}
                 >
                   <SemanticBDIIcon 
