@@ -179,6 +179,7 @@ export async function GET(request: NextRequest) {
         notes: row.notes,
         createdBy: row.created_by,
         createdAt: row.created_at,
+        customExwDate: row.custom_exw_date, // Include custom EXW date from Lead Time Options
         sku: skuMap.get(row.sku_id) || {
           id: row.sku_id,
           sku: 'UNKNOWN-SKU',
