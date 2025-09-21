@@ -9,7 +9,141 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Initialize Resend for email notifications
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-// Send email notification when Factory changes EXW date
+// Comprehensive CPFR Change Notifications
+async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, currentForecast: any) {
+  if (!resend) {
+    console.log('📧 Resend not configured - skipping CPFR change emails');
+    return false;
+  }
+
+  try {
+    console.log(`📧 Sending CPFR change notifications for ${milestone} changes`);
+
+    // Get SKU details for email
+    const { data: skuData } = await supabase
+      .from('product_skus')
+      .select('sku, name')
+      .eq('id', currentForecast.sku_id)
+      .single();
+
+    const forecastEmailData = {
+      ...currentForecast,
+      sku: skuData
+    };
+
+    // Define email lists
+    const bdiCpfrEmails = [
+      'scistulli@boundlessdevices.com', // CEO
+      'dzand@boundlessdevices.com'      // Primary business contact
+    ];
+
+    const factoryEmails = [
+      'factory@example.com' // TODO: Get from organization CPFR contacts
+    ];
+
+    const transitEmails = [
+      'logistics@ol-usa.com', // OLM logistics
+      'airimport.ORD2@ol-usa.com' // OL import team
+    ];
+
+    const warehouseEmails = [
+      'warehouse@example.com' // TODO: Get from warehouse contacts
+    ];
+
+    // Determine recipients based on who changed what
+    let recipients: string[] = [];
+    let emailSubject = '';
+    let changeDescription = '';
+
+    // BDI CPFR always gets notified
+    recipients.push(...bdiCpfrEmails);
+
+    if (milestone === 'sales') {
+      recipients.push(...factoryEmails, ...transitEmails, ...warehouseEmails);
+      emailSubject = `📊 Sales Updated Delivery Commitments`;
+      changeDescription = 'Sales team has updated delivery dates and customer commitments';
+    } else if (milestone === 'factory') {
+      recipients.push(...transitEmails); // Factory → In Transit
+      emailSubject = `🏭 Factory Updated Production Timeline`;
+      changeDescription = 'Factory has updated EXW (Ex-Works) production dates';
+    } else if (milestone === 'transit') {
+      recipients.push(...factoryEmails, ...warehouseEmails); // In Transit → Factory & Warehouse
+      emailSubject = `🚛 Transit Updated Shipping Timeline`;
+      changeDescription = 'Transit/Logistics team has updated shipping timeline';
+    } else if (milestone === 'warehouse') {
+      // Warehouse only notifies BDI (no upstream notification)
+      emailSubject = `📦 Warehouse Updated Final Delivery`;
+      changeDescription = 'Warehouse has updated final customer delivery commitment';
+    }
+
+    // Build change details
+    const changeDetails = Object.entries(changeEntry.changes)
+      .map(([field, change]: [string, any]) => {
+        const fieldName = field === 'customExwDate' ? 'EXW Date' :
+                         field === 'deliveryWeek' ? 'Delivery Week' :
+                         field === 'confirmedDeliveryDate' ? 'Final Delivery Date' :
+                         field === 'manualTransitTime' ? 'Transit Time' :
+                         field === 'estimatedTransitStart' ? 'Transit Start' :
+                         field === 'estimatedWarehouseArrival' ? 'Warehouse Arrival' :
+                         field;
+        
+        return `<li><strong>${fieldName}:</strong> ${change.was || 'Not set'} → <span style="color: #dc2626; font-weight: bold;">${change.is}</span></li>`;
+      }).join('');
+
+    // Send comprehensive notification
+    const emailResult = await resend.emails.send({
+      from: 'CPFR System <cpfr@bdibusinessportal.com>',
+      to: [...new Set(recipients)], // Remove duplicates
+      subject: `${emailSubject} - ${forecastEmailData.sku?.sku || 'SKU'} - ${forecastEmailData.delivery_week}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">📅 CPFR Timeline Update</h2>
+          
+          <p>Hello CPFR Team,</p>
+          
+          <p>${changeDescription}:</p>
+          
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 20px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">Forecast Details:</h3>
+            <p><strong>SKU:</strong> ${forecastEmailData.sku?.sku || 'Unknown'} - ${forecastEmailData.sku?.name || 'Unknown Product'}</p>
+            <p><strong>Quantity:</strong> ${forecastEmailData.quantity?.toLocaleString() || 'Unknown'} units</p>
+            <p><strong>Delivery Week:</strong> ${forecastEmailData.delivery_week}</p>
+            <p><strong>Shipping Method:</strong> ${forecastEmailData.shipping_preference}</p>
+          </div>
+
+          <div style="background-color: #fff7ed; border-left: 4px solid #ea580c; padding: 20px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">📋 Changes Made:</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${changeDetails}
+            </ul>
+            <p style="margin-top: 10px;"><strong>Reason:</strong> ${changeEntry.reason}</p>
+            <p><strong>Changed by:</strong> ${milestone.charAt(0).toUpperCase() + milestone.slice(1)} Team</p>
+          </div>
+          
+          <p><strong>Next Steps:</strong> Please review the timeline changes and update your planning accordingly.</p>
+          
+          <p><a href="https://bdibusinessportal.com/cpfr/shipments" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review in CPFR Portal</a></p>
+          
+          <p>Best regards,<br>BDI CPFR System</p>
+        </div>
+      `,
+      tags: [
+        { name: 'type', value: 'cpfr-change-notification' },
+        { name: 'forecast-id', value: forecastEmailData.id },
+        { name: 'milestone', value: milestone }
+      ]
+    });
+
+    console.log(`✅ CPFR change email sent to ${recipients.length} recipients:`, recipients);
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error sending CPFR change notifications:', error);
+    return false;
+  }
+}
+
+// Legacy function - now replaced by comprehensive system above
 async function sendEXWChangeNotification(forecastData: any, oldExwDate: string, newExwDate: string) {
   if (!resend) {
     console.log('📧 Resend not configured - skipping EXW change email');
@@ -291,28 +425,8 @@ export async function PUT(
         // TODO: Add user ID when auth context is available
         // updateData.last_date_change_by = userId;
 
-        // 📧 EMAIL NOTIFICATION: Send email when Factory changes EXW date
-        if (milestone === 'factory' && changeEntry.changes.customExwDate) {
-          console.log('📧 Factory changed EXW date - sending notification to Sales');
-          
-          // Get SKU details for email
-          const { data: skuData } = await supabase
-            .from('product_skus')
-            .select('sku, name')
-            .eq('id', currentForecast.sku_id)
-            .single();
-
-          const forecastEmailData = {
-            ...currentForecast,
-            sku: skuData
-          };
-
-          await sendEXWChangeNotification(
-            forecastEmailData,
-            changeEntry.changes.customExwDate.was || 'Not set',
-            changeEntry.changes.customExwDate.is
-          );
-        }
+        // 📧 COMPREHENSIVE EMAIL NOTIFICATIONS: Send to all affected stakeholders
+        await sendCPFRChangeNotifications(milestone, changeEntry, currentForecast);
       }
     }
 
