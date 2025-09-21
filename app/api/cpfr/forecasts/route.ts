@@ -118,7 +118,22 @@ export async function GET(request: NextRequest) {
           notes,
           created_by,
           created_at,
-          custom_exw_date
+          custom_exw_date,
+          estimated_transit_start,
+          estimated_warehouse_arrival,
+          confirmed_delivery_date,
+          original_delivery_date,
+          original_exw_date,
+          original_transit_start,
+          original_warehouse_arrival,
+          manual_factory_lead_time,
+          manual_transit_time,
+          manual_warehouse_processing,
+          manual_buffer_days,
+          date_change_history,
+          last_date_change_by,
+          last_date_change_at,
+          date_change_reason
         `)
         .order('created_at', { ascending: false });
 
@@ -180,6 +195,28 @@ export async function GET(request: NextRequest) {
         createdBy: row.created_by,
         createdAt: row.created_at,
         customExwDate: row.custom_exw_date, // Include custom EXW date from Lead Time Options
+        
+        // Include comprehensive date fields
+        estimatedTransitStart: row.estimated_transit_start,
+        estimatedWarehouseArrival: row.estimated_warehouse_arrival,
+        confirmedDeliveryDate: row.confirmed_delivery_date,
+        originalDeliveryDate: row.original_delivery_date,
+        originalExwDate: row.original_exw_date,
+        originalTransitStart: row.original_transit_start,
+        originalWarehouseArrival: row.original_warehouse_arrival,
+        
+        // Include manual override fields
+        manualFactoryLeadTime: row.manual_factory_lead_time,
+        manualTransitTime: row.manual_transit_time,
+        manualWarehouseProcessing: row.manual_warehouse_processing,
+        manualBufferDays: row.manual_buffer_days,
+        
+        // Include change tracking
+        dateChangeHistory: row.date_change_history || [],
+        lastDateChangeBy: row.last_date_change_by,
+        lastDateChangeAt: row.last_date_change_at,
+        dateChangeReason: row.date_change_reason,
+        
         sku: skuMap.get(row.sku_id) || {
           id: row.sku_id,
           sku: 'UNKNOWN-SKU',

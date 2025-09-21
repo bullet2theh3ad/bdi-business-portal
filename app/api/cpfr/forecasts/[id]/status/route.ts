@@ -1,9 +1,177 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Initialize Resend for email notifications
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// Send email notification when Factory changes EXW date
+async function sendEXWChangeNotification(forecastData: any, oldExwDate: string, newExwDate: string) {
+  if (!resend) {
+    console.log('📧 Resend not configured - skipping EXW change email');
+    return false;
+  }
+
+  try {
+    console.log(`📧 Sending EXW change notification: ${oldExwDate} → ${newExwDate}`);
+
+    // Send to Sales team (BDI internal)
+    const salesEmails = [
+      'scistulli@boundlessdevices.com', // CEO
+      'dzand@boundlessdevices.com'      // Primary business contact
+    ];
+
+    const emailResult = await resend.emails.send({
+      from: 'CPFR System <cpfr@bdibusinessportal.com>',
+      to: salesEmails,
+      subject: `🏭 Factory EXW Date Changed - ${forecastData.sku?.sku || 'SKU'} - ${forecastData.delivery_week}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #dc2626;">🏭 Factory EXW Date Change Alert</h2>
+          
+          <p>Hello Sales Team,</p>
+          
+          <p>The factory has changed the EXW (Ex-Works) date for one of your forecasts:</p>
+          
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">Forecast Details:</h3>
+            <p><strong>SKU:</strong> ${forecastData.sku?.sku || 'Unknown'} - ${forecastData.sku?.name || 'Unknown Product'}</p>
+            <p><strong>Quantity:</strong> ${forecastData.quantity?.toLocaleString() || 'Unknown'} units</p>
+            <p><strong>Delivery Week:</strong> ${forecastData.delivery_week}</p>
+          </div>
+
+          <div style="background-color: #fff7ed; border-left: 4px solid #ea580c; padding: 20px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">📅 Date Change:</h3>
+            <p><strong>Original EXW Date:</strong> ${oldExwDate}</p>
+            <p><strong>New EXW Date:</strong> <span style="color: #dc2626; font-weight: bold;">${newExwDate}</span></p>
+            <p><strong>Change Impact:</strong> ${new Date(newExwDate) > new Date(oldExwDate) ? 'DELAY' : 'EXPEDITE'}</p>
+          </div>
+          
+          <p><strong>Action Required:</strong> Please review the impact on customer delivery commitments and update stakeholders as needed.</p>
+          
+          <p><a href="https://bdibusinessportal.com/cpfr/shipments" style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review in CPFR Portal</a></p>
+          
+          <p>Best regards,<br>BDI CPFR System</p>
+        </div>
+      `,
+      tags: [
+        { name: 'type', value: 'exw-date-change' },
+        { name: 'forecast-id', value: forecastData.id },
+        { name: 'milestone', value: 'factory' }
+      ]
+    });
+
+    console.log('✅ EXW change email sent successfully:', emailResult);
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error sending EXW change notification:', error);
+    return false;
+  }
+}
+
+// Smart Date Cascade Logic Engine
+async function implementDateCascadeLogic(updateData: any, dateChanges: any, currentForecast: any) {
+  console.log('🔄 Implementing date cascade logic...');
+  
+  // Default lead times (can be overridden by manual settings)
+  const DEFAULT_FACTORY_LEAD_TIME = 30; // days
+  const DEFAULT_TRANSIT_TIME = 21; // days  
+  const DEFAULT_WAREHOUSE_PROCESSING = 3; // days
+  const DEFAULT_BUFFER_DAYS = 5; // days
+
+  // Get manual overrides or use defaults
+  const factoryLeadTime = dateChanges.manualFactoryLeadTime || currentForecast.manual_factory_lead_time || DEFAULT_FACTORY_LEAD_TIME;
+  const transitTime = dateChanges.manualTransitTime || currentForecast.manual_transit_time || DEFAULT_TRANSIT_TIME;
+  const warehouseProcessing = dateChanges.manualWarehouseProcessing || currentForecast.manual_warehouse_processing || DEFAULT_WAREHOUSE_PROCESSING;
+  const bufferDays = dateChanges.manualBufferDays || currentForecast.manual_buffer_days || DEFAULT_BUFFER_DAYS;
+
+  // Helper function to add days to a date
+  const addDays = (dateStr: string, days: number): string => {
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to subtract days from a date
+  const subtractDays = (dateStr: string, days: number): string => {
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() - days);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Check if multiple dates are being hard-coded simultaneously
+  const isMultipleDateOverride = Object.keys(dateChanges).filter(key => 
+    ['customExwDate', 'estimatedTransitStart', 'estimatedWarehouseArrival', 'confirmedDeliveryDate'].includes(key)
+  ).length > 1;
+
+  if (isMultipleDateOverride) {
+    console.log('📅 Multiple dates being hard-coded - no cascade logic applied');
+    // When multiple dates are set, don't cascade - just set them as specified
+    // This allows users to hard-code the entire timeline
+  } else {
+    // FORWARD CASCADE: When upstream dates change, calculate downstream dates
+    if (dateChanges.customExwDate) {
+      console.log('📅 Factory EXW date changed - cascading forward...');
+      const exwDate = dateChanges.customExwDate;
+      
+      // Only cascade if downstream dates aren't also being manually set
+      if (!dateChanges.estimatedTransitStart) {
+        updateData.estimated_transit_start = exwDate;
+      }
+      if (!dateChanges.estimatedWarehouseArrival) {
+        updateData.estimated_warehouse_arrival = addDays(dateChanges.estimatedTransitStart || exwDate, transitTime);
+      }
+      if (!dateChanges.confirmedDeliveryDate) {
+        updateData.confirmed_delivery_date = addDays(updateData.estimated_warehouse_arrival, warehouseProcessing + bufferDays);
+      }
+      
+      console.log(`✅ Cascaded from EXW ${exwDate}: Transit=${updateData.estimated_transit_start}, Warehouse=${updateData.estimated_warehouse_arrival}, Delivery=${updateData.confirmed_delivery_date}`);
+    }
+
+    // TRANSIT TIME CASCADE: When transit time (duration) changes
+    if (dateChanges.manualTransitTime && !dateChanges.customExwDate) {
+      console.log('📅 Transit time changed - recalculating based on EXW date...');
+      const newTransitTime = dateChanges.manualTransitTime;
+      const exwDate = currentForecast.custom_exw_date;
+      
+      if (exwDate) {
+        // Transit starts from EXW date (pickup date)
+        updateData.estimated_transit_start = exwDate;
+        
+        // Warehouse arrival = EXW + New Transit Time
+        updateData.estimated_warehouse_arrival = addDays(exwDate, newTransitTime);
+        
+        // Final delivery = Warehouse Arrival + Processing Time + Buffer
+        updateData.confirmed_delivery_date = addDays(updateData.estimated_warehouse_arrival, warehouseProcessing + bufferDays);
+        
+        console.log(`✅ Transit time cascade from EXW ${exwDate} + ${newTransitTime} days: Transit=${updateData.estimated_transit_start}, Warehouse=${updateData.estimated_warehouse_arrival}, Delivery=${updateData.confirmed_delivery_date}`);
+      } else {
+        console.log('⚠️ No EXW date set - cannot calculate transit timeline');
+      }
+    }
+
+    // WAREHOUSE FINAL DELIVERY OVERRIDE: When warehouse sets final delivery date
+    if (dateChanges.confirmedDeliveryDate && !dateChanges.estimatedWarehouseArrival && !dateChanges.estimatedTransitStart && !dateChanges.customExwDate) {
+      console.log('📅 Warehouse set final delivery date - no cascade, pure override');
+      // Warehouse controls the final customer delivery commitment
+      // No cascade needed - just set the final delivery date as specified
+      // This allows warehouse to adjust for customs delays, processing issues, expedited delivery, etc.
+    }
+  }
+
+  // Store manual overrides if provided
+  if (dateChanges.manualFactoryLeadTime) updateData.manual_factory_lead_time = dateChanges.manualFactoryLeadTime;
+  if (dateChanges.manualTransitTime) updateData.manual_transit_time = dateChanges.manualTransitTime;
+  if (dateChanges.manualWarehouseProcessing) updateData.manual_warehouse_processing = dateChanges.manualWarehouseProcessing;
+  if (dateChanges.manualBufferDays) updateData.manual_buffer_days = dateChanges.manualBufferDays;
+
+  console.log('✅ Date cascade logic completed');
+}
 
 export async function PUT(
   request: NextRequest,
@@ -12,7 +180,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { milestone, status, notes } = body;
+    const { milestone, status, notes, dateChanges, dateChangeReason } = body;
 
     if (!milestone || !status) {
       return NextResponse.json(
@@ -36,11 +204,117 @@ export async function PUT(
                         milestone === 'warehouse' ? 'warehouse_signal' :
                         'shipping_signal'; // fallback
 
+    // Get current forecast data for change tracking
+    const { data: currentForecast, error: fetchError } = await supabase
+      .from('sales_forecasts')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !currentForecast) {
+      return NextResponse.json(
+        { error: 'Forecast not found' },
+        { status: 404 }
+      );
+    }
+
     // Prepare update data
     const updateData: any = {
       [signalColumn]: status,
       updated_at: new Date().toISOString()
     };
+
+    // Process date changes and implement cascade logic
+    if (dateChanges && Object.keys(dateChanges).length > 0) {
+      console.log('📅 Processing date changes:', dateChanges);
+      
+      // Track what changed for history
+      const changeHistory = currentForecast.date_change_history || [];
+      const changeEntry: any = {
+        timestamp: new Date().toISOString(),
+        milestone,
+        changes: {},
+        reason: dateChangeReason || 'No reason provided'
+      };
+
+      // Process each date change
+      for (const [field, newValue] of Object.entries(dateChanges)) {
+        if (newValue !== null && newValue !== undefined && newValue !== '') {
+          const currentValue = currentForecast[field];
+          
+          // Only record changes if value actually changed
+          if (currentValue !== newValue) {
+            changeEntry.changes[field] = {
+              was: currentValue,
+              is: newValue
+            };
+            
+            // Map camelCase to snake_case for database
+            const dbField = field === 'deliveryWeek' ? 'delivery_week' :
+                           field === 'customExwDate' ? 'custom_exw_date' :
+                           field === 'estimatedTransitStart' ? 'estimated_transit_start' :
+                           field === 'estimatedWarehouseArrival' ? 'estimated_warehouse_arrival' :
+                           field === 'confirmedDeliveryDate' ? 'confirmed_delivery_date' :
+                           field === 'manualFactoryLeadTime' ? 'manual_factory_lead_time' :
+                           field === 'manualTransitTime' ? 'manual_transit_time' :
+                           field === 'manualWarehouseProcessing' ? 'manual_warehouse_processing' :
+                           field === 'manualBufferDays' ? 'manual_buffer_days' :
+                           field;
+            
+            // Update the field
+            updateData[dbField] = newValue;
+            
+            // Set original values if this is the first time they're being changed
+            const originalField = `original_${field.replace('custom_', '').replace('estimated_', '').replace('confirmed_', '')}`;
+            if (field === 'deliveryWeek' && !currentForecast.original_delivery_date) {
+              updateData.original_delivery_date = currentValue;
+            } else if (field === 'customExwDate' && !currentForecast.original_exw_date) {
+              updateData.original_exw_date = currentValue;
+            } else if (field === 'estimatedTransitStart' && !currentForecast.original_transit_start) {
+              updateData.original_transit_start = currentValue;
+            } else if (field === 'estimatedWarehouseArrival' && !currentForecast.original_warehouse_arrival) {
+              updateData.original_warehouse_arrival = currentValue;
+            }
+          }
+        }
+      }
+
+      // Implement Smart Date Cascade Logic
+      await implementDateCascadeLogic(updateData, dateChanges, currentForecast);
+
+      // Add change entry to history if there were actual changes
+      if (Object.keys(changeEntry.changes).length > 0) {
+        changeHistory.push(changeEntry);
+        updateData.date_change_history = changeHistory;
+        updateData.last_date_change_at = new Date().toISOString();
+        updateData.date_change_reason = dateChangeReason;
+        // TODO: Add user ID when auth context is available
+        // updateData.last_date_change_by = userId;
+
+        // 📧 EMAIL NOTIFICATION: Send email when Factory changes EXW date
+        if (milestone === 'factory' && changeEntry.changes.customExwDate) {
+          console.log('📧 Factory changed EXW date - sending notification to Sales');
+          
+          // Get SKU details for email
+          const { data: skuData } = await supabase
+            .from('product_skus')
+            .select('sku, name')
+            .eq('id', currentForecast.sku_id)
+            .single();
+
+          const forecastEmailData = {
+            ...currentForecast,
+            sku: skuData
+          };
+
+          await sendEXWChangeNotification(
+            forecastEmailData,
+            changeEntry.changes.customExwDate.was || 'Not set',
+            changeEntry.changes.customExwDate.is
+          );
+        }
+      }
+    }
 
     // If updating sales status, also update the main status field
     if (milestone === 'sales') {
@@ -49,16 +323,8 @@ export async function PUT(
                          'draft';
     }
 
-    // Add notes if provided (we'll need to add a notes field to track status change history)
+    // Add notes if provided - using the already fetched currentForecast data
     if (notes) {
-      // For now, we'll store notes in the existing notes field
-      // Later we might want a separate status_change_history table
-      const { data: currentForecast } = await supabase
-        .from('sales_forecasts')
-        .select('notes')
-        .eq('id', id)
-        .single();
-
       const existingNotes = currentForecast?.notes || '';
       const timestamp = new Date().toISOString().split('T')[0];
       const newNote = `[${timestamp}] ${milestone.toUpperCase()} → ${status}: ${notes}`;

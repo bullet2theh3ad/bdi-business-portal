@@ -39,6 +39,27 @@ interface SalesForecast {
   notes?: string;
   createdAt: string;
   customExwDate?: string; // Custom EXW date from Lead Time Options
+  
+  // New comprehensive date fields
+  estimatedTransitStart?: string;
+  estimatedWarehouseArrival?: string;
+  confirmedDeliveryDate?: string;
+  originalDeliveryDate?: string;
+  originalExwDate?: string;
+  originalTransitStart?: string;
+  originalWarehouseArrival?: string;
+  
+  // Manual override fields
+  manualFactoryLeadTime?: number;
+  manualTransitTime?: number;
+  manualWarehouseProcessing?: number;
+  manualBufferDays?: number;
+  
+  // Change tracking
+  dateChangeHistory?: any[];
+  lastDateChangeBy?: string;
+  lastDateChangeAt?: string;
+  dateChangeReason?: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -946,60 +967,97 @@ export default function ShipmentsPage() {
     return '📦';
   };
 
-  // Handle milestone icon click
-  const handleMilestoneClick = (milestone: 'sales' | 'factory' | 'transit' | 'warehouse', forecast: SalesForecast) => {
-    setStatusChangeModal({
-      isOpen: true,
-      milestone,
-      forecast
-    });
+  // Handle milestone icon click - fetch fresh forecast data directly by ID
+  const handleMilestoneClick = async (milestone: 'sales' | 'factory' | 'transit' | 'warehouse', forecast: SalesForecast) => {
+    console.log(`🔄 Opening ${milestone} modal for forecast:`, forecast.id);
+    
+    // Fetch fresh forecast data directly by ID to ensure we have the latest dates
+    try {
+      const response = await fetch(`/api/cpfr/forecasts/${forecast.id}`);
+      
+      if (response.ok) {
+        const freshForecast = await response.json();
+        console.log('✅ Using fresh forecast data from direct API:', freshForecast);
+        setStatusChangeModal({
+          isOpen: true,
+          milestone,
+          forecast: freshForecast
+        });
+      } else {
+        console.log('⚠️ Direct forecast API failed, using cached data');
+        setStatusChangeModal({
+          isOpen: true,
+          milestone,
+          forecast
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch fresh forecast data:', error);
+      // Fallback to cached data
+      setStatusChangeModal({
+        isOpen: true,
+        milestone,
+        forecast
+      });
+    }
   };
 
   const calculateMilestoneDates = (forecast: SalesForecast) => {
-    // Parse delivery week (e.g., "2025-W47" to actual date)
-    const [year, week] = forecast.deliveryWeek.split('-W').map(Number);
-    const deliveryDate = new Date(year, 0, 1 + (week - 1) * 7);
+    // Use the new comprehensive date fields from database instead of calculations
+    console.log('📅 Using database date fields for forecast:', forecast.id, {
+      customExwDate: forecast.customExwDate,
+      estimatedTransitStart: forecast.estimatedTransitStart,
+      estimatedWarehouseArrival: forecast.estimatedWarehouseArrival,
+      confirmedDeliveryDate: forecast.confirmedDeliveryDate
+    });
     
-    // Check if forecast has custom EXW date - if so, use it instead of calculation
-    if (forecast.customExwDate) {
-      const customExwDate = new Date(forecast.customExwDate);
-      const departureDate = new Date(customExwDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days after EXW
+    // Use database dates if available, otherwise fallback to calculations
+    const exwDate = forecast.customExwDate ? new Date(forecast.customExwDate) : null;
+    const transitStartDate = forecast.estimatedTransitStart ? new Date(forecast.estimatedTransitStart) : exwDate;
+    const warehouseArrivalDate = forecast.estimatedWarehouseArrival ? new Date(forecast.estimatedWarehouseArrival) : null;
+    const finalDeliveryDate = forecast.confirmedDeliveryDate ? new Date(forecast.confirmedDeliveryDate) : null;
+    
+    // Fallback calculations if database dates are missing
+    if (!exwDate || !transitStartDate || !warehouseArrivalDate || !finalDeliveryDate) {
+      console.log('⚠️ Some database dates missing, using fallback calculations');
       
-      console.log('✅ Using custom EXW date from forecast:', forecast.customExwDate);
+      // Parse delivery week as fallback
+      const [year, week] = forecast.deliveryWeek.split('-W').map(Number);
+      const deliveryWeekDate = new Date(year, 0, 1 + (week - 1) * 7);
+      
+      // Extract shipping days from shipping preference
+      let shippingDays = 21; // Default
+      if (forecast.shippingPreference.includes('AIR')) {
+        const airMatch = forecast.shippingPreference.match(/AIR_(\d+)_DAYS/);
+        shippingDays = airMatch ? parseInt(airMatch[1]) : 14;
+      }
+      
+      const fallbackExwDate = exwDate || new Date(deliveryWeekDate.getTime() - (shippingDays * 24 * 60 * 60 * 1000));
+      const fallbackTransitStart = transitStartDate || fallbackExwDate;
+      const fallbackWarehouseArrival = warehouseArrivalDate || new Date(fallbackExwDate.getTime() + (shippingDays * 24 * 60 * 60 * 1000));
+      const fallbackDelivery = finalDeliveryDate || deliveryWeekDate;
       
       return {
         salesDate: new Date(forecast.createdAt),
-        exwDate: customExwDate,
-        departureDate,
-        arrivalDate: deliveryDate,
-        transitDays: Math.ceil((deliveryDate.getTime() - customExwDate.getTime()) / (24 * 60 * 60 * 1000))
+        exwDate: fallbackExwDate,
+        departureDate: fallbackTransitStart, // Transit start = departure
+        arrivalDate: fallbackWarehouseArrival,
+        deliveryDate: fallbackDelivery,
+        transitDays: shippingDays
       };
     }
     
-    // Extract shipping days from shipping preference (e.g., "SEA_ASIA_US_WEST" or "AIR_14_DAYS")
-    let shippingDays = 7; // Default
-    
-    if (forecast.shippingPreference.includes('SEA')) {
-      shippingDays = 21; // Sea freight default
-    } else if (forecast.shippingPreference.includes('AIR')) {
-      // Extract days from AIR_X_DAYS format
-      const airMatch = forecast.shippingPreference.match(/AIR_(\d+)_DAYS/);
-      shippingDays = airMatch ? parseInt(airMatch[1]) : 3;
-    } else if (forecast.shippingPreference.includes('TRUCK')) {
-      shippingDays = 7; // Truck default
-    }
-    
-    const exwDate = new Date(deliveryDate.getTime() - (shippingDays * 24 * 60 * 60 * 1000));
-    const departureDate = new Date(exwDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days after EXW
-    
-    console.log('📅 Using calculated EXW date for forecast:', forecast.id);
+    // Use database dates (preferred)
+    const transitDays = forecast.manualTransitTime || 
+      Math.ceil((warehouseArrivalDate.getTime() - transitStartDate.getTime()) / (24 * 60 * 60 * 1000));
     
     return {
       salesDate: new Date(forecast.createdAt),
-      exwDate,
-      departureDate,
-      arrivalDate: deliveryDate,
-      transitDays: shippingDays
+      exwDate: exwDate,
+      departureDate: transitStartDate, // Use estimatedTransitStart from database
+      arrivalDate: warehouseArrivalDate, // Use estimatedWarehouseArrival from database
+      deliveryDate: finalDeliveryDate, // Use confirmedDeliveryDate from database
+      transitDays: transitDays
     };
   };
 
@@ -1415,7 +1473,7 @@ export default function ShipmentsPage() {
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Warehouse</p>
                             <p className="text-xs font-medium text-gray-800 sm:hidden">W</p>
                             <p className="text-xs text-gray-600 hidden sm:block">
-                              {milestones.arrivalDate.toLocaleDateString()}
+                              {milestones.deliveryDate ? milestones.deliveryDate.toLocaleDateString() : milestones.arrivalDate.toLocaleDateString()}
                             </p>
                             <Badge className={
                               forecast.warehouseSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
@@ -2335,6 +2393,148 @@ export default function ShipmentsPage() {
               </select>
             </div>
             
+            {/* Date Management Section - Based on Stakeholder Authority */}
+            {statusChangeModal.milestone && (
+              <div className="border-t pt-4">
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-900 mb-2">📅 Date Management</h4>
+                  <p className="text-sm text-gray-600">
+                    {statusChangeModal.milestone === 'sales' && 'Update delivery dates and customer commitments'}
+                    {statusChangeModal.milestone === 'factory' && 'Update EXW (Ex-Works) production dates'}
+                    {statusChangeModal.milestone === 'transit' && 'Update transit and shipping timeline'}
+                    {statusChangeModal.milestone === 'warehouse' && 'Update warehouse processing and final delivery'}
+                  </p>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Forecast ID: {statusChangeModal.forecast?.id}
+                  </div>
+                </div>
+
+                {/* Sales: Can modify delivery dates */}
+                {statusChangeModal.milestone === 'sales' && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="deliveryWeek">Delivery Week</Label>
+                      <input
+                        id="deliveryWeek"
+                        type="text"
+                        defaultValue={statusChangeModal.forecast?.deliveryWeek}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g., 2025-W48"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="confirmedDeliveryDate">Confirmed Delivery Date</Label>
+                      <input
+                        id="confirmedDeliveryDate"
+                        type="date"
+                        defaultValue={statusChangeModal.forecast?.confirmedDeliveryDate || ''}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Factory: Can modify EXW date only */}
+                {statusChangeModal.milestone === 'factory' && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="customExwDate">EXW (Ex-Works) Date</Label>
+                      <input
+                        id="customExwDate"
+                        type="date"
+                        defaultValue={statusChangeModal.forecast?.customExwDate}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Current DB value: {statusChangeModal.forecast?.customExwDate || 'None'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Transit: Can modify transit time only */}
+                {statusChangeModal.milestone === 'transit' && (
+                  <div className="space-y-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                      <h4 className="font-medium text-blue-900 mb-2">📅 Current Timeline</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <div><strong>EXW (Pickup) Date:</strong> {statusChangeModal.forecast?.customExwDate || 'Set by Factory'}</div>
+                        <div><strong>Current Transit Start:</strong> {statusChangeModal.forecast?.estimatedTransitStart || 'TBD'}</div>
+                        <div><strong>Current Warehouse Arrival:</strong> {statusChangeModal.forecast?.estimatedWarehouseArrival || 'TBD'}</div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="manualTransitTime">Transit Time (days)</Label>
+                      <input
+                        id="manualTransitTime"
+                        type="number"
+                        min="1"
+                        max="90"
+                        defaultValue={statusChangeModal.forecast?.manualTransitTime || '21'}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g., 21"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Changes transit duration and automatically calculates new warehouse arrival date
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Warehouse: Can modify final delivery date only */}
+                {statusChangeModal.milestone === 'warehouse' && (
+                  <div className="space-y-3">
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+                      <h4 className="font-medium text-green-900 mb-2">📅 Current Timeline</h4>
+                      <div className="text-sm text-green-800 space-y-1">
+                        <div><strong>EXW (Pickup) Date:</strong> {statusChangeModal.forecast?.customExwDate || 'Set by Factory'}</div>
+                        <div><strong>Transit Time:</strong> {statusChangeModal.forecast?.manualTransitTime || '21'} days</div>
+                        <div><strong>Warehouse Arrival:</strong> {statusChangeModal.forecast?.estimatedWarehouseArrival || 'TBD'}</div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="finalDeliveryDate">Final Delivery Date</Label>
+                      <input
+                        id="finalDeliveryDate"
+                        type="date"
+                        defaultValue={statusChangeModal.forecast?.confirmedDeliveryDate || ''}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Current DB value: {statusChangeModal.forecast?.confirmedDeliveryDate || 'None'}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        This is the final customer delivery commitment date. Adjust for customs delays, processing issues, or expedited delivery.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="dateChangeReason">Reason for Date Change (Optional)</Label>
+              <select
+                id="dateChangeReason"
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select reason...</option>
+                <option value="supplier_delay">Supplier Delay</option>
+                <option value="capacity_constraint">Capacity Constraint</option>
+                <option value="material_shortage">Material Shortage</option>
+                <option value="quality_issue">Quality Issue</option>
+                <option value="shipping_delay">Shipping Delay</option>
+                <option value="port_congestion">Port Congestion</option>
+                <option value="customs_delay">Customs Delay</option>
+                <option value="weather_delay">Weather Delay</option>
+                <option value="customer_request">Customer Request</option>
+                <option value="expedite_request">Expedite Request</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
             <div>
               <Label htmlFor="statusNotes">Notes (Optional)</Label>
               <textarea
@@ -2357,6 +2557,72 @@ export default function ShipmentsPage() {
               onClick={async () => {
                 const newStatus = (document.getElementById('newStatus') as HTMLSelectElement)?.value;
                 const notes = (document.getElementById('statusNotes') as HTMLTextAreaElement)?.value;
+                const dateChangeReason = (document.getElementById('dateChangeReason') as HTMLSelectElement)?.value;
+                
+                // Capture date changes based on milestone
+                const dateChanges: any = {};
+                
+                console.log('📅 Modal form values being captured:', {
+                  milestone: statusChangeModal.milestone,
+                  currentForecastData: statusChangeModal.forecast,
+                  notesValue: notes,
+                  dateChangeReasonValue: dateChangeReason
+                });
+                
+                if (statusChangeModal.milestone === 'sales') {
+                  const deliveryWeek = (document.getElementById('deliveryWeek') as HTMLInputElement)?.value;
+                  const confirmedDeliveryDate = (document.getElementById('confirmedDeliveryDate') as HTMLInputElement)?.value;
+                  
+                  console.log('📅 Sales form values captured:', {
+                    deliveryWeek,
+                    confirmedDeliveryDate,
+                    currentForecastDeliveryWeek: statusChangeModal.forecast?.deliveryWeek,
+                    currentForecastConfirmedDeliveryDate: statusChangeModal.forecast?.confirmedDeliveryDate
+                  });
+                  
+                  if (deliveryWeek) dateChanges.deliveryWeek = deliveryWeek;
+                  if (confirmedDeliveryDate) dateChanges.confirmedDeliveryDate = confirmedDeliveryDate;
+                }
+                
+                if (statusChangeModal.milestone === 'factory') {
+                  const customExwDate = (document.getElementById('customExwDate') as HTMLInputElement)?.value;
+                  
+                  console.log('📅 Factory form values captured:', {
+                    customExwDate,
+                    currentForecastExwDate: statusChangeModal.forecast?.customExwDate,
+                    originalExwDate: statusChangeModal.forecast?.originalExwDate
+                  });
+                  
+                  if (customExwDate) dateChanges.customExwDate = customExwDate;
+                }
+                
+                if (statusChangeModal.milestone === 'transit') {
+                  const manualTransitTime = (document.getElementById('manualTransitTime') as HTMLInputElement)?.value;
+                  
+                  console.log('📅 Transit form values captured:', {
+                    manualTransitTime,
+                    currentForecastTransitTime: statusChangeModal.forecast?.manualTransitTime,
+                    currentExwDate: statusChangeModal.forecast?.customExwDate,
+                    currentTransitStart: statusChangeModal.forecast?.estimatedTransitStart,
+                    currentWarehouseArrival: statusChangeModal.forecast?.estimatedWarehouseArrival
+                  });
+                  
+                  if (manualTransitTime) dateChanges.manualTransitTime = parseInt(manualTransitTime);
+                }
+                
+                if (statusChangeModal.milestone === 'warehouse') {
+                  const finalDeliveryDate = (document.getElementById('finalDeliveryDate') as HTMLInputElement)?.value;
+                  
+                  console.log('📅 Warehouse form values captured:', {
+                    finalDeliveryDate,
+                    currentForecastConfirmedDeliveryDate: statusChangeModal.forecast?.confirmedDeliveryDate,
+                    currentWarehouseArrival: statusChangeModal.forecast?.estimatedWarehouseArrival,
+                    currentExwDate: statusChangeModal.forecast?.customExwDate
+                  });
+                  
+                  // CRITICAL: Use correct camelCase field name for API
+                  if (finalDeliveryDate) dateChanges.confirmedDeliveryDate = finalDeliveryDate;
+                }
                 
                 if (!statusChangeModal.forecast || !statusChangeModal.milestone) return;
 
@@ -2367,34 +2633,37 @@ export default function ShipmentsPage() {
                   
                   let response;
                   
+                  // Prepare the request body with both status and date changes
+                  const requestBody = {
+                    milestone: statusChangeModal.milestone,
+                    status: newStatus,
+                    notes: notes || undefined,
+                    dateChanges: Object.keys(dateChanges).length > 0 ? dateChanges : undefined,
+                    dateChangeReason: dateChangeReason || undefined
+                  };
+
+                  console.log('📤 Sending request to API:', requestBody);
+                  
                   if (shipment) {
-                    console.log(`🔄 Updating shipment ${shipment.id} signal: ${statusChangeModal.milestone} → ${newStatus}`);
+                    console.log(`🔄 Updating shipment ${shipment.id} signal: ${statusChangeModal.milestone} → ${newStatus}`, dateChanges);
                     
                     response = await fetch(`/api/cpfr/shipments/${shipment.id}/status`, {
                       method: 'PUT',
                       headers: {
                         'Content-Type': 'application/json',
                       },
-                      body: JSON.stringify({
-                        milestone: statusChangeModal.milestone,
-                        status: newStatus,
-                        notes: notes || undefined
-                      }),
+                      body: JSON.stringify(requestBody),
                     });
                   } else {
                     // Fallback: Update forecast directly if no shipment exists
-                    console.log(`🔄 No shipment found, updating forecast ${statusChangeModal.forecast.id} directly`);
+                    console.log(`🔄 No shipment found, updating forecast ${statusChangeModal.forecast.id} directly`, dateChanges);
                     
                     response = await fetch(`/api/cpfr/forecasts/${statusChangeModal.forecast.id}/status`, {
                       method: 'PUT',
                       headers: {
                         'Content-Type': 'application/json',
                       },
-                      body: JSON.stringify({
-                        milestone: statusChangeModal.milestone,
-                        status: newStatus,
-                        notes: notes || undefined
-                      }),
+                      body: JSON.stringify(requestBody),
                     });
                   }
 
@@ -2407,8 +2676,14 @@ export default function ShipmentsPage() {
                       alert(`✅ ${statusChangeModal.milestone} status updated to ${newStatus}!${syncMessage}`);
                       
                       // Refresh both forecasts and shipments data
-                      mutateForecasts();
-                      mutateShipments();
+                      await mutateForecasts();
+                      await mutateShipments();
+                      
+                      // Update the local forecast data with the fresh data
+                      if (result.forecast) {
+                        console.log('🔄 Updating local forecast data with API response');
+                        // The forecast data should be updated by the mutate calls above
+                      }
                     } else {
                       alert(`❌ Error: ${result.error}`);
                     }

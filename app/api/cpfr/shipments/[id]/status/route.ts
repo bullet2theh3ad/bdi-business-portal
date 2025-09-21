@@ -12,7 +12,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { milestone, status, notes } = body;
+    const { milestone, status, notes, dateChanges, dateChangeReason } = body;
 
     if (!milestone || !status) {
       return NextResponse.json(
@@ -84,7 +84,7 @@ export async function PUT(
 
     console.log('✅ Shipment status updated successfully:', updatedShipment);
 
-    // 🔄 BI-DIRECTIONAL SYNC: Update linked forecast signals
+    // 🔄 BI-DIRECTIONAL SYNC: Update linked forecast signals AND date changes
     console.log('🔄 Syncing forecast signals with shipment...');
     
     if (updatedShipment.forecast_id) {
@@ -92,17 +92,82 @@ export async function PUT(
         [signalColumn]: status,
         updated_at: new Date().toISOString()
       };
-      
-      // Update the linked forecast with the same signal change
-      const { error: forecastUpdateError } = await supabase
-        .from('sales_forecasts')
-        .update(forecastUpdateData)
-        .eq('id', updatedShipment.forecast_id);
-      
-      if (forecastUpdateError) {
-        console.error('⚠️ Failed to sync forecast signals:', forecastUpdateError);
+
+      // If there are date changes, sync them to the forecast as well
+      if (dateChanges && Object.keys(dateChanges).length > 0) {
+        console.log('📅 Syncing date changes to linked forecast...');
+        
+        // Map shipment date changes to forecast fields
+        for (const [field, value] of Object.entries(dateChanges)) {
+          if (value !== null && value !== undefined && value !== '') {
+            forecastUpdateData[field] = value;
+          }
+        }
+
+        // Add change tracking to forecast
+        if (dateChangeReason) {
+          forecastUpdateData.date_change_reason = dateChangeReason;
+          forecastUpdateData.last_date_change_at = new Date().toISOString();
+        }
+
+        // Call the forecast status endpoint to handle full date cascade logic
+        try {
+          const forecastResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cpfr/forecasts/${updatedShipment.forecast_id}/status`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              milestone,
+              status,
+              notes,
+              dateChanges,
+              dateChangeReason
+            }),
+          });
+
+          if (forecastResponse.ok) {
+            console.log('✅ Successfully synced date changes to forecast via API');
+          } else {
+            console.error('⚠️ Failed to sync date changes to forecast via API');
+            // Fallback to direct database update
+            const { error: forecastUpdateError } = await supabase
+              .from('sales_forecasts')
+              .update(forecastUpdateData)
+              .eq('id', updatedShipment.forecast_id);
+            
+            if (forecastUpdateError) {
+              console.error('⚠️ Failed to sync forecast signals:', forecastUpdateError);
+            } else {
+              console.log(`✅ Synced forecast with shipment signal: ${milestone} → ${status}`);
+            }
+          }
+        } catch (error) {
+          console.error('⚠️ Error calling forecast API, falling back to direct update:', error);
+          // Fallback to direct database update
+          const { error: forecastUpdateError } = await supabase
+            .from('sales_forecasts')
+            .update(forecastUpdateData)
+            .eq('id', updatedShipment.forecast_id);
+          
+          if (forecastUpdateError) {
+            console.error('⚠️ Failed to sync forecast signals:', forecastUpdateError);
+          } else {
+            console.log(`✅ Synced forecast with shipment signal: ${milestone} → ${status}`);
+          }
+        }
       } else {
-        console.log(`✅ Synced forecast with shipment signal: ${milestone} → ${status}`);
+        // No date changes, just sync the status
+        const { error: forecastUpdateError } = await supabase
+          .from('sales_forecasts')
+          .update(forecastUpdateData)
+          .eq('id', updatedShipment.forecast_id);
+        
+        if (forecastUpdateError) {
+          console.error('⚠️ Failed to sync forecast signals:', forecastUpdateError);
+        } else {
+          console.log(`✅ Synced forecast with shipment signal: ${milestone} → ${status}`);
+        }
       }
     } else {
       console.log('ℹ️ No linked forecast found for shipment:', id);
