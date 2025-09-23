@@ -12,3 +12,4 @@ WHERE table_schema = 'public'
     AND table_name NOT LIKE 'drizzle_%'
 ORDER BY table_name;
 
+

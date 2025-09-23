@@ -1,4 +1,4 @@
--- Fix the inconsistent forecast that has sales_signal='submitted' but status='draft'
+reflec-- Fix the inconsistent forecast that has sales_signal='submitted' but status='draft'
 -- This will make the Dashboard show all blue bars as expected
 
 UPDATE sales_forecasts 

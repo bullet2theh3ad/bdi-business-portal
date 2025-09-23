@@ -109,3 +109,4 @@ Your current database structure is **IDEAL** for Ask BDI implementation. The com
 The `rag_documents` table suggests you already have document indexing in place, which is perfect for contextual AI responses.
 
 
+

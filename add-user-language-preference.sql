@@ -1,4 +1,4 @@
--- Add language preference to users table for i18n support
+age cha-- Add language preference to users table for i18n support
 
 -- 1. Add language preference column
 ALTER TABLE users 
