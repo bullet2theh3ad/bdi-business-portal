@@ -786,6 +786,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   incotermsLocation: varchar('incoterms_location', { length: 255 }),
   totalValue: numeric('total_value', { precision: 15, scale: 2 }).notNull().default('0'),
   notes: text('notes'),
+  // pdfUrl: text('pdf_url'), // TODO: Add this field with: ALTER TABLE purchase_orders ADD COLUMN pdf_url TEXT;
   createdBy: uuid('created_by').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

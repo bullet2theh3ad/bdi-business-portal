@@ -35,6 +35,7 @@ interface PurchaseOrder {
   totalValue: number;
   documents?: string[]; // Array of document URLs/paths
   notes?: string;
+  pdfUrl?: string; // PDF file path in storage
   createdBy: string;
   createdAt: string;
 }
@@ -183,6 +184,11 @@ export default function PurchaseOrdersPage() {
     unitCost: number;
     totalCost: number;
   }>>>({});
+  
+  // PDF Preview & Download States
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewPO, setPdfPreviewPO] = useState<PurchaseOrder | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Helper functions for line items
   const addLineItem = () => {
@@ -319,6 +325,114 @@ export default function PurchaseOrdersPage() {
         console.error('Error deleting purchase order:', error);
         alert('Failed to delete purchase order');
       }
+    }
+  };
+
+  // PDF Generation Function (similar to invoice PDF)
+  const generatePurchaseOrderPDF = async (purchaseOrder: PurchaseOrder) => {
+    console.log('📄 Starting Purchase Order PDF generation...', purchaseOrder.purchaseOrderNumber);
+    
+    const poElement = document.querySelector('.po-preview-for-pdf');
+    if (!poElement) {
+      throw new Error('Purchase Order preview element not found');
+    }
+
+    // Import html2canvas dynamically
+    const html2canvas = (await import('html2canvas')).default;
+    
+    const canvas = await html2canvas(poElement as HTMLElement, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      onclone: (clonedDoc) => {
+        // Fix oklch colors and replace custom fonts
+        const allElements = clonedDoc.querySelectorAll('*');
+        allElements.forEach(el => {
+          const computedStyle = window.getComputedStyle(el as Element);
+          
+          // Fix oklch colors
+          if (computedStyle.color && computedStyle.color.includes('oklch')) {
+            (el as HTMLElement).style.color = '#000';
+          }
+          if (computedStyle.backgroundColor && computedStyle.backgroundColor.includes('oklch')) {
+            (el as HTMLElement).style.backgroundColor = '#fff';
+          }
+          if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
+            (el as HTMLElement).style.borderColor = '#ccc';
+          }
+          
+          // Replace custom fonts with system fonts
+          const fontFamily = computedStyle.fontFamily;
+          if (fontFamily && (fontFamily.includes('Manrope') || fontFamily.includes('JetBrains') || fontFamily.includes('Share Tech'))) {
+            (el as HTMLElement).style.fontFamily = 'Arial, Helvetica, sans-serif';
+          }
+        });
+      }
+    });
+
+    // Create PDF using jsPDF
+    const jsPDF = (await import('jspdf')).default;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    const imgData = canvas.toDataURL('image/png');
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 295; // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    // Add additional pages if needed
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf;
+  };
+
+  // Handle PDF Preview
+  const handlePdfPreview = async (purchaseOrder: PurchaseOrder) => {
+    setPdfPreviewPO(purchaseOrder);
+    setShowPdfPreview(true);
+  };
+
+  // Handle PDF Download
+  const handlePdfDownload = async (purchaseOrder: PurchaseOrder) => {
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = await generatePurchaseOrderPDF(purchaseOrder);
+      const fileName = `PO-${purchaseOrder.purchaseOrderNumber}.pdf`;
+      pdf.save(fileName);
+      
+      // Optional: Upload to storage for future reference
+      const pdfBlob = pdf.output('blob');
+      const formData = new FormData();
+      formData.append('file', pdfBlob, fileName);
+      formData.append('purchaseOrderId', purchaseOrder.id);
+      
+      try {
+        await fetch('/api/cpfr/purchase-orders/pdf-generate', {
+          method: 'POST',
+          body: formData,
+        });
+        console.log('✅ PDF uploaded to storage');
+      } catch (uploadError) {
+        console.warn('⚠️ PDF download successful but storage upload failed:', uploadError);
+      }
+      
+    } catch (error) {
+      console.error('❌ PDF generation error:', error);
+      alert('Error generating PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -565,6 +679,16 @@ export default function PurchaseOrdersPage() {
                       }}>
                         <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                         {tc('editButton', 'Edit')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePdfPreview(po)}
+                        className="w-full sm:w-auto text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                        disabled={isGeneratingPdf}
+                      >
+                        <SemanticBDIIcon semantic="document" size={14} className="mr-1" />
+                        {isGeneratingPdf ? 'Generating...' : 'Download PDF'}
                       </Button>
                         <Button
                           variant="outline"
@@ -1482,6 +1606,137 @@ export default function PurchaseOrdersPage() {
                 </Button>
               </div>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Preview Modal */}
+      <Dialog open={showPdfPreview} onOpenChange={setShowPdfPreview}>
+        <DialogContent className="w-[95vw] h-[95vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SemanticBDIIcon semantic="document" size={20} />
+              Purchase Order PDF Preview - {pdfPreviewPO?.purchaseOrderNumber}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {pdfPreviewPO && (
+            <div className="space-y-4">
+              {/* PDF Preview Content */}
+              <div className="po-preview-for-pdf bg-white p-8 border rounded-lg shadow-sm max-w-4xl mx-auto">
+                {/* Header - Same as Invoice */}
+                <div className="flex justify-between items-start mb-8 pb-4 border-b-2 border-blue-600">
+                  <div>
+                    <h1 className="text-3xl font-bold text-blue-600">PURCHASE ORDER</h1>
+                    <p className="text-lg text-gray-600 mt-1">#{pdfPreviewPO.purchaseOrderNumber}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-gray-800">BDI</div>
+                    <div className="text-sm text-gray-600">Boundless Devices, Inc.</div>
+                    <div className="text-sm text-gray-600">Business Portal</div>
+                  </div>
+                </div>
+
+                {/* Purchase Order Details */}
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Supplier Information</h3>
+                    <div className="space-y-2">
+                      <div><span className="font-medium">Supplier:</span> {pdfPreviewPO.supplierName}</div>
+                      <div><span className="font-medium">Terms:</span> {pdfPreviewPO.terms}</div>
+                      <div><span className="font-medium">Incoterms:</span> {pdfPreviewPO.incoterms} {pdfPreviewPO.incotermsLocation}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Order Details</h3>
+                    <div className="space-y-2">
+                      <div><span className="font-medium">PO Date:</span> {new Date(pdfPreviewPO.purchaseOrderDate).toLocaleDateString()}</div>
+                      <div><span className="font-medium">Delivery Date:</span> {new Date(pdfPreviewPO.requestedDeliveryDate).toLocaleDateString()}</div>
+                      <div><span className="font-medium">Status:</span> <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{pdfPreviewPO.status.toUpperCase()}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Line Items Table */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Line Items</h3>
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">SKU</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Description</th>
+                        <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Quantity</th>
+                        <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Unit Cost</th>
+                        <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchaseOrderLineItems[pdfPreviewPO.id]?.map((item, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="border border-gray-300 px-4 py-2 font-mono text-sm">{item.skuCode}</td>
+                          <td className="border border-gray-300 px-4 py-2">{item.skuName}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-right">{item.quantity.toLocaleString()}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-right">${item.unitCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-right font-semibold">${item.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      )) || (
+                        <tr>
+                          <td colSpan={5} className="border border-gray-300 px-4 py-2 text-center text-gray-500">No line items found</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Total Section */}
+                <div className="flex justify-end mb-8">
+                  <div className="w-64">
+                    <div className="border-t-2 border-gray-300 pt-4">
+                      <div className="flex justify-between items-center text-xl font-bold">
+                        <span>Total Value:</span>
+                        <span className="text-green-600">${Number(pdfPreviewPO.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                {pdfPreviewPO.notes && (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Notes</h3>
+                    <div className="bg-gray-50 p-4 rounded border">
+                      <pre className="text-sm text-gray-700 whitespace-pre-wrap">{pdfPreviewPO.notes}</pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="border-t-2 border-gray-300 pt-6 mt-8">
+                  <div className="text-center text-sm text-gray-600">
+                    <p>This purchase order was generated by BDI Business Portal</p>
+                    <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowPdfPreview(false)}>
+                  Close Preview
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowPdfPreview(false);
+                    handlePdfDownload(pdfPreviewPO);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isGeneratingPdf}
+                >
+                  <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+                  {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
