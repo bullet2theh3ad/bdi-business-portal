@@ -2064,10 +2064,10 @@ export default function InvoicesPage() {
               </div>
             )}
 
-            <div className="flex flex-col lg:flex-row h-full">
+            <div className="flex flex-col lg:flex-row h-full overflow-hidden">
               {/* Left Panel - Invoice Form (Mobile: Full width, Desktop: Left 40%) */}
-              <div className="w-full lg:w-2/5 border-r border-gray-200 flex flex-col">
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+              <div className="w-full lg:w-2/5 border-r border-gray-200 flex flex-col h-full">
+                <div className="flex-1 overflow-y-scroll p-3 sm:p-4 h-0">
                   <DialogHeader className="mb-6">
                     <DialogTitle className="flex items-center text-2xl">
                       <SemanticBDIIcon semantic="magic" size={24} className="mr-3 text-blue-600" />
@@ -2626,7 +2626,7 @@ export default function InvoicesPage() {
                 
                 {/* Action Buttons - Fixed at bottom of left panel */}
                 {generatedInvoice && (
-                  <div className="border-t bg-white p-3 flex-shrink-0 min-h-[80px]">
+                  <div className="border-t bg-white p-3 flex-shrink-0">
                     <div className="flex flex-col gap-3 sm:flex-row sm:gap-2">
                       <Button 
                         type="button" 
@@ -2881,7 +2881,7 @@ export default function InvoicesPage() {
               </div>
 
               {/* Right Panel - Real-time Invoice Preview (Mobile: Bottom, Desktop: Right 60%) */}
-              <div className="w-full lg:w-3/5 bg-gray-50 overflow-y-auto" style={{ maxHeight: '95vh' }}>
+              <div className="w-full lg:w-3/5 bg-gray-50 overflow-y-scroll h-full">
                 <div className="p-2 sm:p-4">
                   <div className="bg-white shadow-lg rounded-lg p-3 sm:p-4 max-w-2xl mx-auto text-xs sm:text-sm invoice-preview-for-pdf">
                     {generatedInvoice ? (
