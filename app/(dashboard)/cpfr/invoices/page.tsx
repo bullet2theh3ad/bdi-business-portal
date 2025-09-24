@@ -286,6 +286,7 @@ export default function InvoicesPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [customPaymentTerms, setCustomPaymentTerms] = useState('');
   const [showCustomPaymentTerms, setShowCustomPaymentTerms] = useState(false);
+  const [showLandscapePrompt, setShowLandscapePrompt] = useState(true);
   const [invoiceStatus, setInvoiceStatus] = useState<'draft' | 'submitted' | 'submitted_to_finance'>('draft');
   const [customerAddress, setCustomerAddress] = useState('');
   const [shipToAddress, setShipToAddress] = useState('');
@@ -2016,8 +2017,53 @@ export default function InvoicesPage() {
 
       {/* Generate Invoice Modal - Full Screen with Real-time Preview */}
       {showGenerateModal && (
-        <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
+        <Dialog open={showGenerateModal} onOpenChange={(open) => {
+          setShowGenerateModal(open);
+          if (!open) {
+            setShowLandscapePrompt(true); // Reset landscape prompt when modal closes
+          }
+        }}>
           <DialogContent className="w-[100vw] h-[100vh] sm:w-[98vw] sm:h-[95vh] p-0" style={{ maxWidth: 'none' }}>
+            {/* Mobile Landscape Orientation Prompt - Only show on mobile portrait */}
+            {showLandscapePrompt && (
+              <div className="sm:hidden portrait:block landscape:hidden absolute inset-0 bg-white z-50 flex flex-col items-center justify-center p-6">
+                <div className="text-center">
+                  {/* Phone Rotation Icon */}
+                  <div className="mb-6">
+                    <div className="relative mx-auto w-16 h-24 border-2 border-gray-400 rounded-lg">
+                      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-2 h-1 bg-gray-400 rounded"></div>
+                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-6 h-1 bg-gray-400 rounded"></div>
+                      <div className="absolute inset-2 bg-blue-100 rounded flex items-center justify-center">
+                        <SemanticBDIIcon semantic="document" size={20} className="text-blue-600" />
+                      </div>
+                    </div>
+                    {/* Rotation Arrow */}
+                    <div className="mt-4 flex justify-center">
+                      <div className="text-2xl animate-bounce">↻</div>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Better Experience in Landscape</h3>
+                  <p className="text-gray-600 text-center mb-4">
+                    For the best experience generating invoices, please rotate your device to landscape mode.
+                  </p>
+                  <div className="text-sm text-gray-500">
+                    This will give you more space to work with forms and preview the invoice.
+                  </div>
+                  
+                  {/* Continue in portrait button */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-6"
+                    onClick={() => setShowLandscapePrompt(false)}
+                  >
+                    Continue in Portrait Mode
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col lg:flex-row h-full">
               {/* Left Panel - Invoice Form (Mobile: Full width, Desktop: Left 40%) */}
               <div className="w-full lg:w-2/5 border-r border-gray-200 flex flex-col">
@@ -2591,6 +2637,7 @@ export default function InvoicesPage() {
                           setGeneratedInvoice(null);
                           setCustomPaymentTerms('');
                           setShowCustomPaymentTerms(false);
+                          setShowLandscapePrompt(true); // Reset landscape prompt
                           setEditingInvoiceId(null); // Clear editing mode
                         }}
                         className="flex-1"
