@@ -528,11 +528,11 @@ export default function PurchaseOrdersPage() {
               <p className="text-sm sm:text-base text-muted-foreground">{tc('purchaseOrdersDescription', 'Manage supplier purchase orders')}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button 
               variant="outline"
               onClick={() => mutatePurchaseOrders()}
-              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white w-full sm:w-auto"
             >
               <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
               {tc('refreshButton', 'Refresh')}
