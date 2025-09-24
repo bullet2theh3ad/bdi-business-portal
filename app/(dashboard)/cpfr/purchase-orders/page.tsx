@@ -189,6 +189,66 @@ export default function PurchaseOrdersPage() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewPO, setPdfPreviewPO] = useState<PurchaseOrder | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  
+  // PO Number Builder States (similar to SKU Builder)
+  const [usePOBuilder, setUsePOBuilder] = useState(true);
+  const [generatedPONumber, setGeneratedPONumber] = useState('');
+  const [poBuilder, setPOBuilder] = useState({
+    supplierOrg: '',
+    skuName: '',
+    date: new Date().toISOString().split('T')[0], // Default to today
+    randomCode: ''
+  });
+  const [manualSku, setManualSku] = useState(false);
+
+  // Generate 5-digit random code for PO uniqueness
+  const generateRandomCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 5; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  // Initialize PO Builder when modal opens
+  useEffect(() => {
+    if (showCreateModal && usePOBuilder) {
+      const initialRandomCode = generateRandomCode();
+      setPOBuilder(prev => ({
+        ...prev,
+        date: new Date().toISOString().split('T')[0],
+        randomCode: initialRandomCode
+      }));
+    }
+  }, [showCreateModal, usePOBuilder]);
+
+  // Generate PO Number from builder selections
+  // Format: [Supplier Org] - [SKU Name] - [YYYY-MM-DD] - [5-digit Random Code]
+  const generatePONumber = () => {
+    const { supplierOrg, skuName, date, randomCode } = poBuilder;
+    
+    if (!supplierOrg || !skuName || !date) {
+      return 'Select options above to generate PO Number';
+    }
+    
+    const finalRandomCode = randomCode || generateRandomCode();
+    return `${supplierOrg}-${skuName}-${date}-${finalRandomCode}`;
+  };
+
+  // Update PO Builder and regenerate PO number
+  const updateGeneratedPONumber = (field: string, value: string) => {
+    const updatedBuilder = { ...poBuilder, [field]: value };
+    
+    // Generate new random code if any field changes (to ensure uniqueness)
+    if (field !== 'randomCode') {
+      updatedBuilder.randomCode = generateRandomCode();
+    }
+    
+    setPOBuilder(updatedBuilder);
+    const newPONumber = generatePONumber();
+    setGeneratedPONumber(newPONumber);
+  };
 
   // Helper functions for line items
   const addLineItem = () => {
@@ -258,7 +318,6 @@ export default function PurchaseOrdersPage() {
       // Add purchase order data
       createFormData.append('purchaseOrderNumber', formData.get('poNumber') as string);
       createFormData.append('supplierName', formData.get('supplierName') as string);
-      createFormData.append('customSupplierName', formData.get('customSupplierName') as string);
       createFormData.append('purchaseOrderDate', formData.get('orderDate') as string);
       createFormData.append('requestedDeliveryDate', formData.get('requestedDeliveryDate') as string);
       createFormData.append('status', formData.get('status') as string);
@@ -719,54 +778,196 @@ export default function PurchaseOrdersPage() {
             e.preventDefault();
             handleCreatePurchaseOrder(new FormData(e.currentTarget));
           }}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
-              <div>
-                <Label htmlFor="poNumber">{tc('formLabels.purchaseOrderNumber', 'Purchase Order Number')} *</Label>
-                <Input
-                  id="poNumber"
-                  name="poNumber"
-                  placeholder="e.g., PO-2025-001"
-                  required
-                  className="mt-1"
+            {/* PO Number Builder Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="usePOBuilder"
+                  checked={usePOBuilder}
+                  onChange={(e) => setUsePOBuilder(e.target.checked)}
+                  className="rounded"
                 />
+                <Label htmlFor="usePOBuilder" className="font-medium">
+                  Use PO Number Builder (recommended)
+                </Label>
               </div>
-              <div>
-                <Label htmlFor="supplierName">Supplier Organization *</Label>
-                <select
-                  id="supplierName"
-                  name="supplierName"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
-                >
-                  <option value="">Select Supplier Organization</option>
-                  {Array.isArray(organizations) && organizations.map((org: any) => (
-                    <option key={org.id} value={org.code}>
-                      {org.code} - {org.name}
-                    </option>
-                  ))}
-                  {(!Array.isArray(organizations) || organizations.length === 0) && user?.organization && (
-                    <option key={user.organization.id} value={user.organization.code}>
-                      {user.organization.code} - {user.organization.name}
-                    </option>
-                  )}
-                </select>
-                <div className="text-xs text-gray-600 mt-1">
-                  Select the Supplier/Vendor organization (Factory) for CPFR signaling
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="customSupplierName">Custom Supplier Name</Label>
-                <Input
-                  id="customSupplierName"
-                  name="customSupplierName"
-                  placeholder="Optional: Additional supplier details"
-                  className="mt-1"
-                />
-                <div className="text-xs text-gray-600 mt-1">
-                  Optional: Additional supplier information beyond organization code
-                </div>
-              </div>
+              <Badge variant="secondary" className="w-fit">Auto-generates standardized PO numbers</Badge>
             </div>
+
+            {/* PO Number Builder Section */}
+            {usePOBuilder ? (
+              <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+                <h3 className="font-semibold text-lg flex items-center">
+                  <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
+                  PO Number Builder
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
+                  {/* Supplier Organization */}
+                  <div className="min-w-0">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Supplier Organization *
+                    </label>
+                    <select
+                      value={poBuilder.supplierOrg}
+                      onChange={(e) => updateGeneratedPONumber('supplierOrg', e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select</option>
+                      {Array.isArray(organizations) && organizations.map((org: any) => (
+                        <option key={org.id} value={org.code}>
+                          {org.code} - {org.name}
+                        </option>
+                      ))}
+                      {(!Array.isArray(organizations) || organizations.length === 0) && user?.organization && (
+                        <option key={user.organization.id} value={user.organization.code}>
+                          {user.organization.code} - {user.organization.name}
+                        </option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* SKU Name */}
+                  <div className="min-w-0">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      SKU Name *
+                    </label>
+                    {!manualSku ? (
+                      <select
+                        value={poBuilder.skuName}
+                        onChange={(e) => {
+                          if (e.target.value === 'MANUAL') {
+                            setManualSku(true);
+                            updateGeneratedPONumber('skuName', '');
+                          } else {
+                            updateGeneratedPONumber('skuName', e.target.value);
+                          }
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Select SKU</option>
+                        {Array.isArray(skus) && skus.map((sku: any) => (
+                          <option key={sku.id} value={sku.sku}>
+                            {sku.sku} - {sku.name}
+                          </option>
+                        ))}
+                        <option value="MANUAL">Enter manually...</option>
+                      </select>
+                    ) : (
+                      <div className="flex space-x-1">
+                        <Input
+                          value={poBuilder.skuName}
+                          onChange={(e) => updateGeneratedPONumber('skuName', e.target.value.toUpperCase())}
+                          placeholder="SKU-NAME"
+                          maxLength={20}
+                          className="w-full text-sm font-mono"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setManualSku(false);
+                            updateGeneratedPONumber('skuName', '');
+                          }}
+                          className="px-2"
+                        >
+                          ↶
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Date */}
+                  <div className="min-w-0">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={poBuilder.date}
+                      onChange={(e) => updateGeneratedPONumber('date', e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  {/* Random Code */}
+                  <div className="min-w-0">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Unique Code
+                    </label>
+                    <div className="flex space-x-1">
+                      <Input
+                        value={poBuilder.randomCode}
+                        onChange={(e) => updateGeneratedPONumber('randomCode', e.target.value.toUpperCase())}
+                        placeholder="Auto"
+                        maxLength={5}
+                        className="w-full text-sm font-mono text-center"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateGeneratedPONumber('randomCode', generateRandomCode())}
+                        className="px-2"
+                        title="Generate new random code"
+                      >
+                        🎲
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Generated PO Number Preview */}
+                <div className="p-3 bg-white border rounded-lg">
+                  <Label className="text-sm font-medium text-gray-700">Generated PO Number:</Label>
+                  <div className="font-mono text-lg font-bold text-blue-600 mt-1">
+                    {generatePONumber()}
+                  </div>
+                  <input type="hidden" name="poNumber" value={generatePONumber()} />
+                  <input type="hidden" name="supplierName" value={poBuilder.supplierOrg} />
+                </div>
+              </div>
+            ) : (
+              /* Manual PO Number Entry (when builder is disabled) */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="poNumber">{tc('formLabels.purchaseOrderNumber', 'Purchase Order Number')} *</Label>
+                  <Input
+                    id="poNumber"
+                    name="poNumber"
+                    placeholder="e.g., PO-2025-001"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="supplierName">Supplier Organization *</Label>
+                  <select
+                    id="supplierName"
+                    name="supplierName"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                  >
+                    <option value="">Select Supplier Organization</option>
+                    {Array.isArray(organizations) && organizations.map((org: any) => (
+                      <option key={org.id} value={org.code}>
+                        {org.code} - {org.name}
+                      </option>
+                    ))}
+                    {(!Array.isArray(organizations) || organizations.length === 0) && user?.organization && (
+                      <option key={user.organization.id} value={user.organization.code}>
+                        {user.organization.code} - {user.organization.name}
+                      </option>
+                    )}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 xl:gap-10">
               <div>
@@ -976,21 +1177,20 @@ export default function PurchaseOrdersPage() {
                           />
                         </div>
                                                   <div>
-                            <Label className="text-xs">Unit Cost *</Label>
+                            <Label className="text-xs">Unit Cost * <span className="text-green-600 font-normal">(0.00 = FoC)</span></Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <Input
                                 type="number"
                                 step="0.01"
-                                value={item.unitCost === 0 ? '' : item.unitCost}
+                                value={item.unitCost}
                                 onChange={(e) => {
                                   const newUnitCost = parseFloat(e.target.value) || 0;
                                   updateLineItem(item.id, 'unitCost', newUnitCost);
                                 }}
                                 min="0"
                                 className="text-sm pl-6 font-mono"
-                                placeholder="0.00"
-                                required
+                                placeholder="0.00 for FoC"
                               />
                             </div>
                           </div>
@@ -1357,13 +1557,13 @@ export default function PurchaseOrdersPage() {
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Unit Cost *</Label>
+                            <Label className="text-xs">Unit Cost * <span className="text-green-600 font-normal">(0.00 = FoC)</span></Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <Input
                                 type="number"
                                 step="0.01"
-                                value={item.unitCost === 0 ? '' : item.unitCost}
+                                value={item.unitCost}
                                 onChange={(e) => {
                                   const updatedItems = [...editLineItems];
                                   const newUnitCost = parseFloat(e.target.value) || 0;
@@ -1376,8 +1576,7 @@ export default function PurchaseOrdersPage() {
                                 }}
                                 min="0"
                                 className="text-sm pl-6 font-mono"
-                                placeholder="0.00"
-                                required
+                                placeholder="0.00 for FoC"
                               />
                             </div>
                           </div>
@@ -1712,6 +1911,9 @@ export default function PurchaseOrdersPage() {
 
                 {/* Footer */}
                 <div className="border-t-2 border-gray-300 pt-6 mt-8">
+                  <div className="text-left text-sm text-gray-600 mb-4">
+                    <p className="italic">Note: Units with $0.00 are Free of Charge (FoC) units.</p>
+                  </div>
                   <div className="text-center text-sm text-gray-600">
                     <p>This purchase order was generated by BDI Business Portal</p>
                     <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>

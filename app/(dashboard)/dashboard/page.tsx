@@ -494,9 +494,10 @@ function ForecastMonthlyCharts() {
 
 function RecentActivity() {
   const { data: forecasts } = useSWR('/api/cpfr/forecasts', fetcher);
+  const { data: userActivity } = useSWR('/api/admin/user-activity', fetcher);
   
   // Get recent forecast activities - ensure forecasts is an array
-  const recentActivities = (Array.isArray(forecasts) ? forecasts : []).slice(0, 5).map((forecast: any) => ({
+  const forecastActivities = (Array.isArray(forecasts) ? forecasts : []).slice(0, 3).map((forecast: any) => ({
     id: forecast.id,
     type: 'forecast' as const,
     message: `Forecast created for ${forecast.sku?.sku || 'Unknown SKU'} - ${forecast.quantity?.toLocaleString() || 0} units`,
@@ -504,9 +505,26 @@ function RecentActivity() {
     status: forecast.salesSignal || 'unknown'
   })) || [];
 
+  // Get recent user login activities
+  const loginActivities = (Array.isArray(userActivity) ? userActivity : [])
+    .filter((user: any) => user.lastLoginAt) // Only users who have logged in
+    .slice(0, 3)
+    .map((user: any) => ({
+      id: `login-${user.id}`,
+      type: 'login' as const,
+      message: `${user.name} logged in`,
+      time: new Date(user.lastLoginAt).toLocaleDateString(),
+      status: 'active'
+    })) || [];
+
+  // Combine and sort all activities by time
+  const recentActivities = [...forecastActivities, ...loginActivities]
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .slice(0, 5);
+
   type Activity = {
     id: string;
-    type: 'forecast';
+    type: 'forecast' | 'login';
     message: string;
     time: string;
     status: string;
@@ -524,6 +542,7 @@ function RecentActivity() {
             recentActivities.map((activity: Activity, index: number) => (
               <div key={activity.id || index} className="flex items-center space-x-4">
                 <div className={`w-2 h-2 rounded-full ${
+                  activity.type === 'login' ? 'bg-green-500' :
                   activity.status === 'submitted' ? 'bg-blue-500' :
                   activity.status === 'accepted' ? 'bg-green-500' :
                   activity.status === 'rejected' ? 'bg-red-500' :
@@ -534,12 +553,13 @@ function RecentActivity() {
                   <p className="text-xs text-muted-foreground">{activity.time}</p>
                 </div>
                 <div className={`text-xs px-2 py-1 rounded-full ${
+                  activity.type === 'login' ? 'bg-green-100 text-green-800' :
                   activity.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
                   activity.status === 'accepted' ? 'bg-green-100 text-green-800' :
                   activity.status === 'rejected' ? 'bg-red-100 text-red-800' :
                   'bg-gray-100 text-gray-600'
                 }`}>
-                  {activity.status}
+                  {activity.type === 'login' ? 'Login' : activity.status}
                 </div>
               </div>
             ))

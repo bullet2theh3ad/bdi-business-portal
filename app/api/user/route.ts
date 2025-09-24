@@ -69,7 +69,17 @@ export async function GET() {
         .returning();
     } else {
       console.log('Found user by email:', dbUser.email);
-      // Don't update - just use the existing user data
+      
+      // Update last login time from Supabase Auth
+      if (authUser.last_sign_in_at) {
+        await db
+          .update(users)
+          .set({ 
+            lastLoginAt: new Date(authUser.last_sign_in_at),
+            updatedAt: new Date()
+          })
+          .where(eq(users.authId, authUser.id));
+      }
     }
 
     // Check if user is a member of any organizations (based on invitations/assignments)
