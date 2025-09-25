@@ -385,5 +385,23 @@
     "admin": "Administrador",
     "user": "Usuario",
     "developer": "Desarrollador"
+  },
+  "cpfrScenarioAnalysis": {
+    "title": "Análisis de Escenarios",
+    "workBackwardsTimeline": "Análisis de Cronograma de Trabajo Hacia Atrás:",
+    "realityCheck": "Verificación de Realidad: Transformar pronósticos de ventas optimistas en cronogramas CPFR realistas",
+    "salesDeliveryStake": "Entrega de Ventas como Base: Trabajar hacia atrás desde la fecha de compromiso del cliente",
+    "customParameters": "Parámetros Personalizados: Métodos de envío realistas, tiempos de entrega y márgenes de seguridad",
+    "riskAssessment": "Evaluación de Riesgo: Factibilidad ALTA/MEDIA/BAJA con alertas de vencimiento",
+    "timelineMilestones": "Hitos del Cronograma y Acciones:",
+    "salesDeliveryDate": "Fecha de Entrega de Ventas: Compromiso del cliente (base firme)",
+    "warehouseArrival": "Llegada al Almacén: Margen de seguridad antes de la entrega",
+    "shippingStart": "Inicio del Envío: Tiempo de tránsito (Marítimo: 21-45 días, Aéreo: 7-14 días)",
+    "productionStart": "Inicio de Producción: Tiempo de entrega de manufactura",
+    "factorySignalRequired": "Señal de Fábrica Requerida: Fecha crítica de acción para planificación de producción",
+    "stakeholderCommunication": "Comunicación con Partes Interesadas:",
+    "emailActionItems": "Elementos de Acción por Email: Enviar análisis integral de cronograma a partes interesadas",
+    "emailContent": "Contenido del Email: Comunicación CPFR profesional con marca BDI",
+    "bestPractice": "Mejor Práctica: Usar Análisis de Escenarios para convertir pronósticos de ventas poco realistas de \"retraso cero\" en cronogramas CPFR accionables. El análisis ayuda a los líderes CPFR a comunicar el tiempo realista de señales de fábrica a las partes interesadas, asegurando una planificación de producción y compromisos de entrega adecuados."
   }
 }

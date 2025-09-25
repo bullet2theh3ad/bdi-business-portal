@@ -385,5 +385,23 @@
     "admin": "Quản trị viên",
     "user": "Người dùng",
     "developer": "Nhà phát triển"
+  },
+  "cpfrScenarioAnalysis": {
+    "title": "Phân tích Kịch bản",
+    "workBackwardsTimeline": "Phân tích Dòng thời gian Ngược:",
+    "realityCheck": "Kiểm tra Thực tế: Chuyển đổi dự báo bán hàng lạc quan thành dòng thời gian CPFR thực tế",
+    "salesDeliveryStake": "Giao hàng Bán hàng làm Mốc: Làm việc ngược từ ngày cam kết khách hàng",
+    "customParameters": "Tham số Tùy chỉnh: Phương thức vận chuyển thực tế, thời gian giao hàng và đệm an toàn",
+    "riskAssessment": "Đánh giá Rủi ro: Tính khả thi CAO/TRUNG BÌNH/THẤP với cảnh báo quá hạn",
+    "timelineMilestones": "Cột mốc Dòng thời gian & Hành động:",
+    "salesDeliveryDate": "Ngày Giao hàng Bán hàng: Cam kết khách hàng (mốc cơ sở)",
+    "warehouseArrival": "Đến Kho: Đệm an toàn trước khi giao hàng",
+    "shippingStart": "Bắt đầu Vận chuyển: Thời gian vận chuyển (Đường biển: 21-45 ngày, Đường hàng không: 7-14 ngày)",
+    "productionStart": "Bắt đầu Sản xuất: Thời gian giao hàng sản xuất",
+    "factorySignalRequired": "Tín hiệu Nhà máy Yêu cầu: Ngày hành động quan trọng cho kế hoạch sản xuất",
+    "stakeholderCommunication": "Giao tiếp Bên liên quan:",
+    "emailActionItems": "Mục Hành động Email: Gửi phân tích dòng thời gian toàn diện cho các bên liên quan",
+    "emailContent": "Nội dung Email: Giao tiếp CPFR chuyên nghiệp với thương hiệu BDI",
+    "bestPractice": "Thực hành Tốt nhất: Sử dụng Phân tích Kịch bản để chuyển đổi dự báo bán hàng không thực tế độ trễ bằng không thành dòng thời gian CPFR có thể thực hiện. Phân tích giúp các nhà lãnh đạo CPFR truyền đạt thời gian tín hiệu nhà máy thực tế cho các bên liên quan, đảm bảo kế hoạch sản xuất và cam kết giao hàng phù hợp."
   }
 }

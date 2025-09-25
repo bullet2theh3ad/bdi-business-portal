@@ -391,5 +391,23 @@
     "admin": "管理员",
     "user": "用户",
     "developer": "开发者"
+  },
+  "cpfrScenarioAnalysis": {
+    "title": "情景分析",
+    "workBackwardsTimeline": "逆向时间线分析:",
+    "realityCheck": "现实检查: 将乐观的销售预测转换为现实的CPFR时间线",
+    "salesDeliveryStake": "销售交付基准: 从客户承诺日期向前推算",
+    "customParameters": "自定义参数: 现实的运输方式、交货时间和安全缓冲",
+    "riskAssessment": "风险评估: 高/中/低可行性与逾期警报",
+    "timelineMilestones": "时间线里程碑和行动:",
+    "salesDeliveryDate": "销售交付日期: 客户承诺（基准点）",
+    "warehouseArrival": "仓库到货: 交付前的安全缓冲",
+    "shippingStart": "运输开始: 运输时间（海运: 21-45天，空运: 7-14天）",
+    "productionStart": "生产开始: 制造交货时间",
+    "factorySignalRequired": "工厂信号要求: 生产计划的关键行动日期",
+    "stakeholderCommunication": "利益相关者沟通:",
+    "emailActionItems": "电子邮件行动项目: 向利益相关者发送全面的时间线分析",
+    "emailContent": "电子邮件内容: 带有BDI品牌的专业CPFR沟通",
+    "bestPractice": "最佳实践: 使用情景分析将不现实的零延迟销售预测转换为可操作的CPFR时间线。该分析帮助CPFR领导者向利益相关者传达现实的工厂信号时机，确保适当的生产计划和交付承诺。"
   }
 }

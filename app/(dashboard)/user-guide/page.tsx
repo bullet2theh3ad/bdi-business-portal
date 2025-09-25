@@ -11,6 +11,7 @@ import { SemanticBDIIcon } from '@/components/BDIIcon';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { CapabilityItem, NavigationItem, DocumentationCard } from '@/components/DocumentationTranslation';
+import { CPFRScenarioAnalysisGuide } from '@/components/user-guide/CPFRScenarioAnalysisGuide';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 
@@ -437,6 +438,9 @@ export default function UserGuidePage() {
                     </div>
                   </div>
                 </div>
+
+                {/* CPFR Scenario Analysis */}
+                <CPFRScenarioAnalysisGuide userLanguage={userLocale} />
 
                 {/* Shipments */}
                 <div className="bg-blue-50 p-5 rounded-lg border border-blue-200">

@@ -391,5 +391,23 @@
     "admin": "Admin",
     "user": "User",
     "developer": "Developer"
+  },
+  "cpfrScenarioAnalysis": {
+    "title": "Scenario Analysis",
+    "workBackwardsTimeline": "Work-Backwards Timeline Analysis:",
+    "realityCheck": "Reality Check: Transform optimistic sales forecasts into realistic CPFR timelines",
+    "salesDeliveryStake": "Sales Delivery as Stake: Work backwards from customer commitment date",
+    "customParameters": "Custom Parameters: Realistic shipping methods, lead times, and safety buffers",
+    "riskAssessment": "Risk Assessment: HIGH/MEDIUM/LOW feasibility with overdue alerts",
+    "timelineMilestones": "Timeline Milestones & Actions:",
+    "salesDeliveryDate": "Sales Delivery Date: Customer commitment (stake in ground)",
+    "warehouseArrival": "Warehouse Arrival: Safety buffer before delivery",
+    "shippingStart": "Shipping Start: Transit time (Sea: 21-45 days, Air: 7-14 days)",
+    "productionStart": "Production Start: Manufacturing lead time",
+    "factorySignalRequired": "Factory Signal Required: Critical action date for production planning",
+    "stakeholderCommunication": "Stakeholder Communication:",
+    "emailActionItems": "Email Action Items: Send comprehensive timeline analysis to stakeholders",
+    "emailContent": "Email Content: Professional CPFR communication with BDI branding",
+    "bestPractice": "Best Practice: Use Scenario Analysis to convert unrealistic \"zero lag\" sales forecasts into actionable CPFR timelines. The analysis helps CPFR leaders communicate realistic factory signal timing to stakeholders, ensuring proper production planning and delivery commitments."
   }
 }
