@@ -2694,15 +2694,19 @@ export default function SalesForecastsPage() {
       {/* Scenario Analysis Modal - CPFR Leader Tool */}
       {showAnalysisModal && analysisForecast && (
         <Dialog open={showAnalysisModal} onOpenChange={setShowAnalysisModal}>
-          <DialogContent className="w-[95vw] sm:w-[90vw] lg:w-[1000px] h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                <SemanticBDIIcon semantic="analytics" size={20} className="mr-2 text-purple-600" />
-                Scenario Analysis - {analysisForecast.sku?.sku}
+          <DialogContent className="w-[100vw] h-[100vh] sm:w-[98vw] sm:h-[95vh] p-0" style={{ maxWidth: 'none' }}>
+            <DialogHeader className="p-4 sm:p-6 border-b">
+              <DialogTitle className="flex items-center text-xl sm:text-2xl">
+                <SemanticBDIIcon semantic="analytics" size={24} className="mr-3 text-purple-600" />
+                CPFR Scenario Analysis - {analysisForecast.sku?.sku}
               </DialogTitle>
+              <p className="text-gray-600 mt-2">
+                Analyze real-world timeline impact vs optimistic sales forecasts
+              </p>
             </DialogHeader>
             
-            <div className="space-y-6 p-4">
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
               {/* Current Forecast Overview */}
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                 <h3 className="font-semibold text-yellow-900 mb-3">⚠️ Sales Forecast (Current)</h3>
@@ -2736,13 +2740,13 @@ export default function SalesForecastsPage() {
               </div>
 
               {/* Scenario Analysis Controls */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-blue-900 mb-3">🔬 Real-World Scenario Analysis</h3>
-                <p className="text-blue-700 text-sm mb-4">
+              <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-3 text-lg">🔬 Real-World Scenario Analysis</h3>
+                <p className="text-blue-700 text-sm sm:text-base mb-4 sm:mb-6">
                   Analyze the impact of realistic shipping methods and lead times on your CPFR timeline
                 </p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                   <div>
                     <Label htmlFor="analysisShippingMethod">Realistic Shipping Method *</Label>
                     <select
@@ -2797,26 +2801,46 @@ export default function SalesForecastsPage() {
               </div>
 
               {/* Analysis Results Placeholder */}
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <h3 className="font-semibold text-green-900 mb-3">📊 Timeline Analysis Results</h3>
-                <p className="text-green-700 text-sm">
+              <div className="bg-green-50 p-4 sm:p-6 rounded-lg border border-green-200">
+                <h3 className="font-semibold text-green-900 mb-3 text-lg">📊 Timeline Analysis Results</h3>
+                <p className="text-green-700 text-sm sm:text-base">
                   Click "Calculate Real Timeline" to see the impact analysis with realistic shipping and lead times.
                 </p>
-                <div className="mt-3 text-xs text-green-600">
+                <div className="mt-3 text-xs sm:text-sm text-green-600">
                   This will show: Factory signal timing, Production start date, Shipping timeline, Risk assessment
                 </div>
+                
+                {/* Future: Timeline visualization will go here */}
+                <div className="mt-4 p-4 bg-white rounded border border-green-300">
+                  <div className="text-center text-gray-500">
+                    <SemanticBDIIcon semantic="analytics" size={48} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Timeline calculation results will appear here</p>
+                  </div>
+                </div>
+              </div>
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="border-t p-4 flex justify-end space-x-3">
-              <Button variant="outline" onClick={() => setShowAnalysisModal(false)}>
-                Close Analysis
-              </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <SemanticBDIIcon semantic="save" size={16} className="mr-2" />
-                Apply Realistic Timeline
-              </Button>
+            {/* Modal Actions - Fixed at bottom */}
+            <div className="border-t p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">CPFR Analysis Tool</span> - Compare optimistic vs realistic timelines
+              </div>
+              <div className="flex space-x-3 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAnalysisModal(false)}
+                  className="flex-1 sm:flex-none"
+                >
+                  Close Analysis
+                </Button>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+                >
+                  <SemanticBDIIcon semantic="save" size={16} className="mr-2" />
+                  Apply Realistic Timeline
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
