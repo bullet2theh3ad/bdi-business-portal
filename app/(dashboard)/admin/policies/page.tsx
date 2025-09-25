@@ -116,6 +116,33 @@ export default function PoliciesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid as requested
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewPolicy, setPreviewPolicy] = useState<PolicyDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
+  // Handle document preview
+  const handlePreview = async (policy: PolicyDocument) => {
+    try {
+      // Generate signed URL for preview
+      const response = await fetch('/api/admin/policies/preview-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath: policy.filePath })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPreviewPolicy(policy);
+        setPreviewUrl(data.url);
+        setShowPreviewModal(true);
+      } else {
+        alert('Failed to generate preview');
+      }
+    } catch (error) {
+      console.error('Preview error:', error);
+      alert('Error generating preview');
+    }
+  };
 
   // Handle document download
   const handleDownload = async (policy: PolicyDocument) => {
@@ -433,8 +460,7 @@ export default function PoliciesPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Preview functionality - open in new tab
-                            window.open(`/api/admin/policies/preview?filePath=${encodeURIComponent(policy.filePath)}`, '_blank');
+                            handlePreview(policy);
                           }}
                           className="bg-white/50 hover:bg-white text-blue-600 border-blue-300"
                         >
@@ -477,7 +503,7 @@ export default function PoliciesPage() {
                             className="flex-1 bg-white/50 hover:bg-white text-blue-600 border-blue-300"
                             onClick={(e) => {
                               e.stopPropagation();
-                              window.open(`/api/admin/policies/preview?filePath=${encodeURIComponent(policy.filePath)}`, '_blank');
+                              handlePreview(policy);
                             }}
                           >
                             <SemanticBDIIcon semantic="view" size={14} className="mr-1" />
@@ -669,6 +695,117 @@ export default function PoliciesPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Preview Modal */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="w-[95vw] h-[90vh] p-0" style={{ maxWidth: 'none' }}>
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="flex items-center">
+              <SemanticBDIIcon semantic="view" size={20} className="mr-2" />
+              Preview: {previewPolicy?.fileName}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden">
+            {previewPolicy && previewUrl && (
+              <div className="h-full">
+                {/* PDF Preview */}
+                {previewPolicy.contentType === 'application/pdf' || previewPolicy.fileName.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={`Preview: ${previewPolicy.fileName}`}
+                  />
+                ) : 
+                /* Document Preview for DOC/DOCX */
+                previewPolicy.fileName.toLowerCase().endsWith('.doc') || previewPolicy.fileName.toLowerCase().endsWith('.docx') ? (
+                  <div className="h-full flex flex-col items-center justify-center p-8 bg-gray-50">
+                    <SemanticBDIIcon semantic="document" size={64} className="text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Document Preview</h3>
+                    <p className="text-gray-600 mb-4 text-center">
+                      Word documents cannot be previewed directly in the browser.
+                    </p>
+                    <div className="flex space-x-3">
+                      <Button
+                        onClick={() => handleDownload(previewPolicy)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+                        Download to View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          // Try to open with Office Online
+                          window.open(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`, '_blank');
+                        }}
+                      >
+                        <SemanticBDIIcon semantic="view" size={16} className="mr-2" />
+                        Open in Office Online
+                      </Button>
+                    </div>
+                  </div>
+                ) :
+                /* Text/Markdown Preview */
+                previewPolicy.fileName.toLowerCase().endsWith('.txt') || previewPolicy.fileName.toLowerCase().endsWith('.md') ? (
+                  <div className="h-full overflow-y-auto p-6 bg-white">
+                    <div className="max-w-4xl mx-auto">
+                      <iframe
+                        src={previewUrl}
+                        className="w-full min-h-[600px] border border-gray-300 rounded"
+                        title={`Preview: ${previewPolicy.fileName}`}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Fallback for other file types */
+                  <div className="h-full flex flex-col items-center justify-center p-8 bg-gray-50">
+                    <SemanticBDIIcon semantic="document" size={64} className="text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Preview Not Available</h3>
+                    <p className="text-gray-600 mb-4 text-center">
+                      This file type cannot be previewed directly. Please download to view.
+                    </p>
+                    <Button
+                      onClick={() => handleDownload(previewPolicy)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+                      Download File
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Modal Actions */}
+          <div className="border-t p-4 flex justify-between items-center">
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              {previewPolicy && (
+                <>
+                  <span>📁 {(previewPolicy.fileSize / 1024).toFixed(1)} KB</span>
+                  <span>📅 {new Date(previewPolicy.uploadedAt).toLocaleDateString()}</span>
+                  <span>👤 {previewPolicy.uploadedBy}</span>
+                </>
+              )}
+            </div>
+            <div className="flex space-x-3">
+              <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
+                Close
+              </Button>
+              {previewPolicy && (
+                <Button
+                  onClick={() => handleDownload(previewPolicy)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+                  Download
+                </Button>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
