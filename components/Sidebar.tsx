@@ -139,6 +139,12 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         icon: 'users',
       },
       {
+        title: tn('policies', 'Policies'), // 🌍 TRANSLATED
+        href: '/admin/policies',
+        icon: 'document',
+        requiresBDI: true, // BDI-only feature
+      },
+      {
         title: 'Teams',
         href: '/admin/teams',
         icon: 'collaboration',
