@@ -240,16 +240,28 @@ export default function SalesForecastsPage() {
         includeActionItems: emailData.includeActionItems
       };
 
-      // TODO: Replace with actual API endpoint
-      console.log('Sending CPFR Action Items Email:', emailPayload);
-      
-      // For now, show success message
-      alert(`CPFR Action Items email would be sent to: ${allRecipients}`);
+      // Send email via API endpoint
+      const response = await fetch('/api/cpfr/send-action-items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailPayload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send email');
+      }
+
+      // Success - show confirmation and close modal
+      alert(`✅ CPFR Action Items email sent successfully to: ${allRecipients}`);
       setShowEmailModal(false);
       
     } catch (error) {
       console.error('Failed to send action items email:', error);
-      alert('Failed to send email. Please try again.');
+      alert(`❌ Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
   
