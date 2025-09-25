@@ -98,6 +98,11 @@ export default function SalesForecastsPage() {
   const [editingForecast, setEditingForecast] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<any>({});
   
+  // Edit Forecast Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedForecast, setSelectedForecast] = useState<SalesForecast | null>(null);
+  const [editForecastData, setEditForecastData] = useState<any>({});
+  
   // Calendar picker state
   const [calendarPickerDate, setCalendarPickerDate] = useState(new Date());
   const [selectedDeliveryWeek, setSelectedDeliveryWeek] = useState<string>('');
@@ -991,7 +996,25 @@ export default function SalesForecastsPage() {
                       
                       {/* Action Button - Mobile: Below content, Desktop: Right side */}
                       <div className="flex items-center justify-center sm:justify-end">
-                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto"
+                          onClick={() => {
+                            setSelectedForecast(forecast);
+                            setEditForecastData({
+                              quantity: forecast.quantity,
+                              deliveryWeek: forecast.deliveryWeek,
+                              shippingPreference: forecast.shippingPreference,
+                              confidence: (forecast as any).confidence || 'planning',
+                              notes: forecast.notes || '',
+                              salesSignal: forecast.salesSignal || 'unknown',
+                              factorySignal: forecast.factorySignal || 'unknown',
+                              shippingSignal: forecast.shippingSignal || 'unknown'
+                            });
+                            setShowEditModal(true);
+                          }}
+                        >
                           <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
                           <DynamicTranslation userLanguage={userLocale} context="general">
                             {canCreateForecasts ? 'Edit' : 'Respond'}
@@ -2395,6 +2418,248 @@ export default function SalesForecastsPage() {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Forecast Modal */}
+      {showEditModal && selectedForecast && (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="w-[95vw] sm:w-[90vw] lg:w-[800px] h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
+                Edit Forecast - {selectedForecast.sku?.sku}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setIsLoading(true);
+              
+              try {
+                const response = await fetch(`/api/cpfr/forecasts/${selectedForecast.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(editForecastData)
+                });
+
+                if (response.ok) {
+                  alert('✅ Forecast updated successfully!');
+                  mutateForecasts();
+                  setShowEditModal(false);
+                  setSelectedForecast(null);
+                } else {
+                  const errorData = await response.json();
+                  alert(`❌ Update failed: ${errorData.error || 'Unknown error'}`);
+                }
+              } catch (error) {
+                console.error('Error updating forecast:', error);
+                alert('❌ Error updating forecast. Please try again.');
+              } finally {
+                setIsLoading(false);
+              }
+            }} className="space-y-6 p-4">
+
+              {/* Forecast Overview */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-3">Forecast Overview</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">SKU:</span>
+                    <p className="font-mono font-medium">{selectedForecast.sku?.sku}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Product:</span>
+                    <p className="font-medium">{selectedForecast.sku?.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Created:</span>
+                    <p className="font-medium">{new Date(selectedForecast.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Editable Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="editQuantity">Quantity *</Label>
+                  <Input
+                    id="editQuantity"
+                    type="number"
+                    value={editForecastData.quantity || ''}
+                    onChange={(e) => setEditForecastData({
+                      ...editForecastData,
+                      quantity: parseInt(e.target.value) || 0
+                    })}
+                    min="1"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="editDeliveryWeek">Delivery Week *</Label>
+                  <Input
+                    id="editDeliveryWeek"
+                    value={editForecastData.deliveryWeek || ''}
+                    onChange={(e) => setEditForecastData({
+                      ...editForecastData,
+                      deliveryWeek: e.target.value
+                    })}
+                    placeholder="e.g., 2026-W30"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="editShippingPreference">Shipping Method *</Label>
+                  <select
+                    id="editShippingPreference"
+                    value={editForecastData.shippingPreference || ''}
+                    onChange={(e) => setEditForecastData({
+                      ...editForecastData,
+                      shippingPreference: e.target.value
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    required
+                  >
+                    <option value="">Select Method</option>
+                    <option value="Sea Freight">Sea Freight</option>
+                    <option value="Air Freight">Air Freight</option>
+                    <option value="Ground">Ground</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="editConfidence">Confidence Level *</Label>
+                  <select
+                    id="editConfidence"
+                    value={editForecastData.confidence || ''}
+                    onChange={(e) => setEditForecastData({
+                      ...editForecastData,
+                      confidence: e.target.value
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    required
+                  >
+                    <option value="">Select Confidence</option>
+                    <option value="part_of_po">Part of PO</option>
+                    <option value="pre_po">Pre-PO</option>
+                    <option value="planning">Planning</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* CPFR Signals */}
+              <div className="space-y-4">
+                <Label className="text-lg font-medium text-gray-900">CPFR Signals</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="editSalesSignal">Sales Signal</Label>
+                    <select
+                      id="editSalesSignal"
+                      value={editForecastData.salesSignal || 'unknown'}
+                      onChange={(e) => setEditForecastData({
+                        ...editForecastData,
+                        salesSignal: e.target.value
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="unknown">Unknown</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="editFactorySignal">Factory Signal</Label>
+                    <select
+                      id="editFactorySignal"
+                      value={editForecastData.factorySignal || 'unknown'}
+                      onChange={(e) => setEditForecastData({
+                        ...editForecastData,
+                        factorySignal: e.target.value
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="unknown">Unknown</option>
+                      <option value="received">Received</option>
+                      <option value="in_production">In Production</option>
+                      <option value="ready">Ready</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="editShippingSignal">Shipping Signal</Label>
+                    <select
+                      id="editShippingSignal"
+                      value={editForecastData.shippingSignal || 'unknown'}
+                      onChange={(e) => setEditForecastData({
+                        ...editForecastData,
+                        shippingSignal: e.target.value
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="unknown">Unknown</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="in_transit">In Transit</option>
+                      <option value="delivered">Delivered</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <Label htmlFor="editNotes">Notes</Label>
+                <textarea
+                  id="editNotes"
+                  value={editForecastData.notes || ''}
+                  onChange={(e) => setEditForecastData({
+                    ...editForecastData,
+                    notes: e.target.value
+                  })}
+                  placeholder="Additional notes or comments..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                  rows={4}
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedForecast(null);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                >
+                  {isLoading ? (
+                    <>
+                      <SemanticBDIIcon semantic="loading" size={16} className="mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <SemanticBDIIcon semantic="check" size={16} className="mr-2" />
+                      Update Forecast
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       )}
