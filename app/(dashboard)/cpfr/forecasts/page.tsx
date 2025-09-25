@@ -1006,7 +1006,6 @@ export default function SalesForecastsPage() {
                               quantity: forecast.quantity,
                               deliveryWeek: forecast.deliveryWeek,
                               shippingPreference: forecast.shippingPreference,
-                              confidence: (forecast as any).confidence || 'planning',
                               notes: forecast.notes || '',
                               salesSignal: forecast.salesSignal || 'unknown',
                               factorySignal: forecast.factorySignal || 'unknown',
@@ -2438,10 +2437,13 @@ export default function SalesForecastsPage() {
               setIsLoading(true);
               
               try {
-                const response = await fetch(`/api/cpfr/forecasts/${selectedForecast.id}`, {
+                const response = await fetch(`/api/cpfr/forecasts`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(editForecastData)
+                  body: JSON.stringify({
+                    forecastId: selectedForecast.id,
+                    ...editForecastData
+                  })
                 });
 
                 if (response.ok) {
@@ -2481,7 +2483,7 @@ export default function SalesForecastsPage() {
               </div>
 
               {/* Editable Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <Label htmlFor="editQuantity">Quantity *</Label>
                   <Input
@@ -2532,24 +2534,6 @@ export default function SalesForecastsPage() {
                   </select>
                 </div>
                 
-                <div>
-                  <Label htmlFor="editConfidence">Confidence Level *</Label>
-                  <select
-                    id="editConfidence"
-                    value={editForecastData.confidence || ''}
-                    onChange={(e) => setEditForecastData({
-                      ...editForecastData,
-                      confidence: e.target.value
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
-                    required
-                  >
-                    <option value="">Select Confidence</option>
-                    <option value="part_of_po">Part of PO</option>
-                    <option value="pre_po">Pre-PO</option>
-                    <option value="planning">Planning</option>
-                  </select>
-                </div>
               </div>
 
               {/* CPFR Signals */}
