@@ -67,10 +67,17 @@ function generateCPFRActionItemsEmail({
   includeRiskAssessment,
   includeActionItems
 }: any) {
+  // Convert date strings back to Date objects (they get serialized during JSON transmission)
+  const deliveryDate = new Date(timeline.deliveryDate);
+  const warehouseArrival = new Date(timeline.warehouseArrival);
+  const shippingStart = new Date(timeline.shippingStart);
+  const productionStart = new Date(timeline.productionStart);
+  const factorySignalDate = new Date(timeline.factorySignalDate);
+  
   const riskColor = timeline.riskLevel === 'HIGH' ? '#dc2626' : 
                    timeline.riskLevel === 'MEDIUM' ? '#d97706' : '#16a34a';
   
-  const isOverdue = timeline.factorySignalDate < new Date();
+  const isOverdue = factorySignalDate < new Date();
   
   return `
 <!DOCTYPE html>
@@ -143,14 +150,14 @@ function generateCPFRActionItemsEmail({
         
         <div class="summary-item">
           <div class="summary-label">Sales Delivery Target</div>
-          <div class="summary-value">${timeline.deliveryDate.toLocaleDateString()}</div>
+          <div class="summary-value">${deliveryDate.toLocaleDateString()}</div>
           <div style="color: #6b7280; font-size: 14px;">Week ${forecast.deliveryWeek}</div>
         </div>
         
         <div class="summary-item">
           <div class="summary-label">Factory Signal Due</div>
           <div class="summary-value" style="color: ${isOverdue ? '#dc2626' : '#f59e0b'};">
-            ${timeline.factorySignalDate.toLocaleDateString()}
+            ${factorySignalDate.toLocaleDateString()}
           </div>
           <div style="color: ${isOverdue ? '#dc2626' : '#6b7280'}; font-size: 14px;">
             ${isOverdue ? 'OVERDUE!' : 'Action Required'}
@@ -180,7 +187,7 @@ function generateCPFRActionItemsEmail({
           <div class="step-icon">🎯</div>
           <div class="step-content">
             <div class="step-title">Sales Delivery Date (Customer Commitment)</div>
-            <div class="step-date">${timeline.deliveryDate.toLocaleDateString()}</div>
+            <div class="step-date">${deliveryDate.toLocaleDateString()}</div>
             <div class="step-description">Stake in the ground - customer delivery commitment</div>
           </div>
         </div>
@@ -190,7 +197,7 @@ function generateCPFRActionItemsEmail({
           <div class="step-icon">🏪</div>
           <div class="step-content">
             <div class="step-title">Warehouse Arrival Required</div>
-            <div class="step-date">${timeline.warehouseArrival.toLocaleDateString()}</div>
+            <div class="step-date">${warehouseArrival.toLocaleDateString()}</div>
             <div class="step-description">Safety buffer: ${timeline.bufferDays} days before customer delivery</div>
           </div>
         </div>
@@ -200,7 +207,7 @@ function generateCPFRActionItemsEmail({
           <div class="step-icon">🚢</div>
           <div class="step-content">
             <div class="step-title">Shipping Must Start</div>
-            <div class="step-date">${timeline.shippingStart.toLocaleDateString()}</div>
+            <div class="step-date">${shippingStart.toLocaleDateString()}</div>
             <div class="step-description">
               Transit time: ${timeline.shippingDays} days 
               (${analysisData.shippingMethod === 'custom' ? 'Custom' : analysisData.shippingMethod.replace(/_/g, ' ')})
@@ -213,7 +220,7 @@ function generateCPFRActionItemsEmail({
           <div class="step-icon">🏭</div>
           <div class="step-content">
             <div class="step-title">Production Must Start</div>
-            <div class="step-date">${timeline.productionStart.toLocaleDateString()}</div>
+            <div class="step-date">${productionStart.toLocaleDateString()}</div>
             <div class="step-description">Manufacturing lead time: ${timeline.leadTimeDays} days</div>
           </div>
         </div>
@@ -223,7 +230,7 @@ function generateCPFRActionItemsEmail({
           <div class="step-icon">📡</div>
           <div class="step-content">
             <div class="step-title">Factory Signal Required ${isOverdue ? '(OVERDUE)' : ''}</div>
-            <div class="step-date ${isOverdue ? 'overdue-alert' : ''}">${timeline.factorySignalDate.toLocaleDateString()}</div>
+            <div class="step-date ${isOverdue ? 'overdue-alert' : ''}">${factorySignalDate.toLocaleDateString()}</div>
             <div class="step-description ${isOverdue ? 'overdue-alert' : ''}">
               ${isOverdue ? 
                 '🚨 CRITICAL: Signal should have been sent! Immediate action required.' : 
@@ -240,14 +247,14 @@ function generateCPFRActionItemsEmail({
         <ul style="margin: 15px 0; padding-left: 20px;">
           <li style="margin-bottom: 8px;">
             <strong>${isOverdue ? 'URGENT' : 'Schedule'} Factory Signal:</strong> 
-            Contact factory by ${timeline.factorySignalDate.toLocaleDateString()} 
+            Contact factory by ${factorySignalDate.toLocaleDateString()} 
             ${isOverdue ? '(OVERDUE - send immediately!)' : ''}
           </li>
           <li style="margin-bottom: 8px;">
             <strong>Production Planning:</strong> Ensure ${timeline.leadTimeDays}-day lead time is achievable for ${forecast.quantity.toLocaleString()} units
           </li>
           <li style="margin-bottom: 8px;">
-            <strong>Shipping Coordination:</strong> Book ${analysisData.shippingMethod.replace(/_/g, ' ').toLowerCase()} capacity for ${timeline.shippingStart.toLocaleDateString()}
+            <strong>Shipping Coordination:</strong> Book ${analysisData.shippingMethod.replace(/_/g, ' ').toLowerCase()} capacity for ${shippingStart.toLocaleDateString()}
           </li>
           <li style="margin-bottom: 8px;">
             <strong>Risk Mitigation:</strong> 
