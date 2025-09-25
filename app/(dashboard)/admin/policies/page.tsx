@@ -35,6 +35,71 @@ interface PolicyDocument {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+// Policy category configurations with colors and icons
+const policyCategories = {
+  database: {
+    name: 'Database & Backup',
+    color: 'bg-purple-100 border-purple-200 text-purple-800',
+    iconColor: 'text-purple-600',
+    icon: 'analytics' as const,
+    badgeColor: 'bg-purple-100 text-purple-800'
+  },
+  security: {
+    name: 'Security & Access',
+    color: 'bg-red-100 border-red-200 text-red-800',
+    iconColor: 'text-red-600',
+    icon: 'lock' as const,
+    badgeColor: 'bg-red-100 text-red-800'
+  },
+  operations: {
+    name: 'Operations & Procedures',
+    color: 'bg-blue-100 border-blue-200 text-blue-800',
+    iconColor: 'text-blue-600',
+    icon: 'settings' as const,
+    badgeColor: 'bg-blue-100 text-blue-800'
+  },
+  compliance: {
+    name: 'Compliance & Legal',
+    color: 'bg-yellow-100 border-yellow-200 text-yellow-800',
+    iconColor: 'text-yellow-600',
+    icon: 'legal' as const,
+    badgeColor: 'bg-yellow-100 text-yellow-800'
+  },
+  hr: {
+    name: 'Human Resources',
+    color: 'bg-green-100 border-green-200 text-green-800',
+    iconColor: 'text-green-600',
+    icon: 'users' as const,
+    badgeColor: 'bg-green-100 text-green-800'
+  },
+  finance: {
+    name: 'Finance & Accounting',
+    color: 'bg-emerald-100 border-emerald-200 text-emerald-800',
+    iconColor: 'text-emerald-600',
+    icon: 'currency' as const,
+    badgeColor: 'bg-emerald-100 text-emerald-800'
+  },
+  it: {
+    name: 'IT & Technology',
+    color: 'bg-indigo-100 border-indigo-200 text-indigo-800',
+    iconColor: 'text-indigo-600',
+    icon: 'tech' as const,
+    badgeColor: 'bg-indigo-100 text-indigo-800'
+  },
+  other: {
+    name: 'Other',
+    color: 'bg-gray-100 border-gray-200 text-gray-800',
+    iconColor: 'text-gray-600',
+    icon: 'document' as const,
+    badgeColor: 'bg-gray-100 text-gray-800'
+  }
+};
+
+// Get category configuration
+const getCategoryConfig = (category: string) => {
+  return policyCategories[category as keyof typeof policyCategories] || policyCategories.other;
+};
+
 export default function PoliciesPage() {
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   
@@ -51,6 +116,57 @@ export default function PoliciesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid as requested
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
+
+  // Handle document download
+  const handleDownload = async (policy: PolicyDocument) => {
+    try {
+      const response = await fetch('/api/admin/policies/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath: policy.filePath })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = policy.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert('Failed to download document');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Error downloading document');
+    }
+  };
+
+  // Handle document deletion
+  const handleDelete = async (policy: PolicyDocument) => {
+    if (confirm(`Are you sure you want to delete "${policy.fileName}"? This action cannot be undone.`)) {
+      try {
+        const response = await fetch('/api/admin/policies/delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath: policy.filePath })
+        });
+
+        if (response.ok) {
+          alert('✅ Policy document deleted successfully');
+          mutatePolicies();
+        } else {
+          alert('❌ Failed to delete document');
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('❌ Error deleting document');
+      }
+    }
+  };
 
   // Access control - only BDI users can access policies
   if (!user?.organization || user.organization.code !== 'BDI') {
@@ -228,63 +344,129 @@ export default function PoliciesPage() {
             </div>
           ) : (
             <div className={viewMode === 'grid' ? 
-              'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 
-              'space-y-4'
+              'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6' : 
+              'space-y-3'
             }>
-              {filteredPolicies.map((policy) => (
-                <div key={policy.id} className={viewMode === 'grid' ? 
-                  'border rounded-lg p-4 hover:bg-gray-50 transition-colors' :
-                  'border rounded-lg p-4 hover:bg-gray-50 transition-colors flex items-center justify-between'
-                }>
-                  <div className={viewMode === 'grid' ? 'space-y-3' : 'flex-1'}>
-                    <div className="flex items-start space-x-3">
-                      <SemanticBDIIcon semantic="document" size={20} className="text-blue-600 mt-1" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm truncate">{policy.fileName}</h3>
-                        {policy.description && (
-                          <p className="text-xs text-gray-600 mt-1">{policy.description}</p>
-                        )}
+              {filteredPolicies.map((policy) => {
+                const categoryConfig = getCategoryConfig(policy.category || 'other');
+                const uploadDate = new Date(policy.uploadedAt);
+                
+                return (
+                  <div 
+                    key={policy.id} 
+                    className={`${categoryConfig.color} rounded-lg p-4 sm:p-6 transition-all duration-200 hover:shadow-lg cursor-pointer transform hover:scale-105 ${
+                      viewMode === 'list' ? 'flex items-center justify-between' : ''
+                    }`}
+                    onClick={() => handleDownload(policy)}
+                  >
+                    <div className={viewMode === 'grid' ? 'space-y-4' : 'flex-1 flex items-center space-x-4'}>
+                      {/* Category Icon & Badge */}
+                      <div className={`flex items-center ${viewMode === 'grid' ? 'justify-between' : 'space-x-3'}`}>
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-3 rounded-full bg-white/50 ${viewMode === 'grid' ? '' : 'flex-shrink-0'}`}>
+                            <SemanticBDIIcon 
+                              semantic={categoryConfig.icon} 
+                              size={viewMode === 'grid' ? 24 : 20} 
+                              className={categoryConfig.iconColor} 
+                            />
+                          </div>
+                          {viewMode === 'list' && (
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm sm:text-base truncate">{policy.fileName}</h3>
+                              {policy.description && (
+                                <p className="text-xs sm:text-sm opacity-75 mt-1 truncate">{policy.description}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <Badge className={`${categoryConfig.badgeColor} text-xs font-medium ${viewMode === 'list' ? 'flex-shrink-0' : ''}`}>
+                          {categoryConfig.name}
+                        </Badge>
                       </div>
+
+                      {/* Document Details (Grid View) */}
+                      {viewMode === 'grid' && (
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="font-semibold text-sm sm:text-base line-clamp-2">{policy.fileName}</h3>
+                            {policy.description && (
+                              <p className="text-xs sm:text-sm opacity-75 mt-1 line-clamp-2">{policy.description}</p>
+                            )}
+                          </div>
+                          
+                          {/* Digital Fingerprint */}
+                          <div className="space-y-2 text-xs sm:text-sm opacity-75">
+                            <div className="flex items-center justify-between">
+                              <span>📁 Size:</span>
+                              <span className="font-mono">{(policy.fileSize / 1024).toFixed(1)} KB</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>📅 Uploaded:</span>
+                              <span className="font-mono">{uploadDate.toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>🕒 Time:</span>
+                              <span className="font-mono">{uploadDate.toLocaleTimeString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>👤 By:</span>
+                              <span className="font-mono text-xs">{policy.uploadedBy}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Digital Fingerprint (List View) */}
+                      {viewMode === 'list' && (
+                        <div className="flex-shrink-0 text-right text-xs sm:text-sm opacity-75 space-y-1">
+                          <div>{(policy.fileSize / 1024).toFixed(1)} KB</div>
+                          <div className="font-mono">{uploadDate.toLocaleDateString()}</div>
+                          <div className="font-mono">{uploadDate.toLocaleTimeString()}</div>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{(policy.fileSize / 1024).toFixed(1)} KB</span>
-                      <span>{new Date(policy.uploadedAt).toLocaleDateString()}</span>
-                    </div>
+                    {/* Action Buttons */}
+                    {viewMode === 'list' && (
+                      <div className="flex space-x-2 ml-4 flex-shrink-0">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(policy);
+                          }}
+                          className="bg-white/50 hover:bg-white"
+                        >
+                          <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
+                          Download
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(policy);
+                          }}
+                          className="text-red-600 hover:text-red-700 bg-white/50 hover:bg-white"
+                        >
+                          <SemanticBDIIcon semantic="delete" size={14} />
+                        </Button>
+                      </div>
+                    )}
                     
-                    {policy.category && (
-                      <Badge variant="secondary" className="text-xs">
-                        {policy.category}
-                      </Badge>
+                    {/* Grid View Click Hint */}
+                    {viewMode === 'grid' && (
+                      <div className="mt-4 pt-3 border-t border-white/30 text-center">
+                        <div className="text-xs opacity-75 flex items-center justify-center space-x-2">
+                          <SemanticBDIIcon semantic="download" size={12} />
+                          <span>Click to download</span>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  
-                  {viewMode === 'list' && (
-                    <div className="flex space-x-2 ml-4">
-                      <Button variant="outline" size="sm">
-                        <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
-                        Download
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {viewMode === 'grid' && (
-                    <div className="flex space-x-2 mt-3">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
-                        Download
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <SemanticBDIIcon semantic="delete" size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
