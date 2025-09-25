@@ -103,6 +103,10 @@ export default function SalesForecastsPage() {
   const [selectedForecast, setSelectedForecast] = useState<SalesForecast | null>(null);
   const [editForecastData, setEditForecastData] = useState<any>({});
   
+  // Scenario Analysis Modal State
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisForecast, setAnalysisForecast] = useState<SalesForecast | null>(null);
+  
   // Calendar picker state
   const [calendarPickerDate, setCalendarPickerDate] = useState(new Date());
   const [selectedDeliveryWeek, setSelectedDeliveryWeek] = useState<string>('');
@@ -994,8 +998,8 @@ export default function SalesForecastsPage() {
                         )}
                       </div>
                       
-                      {/* Action Button - Mobile: Below content, Desktop: Right side */}
-                      <div className="flex items-center justify-center sm:justify-end">
+                      {/* Action Buttons - Mobile: Below content, Desktop: Right side */}
+                      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -1028,6 +1032,20 @@ export default function SalesForecastsPage() {
                           <DynamicTranslation userLanguage={userLocale} context="general">
                             {canCreateForecasts ? 'Edit' : 'Respond'}
                           </DynamicTranslation>
+                        </Button>
+                        
+                        {/* Scenario Analysis Button - CPFR Leader Tool */}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto text-purple-600 border-purple-300 hover:bg-purple-50"
+                          onClick={() => {
+                            setAnalysisForecast(forecast);
+                            setShowAnalysisModal(true);
+                          }}
+                        >
+                          <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
+                          Analysis
                         </Button>
                       </div>
                     </div>
@@ -2669,6 +2687,137 @@ export default function SalesForecastsPage() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Scenario Analysis Modal - CPFR Leader Tool */}
+      {showAnalysisModal && analysisForecast && (
+        <Dialog open={showAnalysisModal} onOpenChange={setShowAnalysisModal}>
+          <DialogContent className="w-[95vw] sm:w-[90vw] lg:w-[1000px] h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <SemanticBDIIcon semantic="analytics" size={20} className="mr-2 text-purple-600" />
+                Scenario Analysis - {analysisForecast.sku?.sku}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6 p-4">
+              {/* Current Forecast Overview */}
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <h3 className="font-semibold text-yellow-900 mb-3">⚠️ Sales Forecast (Current)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">SKU:</span>
+                    <p className="font-mono font-medium">{analysisForecast.sku?.sku}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Quantity:</span>
+                    <p className="font-medium">{analysisForecast.quantity.toLocaleString()} units</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Delivery Week:</span>
+                    <p className="font-medium">{analysisForecast.deliveryWeek}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Current Shipping:</span>
+                    <p className="font-medium text-yellow-700">
+                      {analysisForecast.shippingPreference || 'Not specified'}
+                    </p>
+                  </div>
+                </div>
+                {analysisForecast.shippingPreference?.includes('ZERO_LAG') && (
+                  <div className="mt-3 p-3 bg-yellow-100 rounded border border-yellow-300">
+                    <p className="text-yellow-800 text-sm font-medium">
+                      ⚠️ Warning: Zero Lag shipping is unrealistic for CPFR planning
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Scenario Analysis Controls */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-3">🔬 Real-World Scenario Analysis</h3>
+                <p className="text-blue-700 text-sm mb-4">
+                  Analyze the impact of realistic shipping methods and lead times on your CPFR timeline
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="analysisShippingMethod">Realistic Shipping Method *</Label>
+                    <select
+                      id="analysisShippingMethod"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="">Select Realistic Method</option>
+                      <option value="SEA_ASIA_US_WEST">Sea Asia to US West (21 days)</option>
+                      <option value="AIR_14_DAYS">Air Express (14 days)</option>
+                      <option value="AIR_7_DAYS">Air Priority (7 days)</option>
+                      <option value="SEA_STANDARD">Sea Standard (28 days)</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="analysisLeadTime">Factory Lead Time</Label>
+                    <select
+                      id="analysisLeadTime"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="auto">Use SKU Default</option>
+                      <option value="30">30 days (Standard)</option>
+                      <option value="45">45 days (Extended)</option>
+                      <option value="60">60 days (Long Lead)</option>
+                      <option value="custom">Custom...</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="analysisBuffer">Safety Buffer</Label>
+                    <select
+                      id="analysisBuffer"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="5">5 days (Standard)</option>
+                      <option value="7">7 days (Conservative)</option>
+                      <option value="10">10 days (High Risk)</option>
+                      <option value="14">14 days (Very Safe)</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <Button 
+                    type="button"
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
+                    Calculate Real Timeline
+                  </Button>
+                </div>
+              </div>
+
+              {/* Analysis Results Placeholder */}
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h3 className="font-semibold text-green-900 mb-3">📊 Timeline Analysis Results</h3>
+                <p className="text-green-700 text-sm">
+                  Click "Calculate Real Timeline" to see the impact analysis with realistic shipping and lead times.
+                </p>
+                <div className="mt-3 text-xs text-green-600">
+                  This will show: Factory signal timing, Production start date, Shipping timeline, Risk assessment
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="border-t p-4 flex justify-end space-x-3">
+              <Button variant="outline" onClick={() => setShowAnalysisModal(false)}>
+                Close Analysis
+              </Button>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <SemanticBDIIcon semantic="save" size={16} className="mr-2" />
+                Apply Realistic Timeline
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}
