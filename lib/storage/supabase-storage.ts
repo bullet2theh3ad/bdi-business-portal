@@ -169,10 +169,10 @@ export async function getSignedUrl(filePath: string, expiresIn: number = 3600): 
  * @returns Validation result
  */
 function validateFile(file: File): { valid: boolean; error?: string } {
-  // File size limit: 10MB
-  const maxSize = 10 * 1024 * 1024;
+  // File size limit: 100MB for production files, 10MB for others
+  const maxSize = 100 * 1024 * 1024; // Increased to 100MB for large production files
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 10MB' };
+    return { valid: false, error: 'File size must be less than 100MB' };
   }
 
   // Allowed file types
