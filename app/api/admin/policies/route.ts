@@ -36,6 +36,8 @@ export async function GET(request: NextRequest) {
       .select({
         id: users.id,
         authId: users.authId,
+        name: users.name,
+        email: users.email,
         role: users.role,
         organization: {
           id: organizations.id,
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
       filePath: `policies/${file.name}`,
       fileSize: file.metadata?.size || 0,
       contentType: file.metadata?.mimetype || 'application/octet-stream',
-      uploadedBy: 'System', // TODO: Track actual uploader
+      uploadedBy: file.metadata?.uploaderName || dbUser?.name || 'Unknown User',
       uploadedAt: file.created_at || new Date().toISOString(),
       description: file.metadata?.description || '',
       category: file.metadata?.category || 'other'
@@ -118,6 +120,8 @@ export async function POST(request: NextRequest) {
       .select({
         id: users.id,
         authId: users.authId,
+        name: users.name,
+        email: users.email,
         role: users.role,
         organization: {
           id: organizations.id,
@@ -163,10 +167,13 @@ export async function POST(request: NextRequest) {
           cacheControl: '3600',
           upsert: false,
           metadata: {
-            category: category,
-            description: description,
+            category: category || 'other',
+            description: description || '',
             uploadedBy: dbUser.authId,
-            originalName: file.name
+            uploaderName: dbUser.name || 'Unknown User',
+            uploaderEmail: dbUser.email || '',
+            originalName: file.name,
+            uploadedAt: new Date().toISOString()
           }
         });
 

@@ -354,10 +354,9 @@ export default function PoliciesPage() {
                 return (
                   <div 
                     key={policy.id} 
-                    className={`${categoryConfig.color} rounded-lg p-4 sm:p-6 transition-all duration-200 hover:shadow-lg cursor-pointer transform hover:scale-105 ${
+                    className={`${categoryConfig.color} rounded-lg p-4 sm:p-6 transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
                       viewMode === 'list' ? 'flex items-center justify-between' : ''
                     }`}
-                    onClick={() => handleDownload(policy)}
                   >
                     <div className={viewMode === 'grid' ? 'space-y-4' : 'flex-1 flex items-center space-x-4'}>
                       {/* Category Icon & Badge */}
@@ -434,9 +433,22 @@ export default function PoliciesPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
+                            // Preview functionality - open in new tab
+                            window.open(`/api/admin/policies/preview?filePath=${encodeURIComponent(policy.filePath)}`, '_blank');
+                          }}
+                          className="bg-white/50 hover:bg-white text-blue-600 border-blue-300"
+                        >
+                          <SemanticBDIIcon semantic="view" size={14} className="mr-1" />
+                          Preview
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDownload(policy);
                           }}
-                          className="bg-white/50 hover:bg-white"
+                          className="bg-white/50 hover:bg-white text-green-600 border-green-300"
                         >
                           <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
                           Download
@@ -448,19 +460,52 @@ export default function PoliciesPage() {
                             e.stopPropagation();
                             handleDelete(policy);
                           }}
-                          className="text-red-600 hover:text-red-700 bg-white/50 hover:bg-white"
+                          className="bg-white/50 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
                         >
                           <SemanticBDIIcon semantic="delete" size={14} />
                         </Button>
                       </div>
                     )}
                     
-                    {/* Grid View Click Hint */}
+                    {/* Grid View Action Buttons */}
                     {viewMode === 'grid' && (
-                      <div className="mt-4 pt-3 border-t border-white/30 text-center">
-                        <div className="text-xs opacity-75 flex items-center justify-center space-x-2">
-                          <SemanticBDIIcon semantic="download" size={12} />
-                          <span>Click to download</span>
+                      <div className="mt-4 pt-3 border-t border-white/30">
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 bg-white/50 hover:bg-white text-blue-600 border-blue-300"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`/api/admin/policies/preview?filePath=${encodeURIComponent(policy.filePath)}`, '_blank');
+                            }}
+                          >
+                            <SemanticBDIIcon semantic="view" size={14} className="mr-1" />
+                            Preview
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 bg-white/50 hover:bg-white text-green-600 border-green-300"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(policy);
+                            }}
+                          >
+                            <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
+                            Download
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-white/50 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50 px-3"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(policy);
+                            }}
+                          >
+                            <SemanticBDIIcon semantic="delete" size={14} />
+                          </Button>
                         </div>
                       </div>
                     )}
