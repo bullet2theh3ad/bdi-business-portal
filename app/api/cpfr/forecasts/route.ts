@@ -517,6 +517,8 @@ export async function PUT(request: NextRequest) {
         .from('sales_forecasts')
         .update({
           quantity: body.quantity,
+          delivery_week: body.deliveryWeek,
+          shipping_preference: body.shippingPreference,
           status: body.salesSignal === 'submitted' ? 'submitted' : 'draft', // 🔧 FIX: Update status based on sales signal
           sales_signal: body.salesSignal,
           factory_signal: body.factorySignal,

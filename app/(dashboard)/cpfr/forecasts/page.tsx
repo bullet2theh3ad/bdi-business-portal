@@ -1002,14 +1002,15 @@ export default function SalesForecastsPage() {
                           className="w-full sm:w-auto"
                           onClick={() => {
                             setSelectedForecast(forecast);
+                            console.log('🔍 Loading forecast data for edit:', forecast);
                             setEditForecastData({
                               quantity: forecast.quantity,
                               deliveryWeek: forecast.deliveryWeek,
-                              shippingPreference: forecast.shippingPreference,
+                              shippingPreference: forecast.shippingPreference || (forecast as any).shipping_preference || '',
                               notes: forecast.notes || '',
-                              salesSignal: forecast.salesSignal || 'unknown',
-                              factorySignal: forecast.factorySignal || 'unknown',
-                              shippingSignal: forecast.shippingSignal || 'unknown'
+                              salesSignal: forecast.salesSignal || (forecast as any).sales_signal || 'unknown',
+                              factorySignal: forecast.factorySignal || (forecast as any).factory_signal || 'unknown',
+                              shippingSignal: forecast.shippingSignal || (forecast as any).shipping_signal || 'unknown'
                             });
                             setShowEditModal(true);
                           }}
@@ -2442,7 +2443,13 @@ export default function SalesForecastsPage() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     forecastId: selectedForecast.id,
-                    ...editForecastData
+                    quantity: editForecastData.quantity,
+                    deliveryWeek: editForecastData.deliveryWeek,
+                    shippingPreference: editForecastData.shippingPreference,
+                    salesSignal: editForecastData.salesSignal,
+                    factorySignal: editForecastData.factorySignal,
+                    shippingSignal: editForecastData.shippingSignal,
+                    notes: editForecastData.notes
                   })
                 });
 
@@ -2552,6 +2559,7 @@ export default function SalesForecastsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="unknown">Unknown</option>
+                      <option value="draft">Draft</option>
                       <option value="submitted">Submitted</option>
                       <option value="confirmed">Confirmed</option>
                       <option value="rejected">Rejected</option>
@@ -2570,9 +2578,12 @@ export default function SalesForecastsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="unknown">Unknown</option>
-                      <option value="received">Received</option>
+                      <option value="pending">Pending</option>
+                      <option value="reviewing">Reviewing</option>
+                      <option value="confirmed">Confirmed</option>
                       <option value="in_production">In Production</option>
                       <option value="ready">Ready</option>
+                      <option value="shipped">Shipped</option>
                     </select>
                   </div>
                   
@@ -2588,6 +2599,7 @@ export default function SalesForecastsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="unknown">Unknown</option>
+                      <option value="pending">Pending</option>
                       <option value="scheduled">Scheduled</option>
                       <option value="in_transit">In Transit</option>
                       <option value="delivered">Delivered</option>
