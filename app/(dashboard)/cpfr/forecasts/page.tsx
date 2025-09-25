@@ -1003,6 +1003,15 @@ export default function SalesForecastsPage() {
                           onClick={() => {
                             setSelectedForecast(forecast);
                             console.log('🔍 Loading forecast data for edit:', forecast);
+                            console.log('🔍 Shipping preference check:', {
+                              shippingPreference: forecast.shippingPreference,
+                              shipping_preference: (forecast as any).shipping_preference,
+                              salesSignal: forecast.salesSignal,
+                              sales_signal: (forecast as any).sales_signal,
+                              factorySignal: forecast.factorySignal,
+                              factory_signal: (forecast as any).factory_signal
+                            });
+                            
                             setEditForecastData({
                               quantity: forecast.quantity,
                               deliveryWeek: forecast.deliveryWeek,
