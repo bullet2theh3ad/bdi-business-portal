@@ -61,10 +61,25 @@ export class SupabaseFileRAG {
             .from(bucket.name)
             .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } }); // Reduced for scaling
           
-          // CRITICAL: Also explicitly check for rag-documents folder
+          // CRITICAL: Dynamically scan ALL folders in organization-documents
           if (bucket.name === 'organization-documents') {
-            console.log('📁 Explicitly scanning rag-documents folder...');
-            await this.exploreFolder(bucket.name, 'rag-documents', allFiles, 0);
+            console.log('📁 Dynamically scanning all organization-documents folders...');
+            // Get all root items to discover folders
+            if (rootItems) {
+              for (const item of rootItems) {
+                if (item.name && !item.name.includes('.')) { // Likely a folder
+                  console.log(`📁 Found folder: ${item.name}, exploring...`);
+                  await this.exploreFolder(bucket.name, item.name, allFiles, 0);
+                }
+              }
+            }
+            
+            // Also explicitly check for known important folders that might be deep
+            const knownFolders = ['rag-documents', 'policies', 'templates', 'invoices', 'production-files'];
+            for (const folderName of knownFolders) {
+              console.log(`📁 Explicitly scanning ${folderName} folder...`);
+              await this.exploreFolder(bucket.name, folderName, allFiles, 0);
+            }
           }
           
           if (rootError) {
