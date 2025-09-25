@@ -98,6 +98,50 @@ export default function WarehousesPage() {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [showExtraContact, setShowExtraContact] = useState(false);
   
+  // Dynamic contacts management for create modal
+  const [dynamicContacts, setDynamicContacts] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    extension: string;
+    isPrimary: boolean;
+  }>>([
+    { id: '1', name: '', email: '', phone: '', extension: '', isPrimary: true }
+  ]);
+
+  // Dynamic contacts helper functions
+  const addDynamicContact = () => {
+    const newContact = {
+      id: Date.now().toString(),
+      name: '',
+      email: '',
+      phone: '',
+      extension: '',
+      isPrimary: false
+    };
+    setDynamicContacts([...dynamicContacts, newContact]);
+  };
+
+  const removeDynamicContact = (id: string) => {
+    setDynamicContacts(dynamicContacts.filter(contact => contact.id !== id));
+  };
+
+  const updateDynamicContact = (id: string, field: string, value: string) => {
+    setDynamicContacts(dynamicContacts.map(contact => 
+      contact.id === id ? { ...contact, [field]: value } : contact
+    ));
+  };
+
+  // Reset dynamic contacts when modal opens
+  useEffect(() => {
+    if (showCreateModal) {
+      setDynamicContacts([
+        { id: '1', name: '', email: '', phone: '', extension: '', isPrimary: true }
+      ]);
+    }
+  }, [showCreateModal]);
+  
   // EMG Inventory Modal State
   const [showEmgInventoryModal, setShowEmgInventoryModal] = useState(false);
   const [emgFile, setEmgFile] = useState<File | null>(null);
@@ -867,147 +911,95 @@ export default function WarehousesPage() {
               </div>
             </div>
 
-            {/* Contact Information - Multiple Contacts */}
+            {/* Contact Information - Dynamic Contacts */}
             <div className="space-y-6">
-              <div>
-                <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
-                <p className="text-sm text-gray-600 mt-1">Primary contact is required. Add additional contacts as needed.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
+                  <p className="text-sm text-gray-600 mt-1">Primary contact is required. Add additional contacts as needed.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addDynamicContact}
+                  className="text-green-600 border-green-300 hover:bg-green-50"
+                >
+                  <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                  Add Contact
+                </Button>
               </div>
               
               <div className="space-y-4">
-                {/* Primary Contact (Required) */}
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="text-base font-medium text-green-800 mb-4">📞 Primary Contact (Required)</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                    <div>
-                      <Label htmlFor="contactName1">{tc('formLabels.contactPerson', 'Contact Person')} *</Label>
-                      <Input
-                        id="contactName1"
-                        name="contactName1"
-                        placeholder="John Smith"
-                        required
-                        className="mt-1"
-                      />
+                {dynamicContacts.map((contact, index) => (
+                  <div key={contact.id} className={`p-4 border rounded-lg ${contact.isPrimary ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className={`text-base font-medium ${contact.isPrimary ? 'text-green-800' : 'text-gray-700'}`}>
+                        📞 {contact.isPrimary ? 'Primary Contact (Required)' : `Additional Contact ${index}`}
+                      </h4>
+                      {!contact.isPrimary && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeDynamicContact(contact.id)}
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          Remove
+                        </Button>
+                      )}
                     </div>
-                    <div>
-                      <Label htmlFor="contactEmail1">{tc('formLabels.email', 'Email')} *</Label>
-                      <Input
-                        id="contactEmail1"
-                        name="contactEmail1"
-                        type="email"
-                        placeholder="john@company.com"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactPhone1">Phone Number</Label>
-                      <Input
-                        id="contactPhone1"
-                        name="contactPhone1"
-                        placeholder="+1 (555) 123-4567"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactExt1">Extension</Label>
-                      <Input
-                        id="contactExt1"
-                        name="contactExt1"
-                        placeholder="1234"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Contact 2 (Optional) */}
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <h4 className="text-base font-medium text-gray-700 mb-4">📞 Additional Contact 2 (Optional)</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                    <div>
-                      <Label htmlFor="contactName2">Contact Name</Label>
-                      <Input
-                        id="contactName2"
-                        name="contactName2"
-                        placeholder="Jane Doe"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactEmail2">Contact Email</Label>
-                      <Input
-                        id="contactEmail2"
-                        name="contactEmail2"
-                        type="email"
-                        placeholder="jane@company.com"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactPhone2">Phone Number</Label>
-                      <Input
-                        id="contactPhone2"
-                        name="contactPhone2"
-                        placeholder="+1 (555) 123-4567"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactExt2">Extension</Label>
-                      <Input
-                        id="contactExt2"
-                        name="contactExt2"
-                        placeholder="5678"
-                        className="mt-1"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                      <div>
+                        <Label htmlFor={`contactName${contact.id}`}>Contact Name {contact.isPrimary ? '*' : ''}</Label>
+                        <Input
+                          id={`contactName${contact.id}`}
+                          name={`contactName${index + 1}`}
+                          value={contact.name}
+                          onChange={(e) => updateDynamicContact(contact.id, 'name', e.target.value)}
+                          placeholder={contact.isPrimary ? "John Smith" : "Additional Contact"}
+                          required={contact.isPrimary}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`contactEmail${contact.id}`}>Contact Email {contact.isPrimary ? '*' : ''}</Label>
+                        <Input
+                          id={`contactEmail${contact.id}`}
+                          name={`contactEmail${index + 1}`}
+                          type="email"
+                          value={contact.email}
+                          onChange={(e) => updateDynamicContact(contact.id, 'email', e.target.value)}
+                          placeholder={contact.isPrimary ? "john@company.com" : "contact@company.com"}
+                          required={contact.isPrimary}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`contactPhone${contact.id}`}>Phone Number</Label>
+                        <Input
+                          id={`contactPhone${contact.id}`}
+                          name={`contactPhone${index + 1}`}
+                          value={contact.phone}
+                          onChange={(e) => updateDynamicContact(contact.id, 'phone', e.target.value)}
+                          placeholder="+1 (555) 123-4567"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`contactExt${contact.id}`}>Extension</Label>
+                        <Input
+                          id={`contactExt${contact.id}`}
+                          name={`contactExt${index + 1}`}
+                          value={contact.extension}
+                          onChange={(e) => updateDynamicContact(contact.id, 'extension', e.target.value)}
+                          placeholder="1234"
+                          className="mt-1"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Additional Contact 3 (Optional) */}
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <h4 className="text-base font-medium text-gray-700 mb-4">📞 Additional Contact 3 (Optional)</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                    <div>
-                      <Label htmlFor="contactName3">Contact Name</Label>
-                      <Input
-                        id="contactName3"
-                        name="contactName3"
-                        placeholder="Bob Wilson"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactEmail3">Contact Email</Label>
-                      <Input
-                        id="contactEmail3"
-                        name="contactEmail3"
-                        type="email"
-                        placeholder="bob@company.com"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactPhone3">Phone Number</Label>
-                      <Input
-                        id="contactPhone3"
-                        name="contactPhone3"
-                        placeholder="+1 (555) 123-4567"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contactExt3">Extension</Label>
-                      <Input
-                        id="contactExt3"
-                        name="contactExt3"
-                        placeholder="9012"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -1386,18 +1378,32 @@ export default function WarehousesPage() {
                     <Label className="text-lg font-medium text-gray-900">Contact Information</Label>
                     <p className="text-sm text-gray-600 mt-1">Manage all contacts for this warehouse</p>
                   </div>
-                  {(!selectedWarehouse?.contacts || selectedWarehouse.contacts.length < 2) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowExtraContact(true)}
-                      className="text-green-600 border-green-300 hover:bg-green-50"
-                    >
-                      <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
-                      Add Contact
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Add a new contact to the existing warehouse contacts
+                      if (selectedWarehouse) {
+                        const newContact = {
+                          name: '',
+                          email: '',
+                          phone: '',
+                          extension: '',
+                          isPrimary: false
+                        };
+                        const updatedContacts = [...(selectedWarehouse.contacts || []), newContact];
+                        setSelectedWarehouse(prev => prev ? ({
+                          ...prev,
+                          contacts: updatedContacts
+                        }) : null);
+                      }
+                    }}
+                    className="text-green-600 border-green-300 hover:bg-green-50"
+                  >
+                    <SemanticBDIIcon semantic="plus" size={14} className="mr-1" />
+                    Add Contact
+                  </Button>
                 </div>
                 
                 {/* Display all existing contacts */}
