@@ -133,6 +133,7 @@ export default function SalesForecastsPage() {
       }
       const shippingDays: Record<string, number> = {
         'SEA_ASIA_US_WEST': 21,
+        'SEA_STANDARD_WEST_COAST': 45,
         'AIR_14_DAYS': 14,
         'AIR_7_DAYS': 7,
         'SEA_STANDARD': 28
@@ -2861,6 +2862,7 @@ export default function SalesForecastsPage() {
                     >
                       <option value="">Select Realistic Method</option>
                       <option value="SEA_ASIA_US_WEST">Sea Asia to US West (21 days)</option>
+                      <option value="SEA_STANDARD_WEST_COAST">Sea Standard West Coast (45 days)</option>
                       <option value="AIR_14_DAYS">Air Express (14 days)</option>
                       <option value="AIR_7_DAYS">Air Priority (7 days)</option>
                       <option value="SEA_STANDARD">Sea Standard (28 days)</option>
