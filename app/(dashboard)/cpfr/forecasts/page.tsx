@@ -2544,6 +2544,10 @@ export default function SalesForecastsPage() {
                     required
                   >
                     <option value="">Select Method</option>
+                    <option value="ZERO_LAG_CUSTOM">Zero Lag Custom</option>
+                    <option value="SEA_ASIA_US_WEST">Sea Asia to US West</option>
+                    <option value="AIR_14_DAYS">Air 14 Days</option>
+                    <option value="ZERO_LAG_SAME_DAY">Zero Lag Same Day</option>
                     <option value="Sea Freight">Sea Freight</option>
                     <option value="Air Freight">Air Freight</option>
                     <option value="Ground">Ground</option>
