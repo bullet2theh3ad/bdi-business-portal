@@ -116,6 +116,17 @@ export default function SalesForecastsPage() {
   });
   const [timelineResults, setTimelineResults] = useState<any>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  
+  // Email Action Items Modal State
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailData, setEmailData] = useState({
+    recipients: 'dzand@boundlessdevices.com, scistulli@boundlessdevices.com',
+    additionalEmails: '',
+    subject: '',
+    includeTimeline: true,
+    includeRiskAssessment: true,
+    includeActionItems: true
+  });
 
   // Calculate work-backwards timeline from delivery date
   const calculateRealisticTimeline = () => {
@@ -194,6 +205,52 @@ export default function SalesForecastsPage() {
 
     setTimelineResults(timeline);
     setShowTimeline(true);
+  };
+
+  // Prepare and send CPFR action items email
+  const prepareActionItemsEmail = () => {
+    if (!timelineResults || !analysisForecast) return;
+    
+    // Auto-generate subject line
+    const subject = `URGENT CPFR Action Required - ${analysisForecast.sku?.sku} Factory Signal Due ${timelineResults.factorySignalDate.toLocaleDateString()}`;
+    
+    setEmailData(prev => ({
+      ...prev,
+      subject
+    }));
+    setShowEmailModal(true);
+  };
+
+  const sendActionItemsEmail = async () => {
+    if (!timelineResults || !analysisForecast) return;
+
+    try {
+      const allRecipients = emailData.additionalEmails 
+        ? `${emailData.recipients}, ${emailData.additionalEmails}`
+        : emailData.recipients;
+
+      const emailPayload = {
+        to: allRecipients,
+        subject: emailData.subject,
+        forecast: analysisForecast,
+        timeline: timelineResults,
+        analysisData,
+        includeTimeline: emailData.includeTimeline,
+        includeRiskAssessment: emailData.includeRiskAssessment,
+        includeActionItems: emailData.includeActionItems
+      };
+
+      // TODO: Replace with actual API endpoint
+      console.log('Sending CPFR Action Items Email:', emailPayload);
+      
+      // For now, show success message
+      alert(`CPFR Action Items email would be sent to: ${allRecipients}`);
+      setShowEmailModal(false);
+      
+    } catch (error) {
+      console.error('Failed to send action items email:', error);
+      alert('Failed to send email. Please try again.');
+    }
   };
   
   // Calendar picker state
@@ -2550,6 +2607,150 @@ export default function SalesForecastsPage() {
         </Dialog>
       )}
 
+      {/* Email Action Items Modal */}
+      {showEmailModal && timelineResults && analysisForecast && (
+        <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-xl">
+                <SemanticBDIIcon semantic="email" size={24} className="mr-3 text-blue-600" />
+                Send CPFR Action Items - {analysisForecast.sku?.sku}
+              </DialogTitle>
+              <p className="text-gray-600 mt-2">
+                Email work-backwards timeline analysis and action items to stakeholders
+              </p>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Email Recipients */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="emailRecipients">Primary Recipients (Pre-populated)</Label>
+                  <Input
+                    id="emailRecipients"
+                    value={emailData.recipients}
+                    onChange={(e) => setEmailData({...emailData, recipients: e.target.value})}
+                    placeholder="Primary email addresses"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Dariush & Steve - key CPFR stakeholders</p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="additionalEmails">Additional Recipients (Optional)</Label>
+                  <Input
+                    id="additionalEmails"
+                    value={emailData.additionalEmails}
+                    onChange={(e) => setEmailData({...emailData, additionalEmails: e.target.value})}
+                    placeholder="additional@email.com, another@email.com"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Add sales team, factory contacts, or other stakeholders</p>
+                </div>
+              </div>
+
+              {/* Email Subject */}
+              <div>
+                <Label htmlFor="emailSubject">Email Subject</Label>
+                <Input
+                  id="emailSubject"
+                  value={emailData.subject}
+                  onChange={(e) => setEmailData({...emailData, subject: e.target.value})}
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Email Content Options */}
+              <div>
+                <Label className="text-base font-medium">Include in Email:</Label>
+                <div className="mt-2 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeTimeline"
+                      checked={emailData.includeTimeline}
+                      onChange={(e) => setEmailData({...emailData, includeTimeline: e.target.checked})}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeTimeline" className="text-sm">Work-backwards timeline with dates</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeRiskAssessment"
+                      checked={emailData.includeRiskAssessment}
+                      onChange={(e) => setEmailData({...emailData, includeRiskAssessment: e.target.checked})}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeRiskAssessment" className="text-sm">Risk assessment and feasibility analysis</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeActionItems"
+                      checked={emailData.includeActionItems}
+                      onChange={(e) => setEmailData({...emailData, includeActionItems: e.target.checked})}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeActionItems" className="text-sm">Specific action items and deadlines</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Preview */}
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <h4 className="font-medium text-gray-800 mb-2">📧 Email Preview:</h4>
+                <div className="text-sm space-y-2">
+                  <div><strong>To:</strong> {emailData.additionalEmails ? `${emailData.recipients}, ${emailData.additionalEmails}` : emailData.recipients}</div>
+                  <div><strong>Subject:</strong> {emailData.subject}</div>
+                  <div className="mt-3">
+                    <strong>Key Points:</strong>
+                    <ul className="list-disc list-inside mt-1 space-y-1 text-xs">
+                      <li>SKU: {analysisForecast.sku?.sku} ({analysisForecast.quantity.toLocaleString()} units)</li>
+                      <li>Delivery Target: {timelineResults.deliveryDate.toLocaleDateString()}</li>
+                      <li>Factory Signal Due: <span className={timelineResults.factorySignalDate < new Date() ? 'text-red-600 font-bold' : 'text-orange-600 font-bold'}>
+                        {timelineResults.factorySignalDate.toLocaleDateString()}
+                        {timelineResults.factorySignalDate < new Date() && ' (OVERDUE)'}
+                      </span></li>
+                      <li>Risk Level: <span className={`font-bold ${
+                        timelineResults.riskLevel === 'HIGH' ? 'text-red-600' :
+                        timelineResults.riskLevel === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'
+                      }`}>{timelineResults.riskLevel}</span></li>
+                      <li>Shipping Method: {analysisData.shippingMethod === 'custom' ? `Custom (${analysisData.customShippingDays} days)` : analysisData.shippingMethod.replace(/_/g, ' ')}</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 pt-4 border-t">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">CPFR Action Items</span> - Critical timeline communication
+              </div>
+              <div className="flex space-x-3 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowEmailModal(false)}
+                  className="flex-1 sm:flex-none"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={sendActionItemsEmail}
+                  disabled={!emailData.subject.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 flex-1 sm:flex-none"
+                >
+                  <SemanticBDIIcon semantic="send" size={16} className="mr-2" />
+                  Send Action Items
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Edit Forecast Modal */}
       {showEditModal && selectedForecast && (
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
@@ -3246,10 +3447,12 @@ export default function SalesForecastsPage() {
                   Close Analysis
                 </Button>
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+                  onClick={prepareActionItemsEmail}
+                  disabled={!showTimeline || !timelineResults}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 flex-1 sm:flex-none"
                 >
-                  <SemanticBDIIcon semantic="save" size={16} className="mr-2" />
-                  Apply Realistic Timeline
+                  <SemanticBDIIcon semantic="email" size={16} className="mr-2" />
+                  Send Action Items
                 </Button>
               </div>
             </div>
