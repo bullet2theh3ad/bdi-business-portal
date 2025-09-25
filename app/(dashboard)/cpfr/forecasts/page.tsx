@@ -106,6 +106,14 @@ export default function SalesForecastsPage() {
   // Scenario Analysis Modal State
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [analysisForecast, setAnalysisForecast] = useState<SalesForecast | null>(null);
+  const [analysisData, setAnalysisData] = useState({
+    shippingMethod: '',
+    customShippingDays: '',
+    leadTime: 'auto',
+    customLeadTimeDays: '',
+    safetyBuffer: '5',
+    customBufferDays: ''
+  });
   
   // Calendar picker state
   const [calendarPickerDate, setCalendarPickerDate] = useState(new Date());
@@ -1041,6 +1049,15 @@ export default function SalesForecastsPage() {
                           className="w-full sm:w-auto text-purple-600 border-purple-300 hover:bg-purple-50"
                           onClick={() => {
                             setAnalysisForecast(forecast);
+                            // Reset analysis data for fresh analysis
+                            setAnalysisData({
+                              shippingMethod: '',
+                              customShippingDays: '',
+                              leadTime: 'auto',
+                              customLeadTimeDays: '',
+                              safetyBuffer: '5',
+                              customBufferDays: ''
+                            });
                             setShowAnalysisModal(true);
                           }}
                         >
@@ -2751,6 +2768,12 @@ export default function SalesForecastsPage() {
                     <Label htmlFor="analysisShippingMethod">Realistic Shipping Method *</Label>
                     <select
                       id="analysisShippingMethod"
+                      value={analysisData.shippingMethod}
+                      onChange={(e) => setAnalysisData({
+                        ...analysisData,
+                        shippingMethod: e.target.value,
+                        customShippingDays: e.target.value === 'custom' ? analysisData.customShippingDays : ''
+                      })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="">Select Realistic Method</option>
@@ -2758,34 +2781,102 @@ export default function SalesForecastsPage() {
                       <option value="AIR_14_DAYS">Air Express (14 days)</option>
                       <option value="AIR_7_DAYS">Air Priority (7 days)</option>
                       <option value="SEA_STANDARD">Sea Standard (28 days)</option>
+                      <option value="custom">Custom Transit Time...</option>
                     </select>
+                    {analysisData.shippingMethod === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="customShippingDays">Custom Transit Days</Label>
+                        <Input
+                          id="customShippingDays"
+                          type="number"
+                          value={analysisData.customShippingDays}
+                          onChange={(e) => setAnalysisData({
+                            ...analysisData,
+                            customShippingDays: e.target.value
+                          })}
+                          placeholder="Enter days"
+                          min="1"
+                          max="90"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div>
                     <Label htmlFor="analysisLeadTime">Factory Lead Time</Label>
                     <select
                       id="analysisLeadTime"
+                      value={analysisData.leadTime}
+                      onChange={(e) => setAnalysisData({
+                        ...analysisData,
+                        leadTime: e.target.value,
+                        customLeadTimeDays: e.target.value === 'custom' ? analysisData.customLeadTimeDays : ''
+                      })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="auto">Use SKU Default</option>
                       <option value="30">30 days (Standard)</option>
                       <option value="45">45 days (Extended)</option>
                       <option value="60">60 days (Long Lead)</option>
-                      <option value="custom">Custom...</option>
+                      <option value="custom">Custom Lead Time...</option>
                     </select>
+                    {analysisData.leadTime === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="customLeadTimeDays">Custom Lead Time (Days)</Label>
+                        <Input
+                          id="customLeadTimeDays"
+                          type="number"
+                          value={analysisData.customLeadTimeDays}
+                          onChange={(e) => setAnalysisData({
+                            ...analysisData,
+                            customLeadTimeDays: e.target.value
+                          })}
+                          placeholder="Enter days"
+                          min="1"
+                          max="180"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div>
                     <Label htmlFor="analysisBuffer">Safety Buffer</Label>
                     <select
                       id="analysisBuffer"
+                      value={analysisData.safetyBuffer}
+                      onChange={(e) => setAnalysisData({
+                        ...analysisData,
+                        safetyBuffer: e.target.value,
+                        customBufferDays: e.target.value === 'custom' ? analysisData.customBufferDays : ''
+                      })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="5">5 days (Standard)</option>
                       <option value="7">7 days (Conservative)</option>
                       <option value="10">10 days (High Risk)</option>
                       <option value="14">14 days (Very Safe)</option>
+                      <option value="custom">Custom Buffer...</option>
                     </select>
+                    {analysisData.safetyBuffer === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="customBufferDays">Custom Buffer (Days)</Label>
+                        <Input
+                          id="customBufferDays"
+                          type="number"
+                          value={analysisData.customBufferDays}
+                          onChange={(e) => setAnalysisData({
+                            ...analysisData,
+                            customBufferDays: e.target.value
+                          })}
+                          placeholder="Enter days"
+                          min="1"
+                          max="30"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
                 
