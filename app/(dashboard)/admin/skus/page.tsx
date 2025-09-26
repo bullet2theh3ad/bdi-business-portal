@@ -613,57 +613,60 @@ export default function SKUsPage() {
           ) : (
             <>
               {viewMode === 'list' ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {filteredSkus.map((sku) => (
-                <div key={sku.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">
+                <div key={sku.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1 mb-3 sm:mb-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-2">
+                        <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-0">
                           <DynamicTranslation userLanguage={userLocale} context="manufacturing">
                             {sku.name}
                           </DynamicTranslation>
                         </h3>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {sku.sku}
-                        </Badge>
-                        {sku.category && (
-                          <Badge variant="secondary">{sku.category}</Badge>
-                        )}
-                        {!sku.isActive && (
-                          <Badge variant="destructive">{tc('inactive', 'Inactive')}</Badge>
-                        )}
-                        {sku.isDiscontinued && (
-                          <Badge variant="outline" className="text-orange-600 border-orange-600">
-                            {tc('discontinued', 'Discontinued')}
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {sku.sku}
                           </Badge>
-                        )}
+                          {sku.category && (
+                            <Badge variant="secondary" className="text-xs">{sku.category}</Badge>
+                          )}
+                          {!sku.isActive && (
+                            <Badge variant="destructive" className="text-xs">{tc('inactive', 'Inactive')}</Badge>
+                          )}
+                          {sku.isDiscontinued && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
+                              {tc('discontinued', 'Discontinued')}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       {sku.description && (
-                        <p className="text-muted-foreground mb-3">
+                        <p className="text-muted-foreground text-sm mb-3 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
                           <DynamicTranslation userLanguage={userLocale} context="manufacturing">
                             {sku.description}
                           </DynamicTranslation>
                         </p>
                       )}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 text-sm">
                         {sku.model && (
                           <div>
-                            <span className="text-gray-500">Model:</span>
-                            <p className="font-medium">{sku.model}</p>
+                            <span className="text-gray-500 text-xs">Model:</span>
+                            <p className="font-medium text-xs sm:text-sm">{sku.model}</p>
                           </div>
                         )}
                         <div>
-                          <span className="text-gray-500">MOQ:</span>
-                          <p className="font-medium">{sku.moq || 1} units</p>
+                          <span className="text-gray-500 text-xs">MOQ:</span>
+                          <p className="font-medium text-xs sm:text-sm">{sku.moq || 1} units</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Lead Time:</span>
-                          <p className="font-medium">{sku.leadTimeDays || 30} days</p>
+                          <span className="text-gray-500 text-xs">Lead Time:</span>
+                          <p className="font-medium text-xs sm:text-sm">{sku.leadTimeDays || 30} days</p>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
+                    {/* Mobile-optimized button layout */}
+                    <div className="flex flex-row sm:flex-col lg:flex-row space-x-1 sm:space-x-0 sm:space-y-1 lg:space-y-0 lg:space-x-2 sm:ml-4">
                       <Button
                         variant="outline"
                         size="sm"
@@ -675,31 +678,32 @@ export default function SKUsPage() {
                           setShowVariantModal(true);
                         }}
                         disabled={isLoading}
-                        className="w-full sm:w-auto text-green-600 border-green-300 hover:bg-green-50"
+                        className="flex-1 sm:w-auto text-green-600 border-green-300 hover:bg-green-50 text-xs px-2 py-1"
                         title="Create SKU Variant"
                       >
-                        <SemanticBDIIcon semantic="copy" size={14} className="mr-1" />
-                        Create Variant
+                        <SemanticBDIIcon semantic="copy" size={12} className="mr-1 sm:mr-0 lg:mr-1" />
+                        <span className="hidden sm:inline lg:inline">Create</span>
+                        <span className="sm:hidden">Variant</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedSku(sku)}
                         disabled={isLoading}
-                        className="w-full sm:w-auto"
+                        className="flex-1 sm:w-auto text-xs px-2 py-1"
                       >
-                        <SemanticBDIIcon semantic="settings" size={14} className="mr-1" />
-                        Edit
+                        <SemanticBDIIcon semantic="settings" size={12} className="mr-1 sm:mr-0 lg:mr-1" />
+                        <span className="hidden sm:inline lg:inline">Edit</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteSku(sku.id, sku.sku)}
                         disabled={isLoading}
-                        className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
+                        className="flex-1 sm:w-auto text-red-600 border-red-300 hover:bg-red-50 text-xs px-2 py-1"
                       >
-                        <span className="mr-1 text-sm">🗑️</span>
-                        Delete
+                        <span className="mr-1 sm:mr-0 lg:mr-1 text-xs">🗑️</span>
+                        <span className="hidden sm:inline lg:inline">Delete</span>
                       </Button>
                     </div>
                   </div>
