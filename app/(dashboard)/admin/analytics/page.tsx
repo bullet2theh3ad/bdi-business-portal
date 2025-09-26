@@ -182,13 +182,27 @@ export default function AnalyticsPage() {
     }
   };
 
-  // Initial load only - NO auto-refresh on dependency changes
+  // Initial load only
   useEffect(() => {
     if (user && analyticsData === null) {
       setIsLoading(true);
       refreshAnalytics().finally(() => setIsLoading(false));
     }
-  }, [user]); // Only depend on user, not on date/period changes
+  }, [user]);
+
+  // Auto-refresh when date range changes (user changed date picker)
+  useEffect(() => {
+    if (user && analyticsData !== null) {
+      refreshAnalytics();
+    }
+  }, [startDate, endDate]); // Refresh when user changes date range
+
+  // Auto-refresh when period/metric changes (user clicked buttons)
+  useEffect(() => {
+    if (user && analyticsData !== null) {
+      refreshAnalytics();
+    }
+  }, [selectedPeriod, selectedMetric]); // Refresh when user changes period/metric
 
   // Ultra-Cool Stacked Invoice Chart by Organization
   const InvoicesByOrgChart = ({ data }: { data: InvoiceByOrgData[] }) => {
@@ -520,12 +534,13 @@ export default function AnalyticsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 const today = new Date();
                 const threeMonthsAgo = new Date();
                 threeMonthsAgo.setMonth(today.getMonth() - 3);
                 setStartDate(threeMonthsAgo.toISOString().split('T')[0]);
                 setEndDate(today.toISOString().split('T')[0]);
+                // The useEffect will trigger refresh automatically when dates change
               }}
               className="w-full sm:w-auto"
             >
