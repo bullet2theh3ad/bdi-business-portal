@@ -117,7 +117,9 @@ export default function AnalyticsPage() {
     return date.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 1); // Default to 1 year ahead to show 2026 forecasts
+    return date.toISOString().split('T')[0];
   });
 
   // Organization colors for consistent branding
