@@ -48,57 +48,40 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || new Date().toISOString().split('T')[0]
     const endDate = searchParams.get('endDate') || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Default to 1 year ahead
 
-    // Get forecast delivery data based on actual delivery weeks in the selected date range
+    // Get forecast delivery data - show ALL delivery weeks with forecasts (no date filtering for now)
     const forecastDeliveriesResult = await db.execute(sql`
-      WITH actual_forecast_weeks AS (
-        -- Get all unique delivery weeks from actual forecasts in date range
-        SELECT DISTINCT 
-          sf.delivery_week,
-          -- Convert delivery week to approximate date for range filtering
-          CASE 
-            WHEN sf.delivery_week ~ '^\d{4}-W\d{2}$' THEN
-              (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
-              (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days'
-            ELSE CURRENT_DATE
-          END as delivery_date
-        FROM sales_forecasts sf
-        WHERE sf.delivery_week IS NOT NULL
-          AND sf.delivery_week ~ '^\d{4}-W\d{2}$'
-          -- Filter by approximate date range
-          AND (
-            CASE 
-              WHEN sf.delivery_week ~ '^\d{4}-W\d{2}$' THEN
-                (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
-                (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days'
-              ELSE CURRENT_DATE
-            END
-          ) BETWEEN ${startDate}::date AND ${endDate}::date
-      )
       SELECT 
-        afw.delivery_week,
-        afw.delivery_date::text,
+        sf.delivery_week,
+        -- Convert delivery week to approximate date for chart display
+        CASE 
+          WHEN sf.delivery_week ~ '^\d{4}-W\d{2}$' THEN
+            (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
+            (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days'
+          ELSE CURRENT_DATE
+        END as delivery_date,
         COALESCE(
           json_agg(
             json_build_object(
               'id', sf.id,
               'skuName', ps.name,
               'quantity', sf.quantity,
-              'organization', COALESCE(o.code, 'Unknown'),
+              'organization', COALESCE(o.code, 'BDI'),
               'status', sf.status,
               'confidence', sf.confidence
             )
-          ) FILTER (WHERE sf.id IS NOT NULL),
+          ),
           '[]'::json
         ) as forecasts,
         COALESCE(SUM(sf.quantity), 0)::int as total_units
-      FROM actual_forecast_weeks afw
-      LEFT JOIN sales_forecasts sf ON afw.delivery_week = sf.delivery_week
+      FROM sales_forecasts sf
       LEFT JOIN product_skus ps ON sf.sku_id = ps.id
       LEFT JOIN users u ON sf.created_by = u.auth_id
       LEFT JOIN organization_members om ON u.auth_id = om.user_auth_id
       LEFT JOIN organizations o ON om.organization_uuid = o.id
-      GROUP BY afw.delivery_week, afw.delivery_date
-      ORDER BY afw.delivery_date
+      WHERE sf.delivery_week IS NOT NULL
+        AND sf.delivery_week ~ '^\d{4}-W\d{2}$'
+      GROUP BY sf.delivery_week
+      ORDER BY sf.delivery_week
     `)
 
     const forecastDeliveries = (forecastDeliveriesResult as any).map((row: any) => ({
