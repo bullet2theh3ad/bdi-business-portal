@@ -681,7 +681,7 @@ export default function SKUsPage() {
                         className="flex-1 sm:w-auto text-green-600 border-green-300 hover:bg-green-50 text-xs px-2 py-1"
                         title="Create SKU Variant"
                       >
-                        <SemanticBDIIcon semantic="copy" size={12} className="mr-1 sm:mr-0 lg:mr-1" />
+                        <SemanticBDIIcon semantic="plus" size={12} className="mr-1 sm:mr-0 lg:mr-1" />
                         <span className="hidden sm:inline lg:inline">Create</span>
                         <span className="sm:hidden">Variant</span>
                       </Button>
@@ -1944,7 +1944,7 @@ export default function SKUsPage() {
           <DialogContent className="w-[95vw] max-w-md mx-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center text-lg">
-                <SemanticBDIIcon semantic="copy" size={20} className="mr-2 text-green-600" />
+                <SemanticBDIIcon semantic="plus" size={20} className="mr-2 text-green-600" />
                 Create SKU Variant
               </DialogTitle>
             </DialogHeader>
@@ -2019,7 +2019,7 @@ export default function SKUsPage() {
                     </>
                   ) : (
                     <>
-                      <SemanticBDIIcon semantic="copy" size={16} className="mr-2" />
+                      <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
                       Create Variant
                     </>
                   )}
