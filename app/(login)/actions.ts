@@ -494,7 +494,7 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
       return { error: result.error || 'Failed to send password reset email' };
     }
 
-    return { success: 'Password reset email sent via Resend' };
+    return { success: 'Password reset email sent via BDI Portal' };
   } catch (error) {
     console.error('Error requesting password reset:', error);
     return { error: 'Failed to send password reset email' };
