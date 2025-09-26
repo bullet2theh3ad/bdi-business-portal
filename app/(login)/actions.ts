@@ -479,7 +479,8 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
     }
 
     // Use same pattern as user invitations - generate temp password and send via Resend
-    const response = await fetch('/api/auth/password-reset-with-temp', {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/auth/password-reset-with-temp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
