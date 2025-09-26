@@ -478,17 +478,22 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
       return { error: 'Email is required' };
     }
 
-    const supabase = await createSupabaseServerClient();
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `https://bdibusinessportal.com/reset-password`,
+    // Use custom password reset with Resend instead of Supabase Auth email
+    const response = await fetch('/api/auth/request-password-reset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email })
     });
 
-    if (error) {
-      return { error: error.message };
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { error: result.error || 'Failed to send password reset email' };
     }
 
-    return { success: 'Password reset email sent' };
+    return { success: 'Password reset email sent via Resend' };
   } catch (error) {
     console.error('Error requesting password reset:', error);
     return { error: 'Failed to send password reset email' };
@@ -498,19 +503,29 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
 export async function resetPassword(prevState: any, formData: FormData) {
   try {
     const password = formData.get('password') as string;
+    const token = formData.get('token') as string;
     
     if (!password || password.length < 8) {
       return { error: 'Password must be at least 8 characters' };
     }
 
-    const supabase = await createSupabaseServerClient();
-    
-    const { error } = await supabase.auth.updateUser({
-      password: password
+    if (!token) {
+      return { error: 'Reset token is required' };
+    }
+
+    // Use custom password reset API that handles both database and Supabase Auth
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, password })
     });
 
-    if (error) {
-      return { error: error.message };
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { error: result.error || 'Failed to reset password' };
     }
 
     redirect('/dashboard');
@@ -522,11 +537,28 @@ export async function resetPassword(prevState: any, formData: FormData) {
 
 export async function verifyResetToken(token: string) {
   try {
-    // This function would verify the reset token
-    // For now, return true as Supabase handles token verification
-    return { valid: true };
+    if (!token) {
+      return { valid: false, error: 'No token provided' };
+    }
+
+    // Verify token using our custom API that checks database
+    const response = await fetch('/api/auth/verify-reset-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { valid: false, error: result.error || 'Invalid token' };
+    }
+
+    return { valid: true, user: result.user };
   } catch (error) {
     console.error('Error verifying reset token:', error);
-    return { valid: false, error: 'Invalid or expired token' };
+    return { valid: false, error: 'Failed to verify token' };
   }
 }
