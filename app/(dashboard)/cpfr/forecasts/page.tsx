@@ -264,6 +264,78 @@ export default function SalesForecastsPage() {
       alert(`❌ Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
+  // Download CPFR Data function - organization-specific permissions
+  const downloadCPFRData = async () => {
+    try {
+      if (!user?.organization?.code) {
+        alert('Organization information not available');
+        return;
+      }
+
+      const orgCode = user.organization.code;
+      const isBDI = orgCode === 'BDI';
+      
+      // Prepare data for download using available properties
+      const dataToDownload = forecastsArray.map(forecast => ({
+        'Forecast ID': forecast.id,
+        'SKU': forecast.sku?.sku || 'Unknown',
+        'SKU Name': forecast.sku?.name || 'Unknown',
+        'Delivery Week': forecast.deliveryWeek,
+        'Quantity': forecast.quantity,
+        'Shipping Preference': forecast.shippingPreference || 'Not specified',
+        'Sales Signal': forecast.salesSignal,
+        'Factory Signal': forecast.factorySignal,
+        'Shipping Signal': forecast.shippingSignal,
+        'Notes': forecast.notes || '',
+        'Created Date': forecast.createdAt ? new Date(forecast.createdAt).toLocaleDateString() : '',
+        'Created By': forecast.createdBy,
+        'Organization': isBDI ? 'BDI (All Data)' : orgCode
+      }));
+
+      // Convert to CSV
+      const headers = Object.keys(dataToDownload[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...dataToDownload.map(row => 
+          headers.map(header => {
+            const value = (row as any)[header];
+            // Escape commas and quotes in CSV
+            return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
+              ? `"${value.replace(/"/g, '""')}"` 
+              : value;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      const fileName = isBDI 
+        ? `BDI_CPFR_All_Organizations_${new Date().toISOString().split('T')[0]}.csv`
+        : `${orgCode}_CPFR_Data_${new Date().toISOString().split('T')[0]}.csv`;
+        
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log(`📊 CPFR data downloaded for ${orgCode}:`, {
+        recordCount: dataToDownload.length,
+        fileName,
+        isBDIAllAccess: isBDI
+      });
+
+    } catch (error) {
+      console.error('Error downloading CPFR data:', error);
+      alert('Failed to download CPFR data. Please try again.');
+    }
+  };
   
   // Calendar picker state
   const [calendarPickerDate, setCalendarPickerDate] = useState(new Date());
@@ -1058,10 +1130,24 @@ export default function SalesForecastsPage() {
         /* List View */
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
-              All Forecasts
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
+                All Forecasts
+              </CardTitle>
+              
+              {/* Download CPFR Data Button - Organization-specific */}
+              <Button
+                onClick={downloadCPFRData}
+                disabled={!forecastsArray.length}
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+              >
+                <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+                Download CPFR Data
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {forecastsArray.length === 0 ? (
