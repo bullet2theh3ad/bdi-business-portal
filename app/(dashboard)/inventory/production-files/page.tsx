@@ -29,15 +29,12 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const FILE_TYPES = [
   { value: 'PRODUCTION_FILE', label: 'Production File', icon: 'analytics', active: true },
-  { value: 'MAC_ADDRESS_LIST', label: 'MAC Address List', icon: 'connect', active: false },
-  { value: 'SERIAL_NUMBER_LIST', label: 'Serial Number List', icon: 'inventory_items', active: false },
-  { value: 'PRODUCTION_REPORT', label: 'Production Report', icon: 'analytics', active: false },
-  { value: 'TEST_RESULTS', label: 'Test Results', icon: 'analytics', active: false },
-  { value: 'CALIBRATION_DATA', label: 'Calibration Data', icon: 'settings', active: false },
-  { value: 'FIRMWARE_VERSION', label: 'Firmware Version', icon: 'settings', active: false },
-  { value: 'QUALITY_CONTROL', label: 'Quality Control', icon: 'check', active: false },
-  { value: 'PACKAGING_LIST', label: 'Packaging List', icon: 'orders', active: false },
-  { value: 'OTHER', label: 'Other', icon: 'files', active: false }
+  { value: 'ROYALTY_ZONE_1', label: 'Royalty Zone 1', icon: 'orders', active: true },
+  { value: 'ROYALTY_ZONE_2', label: 'Royalty Zone 2', icon: 'orders', active: true },
+  { value: 'ROYALTY_ZONE_3', label: 'Royalty Zone 3', icon: 'orders', active: true },
+  { value: 'ROYALTY_ZONE_4', label: 'Royalty Zone 4', icon: 'orders', active: true },
+  { value: 'ROYALTY_ZONE_5', label: 'Royalty Zone 5', icon: 'orders', active: true },
+  { value: 'GENERIC', label: 'Generic', icon: 'files', active: true }
 ];
 
 export default function ProductionFilesPage() {
@@ -316,10 +313,12 @@ export default function ProductionFilesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="analytics" size={20} className="text-purple-600" />
+              <SemanticBDIIcon semantic="analytics" size={20} className="text-blue-600" />
               <div>
-                <p className="text-sm text-gray-600">{tc('totalFiles', 'Total Files')}</p>
-                <p className="text-2xl font-bold text-purple-600">{filteredFiles.length}</p>
+                <p className="text-sm text-gray-600">Production Files</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {filteredFiles.filter(f => f.fileType === 'PRODUCTION_FILE').length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -327,10 +326,12 @@ export default function ProductionFilesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="shipping" size={20} className="text-blue-600" />
+              <SemanticBDIIcon semantic="orders" size={20} className="text-green-600" />
               <div>
-                <p className="text-sm text-gray-600">{tc('bdiShipments', 'BDI Shipments')}</p>
-                <p className="text-2xl font-bold text-blue-600">{uniqueShipments}</p>
+                <p className="text-sm text-gray-600">RZ1</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {filteredFiles.filter(f => f.fileType === 'ROYALTY_ZONE_1').length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -338,10 +339,12 @@ export default function ProductionFilesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="inventory_items" size={20} className="text-green-600" />
+              <SemanticBDIIcon semantic="orders" size={20} className="text-yellow-600" />
               <div>
-                <p className="text-sm text-gray-600">{tc('totalDevices', 'Total Devices')}</p>
-                <p className="text-2xl font-bold text-green-600">{totalDevices.toLocaleString()}</p>
+                <p className="text-sm text-gray-600">RZ2</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {filteredFiles.filter(f => f.fileType === 'ROYALTY_ZONE_2').length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -349,10 +352,51 @@ export default function ProductionFilesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <SemanticBDIIcon semantic="collaboration" size={20} className="text-orange-600" />
+              <SemanticBDIIcon semantic="orders" size={20} className="text-orange-600" />
               <div>
-                <p className="text-sm text-gray-600">{tc('organization', 'Organization')}</p>
-                <p className="text-2xl font-bold text-orange-600">{user?.organization?.code || 'N/A'}</p>
+                <p className="text-sm text-gray-600">RZ3</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {filteredFiles.filter(f => f.fileType === 'ROYALTY_ZONE_3').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <SemanticBDIIcon semantic="orders" size={20} className="text-red-600" />
+              <div>
+                <p className="text-sm text-gray-600">RZ4</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {filteredFiles.filter(f => f.fileType === 'ROYALTY_ZONE_4').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <SemanticBDIIcon semantic="orders" size={20} className="text-purple-600" />
+              <div>
+                <p className="text-sm text-gray-600">RZ5</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {filteredFiles.filter(f => f.fileType === 'ROYALTY_ZONE_5').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <SemanticBDIIcon semantic="files" size={20} className="text-gray-600" />
+              <div>
+                <p className="text-sm text-gray-600">Generic</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {filteredFiles.filter(f => f.fileType === 'GENERIC').length}
+                </p>
               </div>
             </div>
           </CardContent>
