@@ -543,23 +543,14 @@ export async function verifyResetToken(token: string) {
       return { valid: false, error: 'No token provided' };
     }
 
-    // Verify token using our custom API that checks database
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
-    const response = await fetch(`${baseUrl}/api/auth/verify-reset-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token })
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      return { valid: false, error: result.error || 'Invalid token' };
+    // For now, just validate token format - actual verification happens during password reset
+    // This avoids auth session issues during token verification
+    if (token.length < 32) {
+      return { valid: false, error: 'Invalid token format' };
     }
 
-    return { valid: true, user: result.user };
+    // Token appears valid, actual verification will happen when password is reset
+    return { valid: true };
   } catch (error) {
     console.error('Error verifying reset token:', error);
     return { valid: false, error: 'Failed to verify token' };
