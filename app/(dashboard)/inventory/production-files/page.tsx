@@ -76,12 +76,31 @@ export default function ProductionFilesPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
+      // Document formats
       'text/csv': ['.csv'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
       'text/plain': ['.txt'],
       'application/pdf': ['.pdf'],
-      'application/json': ['.json']
+      'application/json': ['.json'],
+      
+      // Image formats for artwork, diagrams, photos
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/gif': ['.gif'],
+      'image/bmp': ['.bmp'],
+      'image/tiff': ['.tiff', '.tif'],
+      'image/webp': ['.webp'],
+      'image/svg+xml': ['.svg'],
+      
+      // Design/artwork formats
+      'application/postscript': ['.ai', '.eps'],
+      'image/x-photoshop': ['.psd'],
+      
+      // Archive formats (for artwork packages)
+      'application/zip': ['.zip'],
+      'application/x-rar-compressed': ['.rar'],
+      'application/x-7z-compressed': ['.7z']
     },
     multiple: true
   });
@@ -682,7 +701,7 @@ export default function ProductionFilesPage() {
                 ) : (
                   <div>
                     <p className="text-gray-600">Drag & drop files here, or click to select</p>
-                    <p className="text-sm text-gray-500 mt-2">Supports CSV, Excel, TXT, PDF, JSON files</p>
+                    <p className="text-sm text-gray-500 mt-2">Supports documents (CSV, Excel, PDF, TXT, JSON), images (JPG, PNG, GIF, SVG), artwork (AI, PSD, EPS), and archives (ZIP, RAR)</p>
                   </div>
                 )}
               </div>
