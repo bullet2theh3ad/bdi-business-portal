@@ -153,6 +153,22 @@ export default function SKUsPage() {
         return;
       }
 
+      // Debug: Log parent SKU data to see what's available
+      console.log('🔍 Parent SKU dimensional data:', {
+        boxWeightKg: variantParentSku.boxWeightKg,
+        boxLengthCm: variantParentSku.boxLengthCm,
+        boxWidthCm: variantParentSku.boxWidthCm,
+        boxHeightCm: variantParentSku.boxHeightCm,
+        cartonWeightKg: variantParentSku.cartonWeightKg,
+        cartonLengthCm: variantParentSku.cartonLengthCm,
+        cartonWidthCm: variantParentSku.cartonWidthCm,
+        cartonHeightCm: variantParentSku.cartonHeightCm,
+        palletWeightKg: variantParentSku.palletWeightKg,
+        palletLengthCm: variantParentSku.palletLengthCm,
+        palletWidthCm: variantParentSku.palletWidthCm,
+        palletHeightCm: variantParentSku.palletHeightCm,
+      });
+
       // Copy all attributes from parent SKU (using correct property names)
       const variantSkuData = {
         sku: newSkuCode, // NEW unique SKU code with variant extension
@@ -183,6 +199,10 @@ export default function SKUsPage() {
         palletWidthCm: variantParentSku.palletWidthCm,
         palletHeightCm: variantParentSku.palletHeightCm,
         palletWeightKg: variantParentSku.palletWeightKg,
+        palletMaterialType: variantParentSku.palletMaterialType,
+        palletNotes: variantParentSku.palletNotes,
+        mpStartDate: variantParentSku.mpStartDate,
+        replacementSku: variantParentSku.replacementSku,
         htsCode: variantParentSku.htsCode,
         tags: variantParentSku.tags,
         specifications: variantParentSku.specifications
