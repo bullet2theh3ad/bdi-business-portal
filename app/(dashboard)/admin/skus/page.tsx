@@ -132,8 +132,8 @@ export default function SKUsPage() {
 
     setIsCreatingVariant(true);
     try {
-      // Create new SKU code with variant extension  
-      const newSkuCode = `${variantParentSku.sku}-${variantExtension.toUpperCase()}`;
+      // Create new SKU code with variant extension in parentheses
+      const newSkuCode = `${variantParentSku.sku}-(${variantExtension.toUpperCase()})`;
       
       // Create new SKU name with variant extension
       const baseName = variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, ''); // Remove existing parentheses
@@ -1963,7 +1963,7 @@ export default function SKUsPage() {
                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                  <p className="text-sm text-blue-800 font-medium mb-1">New Variant Preview:</p>
                  <p className="font-mono text-sm font-bold">
-                   {variantParentSku.sku}{variantExtension && `-${variantExtension.toUpperCase()}`}
+                   {variantParentSku.sku}{variantExtension && `-(${variantExtension.toUpperCase()})`}
                  </p>
                  <p className="text-sm break-all">
                    {variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, '')}
