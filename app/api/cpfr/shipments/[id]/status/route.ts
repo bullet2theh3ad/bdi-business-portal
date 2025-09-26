@@ -112,7 +112,7 @@ export async function PUT(
 
         // Call the forecast status endpoint to handle full date cascade logic
         try {
-          const forecastResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cpfr/forecasts/${updatedShipment.forecast_id}/status`, {
+          const forecastResponse = await fetch(`https://bdibusinessportal.com/api/cpfr/forecasts/${updatedShipment.forecast_id}/status`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',

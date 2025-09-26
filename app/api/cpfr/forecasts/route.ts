@@ -667,7 +667,7 @@ export async function PUT(request: NextRequest) {
                 deliveryDateRange: getWeekDateRange(updatedForecast.delivery_week),
                 shippingMethod: updatedForecast.shipping_preference || 'TBD',
                 notes: updatedForecast.notes,
-                portalLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/cpfr/forecasts`,
+                portalLink: `https://bdibusinessportal.com/cpfr/forecasts`,
                 invoiceNumber: invoiceData.invoiceNumber,
                 factoryResponse: body.factorySignal
               };

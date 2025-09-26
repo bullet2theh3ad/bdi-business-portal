@@ -481,7 +481,7 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
     const supabase = await createSupabaseServerClient();
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password`,
+      redirectTo: `https://bdibusinessportal.com/reset-password`,
     });
 
     if (error) {
