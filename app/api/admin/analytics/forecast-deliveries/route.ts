@@ -43,12 +43,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Get date range from query params
-    const { searchParams } = new URL(request.url)
-    const startDate = searchParams.get('startDate') || new Date().toISOString().split('T')[0]
-    const endDate = searchParams.get('endDate') || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Default to 1 year ahead
-
-    // Get forecast delivery data - show ALL delivery weeks with forecasts (no date filtering for now)
+    // Get forecast delivery data - show ALL delivery weeks with forecasts
+    // Note: Date range filtering is complex with delivery weeks, so showing all forecast data
     const forecastDeliveriesResult = await db.execute(sql`
       SELECT 
         sf.delivery_week,
@@ -90,6 +86,13 @@ export async function GET(request: NextRequest) {
       forecasts: row.forecasts || [],
       totalUnits: Number(row.total_units || 0)
     }))
+
+    console.log('📊 Forecast Deliveries API Debug:', {
+      totalRows: forecastDeliveriesResult.length,
+      sampleData: forecastDeliveries.slice(0, 3),
+      totalForecasts: forecastDeliveries.reduce((sum: number, item: any) => sum + item.forecasts.length, 0),
+      totalUnits: forecastDeliveries.reduce((sum: number, item: any) => sum + item.totalUnits, 0)
+    });
 
     return NextResponse.json(forecastDeliveries)
 

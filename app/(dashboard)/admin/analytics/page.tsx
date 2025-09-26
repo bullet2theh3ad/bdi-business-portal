@@ -112,13 +112,12 @@ export default function AnalyticsPage() {
   const [selectedMetric, setSelectedMetric] = useState<'count' | 'value' | 'units'>('count');
 
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 3); // Default to 3 months ago
-    return date.toISOString().split('T')[0];
+    // Set to current date to include current and future forecasts
+    return new Date().toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
     const date = new Date();
-    date.setFullYear(date.getFullYear() + 1); // Default to 1 year ahead to show 2026 forecasts
+    date.setFullYear(date.getFullYear() + 2); // Default to 2 years ahead to show all 2026 forecasts
     return date.toISOString().split('T')[0];
   });
 
