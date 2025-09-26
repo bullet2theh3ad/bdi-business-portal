@@ -642,6 +642,23 @@ export default function SKUsPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => {
+                          setVariantParentSku(sku);
+                          // Extract existing extension if any (text in parentheses)
+                          const match = sku.name.match(/\(([^)]+)\)$/);
+                          setVariantExtension(match ? match[1] : '');
+                          setShowVariantModal(true);
+                        }}
+                        disabled={isLoading}
+                        className="w-full sm:w-auto text-green-600 border-green-300 hover:bg-green-50"
+                        title="Create SKU Variant"
+                      >
+                        <SemanticBDIIcon semantic="copy" size={14} className="mr-1" />
+                        Create Variant
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setSelectedSku(sku)}
                         disabled={isLoading}
                         className="w-full sm:w-auto"
@@ -688,25 +705,6 @@ export default function SKUsPage() {
                             </div>
                           )}
                           <div className="flex items-center justify-center space-x-1 mt-2">
-                            {(viewMode as string) === 'list' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setVariantParentSku(sku);
-                                  // Extract existing extension if any (text in parentheses)
-                                  const match = sku.name.match(/\(([^)]+)\)$/);
-                                  setVariantExtension(match ? match[1] : '');
-                                  setShowVariantModal(true);
-                                }}
-                                disabled={isLoading}
-                                className="text-xs px-2 py-1 text-green-600 border-green-300 hover:bg-green-50"
-                                title="Create SKU Variant"
-                              >
-                                <SemanticBDIIcon semantic="copy" size={12} className="mr-1" />
-                                Variant
-                              </Button>
-                            )}
                             <Button
                               variant="outline"
                               size="sm"
