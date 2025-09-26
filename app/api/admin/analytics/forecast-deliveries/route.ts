@@ -1,8 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db/drizzle'
-import { sql } from 'drizzle-orm'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,63 +33,79 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check user role (admin required)
-    const [userData] = await db
-      .execute(sql`SELECT role FROM users WHERE auth_id = ${authUser.id}`)
-      .then(result => (result as any))
+    // Create service client for database access (like main analytics API)
+    const serviceSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (!userData || !['super_admin', 'admin'].includes(userData.role)) {
+    // Check user role using Supabase (same method as main analytics)
+    const { data: userData, error: userError } = await serviceSupabase
+      .from('users')
+      .select('role')
+      .eq('auth_id', authUser.id)
+      .single()
+
+    if (userError || !userData || !['super_admin', 'admin'].includes(userData.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Get date range from query params (like other analytics endpoints)
-    const { searchParams } = new URL(request.url)
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    console.log('🔍 Debug: Getting forecast deliveries using Supabase client...');
     
-    console.log('🔍 Debug: Forecast deliveries with date range:', { startDate, endDate });
-    
-    const forecastDeliveriesResult = await db.execute(sql`
-      SELECT 
-        sf.delivery_week,
-        -- Convert delivery week to actual date for proper filtering
-        (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
-        (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days' as delivery_date,
-        COUNT(*) as forecast_count,
-        SUM(sf.quantity) as total_units,
-        json_agg(
-          json_build_object(
-            'id', sf.id,
-            'skuName', COALESCE(ps.name, 'Unknown SKU'),
-            'quantity', sf.quantity,
-            'organization', 'BDI',
-            'status', sf.status,
-            'confidence', sf.confidence
-          )
-        ) as forecasts
-      FROM sales_forecasts sf
-      LEFT JOIN product_skus ps ON sf.sku_id = ps.id
-      WHERE sf.delivery_week IS NOT NULL
-        AND sf.delivery_week ~ '^\d{4}-W\d{2}$'
-        ${startDate && endDate ? sql`
-        AND (
-          (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
-          (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days'
-        ) BETWEEN ${startDate}::date AND ${endDate}::date
-        ` : sql``}
-      GROUP BY sf.delivery_week
-      ORDER BY sf.delivery_week
-    `)
+    // Get forecast delivery data using Supabase (same method that works in main analytics)
+    const { data: forecastsData, error: forecastsError } = await serviceSupabase
+      .from('sales_forecasts')
+      .select(`
+        delivery_week,
+        quantity,
+        status,
+        confidence,
+        id,
+        product_skus(name)
+      `)
+      .not('delivery_week', 'is', null)
 
-    const forecastDeliveries = (forecastDeliveriesResult as any).map((row: any) => ({
-      deliveryWeek: row.delivery_week,
-      deliveryDate: row.delivery_date, // Use calculated delivery date
-      forecasts: row.forecasts || [],
-      totalUnits: Number(row.total_units || 0)
-    }))
+    if (forecastsError) {
+      console.error('Error fetching forecasts:', forecastsError);
+      return NextResponse.json({ error: 'Failed to fetch forecasts' }, { status: 500 })
+    }
+
+    console.log('📊 Raw forecasts from Supabase:', { 
+      totalForecasts: forecastsData?.length || 0,
+      sampleData: forecastsData?.slice(0, 3) || []
+    });
+
+    // Group by delivery week
+    const groupedForecasts = (forecastsData || []).reduce((acc: any, forecast: any) => {
+      const week = forecast.delivery_week;
+      if (!acc[week]) {
+        acc[week] = {
+          deliveryWeek: week,
+          deliveryDate: week, // Use week as date for now
+          forecasts: [],
+          totalUnits: 0
+        };
+      }
+      
+      acc[week].forecasts.push({
+        id: forecast.id,
+        skuName: forecast.product_skus?.name || 'Unknown SKU',
+        quantity: forecast.quantity,
+        organization: 'BDI',
+        status: forecast.status,
+        confidence: forecast.confidence
+      });
+      acc[week].totalUnits += forecast.quantity;
+      
+      return acc;
+    }, {});
+
+    const forecastDeliveries = Object.values(groupedForecasts).sort((a: any, b: any) => 
+      a.deliveryWeek.localeCompare(b.deliveryWeek)
+    );
 
     console.log('📊 Forecast Deliveries API Debug:', {
-      totalRows: forecastDeliveriesResult.length,
+      totalRows: forecastDeliveries.length,
       sampleData: forecastDeliveries.slice(0, 3),
       totalForecasts: forecastDeliveries.reduce((sum: number, item: any) => sum + item.forecasts.length, 0),
       totalUnits: forecastDeliveries.reduce((sum: number, item: any) => sum + item.totalUnits, 0)
