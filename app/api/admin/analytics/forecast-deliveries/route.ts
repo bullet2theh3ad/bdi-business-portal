@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       sampleData: forecastsData?.slice(0, 3) || []
     });
 
-    // Filter forecasts by date range if provided
+    // Apply EXACT date filtering like invoice chart - NO extensions or special logic
     let filteredForecasts = forecastsData || [];
     
     if (startDate && endDate) {
@@ -100,13 +100,15 @@ export async function GET(request: NextRequest) {
         // Approximate date: January 1st + (week - 1) * 7 days
         const deliveryDate = new Date(yearNum, 0, 1 + (weekNum - 1) * 7);
         
+        // EXACT date range filtering - same as invoice chart
         return deliveryDate >= startDateObj && deliveryDate <= endDateObj;
       });
       
-      console.log('📊 Date filtering applied:', {
+      console.log('📊 EXACT date filtering applied (like invoice chart):', {
         originalCount: forecastsData?.length || 0,
         filteredCount: filteredForecasts.length,
-        dateRange: { startDate, endDate }
+        dateRange: { startDate, endDate },
+        filterLogic: 'EXACT - no extensions'
       });
     }
 
