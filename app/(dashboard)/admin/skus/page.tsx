@@ -56,6 +56,12 @@ export default function SKUsPage() {
   });
   const [customSubSku, setCustomSubSku] = useState(false);
   const [customSubSkuCode, setCustomSubSkuCode] = useState('');
+  
+  // Create Variant Modal State
+  const [showVariantModal, setShowVariantModal] = useState(false);
+  const [variantParentSku, setVariantParentSku] = useState<ProductSku | null>(null);
+  const [variantExtension, setVariantExtension] = useState<string>('');
+  const [isCreatingVariant, setIsCreatingVariant] = useState(false);
 
   // Access control - only BDI Super Admins and Admins can manage SKUs
   if (!user || !['super_admin', 'admin'].includes(user.role) || (user as any).organization?.code !== 'BDI') {
@@ -109,6 +115,92 @@ export default function SKUsPage() {
       alert('Failed to delete SKU. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Create SKU Variant function
+  const handleCreateVariant = async () => {
+    if (!variantParentSku || !variantExtension.trim()) {
+      alert('Please enter a 3-letter variant extension');
+      return;
+    }
+
+    if (variantExtension.length > 3) {
+      alert('Variant extension must be 3 letters or less');
+      return;
+    }
+
+    setIsCreatingVariant(true);
+    try {
+      // Create new SKU name with variant extension
+      const baseName = variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, ''); // Remove existing parentheses
+      const newSkuName = `${baseName} (${variantExtension.toUpperCase()})`;
+      
+      // Check if SKU with this name already exists
+      const existingSku = skus?.find(s => s.name === newSkuName);
+      if (existingSku) {
+        alert('A SKU with this variant name already exists');
+        return;
+      }
+
+      // Copy all attributes from parent SKU (using correct property names)
+      const variantSkuData = {
+        sku: variantParentSku.sku, // Keep same SKU code
+        name: newSkuName,
+        description: variantParentSku.description,
+        category: variantParentSku.category,
+        subcategory: variantParentSku.subcategory,
+        model: variantParentSku.model,
+        version: variantParentSku.version,
+        dimensions: variantParentSku.dimensions,
+        weight: variantParentSku.weight,
+        color: variantParentSku.color,
+        mfg: variantParentSku.mfg,
+        moq: variantParentSku.moq,
+        leadTimeDays: variantParentSku.leadTimeDays,
+        isActive: true,
+        isDiscontinued: false,
+        boxWeightKg: variantParentSku.boxWeightKg,
+        boxLengthCm: variantParentSku.boxLengthCm,
+        boxWidthCm: variantParentSku.boxWidthCm,
+        boxHeightCm: variantParentSku.boxHeightCm,
+        cartonWeightKg: variantParentSku.cartonWeightKg,
+        cartonLengthCm: variantParentSku.cartonLengthCm,
+        cartonWidthCm: variantParentSku.cartonWidthCm,
+        cartonHeightCm: variantParentSku.cartonHeightCm,
+        boxesPerCarton: variantParentSku.boxesPerCarton,
+        palletLengthCm: variantParentSku.palletLengthCm,
+        palletWidthCm: variantParentSku.palletWidthCm,
+        palletHeightCm: variantParentSku.palletHeightCm,
+        palletWeightKg: variantParentSku.palletWeightKg,
+        htsCode: variantParentSku.htsCode,
+        tags: variantParentSku.tags,
+        specifications: variantParentSku.specifications
+      };
+
+      const response = await fetch('/api/admin/skus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(variantSkuData)
+      });
+
+      if (response.ok) {
+        mutateSkus(); // Refresh the SKU list
+        setShowVariantModal(false);
+        setVariantParentSku(null);
+        setVariantExtension('');
+        alert(`SKU variant "${newSkuName}" created successfully!`);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to create SKU variant: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error creating SKU variant:', error);
+      alert('Failed to create SKU variant. Please try again.');
+    } finally {
+      setIsCreatingVariant(false);
     }
   };
 
@@ -596,6 +688,25 @@ export default function SKUsPage() {
                             </div>
                           )}
                           <div className="flex items-center justify-center space-x-1 mt-2">
+                            {(viewMode as string) === 'list' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setVariantParentSku(sku);
+                                  // Extract existing extension if any (text in parentheses)
+                                  const match = sku.name.match(/\(([^)]+)\)$/);
+                                  setVariantExtension(match ? match[1] : '');
+                                  setShowVariantModal(true);
+                                }}
+                                disabled={isLoading}
+                                className="text-xs px-2 py-1 text-green-600 border-green-300 hover:bg-green-50"
+                                title="Create SKU Variant"
+                              >
+                                <SemanticBDIIcon semantic="copy" size={12} className="mr-1" />
+                                Variant
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -1796,6 +1907,96 @@ export default function SKUsPage() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Create SKU Variant Modal */}
+      {showVariantModal && variantParentSku && (
+        <Dialog open={showVariantModal} onOpenChange={setShowVariantModal}>
+          <DialogContent className="w-[95vw] max-w-md mx-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-lg">
+                <SemanticBDIIcon semantic="copy" size={20} className="mr-2 text-green-600" />
+                Create SKU Variant
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Parent SKU Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Parent SKU:</p>
+                <p className="font-mono font-bold text-sm">{variantParentSku.sku}</p>
+                <p className="text-sm text-gray-700 break-all">{variantParentSku.name}</p>
+              </div>
+              
+              {/* Variant Extension Input */}
+              <div className="space-y-2">
+                <Label htmlFor="variantExtension" className="text-sm font-medium">
+                  3-Letter Variant Extension
+                </Label>
+                <Input
+                  id="variantExtension"
+                  value={variantExtension}
+                  onChange={(e) => setVariantExtension(e.target.value.toUpperCase())}
+                  placeholder="ABC"
+                  maxLength={3}
+                  className="font-mono text-center text-lg"
+                />
+                <p className="text-xs text-gray-500">
+                  Will be added to name: <span className="font-medium">
+                    {variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, '')} 
+                    {variantExtension && ` (${variantExtension.toUpperCase()})`}
+                  </span>
+                </p>
+              </div>
+              
+              {/* Preview */}
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800 font-medium mb-1">New Variant Preview:</p>
+                <p className="font-mono text-sm">{variantParentSku.sku}</p>
+                <p className="text-sm break-all">
+                  {variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, '')}
+                  {variantExtension && ` (${variantExtension.toUpperCase()})`}
+                </p>
+                <p className="text-xs text-blue-600 mt-2">
+                  ✅ Inherits ALL attributes from parent SKU
+                </p>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowVariantModal(false);
+                    setVariantParentSku(null);
+                    setVariantExtension('');
+                  }}
+                  disabled={isCreatingVariant}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateVariant}
+                  disabled={isCreatingVariant || !variantExtension.trim()}
+                  className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                >
+                  {isCreatingVariant ? (
+                    <>
+                      <SemanticBDIIcon semantic="sync" size={16} className="mr-2 animate-spin" />
+                      Creating Variant...
+                    </>
+                  ) : (
+                    <>
+                      <SemanticBDIIcon semantic="copy" size={16} className="mr-2" />
+                      Create Variant
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
