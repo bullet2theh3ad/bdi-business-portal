@@ -62,6 +62,12 @@ export default function ProductionFilesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterShipment, setFilterShipment] = useState('all');
+  
+  // Edit file category state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingFile, setEditingFile] = useState<ProductionFile | null>(null);
+  const [editFileType, setEditFileType] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setSelectedFiles(acceptedFiles);
@@ -263,7 +269,44 @@ export default function ProductionFilesPage() {
     }
   };
 
+  // Edit file category function
+  const handleEditFile = (file: ProductionFile) => {
+    setEditingFile(file);
+    setEditFileType(file.fileType);
+    setShowEditModal(true);
+  };
 
+  const handleUpdateFileCategory = async () => {
+    if (!editingFile) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/inventory/production-files/${editingFile.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileType: editFileType
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update file category');
+      }
+
+      // Refresh files list
+      mutateFiles();
+      setShowEditModal(false);
+      setEditingFile(null);
+      alert('File category updated successfully!');
+    } catch (error) {
+      console.error('Error updating file category:', error);
+      alert('Failed to update file category. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Filter files - ensure productionFiles is an array
   const filteredFiles = (Array.isArray(productionFiles) ? productionFiles : []).filter(file => {
@@ -582,6 +625,15 @@ export default function ProductionFilesPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
+                          onClick={() => handleEditFile(file)}
+                          className="w-full sm:w-auto"
+                        >
+                          <SemanticBDIIcon semantic="edit" size={14} className="mr-1" />
+                          Edit Category
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
                           onClick={() => handleDownload(file)}
                           className="w-full sm:w-auto"
                         >
@@ -824,6 +876,60 @@ export default function ProductionFilesPage() {
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400"
               >
                 {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} File${selectedFiles.length === 1 ? '' : 's'}`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit File Category Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <SemanticBDIIcon semantic="edit" size={20} className="mr-2" />
+              Edit File Category
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {editingFile && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-600">File:</p>
+                <p className="font-medium truncate">{editingFile.fileName}</p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="editFileType">File Category</Label>
+              <select
+                id="editFileType"
+                value={editFileType}
+                onChange={(e) => setEditFileType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {FILE_TYPES.filter(type => type.active).map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowEditModal(false)}
+                disabled={isUpdating}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpdateFileCategory}
+                disabled={isUpdating}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isUpdating ? 'Updating...' : 'Update Category'}
               </Button>
             </div>
           </div>
