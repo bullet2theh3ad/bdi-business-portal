@@ -882,31 +882,33 @@ export default function ProductionFilesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit File Category Modal */}
+      {/* Edit File Category Modal - Mobile Optimized */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-lg mx-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <SemanticBDIIcon semantic="edit" size={20} className="mr-2" />
-              Edit File Category
+            <DialogTitle className="flex items-center text-lg">
+              <SemanticBDIIcon semantic="edit" size={20} className="mr-2 flex-shrink-0" />
+              <span className="truncate">Edit File Category</span>
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
             {editingFile && (
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="text-sm text-gray-600">File:</p>
-                <p className="font-medium truncate">{editingFile.fileName}</p>
+                <p className="text-sm text-gray-600 mb-1">File:</p>
+                <p className="font-medium text-sm break-all leading-tight">
+                  {editingFile.fileName}
+                </p>
               </div>
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="editFileType">File Category</Label>
+              <Label htmlFor="editFileType" className="text-sm font-medium">File Category</Label>
               <select
                 id="editFileType"
                 value={editFileType}
                 onChange={(e) => setEditFileType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 {FILE_TYPES.filter(type => type.active).map((type) => (
                   <option key={type.value} value={type.value}>
@@ -916,18 +918,19 @@ export default function ProductionFilesPage() {
               </select>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
               <Button 
                 variant="outline" 
                 onClick={() => setShowEditModal(false)}
                 disabled={isUpdating}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleUpdateFileCategory}
                 disabled={isUpdating}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 {isUpdating ? 'Updating...' : 'Update Category'}
               </Button>
