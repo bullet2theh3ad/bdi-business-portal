@@ -478,15 +478,19 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
       return { error: 'Email is required' };
     }
 
-    const supabase = await createSupabaseServerClient();
-    
-    // Use Supabase Auth with your configured Resend SMTP
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `http://localhost:3000/reset-password`,
+    // Use same pattern as user invitations - generate temp password and send via Resend
+    const response = await fetch('/api/auth/password-reset-with-temp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email })
     });
 
-    if (error) {
-      return { error: error.message };
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { error: result.error || 'Failed to send password reset email' };
     }
 
     return { success: 'Password reset email sent via BDI Portal' };
