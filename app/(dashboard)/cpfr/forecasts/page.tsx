@@ -95,7 +95,7 @@ export default function SalesForecastsPage() {
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<string>('');
   
   // SKU Selection State
-  const [skuViewMode, setSkuViewMode] = useState<'grid' | 'list'>('grid');
+  const [skuViewMode, setSkuViewMode] = useState<'grid' | 'list' | 'dropdown'>('grid');
   const [skuSearchTerm, setSkuSearchTerm] = useState<string>('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedWeekForDetail, setSelectedWeekForDetail] = useState<string>('');
@@ -1352,7 +1352,7 @@ export default function SalesForecastsPage() {
                       />
                     </div>
                     
-                    {/* Grid/List Toggle */}
+                    {/* Grid/List/Dropdown Toggle */}
                     <div className="flex border rounded-md">
                       <button
                         type="button"
@@ -1378,15 +1378,54 @@ export default function SalesForecastsPage() {
                         <SemanticBDIIcon semantic="list" size={14} className="mr-1" />
                         List
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setSkuViewMode('dropdown')}
+                        className={`px-3 py-2 text-sm transition-colors ${
+                          skuViewMode === 'dropdown' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <SemanticBDIIcon semantic="dropdown" size={14} className="mr-1" />
+                        Dropdown
+                      </button>
                     </div>
                   </div>
                 </div>
                 
-                <div className={`max-h-80 overflow-y-auto border rounded-lg p-3 sm:p-6 ${
-                  skuViewMode === 'grid' 
-                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 lg:gap-4' 
-                    : 'space-y-2'
-                }`}>
+                {skuViewMode === 'dropdown' ? (
+                  // Dropdown View (Compact Single Line)
+                  <div className="border rounded-lg p-3">
+                    <select
+                      value={selectedSku?.id || ''}
+                      onChange={(e) => {
+                        const selected = skusArray.find(s => s.id === e.target.value);
+                        setSelectedSku(selected || null);
+                        setForecastQuantity(0);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a SKU...</option>
+                      {skusArray
+                        .filter(sku => 
+                          sku.sku.toLowerCase().includes(skuSearchTerm.toLowerCase()) ||
+                          sku.name.toLowerCase().includes(skuSearchTerm.toLowerCase())
+                        )
+                        .map((sku) => (
+                          <option key={sku.id} value={sku.id}>
+                            {sku.sku} - {sku.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ) : (
+                  // Grid/List Views (Standard Height)
+                  <div className={`max-h-80 overflow-y-auto border rounded-lg p-3 sm:p-6 ${
+                    skuViewMode === 'grid' 
+                      ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 lg:gap-4' 
+                      : 'space-y-2'
+                  }`}>
                   {skusArray
                     .filter(sku => 
                       sku.sku.toLowerCase().includes(skuSearchTerm.toLowerCase()) ||
@@ -1459,7 +1498,8 @@ export default function SalesForecastsPage() {
                       </div>
                     );
                   })}
-                </div>
+                  </div>
+                )}
                 {selectedSku && (
                   <div className="mt-4 p-6 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center justify-between mb-4">
