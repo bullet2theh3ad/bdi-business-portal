@@ -479,7 +479,8 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
     }
 
     // Use custom password reset with Resend instead of Supabase Auth email
-    const response = await fetch('/api/auth/request-password-reset', {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
+    const response = await fetch(`${baseUrl}/api/auth/request-password-reset`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -514,7 +515,8 @@ export async function resetPassword(prevState: any, formData: FormData) {
     }
 
     // Use custom password reset API that handles both database and Supabase Auth
-    const response = await fetch('/api/auth/reset-password', {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
+    const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -542,7 +544,8 @@ export async function verifyResetToken(token: string) {
     }
 
     // Verify token using our custom API that checks database
-    const response = await fetch('/api/auth/verify-reset-token', {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
+    const response = await fetch(`${baseUrl}/api/auth/verify-reset-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
