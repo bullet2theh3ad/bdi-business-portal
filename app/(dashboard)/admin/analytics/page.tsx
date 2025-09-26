@@ -108,6 +108,7 @@ export default function AnalyticsPage() {
   const [invoicesByOrg, setInvoicesByOrg] = useState<InvoiceByOrgData[]>([]);
   const [forecastDeliveries, setForecastDeliveries] = useState<ForecastDeliveryData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false); // Separate loading state for refreshes
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [selectedMetric, setSelectedMetric] = useState<'count' | 'value' | 'units'>('count');
 
@@ -153,7 +154,12 @@ export default function AnalyticsPage() {
   // Fetch analytics data
   useEffect(() => {
     const fetchAnalytics = async () => {
-      setIsLoading(true);
+      // Only show full loading on initial load, use refreshing state for updates
+      if (analyticsData === null) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       try {
         const [basicResponse, invoicesResponse, forecastsResponse] = await Promise.all([
           fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}&startDate=${startDate}&endDate=${endDate}`),
@@ -180,6 +186,7 @@ export default function AnalyticsPage() {
         console.error('Error fetching analytics:', error);
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
       }
     };
 
@@ -664,7 +671,12 @@ export default function AnalyticsPage() {
                 </CardTitle>
                 <CardDescription>Monthly breakdown showing invoice amounts per organization (stacked view)</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
+                {isRefreshing && (
+                  <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-lg">
+                    <div className="text-blue-600 font-medium">🔄 Updating...</div>
+                  </div>
+                )}
                 <InvoicesByOrgChart data={invoicesByOrg} />
               </CardContent>
             </Card>
@@ -678,7 +690,12 @@ export default function AnalyticsPage() {
                 </CardTitle>
                 <CardDescription>Weekly forecast deliveries with status indicators - the future pipeline!</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
+                {isRefreshing && (
+                  <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-lg">
+                    <div className="text-blue-600 font-medium">🔄 Updating...</div>
+                  </div>
+                )}
                 <ForecastDeliveryChart data={forecastDeliveries} />
               </CardContent>
             </Card>

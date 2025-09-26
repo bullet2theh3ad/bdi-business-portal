@@ -43,33 +43,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Get forecast delivery data - simplified query to debug the issue
-    console.log('🔍 Debug: Starting forecast deliveries query...');
+    // Get date range from query params (like other analytics endpoints)
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    
+    console.log('🔍 Debug: Forecast deliveries with date range:', { startDate, endDate });
     
     const forecastDeliveriesResult = await db.execute(sql`
       SELECT 
-        delivery_week,
+        sf.delivery_week,
+        -- Convert delivery week to actual date for proper filtering
+        (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
+        (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days' as delivery_date,
         COUNT(*) as forecast_count,
-        SUM(quantity) as total_units,
+        SUM(sf.quantity) as total_units,
         json_agg(
           json_build_object(
-            'id', id,
-            'skuName', 'Unknown SKU',
-            'quantity', quantity,
+            'id', sf.id,
+            'skuName', COALESCE(ps.name, 'Unknown SKU'),
+            'quantity', sf.quantity,
             'organization', 'BDI',
-            'status', status,
-            'confidence', confidence
+            'status', sf.status,
+            'confidence', sf.confidence
           )
         ) as forecasts
-      FROM sales_forecasts
-      WHERE delivery_week IS NOT NULL
-      GROUP BY delivery_week
-      ORDER BY delivery_week
+      FROM sales_forecasts sf
+      LEFT JOIN product_skus ps ON sf.sku_id = ps.id
+      WHERE sf.delivery_week IS NOT NULL
+        AND sf.delivery_week ~ '^\d{4}-W\d{2}$'
+        ${startDate && endDate ? sql`
+        AND (
+          (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
+          (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days'
+        ) BETWEEN ${startDate}::date AND ${endDate}::date
+        ` : sql``}
+      GROUP BY sf.delivery_week
+      ORDER BY sf.delivery_week
     `)
 
     const forecastDeliveries = (forecastDeliveriesResult as any).map((row: any) => ({
       deliveryWeek: row.delivery_week,
-      deliveryDate: row.delivery_week, // Use delivery week as date for now
+      deliveryDate: row.delivery_date, // Use calculated delivery date
       forecasts: row.forecasts || [],
       totalUnits: Number(row.total_units || 0)
     }))
