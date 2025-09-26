@@ -153,21 +153,6 @@ export default function SKUsPage() {
         return;
       }
 
-      // Debug: Log parent SKU data to see what's available
-      console.log('🔍 Parent SKU dimensional data:', {
-        boxWeightKg: variantParentSku.boxWeightKg,
-        boxLengthCm: variantParentSku.boxLengthCm,
-        boxWidthCm: variantParentSku.boxWidthCm,
-        boxHeightCm: variantParentSku.boxHeightCm,
-        cartonWeightKg: variantParentSku.cartonWeightKg,
-        cartonLengthCm: variantParentSku.cartonLengthCm,
-        cartonWidthCm: variantParentSku.cartonWidthCm,
-        cartonHeightCm: variantParentSku.cartonHeightCm,
-        palletWeightKg: variantParentSku.palletWeightKg,
-        palletLengthCm: variantParentSku.palletLengthCm,
-        palletWidthCm: variantParentSku.palletWidthCm,
-        palletHeightCm: variantParentSku.palletHeightCm,
-      });
 
       // Copy all attributes from parent SKU (mapping to API expected property names)
       const variantSkuData = {
@@ -218,8 +203,6 @@ export default function SKUsPage() {
         specifications: variantParentSku.specifications
       };
 
-      console.log('🚀 Sending variant data to API:', JSON.stringify(variantSkuData, null, 2));
-
       const response = await fetch('/api/admin/skus', {
         method: 'POST',
         headers: {
@@ -227,12 +210,8 @@ export default function SKUsPage() {
         },
         body: JSON.stringify(variantSkuData)
       });
-
-      console.log('📡 API Response status:', response.status);
       
       if (response.ok) {
-        const result = await response.json();
-        console.log('✅ API Response data:', result);
         mutateSkus(); // Refresh the SKU list
         setShowVariantModal(false);
         setVariantParentSku(null);
@@ -240,7 +219,6 @@ export default function SKUsPage() {
         alert(`SKU variant "${newSkuName}" created successfully!`);
       } else {
         const errorData = await response.json();
-        console.error('❌ API Error response:', errorData);
         alert(`Failed to create SKU variant: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
