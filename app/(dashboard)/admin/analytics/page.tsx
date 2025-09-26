@@ -150,49 +150,45 @@ export default function AnalyticsPage() {
     fetchUser();
   }, []);
 
-  // Fetch analytics data
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      // Only show full loading on initial load, use refreshing state for updates
-      if (analyticsData === null) {
-        setIsLoading(true);
-      } else {
-        setIsRefreshing(true);
+  // Manual refresh function
+  const refreshAnalytics = async () => {
+    setIsRefreshing(true);
+    try {
+      const [basicResponse, invoicesResponse, forecastsResponse] = await Promise.all([
+        fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}&startDate=${startDate}&endDate=${endDate}`),
+        fetch(`/api/admin/analytics/invoices-by-org?startDate=${startDate}&endDate=${endDate}`),
+        fetch(`/api/admin/analytics/forecast-deliveries?startDate=${startDate}&endDate=${endDate}`)
+      ]);
+      
+      if (basicResponse.ok) {
+        const data = await basicResponse.json();
+        setAnalyticsData(data.summary);
+        setTimeSeriesData(data.timeSeries);
       }
-      try {
-        const [basicResponse, invoicesResponse, forecastsResponse] = await Promise.all([
-          fetch(`/api/admin/analytics?period=${selectedPeriod}&metric=${selectedMetric}&startDate=${startDate}&endDate=${endDate}`),
-          fetch(`/api/admin/analytics/invoices-by-org?startDate=${startDate}&endDate=${endDate}`),
-          fetch(`/api/admin/analytics/forecast-deliveries?startDate=${startDate}&endDate=${endDate}`)
-        ]);
-        
-        if (basicResponse.ok) {
-          const data = await basicResponse.json();
-          setAnalyticsData(data.summary);
-          setTimeSeriesData(data.timeSeries);
-        }
-        
-        if (invoicesResponse.ok) {
-          const invoicesData = await invoicesResponse.json();
-          setInvoicesByOrg(invoicesData);
-        }
-        
-        if (forecastsResponse.ok) {
-          const forecastsData = await forecastsResponse.json();
-          setForecastDeliveries(forecastsData);
-        }
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+      
+      if (invoicesResponse.ok) {
+        const invoicesData = await invoicesResponse.json();
+        setInvoicesByOrg(invoicesData);
       }
-    };
-
-    if (user) {
-      fetchAnalytics();
+      
+      if (forecastsResponse.ok) {
+        const forecastsData = await forecastsResponse.json();
+        setForecastDeliveries(forecastsData);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [user, selectedPeriod, selectedMetric, startDate, endDate]);
+  };
+
+  // Initial load only - NO auto-refresh on dependency changes
+  useEffect(() => {
+    if (user && analyticsData === null) {
+      setIsLoading(true);
+      refreshAnalytics().finally(() => setIsLoading(false));
+    }
+  }, [user]); // Only depend on user, not on date/period changes
 
   // Ultra-Cool Stacked Invoice Chart by Organization
   const InvoicesByOrgChart = ({ data }: { data: InvoiceByOrgData[] }) => {
@@ -534,6 +530,21 @@ export default function AnalyticsPage() {
               className="w-full sm:w-auto"
             >
               Last 3 Months
+            </Button>
+            
+            <Button
+              onClick={refreshAnalytics}
+              disabled={isRefreshing}
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              <SemanticBDIIcon 
+                semantic="refresh" 
+                size={16} 
+                className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} 
+              />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
             </Button>
           </div>
         </div>
