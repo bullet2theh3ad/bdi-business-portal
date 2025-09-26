@@ -132,20 +132,30 @@ export default function SKUsPage() {
 
     setIsCreatingVariant(true);
     try {
+      // Create new SKU code with variant extension  
+      const newSkuCode = `${variantParentSku.sku}-${variantExtension.toUpperCase()}`;
+      
       // Create new SKU name with variant extension
       const baseName = variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, ''); // Remove existing parentheses
       const newSkuName = `${baseName} (${variantExtension.toUpperCase()})`;
       
+      // Check if SKU with this code already exists
+      const existingSkuByCode = skus?.find(s => s.sku === newSkuCode);
+      if (existingSkuByCode) {
+        alert('A SKU with this variant code already exists');
+        return;
+      }
+      
       // Check if SKU with this name already exists
-      const existingSku = skus?.find(s => s.name === newSkuName);
-      if (existingSku) {
+      const existingSkuByName = skus?.find(s => s.name === newSkuName);
+      if (existingSkuByName) {
         alert('A SKU with this variant name already exists');
         return;
       }
 
       // Copy all attributes from parent SKU (using correct property names)
       const variantSkuData = {
-        sku: variantParentSku.sku, // Keep same SKU code
+        sku: newSkuCode, // NEW unique SKU code with variant extension
         name: newSkuName,
         description: variantParentSku.description,
         category: variantParentSku.category,
@@ -1950,17 +1960,19 @@ export default function SKUsPage() {
               </div>
               
               {/* Preview */}
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800 font-medium mb-1">New Variant Preview:</p>
-                <p className="font-mono text-sm">{variantParentSku.sku}</p>
-                <p className="text-sm break-all">
-                  {variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, '')}
-                  {variantExtension && ` (${variantExtension.toUpperCase()})`}
-                </p>
-                <p className="text-xs text-blue-600 mt-2">
-                  ✅ Inherits ALL attributes from parent SKU
-                </p>
-              </div>
+               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                 <p className="text-sm text-blue-800 font-medium mb-1">New Variant Preview:</p>
+                 <p className="font-mono text-sm font-bold">
+                   {variantParentSku.sku}{variantExtension && `-${variantExtension.toUpperCase()}`}
+                 </p>
+                 <p className="text-sm break-all">
+                   {variantParentSku.name.replace(/\s*\([^)]*\)\s*$/, '')}
+                   {variantExtension && ` (${variantExtension.toUpperCase()})`}
+                 </p>
+                 <p className="text-xs text-blue-600 mt-2">
+                   ✅ Inherits ALL attributes from parent SKU
+                 </p>
+               </div>
               
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
