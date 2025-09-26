@@ -169,7 +169,7 @@ export default function SKUsPage() {
         palletHeightCm: variantParentSku.palletHeightCm,
       });
 
-      // Copy all attributes from parent SKU (using correct property names)
+      // Copy all attributes from parent SKU (mapping to API expected property names)
       const variantSkuData = {
         sku: newSkuCode, // NEW unique SKU code with variant extension
         name: newSkuName,
@@ -186,23 +186,30 @@ export default function SKUsPage() {
         leadTimeDays: variantParentSku.leadTimeDays,
         isActive: true,
         isDiscontinued: false,
-        boxWeightKg: variantParentSku.boxWeightKg,
-        boxLengthCm: variantParentSku.boxLengthCm,
-        boxWidthCm: variantParentSku.boxWidthCm,
-        boxHeightCm: variantParentSku.boxHeightCm,
-        cartonWeightKg: variantParentSku.cartonWeightKg,
-        cartonLengthCm: variantParentSku.cartonLengthCm,
-        cartonWidthCm: variantParentSku.cartonWidthCm,
-        cartonHeightCm: variantParentSku.cartonHeightCm,
+        
+        // Box dimensions - map from DB names to API expected names
+        boxLength: variantParentSku.boxLengthCm ? Number(variantParentSku.boxLengthCm) : undefined,
+        boxWidth: variantParentSku.boxWidthCm ? Number(variantParentSku.boxWidthCm) : undefined,
+        boxHeight: variantParentSku.boxHeightCm ? Number(variantParentSku.boxHeightCm) : undefined,
+        boxWeight: variantParentSku.boxWeightKg ? Number(variantParentSku.boxWeightKg) : undefined,
+        
+        // Carton dimensions - map from DB names to API expected names
+        cartonLength: variantParentSku.cartonLengthCm ? Number(variantParentSku.cartonLengthCm) : undefined,
+        cartonWidth: variantParentSku.cartonWidthCm ? Number(variantParentSku.cartonWidthCm) : undefined,
+        cartonHeight: variantParentSku.cartonHeightCm ? Number(variantParentSku.cartonHeightCm) : undefined,
+        cartonWeight: variantParentSku.cartonWeightKg ? Number(variantParentSku.cartonWeightKg) : undefined,
         boxesPerCarton: variantParentSku.boxesPerCarton,
-        palletLengthCm: variantParentSku.palletLengthCm,
-        palletWidthCm: variantParentSku.palletWidthCm,
-        palletHeightCm: variantParentSku.palletHeightCm,
-        palletWeightKg: variantParentSku.palletWeightKg,
+        
+        // Pallet dimensions - map from DB names to API expected names
+        palletLength: variantParentSku.palletLengthCm ? Number(variantParentSku.palletLengthCm) : undefined,
+        palletWidth: variantParentSku.palletWidthCm ? Number(variantParentSku.palletWidthCm) : undefined,
+        palletHeight: variantParentSku.palletHeightCm ? Number(variantParentSku.palletHeightCm) : undefined,
+        palletWeight: variantParentSku.palletWeightKg ? Number(variantParentSku.palletWeightKg) : undefined,
         palletMaterialType: variantParentSku.palletMaterialType,
         palletNotes: variantParentSku.palletNotes,
-        mpStartDate: variantParentSku.mpStartDate,
-        replacementSku: variantParentSku.replacementSku,
+        
+        // Other fields
+        mpStartDate: variantParentSku.mpStartDate ? variantParentSku.mpStartDate.toISOString() : undefined,
         htsCode: variantParentSku.htsCode,
         tags: variantParentSku.tags,
         specifications: variantParentSku.specifications
