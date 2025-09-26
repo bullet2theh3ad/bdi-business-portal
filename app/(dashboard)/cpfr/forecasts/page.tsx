@@ -93,6 +93,10 @@ export default function SalesForecastsPage() {
   const [forecastQuantity, setForecastQuantity] = useState<number>(0);
   const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'confirmed'>('draft');
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<string>('');
+  
+  // SKU Selection State
+  const [skuViewMode, setSkuViewMode] = useState<'grid' | 'list'>('grid');
+  const [skuSearchTerm, setSkuSearchTerm] = useState<string>('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedWeekForDetail, setSelectedWeekForDetail] = useState<string>('');
   const [editingForecast, setEditingForecast] = useState<string | null>(null);
@@ -1329,9 +1333,66 @@ export default function SalesForecastsPage() {
             }}>
               {/* SKU Selection */}
               <div>
-                <Label className="text-base font-semibold mb-3 block">Select Product SKU</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 lg:gap-4 max-h-80 overflow-y-auto border rounded-lg p-3 sm:p-6">
-                  {skusArray.map((sku) => {
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-3 sm:space-y-0">
+                  <Label className="text-base font-semibold">Select Product SKU</Label>
+                  
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                    {/* Search Input */}
+                    <div className="relative">
+                      <SemanticBDIIcon 
+                        semantic="search" 
+                        size={16} 
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+                      />
+                      <Input
+                        placeholder="Search SKUs..."
+                        value={skuSearchTerm}
+                        onChange={(e) => setSkuSearchTerm(e.target.value)}
+                        className="pl-9 w-full sm:w-64"
+                      />
+                    </div>
+                    
+                    {/* Grid/List Toggle */}
+                    <div className="flex border rounded-md">
+                      <button
+                        type="button"
+                        onClick={() => setSkuViewMode('grid')}
+                        className={`px-3 py-2 text-sm transition-colors ${
+                          skuViewMode === 'grid' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <SemanticBDIIcon semantic="grid" size={14} className="mr-1" />
+                        Grid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSkuViewMode('list')}
+                        className={`px-3 py-2 text-sm transition-colors ${
+                          skuViewMode === 'list' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <SemanticBDIIcon semantic="list" size={14} className="mr-1" />
+                        List
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`max-h-80 overflow-y-auto border rounded-lg p-3 sm:p-6 ${
+                  skuViewMode === 'grid' 
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 lg:gap-4' 
+                    : 'space-y-2'
+                }`}>
+                  {skusArray
+                    .filter(sku => 
+                      sku.sku.toLowerCase().includes(skuSearchTerm.toLowerCase()) ||
+                      sku.name.toLowerCase().includes(skuSearchTerm.toLowerCase())
+                    )
+                    .map((sku) => {
                     const productType = sku.sku.length >= 3 ? sku.sku.charAt(2) : 'C';
                     const getProductTypeColor = (type: string) => {
                       const colors: { [key: string]: string } = {
@@ -1347,7 +1408,8 @@ export default function SalesForecastsPage() {
                       return colors[type] || 'bg-gray-100 border-gray-300 text-gray-800';
                     };
                     
-                    return (
+                    return skuViewMode === 'grid' ? (
+                      // Grid View (Current)
                       <div 
                         key={sku.id} 
                         className={`relative border-2 rounded-lg p-2 cursor-pointer transition-all ${
@@ -1366,6 +1428,32 @@ export default function SalesForecastsPage() {
                           </div>
                           <div className="text-xs font-medium leading-tight line-clamp-2">
                             {sku.name}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // List View (New)
+                      <div 
+                        key={sku.id} 
+                        className={`relative border rounded-lg p-3 cursor-pointer transition-all ${
+                          selectedSku?.id === sku.id 
+                            ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50' 
+                            : getProductTypeColor(productType)
+                        } hover:shadow-md`}
+                        onClick={() => {
+                          setSelectedSku(sku);
+                          setForecastQuantity(0); // Reset forecast quantity when SKU changes
+                        }}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            <div className={`w-3 h-3 rounded-full ${
+                              selectedSku?.id === sku.id ? 'bg-blue-500' : 'bg-current opacity-30'
+                            }`}></div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-mono font-bold text-sm truncate">{sku.sku}</p>
+                            <p className="text-sm text-gray-600 truncate">{sku.name}</p>
                           </div>
                         </div>
                       </div>
