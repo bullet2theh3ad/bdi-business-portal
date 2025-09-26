@@ -409,5 +409,19 @@
     "emailActionItems": "电子邮件行动项目: 向利益相关者发送全面的时间线分析",
     "emailContent": "电子邮件内容: 带有BDI品牌的专业CPFR沟通",
     "bestPractice": "最佳实践: 使用情景分析将不现实的零延迟销售预测转换为可操作的CPFR时间线。该分析帮助CPFR领导者向利益相关者传达现实的工厂信号时机，确保适当的生产计划和交付承诺。"
+  },
+  "productionFileCategories": {
+    "productionFile": "生产文件",
+    "royaltyZone1": "版税区域 1",
+    "royaltyZone2": "版税区域 2",
+    "royaltyZone3": "版税区域 3",
+    "royaltyZone4": "版税区域 4", 
+    "royaltyZone5": "版税区域 5",
+    "genericFile": "通用文件",
+    "editCategory": "编辑类别",
+    "updateCategory": "更新类别",
+    "fileCategory": "文件类别",
+    "categoryUpdated": "文件类别更新成功",
+    "categoryUpdateFailed": "文件类别更新失败"
   }
 }

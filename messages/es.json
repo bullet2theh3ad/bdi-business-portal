@@ -403,5 +403,19 @@
     "emailActionItems": "Elementos de Acción por Email: Enviar análisis integral de cronograma a partes interesadas",
     "emailContent": "Contenido del Email: Comunicación CPFR profesional con marca BDI",
     "bestPractice": "Mejor Práctica: Usar Análisis de Escenarios para convertir pronósticos de ventas poco realistas de \"retraso cero\" en cronogramas CPFR accionables. El análisis ayuda a los líderes CPFR a comunicar el tiempo realista de señales de fábrica a las partes interesadas, asegurando una planificación de producción y compromisos de entrega adecuados."
+  },
+  "productionFileCategories": {
+    "productionFile": "Archivo de Producción",
+    "royaltyZone1": "Zona de Regalías 1",
+    "royaltyZone2": "Zona de Regalías 2",
+    "royaltyZone3": "Zona de Regalías 3", 
+    "royaltyZone4": "Zona de Regalías 4",
+    "royaltyZone5": "Zona de Regalías 5",
+    "genericFile": "Archivo Genérico",
+    "editCategory": "Editar Categoría",
+    "updateCategory": "Actualizar Categoría",
+    "fileCategory": "Categoría de Archivo",
+    "categoryUpdated": "Categoría de archivo actualizada exitosamente",
+    "categoryUpdateFailed": "Error al actualizar la categoría del archivo"
   }
 }

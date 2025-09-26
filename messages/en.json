@@ -409,5 +409,19 @@
     "emailActionItems": "Email Action Items: Send comprehensive timeline analysis to stakeholders",
     "emailContent": "Email Content: Professional CPFR communication with BDI branding",
     "bestPractice": "Best Practice: Use Scenario Analysis to convert unrealistic \"zero lag\" sales forecasts into actionable CPFR timelines. The analysis helps CPFR leaders communicate realistic factory signal timing to stakeholders, ensuring proper production planning and delivery commitments."
+  },
+  "productionFileCategories": {
+    "productionFile": "Production File",
+    "royaltyZone1": "Royalty Zone 1",
+    "royaltyZone2": "Royalty Zone 2", 
+    "royaltyZone3": "Royalty Zone 3",
+    "royaltyZone4": "Royalty Zone 4",
+    "royaltyZone5": "Royalty Zone 5",
+    "genericFile": "Generic File",
+    "editCategory": "Edit Category",
+    "updateCategory": "Update Category",
+    "fileCategory": "File Category",
+    "categoryUpdated": "File category updated successfully",
+    "categoryUpdateFailed": "Failed to update file category"
   }
 }

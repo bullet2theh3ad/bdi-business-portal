@@ -403,5 +403,19 @@
     "emailActionItems": "Mục Hành động Email: Gửi phân tích dòng thời gian toàn diện cho các bên liên quan",
     "emailContent": "Nội dung Email: Giao tiếp CPFR chuyên nghiệp với thương hiệu BDI",
     "bestPractice": "Thực hành Tốt nhất: Sử dụng Phân tích Kịch bản để chuyển đổi dự báo bán hàng không thực tế độ trễ bằng không thành dòng thời gian CPFR có thể thực hiện. Phân tích giúp các nhà lãnh đạo CPFR truyền đạt thời gian tín hiệu nhà máy thực tế cho các bên liên quan, đảm bảo kế hoạch sản xuất và cam kết giao hàng phù hợp."
+  },
+  "productionFileCategories": {
+    "productionFile": "Tệp Sản xuất",
+    "royaltyZone1": "Vùng Bản quyền 1",
+    "royaltyZone2": "Vùng Bản quyền 2",
+    "royaltyZone3": "Vùng Bản quyền 3",
+    "royaltyZone4": "Vùng Bản quyền 4",
+    "royaltyZone5": "Vùng Bản quyền 5", 
+    "genericFile": "Tệp Chung",
+    "editCategory": "Chỉnh sửa Danh mục",
+    "updateCategory": "Cập nhật Danh mục",
+    "fileCategory": "Danh mục Tệp",
+    "categoryUpdated": "Danh mục tệp được cập nhật thành công",
+    "categoryUpdateFailed": "Không thể cập nhật danh mục tệp"
   }
 }
