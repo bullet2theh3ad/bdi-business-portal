@@ -43,46 +43,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Get forecast delivery data - show ALL delivery weeks with forecasts
-    // Note: Date range filtering is complex with delivery weeks, so showing all forecast data
+    // Get forecast delivery data - simplified query to debug the issue
+    console.log('🔍 Debug: Starting forecast deliveries query...');
+    
     const forecastDeliveriesResult = await db.execute(sql`
       SELECT 
-        sf.delivery_week,
-        -- Convert delivery week to approximate date for chart display
-        CASE 
-          WHEN sf.delivery_week ~ '^\d{4}-W\d{2}$' THEN
-            (SUBSTRING(sf.delivery_week, 1, 4)::int || '-01-01')::date + 
-            (SUBSTRING(sf.delivery_week, 7, 2)::int - 1) * INTERVAL '7 days'
-          ELSE CURRENT_DATE
-        END as delivery_date,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', sf.id,
-              'skuName', ps.name,
-              'quantity', sf.quantity,
-              'organization', COALESCE(o.code, 'BDI'),
-              'status', sf.status,
-              'confidence', sf.confidence
-            )
-          ),
-          '[]'::json
-        ) as forecasts,
-        COALESCE(SUM(sf.quantity), 0)::int as total_units
-      FROM sales_forecasts sf
-      LEFT JOIN product_skus ps ON sf.sku_id = ps.id
-      LEFT JOIN users u ON sf.created_by = u.auth_id
-      LEFT JOIN organization_members om ON u.auth_id = om.user_auth_id
-      LEFT JOIN organizations o ON om.organization_uuid = o.id
-      WHERE sf.delivery_week IS NOT NULL
-        AND sf.delivery_week ~ '^\d{4}-W\d{2}$'
-      GROUP BY sf.delivery_week
-      ORDER BY sf.delivery_week
+        delivery_week,
+        COUNT(*) as forecast_count,
+        SUM(quantity) as total_units,
+        json_agg(
+          json_build_object(
+            'id', id,
+            'skuName', 'Unknown SKU',
+            'quantity', quantity,
+            'organization', 'BDI',
+            'status', status,
+            'confidence', confidence
+          )
+        ) as forecasts
+      FROM sales_forecasts
+      WHERE delivery_week IS NOT NULL
+      GROUP BY delivery_week
+      ORDER BY delivery_week
     `)
 
     const forecastDeliveries = (forecastDeliveriesResult as any).map((row: any) => ({
       deliveryWeek: row.delivery_week,
-      deliveryDate: row.delivery_date,
+      deliveryDate: row.delivery_week, // Use delivery week as date for now
       forecasts: row.forecasts || [],
       totalUnits: Number(row.total_units || 0)
     }))
