@@ -479,7 +479,7 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
     }
 
     // Use same pattern as user invitations - generate temp password and send via Resend
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
     const response = await fetch(`${baseUrl}/api/auth/password-reset-with-temp`, {
       method: 'POST',
       headers: {

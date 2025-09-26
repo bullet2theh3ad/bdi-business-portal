@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/sign-in" 
+            <a href="https://bdibusinessportal.com/sign-in" 
                style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
               Login to BDI Portal
             </a>
@@ -125,7 +125,7 @@ Your new login credentials:
 Email: ${email}
 Temporary Password: ${tempPassword}
 
-Login URL: http://localhost:3000/sign-in
+Login URL: https://bdibusinessportal.com/sign-in
 
 Important: Please change your password after login for security.
 
