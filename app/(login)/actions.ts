@@ -478,20 +478,15 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
       return { error: 'Email is required' };
     }
 
-    // Use custom password reset with Resend instead of Supabase Auth email
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
-    const response = await fetch(`${baseUrl}/api/auth/request-password-reset`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email })
+    const supabase = await createSupabaseServerClient();
+    
+    // Use Supabase Auth with your configured Resend SMTP
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `http://localhost:3000/reset-password`,
     });
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      return { error: result.error || 'Failed to send password reset email' };
+    if (error) {
+      return { error: error.message };
     }
 
     return { success: 'Password reset email sent via BDI Portal' };
@@ -504,30 +499,20 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
 export async function resetPassword(prevState: any, formData: FormData) {
   try {
     const password = formData.get('password') as string;
-    const token = formData.get('token') as string;
     
     if (!password || password.length < 8) {
       return { error: 'Password must be at least 8 characters' };
     }
 
-    if (!token) {
-      return { error: 'Reset token is required' };
-    }
-
-    // Use custom password reset API that handles both database and Supabase Auth
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bdibusinessportal.com';
-    const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token, password })
+    const supabase = await createSupabaseServerClient();
+    
+    // Use Supabase Auth to update password (works with Resend SMTP you configured)
+    const { error } = await supabase.auth.updateUser({
+      password: password
     });
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      return { error: result.error || 'Failed to reset password' };
+    if (error) {
+      return { error: error.message };
     }
 
     redirect('/dashboard');
@@ -539,20 +524,11 @@ export async function resetPassword(prevState: any, formData: FormData) {
 
 export async function verifyResetToken(token: string) {
   try {
-    if (!token) {
-      return { valid: false, error: 'No token provided' };
-    }
-
-    // For now, just validate token format - actual verification happens during password reset
-    // This avoids auth session issues during token verification
-    if (token.length < 32) {
-      return { valid: false, error: 'Invalid token format' };
-    }
-
-    // Token appears valid, actual verification will happen when password is reset
+    // Supabase Auth handles token verification automatically
+    // Just return valid - Supabase will validate during password reset
     return { valid: true };
   } catch (error) {
     console.error('Error verifying reset token:', error);
-    return { valid: false, error: 'Failed to verify token' };
+    return { valid: false, error: 'Invalid or expired token' };
   }
 }
