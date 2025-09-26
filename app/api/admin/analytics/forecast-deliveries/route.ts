@@ -50,7 +50,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    console.log('🔍 Debug: Getting forecast deliveries using Supabase client...');
+    // Get date range from query params
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    
+    console.log('🔍 Debug: Forecast deliveries with date range:', { startDate, endDate });
     
     // Get forecast delivery data using Supabase (same method that works in main analytics)
     const { data: forecastsData, error: forecastsError } = await serviceSupabase
@@ -75,8 +80,38 @@ export async function GET(request: NextRequest) {
       sampleData: forecastsData?.slice(0, 3) || []
     });
 
+    // Filter forecasts by date range if provided
+    let filteredForecasts = forecastsData || [];
+    
+    if (startDate && endDate) {
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      
+      filteredForecasts = (forecastsData || []).filter((forecast: any) => {
+        if (!forecast.delivery_week || !forecast.delivery_week.match(/^\d{4}-W\d{2}$/)) {
+          return false;
+        }
+        
+        // Convert delivery week to approximate date (YYYY-WNN to date)
+        const [year, weekStr] = forecast.delivery_week.split('-W');
+        const weekNum = parseInt(weekStr);
+        const yearNum = parseInt(year);
+        
+        // Approximate date: January 1st + (week - 1) * 7 days
+        const deliveryDate = new Date(yearNum, 0, 1 + (weekNum - 1) * 7);
+        
+        return deliveryDate >= startDateObj && deliveryDate <= endDateObj;
+      });
+      
+      console.log('📊 Date filtering applied:', {
+        originalCount: forecastsData?.length || 0,
+        filteredCount: filteredForecasts.length,
+        dateRange: { startDate, endDate }
+      });
+    }
+
     // Group by delivery week
-    const groupedForecasts = (forecastsData || []).reduce((acc: any, forecast: any) => {
+    const groupedForecasts = filteredForecasts.reduce((acc: any, forecast: any) => {
       const week = forecast.delivery_week;
       if (!acc[week]) {
         acc[week] = {
