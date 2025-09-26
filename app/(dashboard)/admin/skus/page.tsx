@@ -209,11 +209,16 @@ export default function SKUsPage() {
         palletNotes: variantParentSku.palletNotes,
         
         // Other fields
-        mpStartDate: variantParentSku.mpStartDate ? variantParentSku.mpStartDate.toISOString() : undefined,
+        mpStartDate: variantParentSku.mpStartDate ? 
+          (variantParentSku.mpStartDate instanceof Date ? 
+            variantParentSku.mpStartDate.toISOString() : 
+            variantParentSku.mpStartDate) : undefined,
         htsCode: variantParentSku.htsCode,
         tags: variantParentSku.tags,
         specifications: variantParentSku.specifications
       };
+
+      console.log('🚀 Sending variant data to API:', JSON.stringify(variantSkuData, null, 2));
 
       const response = await fetch('/api/admin/skus', {
         method: 'POST',
@@ -223,7 +228,11 @@ export default function SKUsPage() {
         body: JSON.stringify(variantSkuData)
       });
 
+      console.log('📡 API Response status:', response.status);
+      
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ API Response data:', result);
         mutateSkus(); // Refresh the SKU list
         setShowVariantModal(false);
         setVariantParentSku(null);
@@ -231,6 +240,7 @@ export default function SKUsPage() {
         alert(`SKU variant "${newSkuName}" created successfully!`);
       } else {
         const errorData = await response.json();
+        console.error('❌ API Error response:', errorData);
         alert(`Failed to create SKU variant: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
