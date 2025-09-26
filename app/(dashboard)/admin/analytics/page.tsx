@@ -538,47 +538,6 @@ export default function AnalyticsPage() {
           </div>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <Label>Period:</Label>
-          <div className="flex space-x-1">
-            {[
-              { key: 'day', label: 'Daily' },
-              { key: 'week', label: 'Weekly' },
-              { key: 'month', label: 'Monthly' },
-              { key: 'year', label: 'Yearly' }
-            ].map((period) => (
-              <Button
-                key={period.key}
-                variant={selectedPeriod === period.key ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedPeriod(period.key as any)}
-              >
-                {period.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Label>Metric:</Label>
-          <div className="flex space-x-1">
-            {[
-              { key: 'count', label: 'Count', icon: 'orders' },
-              { key: 'value', label: 'Value', icon: 'analytics' },
-              { key: 'units', label: 'Units', icon: 'inventory' }
-            ].map((metric) => (
-              <Button
-                key={metric.key}
-                variant={selectedMetric === metric.key ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedMetric(metric.key as any)}
-              >
-                <SemanticBDIIcon semantic={metric.icon as any} size={14} className="mr-1" />
-                {metric.label}
-              </Button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {isLoading ? (
@@ -700,7 +659,7 @@ export default function AnalyticsPage() {
             </Card>
           </div>
 
-          {/* Main Trends Chart */}
+          {/* Main Trends Chart with Controls */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -716,6 +675,51 @@ export default function AnalyticsPage() {
                 {selectedPeriod === 'month' && 'Monthly trends over the last 12 months'}
                 {selectedPeriod === 'year' && 'Yearly trends over the last 5 years'}
               </CardDescription>
+              
+              {/* Period and Metric Controls - Only for this chart */}
+              <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t">
+                <div className="flex items-center space-x-2">
+                  <Label>Period:</Label>
+                  <div className="flex space-x-1">
+                    {[
+                      { key: 'day', label: 'Daily' },
+                      { key: 'week', label: 'Weekly' },
+                      { key: 'month', label: 'Monthly' },
+                      { key: 'year', label: 'Yearly' }
+                    ].map((period) => (
+                      <Button
+                        key={period.key}
+                        variant={selectedPeriod === period.key ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedPeriod(period.key as any)}
+                      >
+                        {period.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Label>Metric:</Label>
+                  <div className="flex space-x-1">
+                    {[
+                      { key: 'count', label: 'Count', icon: 'orders' },
+                      { key: 'value', label: 'Value', icon: 'analytics' },
+                      { key: 'units', label: 'Units', icon: 'inventory' }
+                    ].map((metric) => (
+                      <Button
+                        key={metric.key}
+                        variant={selectedMetric === metric.key ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedMetric(metric.key as any)}
+                      >
+                        <SemanticBDIIcon semantic={metric.icon as any} size={14} className="mr-1" />
+                        {metric.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <TrendsChart data={timeSeriesData} metric={selectedMetric} />
