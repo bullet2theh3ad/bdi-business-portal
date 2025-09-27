@@ -1068,7 +1068,11 @@ export default function ShipmentsPage() {
     let completedMilestones = 0;
     
     // Check for rejected status first - overrides everything
-    if (forecast.salesSignal === 'rejected' || forecast.factorySignal === 'rejected' || forecast.shippingSignal === 'rejected') {
+    if (forecast.salesSignal === 'rejected' || 
+        forecast.factorySignal === 'rejected' || 
+        forecast.shippingSignal === 'rejected' ||
+        forecast.transitSignal === 'rejected' ||
+        forecast.warehouseSignal === 'rejected') {
       return 0; // Rejected = 0 milestones (red bar)
     }
     
@@ -1088,7 +1092,8 @@ export default function ShipmentsPage() {
       if (completedMilestones >= 2) completedMilestones = 3; // Transport shows "awaiting"
     }
     
-    if (forecast.shippingSignal === 'confirmed') completedMilestones = 4;
+    // Warehouse milestone: check warehouse_signal instead of shipping_signal
+    if (forecast.warehouseSignal === 'confirmed') completedMilestones = 4;
     
     return completedMilestones;
   };
