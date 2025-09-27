@@ -1112,9 +1112,11 @@ export default function ShipmentsPage() {
         forecast.factorySignal === 'reviewing'
       )) ||
       (statusFilter === 'in_transit' && (
-        (forecast.transitSignal as string) === 'confirmed' || 
-        (forecast.transitSignal as string) === 'submitted' ||
-        (forecast.factorySignal === 'confirmed' && (forecast.warehouseSignal as string) !== 'confirmed')
+        // In Transit: Actively moving but NOT yet delivered
+        ((forecast.transitSignal as string) === 'submitted' ||
+         (forecast.factorySignal === 'confirmed' && (forecast.transitSignal as string) !== 'confirmed' && (forecast.warehouseSignal as string) !== 'confirmed')) &&
+        // Exclude if already delivered or completed
+        (forecast.transitSignal as string) !== 'confirmed' && (forecast.warehouseSignal as string) !== 'confirmed'
       )) ||
       (statusFilter === 'delivered' && (
         (forecast.transitSignal as string) === 'confirmed' && 
@@ -1190,9 +1192,11 @@ export default function ShipmentsPage() {
                 <p className="text-sm text-gray-600">{tc('inTransit', 'In Transit')}</p>
                 <p className="text-2xl font-bold text-orange-600">
                   {shipmentForecasts.filter(f => 
-                    (f.transitSignal as string) === 'confirmed' || 
-                    (f.transitSignal as string) === 'submitted' ||
-                    (f.factorySignal === 'confirmed' && (f.warehouseSignal as string) !== 'confirmed' && (f.transitSignal as string) !== 'confirmed')
+                    // In Transit: Actively moving but NOT yet delivered
+                    ((f.transitSignal as string) === 'submitted' ||
+                     (f.factorySignal === 'confirmed' && (f.transitSignal as string) !== 'confirmed' && (f.warehouseSignal as string) !== 'confirmed')) &&
+                    // Exclude if already delivered or completed
+                    (f.transitSignal as string) !== 'confirmed' && (f.warehouseSignal as string) !== 'confirmed'
                   ).length}
                 </p>
               </div>
