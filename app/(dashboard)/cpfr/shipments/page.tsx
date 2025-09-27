@@ -1112,15 +1112,15 @@ export default function ShipmentsPage() {
         forecast.factorySignal === 'reviewing'
       )) ||
       (statusFilter === 'in_transit' && (
-        forecast.transitSignal === 'confirmed' || 
-        forecast.transitSignal === 'submitted' ||
-        (forecast.factorySignal === 'confirmed' && forecast.warehouseSignal !== 'confirmed')
+        (forecast.transitSignal as string) === 'confirmed' || 
+        (forecast.transitSignal as string) === 'submitted' ||
+        (forecast.factorySignal === 'confirmed' && (forecast.warehouseSignal as string) !== 'confirmed')
       )) ||
       (statusFilter === 'delivered' && (
-        forecast.transitSignal === 'confirmed' && 
-        forecast.warehouseSignal !== 'confirmed'
+        (forecast.transitSignal as string) === 'confirmed' && 
+        (forecast.warehouseSignal as string) !== 'confirmed'
       )) ||
-      (statusFilter === 'completed' && forecast.warehouseSignal === 'confirmed');
+      (statusFilter === 'completed' && (forecast.warehouseSignal as string) === 'confirmed');
     
     const matchesMethod = methodFilter === 'all' || 
       forecast.shippingPreference.includes(methodFilter);
@@ -1189,7 +1189,11 @@ export default function ShipmentsPage() {
               <div>
                 <p className="text-sm text-gray-600">{tc('inTransit', 'In Transit')}</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {shipmentForecasts.filter(f => f.shippingSignal === 'submitted').length}
+                  {shipmentForecasts.filter(f => 
+                    (f.transitSignal as string) === 'confirmed' || 
+                    (f.transitSignal as string) === 'submitted' ||
+                    (f.factorySignal === 'confirmed' && (f.warehouseSignal as string) !== 'confirmed' && (f.transitSignal as string) !== 'confirmed')
+                  ).length}
                 </p>
               </div>
             </div>
@@ -1202,7 +1206,12 @@ export default function ShipmentsPage() {
               <div>
                 <p className="text-sm text-gray-600">{tc('delivered', 'Delivered')}</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {shipmentForecasts.filter(f => f.shippingSignal === 'confirmed').length}
+                  {shipmentForecasts.filter(f => 
+                    // Delivered: Transit complete but warehouse not confirmed
+                    ((f.transitSignal as string) === 'confirmed' && (f.warehouseSignal as string) !== 'confirmed') ||
+                    // Completed: Warehouse confirmed (fully done)
+                    (f.warehouseSignal as string) === 'confirmed'
+                  ).length}
                 </p>
               </div>
             </div>
