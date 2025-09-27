@@ -187,35 +187,50 @@ function CPFRMetrics() {
   const shipmentStatus = (() => {
     if (!forecasts || !Array.isArray(forecasts) || forecasts.length === 0) return { status: 'green', count: 0, message: getStatusMessage('No active forecasts') };
     
-    const activeForecasts = forecasts.filter((f: any) => 
-      f.salesSignal === 'submitted' || f.factorySignal === 'awaiting' || f.factorySignal === 'accepted'
-    );
+    // Active forecasts: Started but not yet completed (warehouse confirmed)
+    const activeForecasts = forecasts.filter((f: any) => {
+      // Exclude completed shipments (all 4 milestones done)
+      const isCompleted = f.warehouseSignal === 'confirmed';
+      if (isCompleted) return false;
+      
+      // Include if any milestone has started (not all unknown)
+      const hasStarted = f.salesSignal !== 'unknown' || 
+                        f.factorySignal !== 'unknown' || 
+                        f.shippingSignal !== 'unknown' ||
+                        f.transitSignal !== 'unknown' ||
+                        f.warehouseSignal !== 'unknown';
+      return hasStarted;
+    });
     
     if (activeForecasts.length === 0) return { status: 'green', count: 0, message: getStatusMessage('No active orders') };
     
-    // RED: Active orders with unknown/rejected shipping status
+    // RED: Any forecast with rejected signals or stuck in unknown after being started
     const redAlarms = activeForecasts.filter((f: any) => 
-      f.shippingSignal === 'rejected' || f.shippingSignal === 'unknown'
+      f.salesSignal === 'rejected' || 
+      f.factorySignal === 'rejected' || 
+      f.shippingSignal === 'rejected' ||
+      f.transitSignal === 'rejected' ||
+      f.warehouseSignal === 'rejected' ||
+      // Started but stuck (submitted sales but factory/shipping still unknown)
+      (f.salesSignal === 'submitted' && f.factorySignal === 'unknown')
     ).length;
     
-    // YELLOW: Active orders with shipping delays (awaiting too long - future implementation)
+    // YELLOW: Forecasts in progress but may need attention
     const yellowWarnings = activeForecasts.filter((f: any) => 
-      f.shippingSignal === 'awaiting' // Future: && isOverdue
+      f.factorySignal === 'reviewing' || 
+      f.transitSignal === 'pending' ||
+      f.warehouseSignal === 'pending'
     ).length;
     
-    // GREEN: All active orders have proper shipping tracking
-    const greenTracked = activeForecasts.filter((f: any) => 
-      f.shippingSignal === 'accepted'
-    ).length;
+    // GREEN: All active orders progressing normally
+    const greenTracked = activeForecasts.length - redAlarms - yellowWarnings;
     
     if (redAlarms > 0) {
-      return { status: 'red', count: redAlarms, message: getStatusMessage('Orders without shipping status') };
+      return { status: 'red', count: redAlarms, message: getStatusMessage('Shipping status needs attention') };
     } else if (yellowWarnings > 0) {
       return { status: 'yellow', count: yellowWarnings, message: getStatusMessage('Shipping delays detected') };
-    } else if (greenTracked === activeForecasts.length) {
-      return { status: 'green', count: greenTracked, message: getStatusMessage('All shipments on track') };
     } else {
-      return { status: 'red', count: activeForecasts.length, message: getStatusMessage('Shipping status needs attention') };
+      return { status: 'green', count: greenTracked, message: getStatusMessage('All shipments on track') };
     }
   })();
   
