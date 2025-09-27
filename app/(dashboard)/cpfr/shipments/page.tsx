@@ -1208,7 +1208,7 @@ export default function ShipmentsPage() {
             <div className="flex items-center space-x-2">
               <SemanticBDIIcon semantic="sites" size={20} className="text-green-600" />
               <div>
-                <p className="text-sm text-gray-600">{tc('delivered', 'Delivered')}</p>
+                <p className="text-sm text-gray-600">{tc('delivered', 'Delivered')}/{tc('completed', 'Completed')}</p>
                 <p className="text-2xl font-bold text-green-600">
                   {shipmentForecasts.filter(f => 
                     // Delivered: Transit complete but warehouse not confirmed
