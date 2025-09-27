@@ -79,6 +79,7 @@
     "totalShipments": "Total Shipments",
     "inTransit": "In Transit", 
     "delivered": "Delivered",
+    "completed": "Completed",
     "totalUnits": "Total Units",
     "method": "Method",
     "allMethods": "All Methods",

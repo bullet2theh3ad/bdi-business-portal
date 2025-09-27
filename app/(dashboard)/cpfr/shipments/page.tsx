@@ -1105,9 +1105,22 @@ export default function ShipmentsPage() {
                          forecast.sku?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'planning' && forecast.shippingSignal === 'unknown') ||
-      (statusFilter === 'in_transit' && forecast.shippingSignal === 'submitted') ||
-      (statusFilter === 'delivered' && forecast.shippingSignal === 'confirmed');
+      (statusFilter === 'planning' && (
+        forecast.salesSignal === 'unknown' || 
+        forecast.salesSignal === 'draft' ||
+        forecast.factorySignal === 'unknown' ||
+        forecast.factorySignal === 'reviewing'
+      )) ||
+      (statusFilter === 'in_transit' && (
+        forecast.transitSignal === 'confirmed' || 
+        forecast.transitSignal === 'submitted' ||
+        (forecast.factorySignal === 'confirmed' && forecast.warehouseSignal !== 'confirmed')
+      )) ||
+      (statusFilter === 'delivered' && (
+        forecast.transitSignal === 'confirmed' && 
+        forecast.warehouseSignal !== 'confirmed'
+      )) ||
+      (statusFilter === 'completed' && forecast.warehouseSignal === 'confirmed');
     
     const matchesMethod = methodFilter === 'all' || 
       forecast.shippingPreference.includes(methodFilter);
@@ -1233,6 +1246,7 @@ export default function ShipmentsPage() {
               <option value="planning">{tc('planning', 'Planning')}</option>
               <option value="in_transit">{tc('inTransit', 'In Transit')}</option>
               <option value="delivered">{tc('delivered', 'Delivered')}</option>
+              <option value="completed">{tc('completed', 'Completed')}</option>
             </select>
           </div>
           <div className="flex items-center space-x-2">
