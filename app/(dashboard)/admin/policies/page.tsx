@@ -468,7 +468,7 @@ export default function PoliciesPage() {
                     
                     {/* Action Buttons */}
                     {viewMode === 'list' && (
-                      <div className="flex space-x-2 ml-4 flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2 mt-2 sm:mt-0 sm:ml-4 flex-shrink-0">
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -476,10 +476,10 @@ export default function PoliciesPage() {
                             e.stopPropagation();
                             handlePreview(policy);
                           }}
-                          className="bg-white/50 hover:bg-white text-blue-600 border-blue-300"
+                          className="w-full sm:w-auto text-xs px-2 py-1 bg-white/70 hover:bg-white text-blue-600 border-blue-300"
                         >
-                          <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
-                          Preview
+                          <SemanticBDIIcon semantic="search" size={12} className="mr-1" />
+                          <span className="sm:inline">Preview</span>
                         </Button>
                         <Button 
                           variant="outline" 
@@ -488,10 +488,10 @@ export default function PoliciesPage() {
                             e.stopPropagation();
                             handleDownload(policy);
                           }}
-                          className="bg-white/50 hover:bg-white text-green-600 border-green-300"
+                          className="w-full sm:w-auto text-xs px-2 py-1 bg-white/70 hover:bg-white text-green-600 border-green-300"
                         >
-                          <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
-                          Download
+                          <SemanticBDIIcon semantic="download" size={12} className="mr-1" />
+                          <span className="sm:inline">Download</span>
                         </Button>
                         <Button 
                           variant="outline" 
@@ -500,51 +500,52 @@ export default function PoliciesPage() {
                             e.stopPropagation();
                             handleDelete(policy);
                           }}
-                          className="bg-white/50 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
+                          className="w-full sm:w-auto text-xs px-2 py-1 bg-white/70 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
                         >
-                          <SemanticBDIIcon semantic="delete" size={14} />
+                          <SemanticBDIIcon semantic="delete" size={12} />
+                          <span className="sm:inline ml-1">Delete</span>
                         </Button>
                       </div>
                     )}
                     
                     {/* Grid View Action Buttons */}
                     {viewMode === 'grid' && (
-                      <div className="mt-4 pt-3 border-t border-white/30">
-                        <div className="flex space-x-2">
+                      <div className="mt-3 pt-3 border-t border-white/30">
+                        <div className="flex space-x-1">
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1 bg-white/50 hover:bg-white text-blue-600 border-blue-300"
+                            className="flex-1 text-xs px-2 py-1 bg-white/70 hover:bg-white text-blue-600 border-blue-300"
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePreview(policy);
                             }}
                           >
-                            <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
+                            <SemanticBDIIcon semantic="search" size={12} className="mr-1" />
                             Preview
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1 bg-white/50 hover:bg-white text-green-600 border-green-300"
+                            className="flex-1 text-xs px-2 py-1 bg-white/70 hover:bg-white text-green-600 border-green-300"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDownload(policy);
                             }}
                           >
-                            <SemanticBDIIcon semantic="download" size={14} className="mr-1" />
+                            <SemanticBDIIcon semantic="download" size={12} className="mr-1" />
                             Download
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="bg-white/50 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50 px-3"
+                            className="px-2 py-1 text-xs bg-white/70 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(policy);
                             }}
                           >
-                            <SemanticBDIIcon semantic="delete" size={14} />
+                            <SemanticBDIIcon semantic="delete" size={12} />
                           </Button>
                         </div>
                       </div>
