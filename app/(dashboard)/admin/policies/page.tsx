@@ -109,6 +109,14 @@ export default function PoliciesPage() {
   
   const { data: policies, mutate: mutatePolicies } = useSWR<PolicyDocument[]>('/api/admin/policies', fetcher);
 
+  // Debug: Log policies data to see what's being loaded
+  useEffect(() => {
+    if (policies) {
+      console.log('📋 Loaded policies:', policies.length, 'files');
+      console.log('📋 Policy files:', policies.map(p => ({ name: p.fileName, type: p.contentType, category: p.category })));
+    }
+  }, [policies]);
+
   // State management
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
