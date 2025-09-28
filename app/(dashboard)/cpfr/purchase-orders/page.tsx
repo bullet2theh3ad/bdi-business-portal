@@ -253,7 +253,7 @@ export default function PurchaseOrdersPage() {
     return (skuIndex + 1).toString().padStart(3, '0');
   };
 
-  // Generate 4-digit random number (0000-9999)
+  // Generate 4-digit random number (0000-9999) - unique per PO
   const generateRandom4Digit = (): string => {
     return Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   };
@@ -1007,7 +1007,7 @@ export default function PurchaseOrdersPage() {
                               return typeof fullPO === 'string' && fullPO.length === 13 ? fullPO.slice(-4) : '####';
                             })()}
                           </span>
-                          <p className="text-blue-700">Random (regenerated daily)</p>
+                          <p className="text-blue-700">Random (per PO)</p>
                         </div>
                       </div>
                       <p className="text-xs text-blue-600 mt-2">
