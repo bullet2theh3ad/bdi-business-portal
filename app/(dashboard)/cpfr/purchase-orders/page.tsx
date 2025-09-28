@@ -934,14 +934,35 @@ export default function PurchaseOrdersPage() {
                     />
                   </div>
 
-                  {/* Auto-Generated Info */}
+                  {/* Random Code with Dice Button */}
                   <div className="min-w-0">
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Auto-Generated
+                      Random Code
                     </label>
-                    <div className="p-2 bg-gray-50 rounded border text-center">
-                      <p className="text-xs text-gray-600">4-digit random code</p>
-                      <p className="text-xs text-gray-500">Generated automatically</p>
+                    <div className="flex space-x-1">
+                      <div className="flex-1 p-2 bg-gray-50 rounded border text-center">
+                        <p className="text-xs font-mono font-bold text-blue-600">
+                          {(() => {
+                            const fullPO = generatePONumber();
+                            return typeof fullPO === 'string' && fullPO.length === 13 ? fullPO.slice(-4) : '####';
+                          })()}
+                        </p>
+                        <p className="text-xs text-gray-500">4-digit</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Force regeneration by updating a field to trigger new random
+                          const currentDate = poBuilder.date;
+                          setPOBuilder(prev => ({ ...prev, date: currentDate }));
+                        }}
+                        className="px-2"
+                        title="Generate new random code"
+                      >
+                        🎲
+                      </Button>
                     </div>
                   </div>
                 </div>
