@@ -38,7 +38,7 @@ async function getCurrentUser() {
   const [dbUser] = await db
     .select()
     .from(users)
-    .where(eq(users.email, authUser.email!))
+    .where(eq(users.authId, authUser.id))
     .limit(1);
 
   return dbUser;
