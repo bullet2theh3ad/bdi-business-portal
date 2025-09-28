@@ -83,6 +83,8 @@ export async function GET(request: NextRequest) {
       contentType = 'text/plain';
     } else if (extension === 'md') {
       contentType = 'text/markdown';
+    } else if (extension === 'html') {
+      contentType = 'text/html';
     }
 
     // Return the file for preview (will open in browser)

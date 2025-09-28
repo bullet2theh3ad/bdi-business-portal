@@ -588,7 +588,7 @@ export default function PoliciesPage() {
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.doc,.docx,.txt,.md"
+                  accept=".pdf,.doc,.docx,.txt,.md,.html"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="policy-file-input"
@@ -601,7 +601,7 @@ export default function PoliciesPage() {
                   Select Files
                 </Button>
                 <p className="text-xs text-gray-500 mt-2">
-                  Supported formats: PDF, DOC, DOCX, TXT, MD
+                  Supported formats: PDF, DOC, DOCX, TXT, MD, HTML
                 </p>
               </div>
 
@@ -748,8 +748,10 @@ export default function PoliciesPage() {
                     </div>
                   </div>
                 ) :
-                /* Text/Markdown Preview */
-                previewPolicy.fileName.toLowerCase().endsWith('.txt') || previewPolicy.fileName.toLowerCase().endsWith('.md') ? (
+                /* Text/Markdown/HTML Preview */
+                previewPolicy.fileName.toLowerCase().endsWith('.txt') || 
+                previewPolicy.fileName.toLowerCase().endsWith('.md') || 
+                previewPolicy.fileName.toLowerCase().endsWith('.html') ? (
                   <div className="h-full overflow-y-auto p-6 bg-white">
                     <div className="max-w-4xl mx-auto">
                       <iframe
