@@ -1036,9 +1036,36 @@ export const jjolmHistory = pgTable('jjolm_history', {
 export type Warehouse = typeof warehouses.$inferSelect;
 export type NewWarehouse = typeof warehouses.$inferInsert;
 export type Shipment = typeof shipments.$inferSelect;
+// Policy Documents (BDI business policy files)
+export const policyDocuments = pgTable('policy_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  // File Information
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  filePath: varchar('file_path', { length: 500 }).notNull(),
+  fileSize: bigint('file_size', { mode: 'number' }).notNull(),
+  contentType: varchar('content_type', { length: 100 }).notNull(),
+  
+  // Policy Metadata
+  category: varchar('category', { length: 50 }).notNull().default('other'),
+  description: text('description'),
+  
+  // Upload Info
+  uploadedBy: uuid('uploaded_by').notNull(),
+  uploaderName: varchar('uploader_name', { length: 255 }).notNull(),
+  uploaderEmail: varchar('uploader_email', { length: 255 }).notNull(),
+  originalName: varchar('original_name', { length: 255 }).notNull(),
+  
+  // Audit Fields
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export type NewShipment = typeof shipments.$inferInsert;
 export type ProductionFile = typeof productionFiles.$inferSelect;
 export type NewProductionFile = typeof productionFiles.$inferInsert;
+export type PolicyDocument = typeof policyDocuments.$inferSelect;
+export type NewPolicyDocument = typeof policyDocuments.$inferInsert;
 // EMG Inventory Tracking Tables
 export const emgInventoryTracking = pgTable('emg_inventory_tracking', {
   id: uuid('id').primaryKey().defaultRandom(),

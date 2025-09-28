@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, organizations, organizationMembers } from '@/lib/db/schema';
+import { users, organizations, organizationMembers, policyDocuments } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -55,61 +55,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied - BDI users only' }, { status: 403 });
     }
 
-    // Fetch policy documents from Supabase storage
-    const { data: files, error } = await supabase.storage
-      .from('organization-documents')
-      .list('policies', {
-        limit: 1000,
-        sortBy: { column: 'created_at', order: 'desc' }
-      });
+    // Fetch policy documents from database (like production files do)
+    const policies = await db
+      .select()
+      .from(policyDocuments)
+      .orderBy(policyDocuments.createdAt);
 
-    if (error) {
-      console.error('Error fetching policy documents:', error);
-      return NextResponse.json({ error: 'Failed to fetch policy documents' }, { status: 500 });
-    }
+    console.log('🔍 GET STEP 1: Policy documents from database:', policies.length);
 
-    // 🔍 GET STEP 1: Log raw files from Supabase
-    console.log('🔍 GET STEP 1: Raw files from Supabase storage:');
-    console.log('  files count:', files?.length || 0);
-    files?.forEach((file, index) => {
-      console.log(`  File ${index}:`, {
-        name: file.name,
-        metadata: file.metadata,
-        created_at: file.created_at
-      });
-    });
+    // Transform to match PolicyDocument interface
+    const policyDocumentsList = policies.map(policy => ({
+      id: policy.id,
+      fileName: policy.fileName,
+      filePath: policy.filePath,
+      fileSize: Number(policy.fileSize),
+      contentType: policy.contentType,
+      uploadedBy: policy.uploaderName,
+      uploadedAt: policy.createdAt.toISOString(),
+      description: policy.description || '',
+      category: policy.category || 'other'
+    }));
 
-    // Transform file data to match PolicyDocument interface
-    const policyDocuments = (files || []).map(file => {
-      // Cast to access user_metadata which may not be in the FileObject type
-      const fileWithUserMetadata = file as any;
-      
-      const transformed = {
-        id: file.id || file.name,
-        fileName: file.name,
-        filePath: `policies/${file.name}`,
-        fileSize: file.metadata?.size || 0,
-        contentType: file.metadata?.mimetype || 'application/octet-stream',
-        uploadedBy: file.metadata?.uploaderName || dbUser?.name || 'Unknown User',
-        uploadedAt: file.created_at || new Date().toISOString(),
-        description: fileWithUserMetadata.user_metadata?.description || file.metadata?.description || '',
-        category: fileWithUserMetadata.user_metadata?.category || file.metadata?.category || 'other'
-      };
-      
-      // 🔍 GET STEP 2: Log transformation for each file
-      console.log(`🔍 GET STEP 2: Transformed file "${file.name}":`, {
-        category: transformed.category,
-        description: transformed.description,
-        user_metadata_category: fileWithUserMetadata.user_metadata?.category,
-        user_metadata_description: fileWithUserMetadata.user_metadata?.description,
-        metadata_category: file.metadata?.category,
-        metadata_description: file.metadata?.description
-      });
-      
-      return transformed;
-    });
+    console.log('🔍 GET STEP 2: Transformed policies:', policyDocumentsList.map(p => ({
+      fileName: p.fileName,
+      category: p.category,
+      description: p.description
+    })));
 
-    return NextResponse.json(policyDocuments);
+    return NextResponse.json(policyDocumentsList);
 
   } catch (error) {
     console.error('Error in policies API:', error);
@@ -195,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     const uploadResults = [];
 
-    // Upload each file
+    // Upload each file (following production files pattern exactly)
     for (let i = 0; i < fileCount; i++) {
       const file = formData.get(`file${i}`) as File;
       if (!file) continue;
@@ -205,32 +178,15 @@ export async function POST(request: NextRequest) {
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const filePath = `policies/${timestamp}_${sanitizedFileName}`;
 
-      // 🔍 STEP 3: Log metadata being sent to Supabase
-      const metadata = {
-        category: category || 'other',
-        description: description || '',
-        uploadedBy: dbUser.authId,
-        uploaderName: dbUser.name || 'Unknown User',
-        uploaderEmail: dbUser.email || '',
-        originalName: file.name,
-        uploadedAt: new Date().toISOString()
-      };
-      console.log('🔍 API STEP 3: Metadata being sent to Supabase:');
-      console.log('  metadata:', JSON.stringify(metadata, null, 2));
+      console.log(`🔍 Uploading file: ${file.name} with category: ${category}, description: ${description}`);
 
-      // Upload to Supabase storage
+      // Upload file to Supabase Storage (simple, no metadata like production files)
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('organization-documents')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false,
-          metadata: metadata
+          upsert: false
         });
-
-      // 🔍 STEP 4: Log upload result
-      console.log('🔍 API STEP 4: Supabase upload result:');
-      console.log('  uploadData:', uploadData);
-      console.log('  uploadError:', uploadError);
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
@@ -239,13 +195,33 @@ export async function POST(request: NextRequest) {
           success: false,
           error: uploadError.message
         });
-      } else {
-        uploadResults.push({
-          fileName: file.name,
-          success: true,
-          filePath: filePath
-        });
+        continue;
       }
+
+      // Store metadata in database (like production files do)
+      const [newPolicy] = await db
+        .insert(policyDocuments)
+        .values({
+          fileName: sanitizedFileName,
+          filePath: filePath,
+          fileSize: file.size,
+          contentType: file.type,
+          category: category || 'other',
+          description: description || '',
+          uploadedBy: dbUser.authId,
+          uploaderName: dbUser.name || 'Unknown User',
+          uploaderEmail: dbUser.email || '',
+          originalName: file.name
+        })
+        .returning();
+
+      console.log('✅ Policy document uploaded successfully:', newPolicy.fileName);
+
+      uploadResults.push({
+        fileName: file.name,
+        success: true,
+        filePath: filePath
+      });
     }
 
     const successCount = uploadResults.filter(r => r.success).length;
