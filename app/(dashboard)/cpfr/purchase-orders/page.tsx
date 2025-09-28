@@ -1996,11 +1996,11 @@ export default function PurchaseOrdersPage() {
                   <div className="flex justify-between items-end">
                     {/* Left side - Signature with Company Seal */}
                     <div className="relative w-80">
-                      <div className="mb-6">
+                      <div className="mb-8">
                         <div className="mt-4 mb-2 border-b-2 border-gray-400 w-64"></div>
                         <p className="text-sm font-semibold text-gray-800">Authorized Signature:</p>
                       </div>
-                      <div className="mb-6">
+                      <div className="mb-6 mt-12">
                         <div className="mt-4 mb-2 border-b-2 border-gray-400 w-32"></div>
                         <p className="text-sm font-semibold text-gray-800">Date:</p>
                       </div>
@@ -2008,7 +2008,7 @@ export default function PurchaseOrdersPage() {
                       {/* Company Seal - Less transparent, positioned to the right */}
                       <div className="absolute top-0 right-0 opacity-60 pointer-events-none">
                         <img 
-                          src="/20250926 Company Seal.png" 
+                          src="/20250926%20Company%20Seal.png" 
                           alt="BDI Company Seal" 
                           className="w-24 h-24 object-contain"
                           style={{ filter: 'grayscale(10%)' }}
