@@ -1,0 +1,298 @@
+<h1 id="purchase-order-number-generation-policy">Purchase Order Number
+Generation Policy</h1>
+<p><strong>Document Type:</strong> Policy<br />
+<strong>Effective Date:</strong> September 28, 2025<br />
+<strong>Version:</strong> 1.0<br />
+<strong>Department:</strong> Operations &amp; CPFR<br />
+<strong>Applies To:</strong> All BDI Business Portal Users</p>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>This policy establishes the standardized 10-digit Purchase Order (PO)
+number generation system used across the BDI Business Portal. The new
+format ensures unique PO identification while encoding critical business
+data including supplier, product, date, and uniqueness identifiers.</p>
+<h2 id="po-number-format">PO Number Format</h2>
+<h3 id="structure-xxyyyzzzz">Structure: <code>XXYYYZZZZ####</code></h3>
+<p>All Purchase Order numbers follow this exact 10-digit format:</p>
+<table>
+<thead>
+<tr>
+<th>Position</th>
+<th>Digits</th>
+<th>Component</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1-2</td>
+<td><code>XX</code></td>
+<td>Organization Code</td>
+<td>2-digit supplier/partner code</td>
+</tr>
+<tr>
+<td>3-5</td>
+<td><code>YYY</code></td>
+<td>SKU Code</td>
+<td>3-digit product identifier</td>
+</tr>
+<tr>
+<td>6-9</td>
+<td><code>ZZZZ</code></td>
+<td>Epoch Date</td>
+<td>Days since January 1, 2025</td>
+</tr>
+<tr>
+<td>10-13</td>
+<td><code>####</code></td>
+<td>Random Code</td>
+<td>4-digit uniqueness identifier</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-1010002711234">Example: <code>1010002711234</code></h3>
+<ul>
+<li><strong>10</strong> = MTN (Organization)</li>
+<li><strong>100</strong> = SKU Code #100</li>
+<li><strong>0271</strong> = Day #271 since Jan 1, 2025 (September 28,
+2025)</li>
+<li><strong>1234</strong> = Random 4-digit code</li>
+</ul>
+<hr />
+<h2 id="organization-codes-2-digit">Organization Codes (2-Digit)</h2>
+<p>Each partner organization is assigned a unique 2-digit code:</p>
+<table>
+<thead>
+<tr>
+<th>Organization</th>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MTN</strong></td>
+<td><code>10</code></td>
+<td>MTN Technology Partners</td>
+</tr>
+<tr>
+<td><strong>CBN</strong></td>
+<td><code>20</code></td>
+<td>CBN Manufacturing</td>
+</tr>
+<tr>
+<td><strong>ASK</strong></td>
+<td><code>30</code></td>
+<td>ASK Solutions</td>
+</tr>
+<tr>
+<td><strong>ATL</strong></td>
+<td><code>40</code></td>
+<td>ATL Logistics</td>
+</tr>
+<tr>
+<td><strong>GPN</strong></td>
+<td><code>70</code></td>
+<td>GPN Global Partners</td>
+</tr>
+<tr>
+<td><strong>CAT</strong></td>
+<td><code>80</code></td>
+<td>CAT Technologies</td>
+</tr>
+<tr>
+<td><strong>BDI</strong></td>
+<td><code>90</code></td>
+<td>Boundless Devices Inc</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Code <code>99</code> is reserved for unknown/new
+organizations</em></p>
+<hr />
+<h2 id="sku-codes-3-digit">SKU Codes (3-Digit)</h2>
+<p>Each product SKU is assigned a unique 3-digit code (001-999):</p>
+<ul>
+<li><strong>Range:</strong> 001 to 999 (supports up to 999 unique
+SKUs)</li>
+<li><strong>Assignment:</strong> Sequential based on SKU creation
+date</li>
+<li><strong>Format:</strong> Zero-padded (e.g., 001, 042, 100, 999)</li>
+<li><strong>Uniqueness:</strong> Each SKU has exactly one 3-digit
+code</li>
+</ul>
+<h3 id="sku-code-assignment-process">SKU Code Assignment Process:</h3>
+<ol type="1">
+<li>New SKUs automatically receive the next available 3-digit code</li>
+<li>Codes are assigned sequentially starting from 001</li>
+<li>Once assigned, SKU codes never change</li>
+<li>Discontinued SKUs retain their codes (no reuse)</li>
+</ol>
+<hr />
+<h2 id="epoch-date-system-4-digit">Epoch Date System (4-Digit)</h2>
+<p>The date component uses an epoch system starting January 1, 2025:</p>
+<ul>
+<li><strong>Epoch Start:</strong> January 1, 2025 = Day 0000</li>
+<li><strong>Current Example:</strong> September 28, 2025 = Day 0271</li>
+<li><strong>Format:</strong> Zero-padded 4-digit number</li>
+<li><strong>Range:</strong> 0000 to 9999 (supports ~27 years from
+2025)</li>
+</ul>
+<h3 id="date-calculation">Date Calculation:</h3>
+<pre><code>Days Since Epoch = (Current Date - January 1, 2025) in days</code></pre>
+<p><strong>Examples:</strong> - January 1, 2025 → <code>0000</code> -
+January 2, 2025 → <code>0001</code> - September 28, 2025 →
+<code>0271</code> - December 31, 2025 → <code>0364</code></p>
+<hr />
+<h2 id="random-code-4-digit">Random Code (4-Digit)</h2>
+<p>The final component ensures uniqueness within each day:</p>
+<ul>
+<li><strong>Range:</strong> 0000 to 9999</li>
+<li><strong>Capacity:</strong> 10,000 unique POs per organization per
+day</li>
+<li><strong>Generation:</strong> Automatic with manual regeneration
+option</li>
+<li><strong>Format:</strong> Zero-padded 4-digit number</li>
+</ul>
+<h3 id="uniqueness-guarantee">Uniqueness Guarantee:</h3>
+<ul>
+<li><strong>Per Organization:</strong> Each org can have up to 10,000
+POs per day</li>
+<li><strong>Per Day:</strong> Date epoch changes daily, resetting random
+pool</li>
+<li><strong>Per SKU:</strong> Different SKUs can share random codes
+(separated by SKU code)</li>
+<li><strong>Collision Avoidance:</strong> Extremely low probability with
+10,000 daily options</li>
+</ul>
+<hr />
+<h2 id="po-number-builder-usage">PO Number Builder Usage</h2>
+<h3 id="automatic-generation-process">Automatic Generation Process:</h3>
+<ol type="1">
+<li><strong>Select Supplier Organization</strong> from dropdown</li>
+<li><strong>Select Product SKU</strong> from dropdown<br />
+</li>
+<li><strong>Choose Date</strong> (defaults to current date)</li>
+<li><strong>Random Code</strong> auto-generates (🎲 to regenerate)</li>
+</ol>
+<h3 id="generated-output">Generated Output:</h3>
+<ul>
+<li><strong>PO Number:</strong> Displays complete 10-digit number</li>
+<li><strong>Breakdown:</strong> Shows each component with
+explanations</li>
+<li><strong>Validation:</strong> Ensures all components are valid</li>
+</ul>
+<h3 id="manual-regeneration">Manual Regeneration:</h3>
+<ul>
+<li>Click the <strong>dice button</strong> to generate a new random
+code</li>
+<li>All displays update consistently (box, PO number, breakdown)</li>
+<li>Use if you want a different random code for the same PO</li>
+</ul>
+<hr />
+<h2 id="business-benefits">Business Benefits</h2>
+<h3 id="data-encoding">Data Encoding:</h3>
+<ul>
+<li><strong>Supplier Identification:</strong> Immediate recognition from
+first 2 digits</li>
+<li><strong>Product Identification:</strong> SKU encoded in positions
+3-5</li>
+<li><strong>Date Tracking:</strong> Creation date encoded in positions
+6-9</li>
+<li><strong>Uniqueness:</strong> Collision-resistant with 4-digit
+random</li>
+</ul>
+<h3 id="operational-advantages">Operational Advantages:</h3>
+<ul>
+<li><strong>No Dashes:</strong> Clean numeric format for systems
+integration</li>
+<li><strong>Fixed Length:</strong> Always exactly 10 digits for database
+consistency</li>
+<li><strong>Human Readable:</strong> Each component has clear
+meaning</li>
+<li><strong>Scalable:</strong> Supports 999 SKUs × 10,000 daily POs per
+organization</li>
+</ul>
+<h3 id="system-integration">System Integration:</h3>
+<ul>
+<li><strong>Database Efficiency:</strong> Numeric indexing and
+sorting</li>
+<li><strong>API Compatibility:</strong> Consistent format across all
+systems</li>
+<li><strong>Reporting:</strong> Easy filtering and grouping by
+components</li>
+<li><strong>Legacy Support:</strong> Maintains compatibility with
+existing systems</li>
+</ul>
+<hr />
+<h2 id="implementation-notes">Implementation Notes</h2>
+<h3 id="database-requirements">Database Requirements:</h3>
+<ul>
+<li><code>organizations.po_code_2_digit</code> field for organization
+codes</li>
+<li><code>product_skus.sku_code_3_digit</code> field for SKU codes</li>
+<li>Unique constraints on both code fields</li>
+</ul>
+<h3 id="frontend-features">Frontend Features:</h3>
+<ul>
+<li>Interactive PO Builder with live preview</li>
+<li>Component breakdown with explanations</li>
+<li>Random code regeneration with dice button</li>
+<li>Validation and error handling</li>
+</ul>
+<h3 id="migration-process">Migration Process:</h3>
+<ol type="1">
+<li>Execute SQL scripts to add required database fields</li>
+<li>Assign 2-digit codes to all organizations</li>
+<li>Assign 3-digit codes to all existing SKUs</li>
+<li>Update PO generation logic in application</li>
+<li>Train users on new format and builder tool</li>
+</ol>
+<hr />
+<h2 id="compliance-standards">Compliance &amp; Standards</h2>
+<h3 id="format-requirements">Format Requirements:</h3>
+<ul>
+<li><strong>Exactly 10 digits</strong> - no more, no less</li>
+<li><strong>Numeric only</strong> - no letters or special
+characters</li>
+<li><strong>Zero-padded</strong> - all components properly
+formatted</li>
+<li><strong>No delimiters</strong> - continuous digit string</li>
+</ul>
+<h3 id="validation-rules">Validation Rules:</h3>
+<ul>
+<li>Organization code must exist in system</li>
+<li>SKU code must be assigned and valid</li>
+<li>Date must be valid and not future-dated</li>
+<li>Random code must be 4 digits (0000-9999)</li>
+</ul>
+<h3 id="quality-assurance">Quality Assurance:</h3>
+<ul>
+<li>System prevents duplicate PO numbers</li>
+<li>Validation occurs before PO creation</li>
+<li>Error handling for invalid components</li>
+<li>Audit trail for all PO number assignments</li>
+</ul>
+<hr />
+<h2 id="support-troubleshooting">Support &amp; Troubleshooting</h2>
+<h3 id="common-issues">Common Issues:</h3>
+<ul>
+<li><strong>“Select options above”</strong> - Complete all dropdown
+selections</li>
+<li><strong>“SKU not found”</strong> - Verify SKU exists and has
+assigned 3-digit code</li>
+<li><strong>Invalid date</strong> - Ensure date is not before January 1,
+2025</li>
+</ul>
+<h3 id="contact-information">Contact Information:</h3>
+<ul>
+<li><strong>Technical Support:</strong> IT Department</li>
+<li><strong>Policy Questions:</strong> Operations Manager</li>
+<li><strong>System Issues:</strong> BDI Business Portal Support</li>
+</ul>
+<hr />
+<p><strong>Document Control:</strong> - <strong>Created:</strong>
+September 28, 2025 - <strong>Last Modified:</strong> September 28,
+2025<br />
+- <strong>Next Review:</strong> March 28, 2026 - <strong>Owner:</strong>
+BDI Operations Team</p>

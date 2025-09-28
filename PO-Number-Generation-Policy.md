@@ -122,7 +122,7 @@ The final component ensures uniqueness within each day:
 - **Validation:** Ensures all components are valid
 
 ### Manual Regeneration:
-- Click the **🎲 dice button** to generate a new random code
+- Click the **dice button** to generate a new random code
 - All displays update consistently (box, PO number, breakdown)
 - Use if you want a different random code for the same PO
 
