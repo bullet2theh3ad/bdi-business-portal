@@ -214,11 +214,10 @@ export default function PurchaseOrdersPage() {
   // Initialize PO Builder when modal opens
   useEffect(() => {
     if (showCreateModal && usePOBuilder) {
-      const initialRandomCode = generateRandomCode();
       setPOBuilder(prev => ({
         ...prev,
         date: new Date().toISOString().split('T')[0],
-        randomCode: initialRandomCode
+        randomCode: '' // Not used in new format - random is generated in generatePONumber()
       }));
     }
   }, [showCreateModal, usePOBuilder]);
@@ -286,14 +285,8 @@ export default function PurchaseOrdersPage() {
   // Update PO Builder and regenerate PO number
   const updateGeneratedPONumber = (field: string, value: string) => {
     const updatedBuilder = { ...poBuilder, [field]: value };
-    
-    // Generate new 4-digit random code if any field changes (to ensure uniqueness)
-    if (field !== 'randomCode') {
-      updatedBuilder.randomCode = generateRandom4Digit();
-    }
-    
     setPOBuilder(updatedBuilder);
-    // Note: generatePONumber() calculates its own random code, so we don't need to set generatedPONumber
+    // Note: generatePONumber() calculates its own fresh 4-digit random code each time
   };
 
   // Helper functions for line items
@@ -941,29 +934,14 @@ export default function PurchaseOrdersPage() {
                     />
                   </div>
 
-                  {/* Random Code */}
+                  {/* Auto-Generated Info */}
                   <div className="min-w-0">
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Unique Code
+                      Auto-Generated
                     </label>
-                    <div className="flex space-x-1">
-                      <Input
-                        value={poBuilder.randomCode}
-                        onChange={(e) => updateGeneratedPONumber('randomCode', e.target.value.toUpperCase())}
-                        placeholder="Auto"
-                        maxLength={5}
-                        className="w-full text-sm font-mono text-center"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateGeneratedPONumber('randomCode', generateRandomCode())}
-                        className="px-2"
-                        title="Generate new random code"
-                      >
-                        🎲
-                      </Button>
+                    <div className="p-2 bg-gray-50 rounded border text-center">
+                      <p className="text-xs text-gray-600">4-digit random code</p>
+                      <p className="text-xs text-gray-500">Generated automatically</p>
                     </div>
                   </div>
                 </div>
@@ -1002,7 +980,12 @@ export default function PurchaseOrdersPage() {
                           <p className="text-blue-700">Day #{calculateEpochDays(new Date(poBuilder.date))} since Jan 1, 2025</p>
                         </div>
                         <div>
-                          <span className="font-mono font-bold text-blue-600">####</span>
+                          <span className="font-mono font-bold text-blue-600">
+                            {(() => {
+                              const fullPO = generatePONumber();
+                              return typeof fullPO === 'string' && fullPO.length === 13 ? fullPO.slice(-4) : '####';
+                            })()}
+                          </span>
                           <p className="text-blue-700">Random (regenerated daily)</p>
                         </div>
                       </div>
