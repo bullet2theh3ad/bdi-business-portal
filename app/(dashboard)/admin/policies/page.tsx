@@ -324,16 +324,14 @@ export default function PoliciesPage() {
             size="sm"
             onClick={() => setViewMode('grid')}
           >
-            <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
-            Grid
+            🔲 Grid
           </Button>
           <Button
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('list')}
           >
-            <SemanticBDIIcon semantic="document" size={16} className="mr-2" />
-            List
+            📋 List
           </Button>
         </div>
       </div>
@@ -478,8 +476,7 @@ export default function PoliciesPage() {
                           }}
                           className="bg-white/50 hover:bg-white text-blue-600 border-blue-300"
                         >
-                          <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
-                          Preview
+                          👁️ Preview
                         </Button>
                         <Button 
                           variant="outline" 
@@ -654,12 +651,13 @@ export default function PoliciesPage() {
                 <select
                   id="category"
                   name="category"
+                  defaultValue="operations"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                  required
                 >
-                  <option value="">Select Category</option>
+                  <option value="operations">Operations & Procedures</option>
                   <option value="database">Database & Backup</option>
                   <option value="security">Security & Access</option>
-                  <option value="operations">Operations & Procedures</option>
                   <option value="compliance">Compliance & Legal</option>
                   <option value="hr">Human Resources</option>
                   <option value="finance">Finance & Accounting</option>
@@ -717,8 +715,7 @@ export default function PoliciesPage() {
         <DialogContent className="w-[95vw] h-[90vh] p-0" style={{ maxWidth: 'none' }}>
           <DialogHeader className="p-4 border-b">
             <DialogTitle className="flex items-center">
-              <SemanticBDIIcon semantic="search" size={20} className="mr-2" />
-              Preview: {previewPolicy?.fileName}
+              👁️ Preview: {previewPolicy?.fileName}
             </DialogTitle>
           </DialogHeader>
           
@@ -756,8 +753,7 @@ export default function PoliciesPage() {
                           window.open(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`, '_blank');
                         }}
                       >
-                        <SemanticBDIIcon semantic="search" size={16} className="mr-2" />
-                        Open in Office Online
+                        🌐 Open in Office Online
                       </Button>
                     </div>
                   </div>
