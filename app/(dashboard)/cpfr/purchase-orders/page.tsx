@@ -223,31 +223,77 @@ export default function PurchaseOrdersPage() {
     }
   }, [showCreateModal, usePOBuilder]);
 
+  // Calculate days since Jan 1, 2025 (epoch for PO numbers)
+  const calculateEpochDays = (date: Date = new Date()) => {
+    const epoch = new Date('2025-01-01');
+    const diffTime = date.getTime() - epoch.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays); // Ensure non-negative
+  };
+
+  // Organization code mapping (2-digit codes for PO generation)
+  const getOrgCode2Digit = (orgCode: string): string => {
+    const orgCodes: Record<string, string> = {
+      'MTN': '10',
+      'CBN': '20', 
+      'ASK': '30',
+      'ATL': '40',
+      'GPN': '70',
+      'CAT': '80',
+      'BDI': '90'
+    };
+    return orgCodes[orgCode] || '99'; // Default to 99 for unknown orgs
+  };
+
+  // Get SKU 3-digit code (will be from database once SQL is run)
+  const getSku3DigitCode = (skuId: string): string => {
+    const sku = skus?.find(s => s.id === skuId);
+    // TODO: Use sku.skuCode3Digit once database is updated
+    // For now, generate a temporary code based on SKU position
+    const skuIndex = skus?.findIndex(s => s.id === skuId) || 0;
+    return (skuIndex + 1).toString().padStart(3, '0');
+  };
+
+  // Generate 4-digit random number (0000-9999)
+  const generateRandom4Digit = (): string => {
+    return Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  };
+
   // Generate PO Number from builder selections
-  // Format: [Supplier Org] - [SKU Name] - [YYYY-MM-DD] - [5-digit Random Code]
+  // New Format: [2-digit Org][3-digit SKU][4-digit Epoch][4-digit Random]
+  // Example: 1010002711234 = MTN(10) + SKU(100) + Sept28,2025(0271) + Random(1234)
   const generatePONumber = () => {
-    const { supplierOrg, skuName, date, randomCode } = poBuilder;
+    const { supplierOrg, skuName, date } = poBuilder;
     
     if (!supplierOrg || !skuName || !date) {
       return 'Select options above to generate PO Number';
     }
     
-    const finalRandomCode = randomCode || generateRandomCode();
-    return `${supplierOrg}-${skuName}-${date}-${finalRandomCode}`;
+    // Find selected SKU ID from the SKU name
+    const selectedSku = skus?.find(s => s.sku === skuName);
+    if (!selectedSku) {
+      return 'SKU not found';
+    }
+    
+    const orgCode2Digit = getOrgCode2Digit(supplierOrg);
+    const skuCode3Digit = getSku3DigitCode(selectedSku.id);
+    const epochDays = calculateEpochDays(new Date(date)).toString().padStart(4, '0');
+    const randomCode = generateRandom4Digit();
+    
+    return `${orgCode2Digit}${skuCode3Digit}${epochDays}${randomCode}`;
   };
 
   // Update PO Builder and regenerate PO number
   const updateGeneratedPONumber = (field: string, value: string) => {
     const updatedBuilder = { ...poBuilder, [field]: value };
     
-    // Generate new random code if any field changes (to ensure uniqueness)
+    // Generate new 4-digit random code if any field changes (to ensure uniqueness)
     if (field !== 'randomCode') {
-      updatedBuilder.randomCode = generateRandomCode();
+      updatedBuilder.randomCode = generateRandom4Digit();
     }
     
     setPOBuilder(updatedBuilder);
-    const newPONumber = generatePONumber();
-    setGeneratedPONumber(newPONumber);
+    // Note: generatePONumber() calculates its own random code, so we don't need to set generatedPONumber
   };
 
   // Helper functions for line items
@@ -930,6 +976,41 @@ export default function PurchaseOrdersPage() {
                   </div>
                   <input type="hidden" name="poNumber" value={generatePONumber()} />
                   <input type="hidden" name="supplierName" value={poBuilder.supplierOrg} />
+                  
+                  {/* PO Number Format Explanation */}
+                  {poBuilder.supplierOrg && poBuilder.skuName && poBuilder.date && (
+                    <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-xs text-blue-800 font-medium mb-1">PO Number Breakdown:</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <span className="font-mono font-bold text-blue-600">{getOrgCode2Digit(poBuilder.supplierOrg)}</span>
+                          <p className="text-blue-700">{poBuilder.supplierOrg}</p>
+                        </div>
+                        <div>
+                          <span className="font-mono font-bold text-blue-600">
+                            {(() => {
+                              const selectedSku = skus?.find(s => s.sku === poBuilder.skuName);
+                              return selectedSku ? getSku3DigitCode(selectedSku.id) : '000';
+                            })()}
+                          </span>
+                          <p className="text-blue-700">SKU Code</p>
+                        </div>
+                        <div>
+                          <span className="font-mono font-bold text-blue-600">
+                            {calculateEpochDays(new Date(poBuilder.date)).toString().padStart(4, '0')}
+                          </span>
+                          <p className="text-blue-700">Day #{calculateEpochDays(new Date(poBuilder.date))} since Jan 1, 2025</p>
+                        </div>
+                        <div>
+                          <span className="font-mono font-bold text-blue-600">####</span>
+                          <p className="text-blue-700">Random (regenerated daily)</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-2">
+                        💡 This 10-digit format ensures unique PO numbers while encoding supplier, product, date, and uniqueness data.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

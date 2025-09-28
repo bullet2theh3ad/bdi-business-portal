@@ -90,6 +90,9 @@ export const organizations = pgTable('organizations', {
   code: varchar('code', { length: 20 }).unique(), // Short code like 'BDI', 'ACME'
   description: text('description'),
   
+  // PO Number Generation - 2-digit organization code (10-99)
+  poCode2Digit: varchar('po_code_2_digit', { length: 2 }),
+  
   // B2B Company Information
   dunsNumber: varchar('duns_number', { length: 20 }),
   taxId: varchar('tax_id', { length: 30 }),
@@ -494,6 +497,9 @@ export const productSkus = pgTable('product_skus', {
   sku: varchar('sku', { length: 100 }).notNull().unique(),
   name: varchar('name', { length: 200 }).notNull(),
   description: text('description'),
+  
+  // PO Number Generation - 3-digit SKU code (001-999)
+  skuCode3Digit: varchar('sku_code_3_digit', { length: 3 }).unique(),
   category: varchar('category', { length: 100 }), // 'device', 'accessory', 'component', etc.
   subcategory: varchar('subcategory', { length: 100 }),
   
