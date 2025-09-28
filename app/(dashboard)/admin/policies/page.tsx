@@ -411,10 +411,10 @@ export default function PoliciesPage() {
                             />
                           </div>
                           {viewMode === 'list' && (
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-sm sm:text-base truncate">{policy.fileName}</h3>
+                            <div className="flex-1 min-w-0 pr-2">
+                              <h3 className="font-semibold text-sm sm:text-base break-words leading-tight">{policy.fileName}</h3>
                               {policy.description && (
-                                <p className="text-xs sm:text-sm opacity-75 mt-1 truncate">{policy.description}</p>
+                                <p className="text-xs sm:text-sm opacity-75 mt-1 break-words leading-tight">{policy.description}</p>
                               )}
                             </div>
                           )}
