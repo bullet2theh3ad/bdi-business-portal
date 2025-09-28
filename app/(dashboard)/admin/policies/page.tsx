@@ -324,7 +324,7 @@ export default function PoliciesPage() {
             size="sm"
             onClick={() => setViewMode('grid')}
           >
-            <SemanticBDIIcon semantic="grid" size={16} className="mr-2" />
+            <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
             Grid
           </Button>
           <Button
@@ -332,7 +332,7 @@ export default function PoliciesPage() {
             size="sm"
             onClick={() => setViewMode('list')}
           >
-            <SemanticBDIIcon semantic="list" size={16} className="mr-2" />
+            <SemanticBDIIcon semantic="document" size={16} className="mr-2" />
             List
           </Button>
         </div>
@@ -478,7 +478,7 @@ export default function PoliciesPage() {
                           }}
                           className="bg-white/50 hover:bg-white text-blue-600 border-blue-300"
                         >
-                          <SemanticBDIIcon semantic="view" size={14} className="mr-1" />
+                          <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
                           Preview
                         </Button>
                         <Button 
@@ -520,7 +520,7 @@ export default function PoliciesPage() {
                               handlePreview(policy);
                             }}
                           >
-                            <SemanticBDIIcon semantic="view" size={14} className="mr-1" />
+                            <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
                             Preview
                           </Button>
                           <Button 
@@ -717,7 +717,7 @@ export default function PoliciesPage() {
         <DialogContent className="w-[95vw] h-[90vh] p-0" style={{ maxWidth: 'none' }}>
           <DialogHeader className="p-4 border-b">
             <DialogTitle className="flex items-center">
-              <SemanticBDIIcon semantic="view" size={20} className="mr-2" />
+              <SemanticBDIIcon semantic="search" size={20} className="mr-2" />
               Preview: {previewPolicy?.fileName}
             </DialogTitle>
           </DialogHeader>
@@ -756,7 +756,7 @@ export default function PoliciesPage() {
                           window.open(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`, '_blank');
                         }}
                       >
-                        <SemanticBDIIcon semantic="view" size={16} className="mr-2" />
+                        <SemanticBDIIcon semantic="search" size={16} className="mr-2" />
                         Open in Office Online
                       </Button>
                     </div>
