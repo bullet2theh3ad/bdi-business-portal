@@ -2005,13 +2005,12 @@ export default function PurchaseOrdersPage() {
                         <p className="text-sm font-semibold text-gray-800">Date:</p>
                       </div>
                       
-                      {/* Company Seal - Less transparent, positioned to the right */}
-                      <div className="absolute top-0 right-0 opacity-60 pointer-events-none">
+                      {/* Company Seal - Full color, no opacity */}
+                      <div className="absolute top-0 right-0 pointer-events-none">
                         <img 
                           src="/20250926%20Company%20Seal.png" 
                           alt="BDI Company Seal" 
                           className="w-24 h-24 object-contain"
-                          style={{ filter: 'grayscale(10%)' }}
                         />
                       </div>
                     </div>
