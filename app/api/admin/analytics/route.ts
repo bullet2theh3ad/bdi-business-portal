@@ -76,9 +76,9 @@ export async function GET(request: NextRequest) {
       // Invoice statistics
       db
         .select({
-          count: sql<number>`COUNT(*)::int`,
-          totalValue: sql<number>`COALESCE(SUM(${invoices.totalValue}), 0)::numeric`,
-          avgValue: sql<number>`COALESCE(AVG(${invoices.totalValue}), 0)::numeric`,
+          count: sql<number>`COUNT(DISTINCT ${invoices.id})::int`,
+          totalValue: sql<number>`COALESCE(SUM(DISTINCT ${invoices.totalValue}), 0)::numeric`,
+          avgValue: sql<number>`COALESCE(AVG(DISTINCT ${invoices.totalValue}), 0)::numeric`,
           units: sql<number>`COALESCE(SUM(${invoiceLineItems.quantity}), 0)::int`
         })
         .from(invoices)
@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
       // Purchase Order statistics
       db
         .select({
-          count: sql<number>`COUNT(*)::int`,
-          totalValue: sql<number>`COALESCE(SUM(${purchaseOrders.totalValue}), 0)::numeric`,
-          avgValue: sql<number>`COALESCE(AVG(${purchaseOrders.totalValue}), 0)::numeric`,
+          count: sql<number>`COUNT(DISTINCT ${purchaseOrders.id})::int`,
+          totalValue: sql<number>`COALESCE(SUM(DISTINCT ${purchaseOrders.totalValue}), 0)::numeric`,
+          avgValue: sql<number>`COALESCE(AVG(DISTINCT ${purchaseOrders.totalValue}), 0)::numeric`,
           units: sql<number>`COALESCE(SUM(${purchaseOrderLineItems.quantity}), 0)::int`
         })
         .from(purchaseOrders)
