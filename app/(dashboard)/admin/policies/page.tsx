@@ -395,37 +395,93 @@ export default function PoliciesPage() {
                 return (
                   <div 
                     key={policy.id} 
-                    className={`${categoryConfig.color} rounded-lg p-4 sm:p-6 transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
-                      viewMode === 'list' ? 'flex items-center justify-between' : ''
-                    }`}
+                    className={`${categoryConfig.color} rounded-lg p-4 sm:p-6 transition-all duration-200 hover:shadow-lg transform hover:scale-105`}
                   >
-                    <div className={viewMode === 'grid' ? 'space-y-4' : 'flex-1 flex items-center space-x-4'}>
-                      {/* Category Icon & Badge */}
-                      <div className={`flex items-center ${viewMode === 'grid' ? 'justify-between' : 'space-x-3'}`}>
-                        <div className="flex items-center space-x-3">
-                          <div className={`p-3 rounded-full bg-white/50 ${viewMode === 'grid' ? '' : 'flex-shrink-0'}`}>
-                            <SemanticBDIIcon 
-                              semantic={categoryConfig.icon} 
-                              size={viewMode === 'grid' ? 24 : 20} 
-                              className={categoryConfig.iconColor} 
-                            />
-                          </div>
-                          {viewMode === 'list' && (
-                            <div className="flex-1 min-w-0 pr-2">
-                              <h3 className="font-semibold text-sm sm:text-base break-words leading-tight">{policy.fileName}</h3>
-                              {policy.description && (
-                                <p className="text-xs sm:text-sm opacity-75 mt-1 break-words leading-tight">{policy.description}</p>
-                              )}
+                    {viewMode === 'list' ? (
+                      /* List View Layout - Clean and Simple */
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3 flex-1 min-w-0">
+                            <div className="p-2 rounded-full bg-white/50 flex-shrink-0">
+                              <SemanticBDIIcon 
+                                semantic={categoryConfig.icon} 
+                                size={18} 
+                                className={categoryConfig.iconColor} 
+                              />
                             </div>
-                          )}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm break-words leading-tight">{policy.fileName}</h3>
+                              {policy.description && (
+                                <p className="text-xs opacity-75 mt-1 break-words leading-tight">{policy.description}</p>
+                              )}
+                              <div className="flex items-center space-x-3 text-xs text-gray-600 mt-2">
+                                <span>📁 {(policy.fileSize / 1024).toFixed(1)} KB</span>
+                                <span>📅 {uploadDate.toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <Badge className={`${categoryConfig.badgeColor} text-xs font-medium flex-shrink-0 ml-2`}>
+                            {categoryConfig.name}
+                          </Badge>
                         </div>
-                        <Badge className={`${categoryConfig.badgeColor} text-xs font-medium ${viewMode === 'list' ? 'flex-shrink-0' : ''}`}>
-                          {categoryConfig.name}
-                        </Badge>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePreview(policy);
+                            }}
+                            className="flex-1 text-xs px-2 py-1 bg-white/70 hover:bg-white text-blue-600 border-blue-300"
+                          >
+                            <SemanticBDIIcon semantic="search" size={12} className="mr-1" />
+                            Preview
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(policy);
+                            }}
+                            className="flex-1 text-xs px-2 py-1 bg-white/70 hover:bg-white text-green-600 border-green-300"
+                          >
+                            <SemanticBDIIcon semantic="download" size={12} className="mr-1" />
+                            Download
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(policy);
+                            }}
+                            className="px-3 py-1 text-xs bg-white/70 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
+                          >
+                            <SemanticBDIIcon semantic="delete" size={12} />
+                          </Button>
+                        </div>
                       </div>
+                    ) : (
+                      /* Grid View Layout */
+                      <div className="space-y-4">
+                        {/* Category Icon & Badge */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-3 rounded-full bg-white/50">
+                              <SemanticBDIIcon 
+                                semantic={categoryConfig.icon} 
+                                size={24} 
+                                className={categoryConfig.iconColor} 
+                              />
+                            </div>
+                          </div>
+                          <Badge className={`${categoryConfig.badgeColor} text-xs font-medium`}>
+                            {categoryConfig.name}
+                          </Badge>
+                        </div>
 
-                      {/* Document Details (Grid View) */}
-                      {viewMode === 'grid' && (
+                        {/* Document Details (Grid View) */}
                         <div className="space-y-3">
                           <div>
                             <h3 className="font-semibold text-sm sm:text-base line-clamp-2">{policy.fileName}</h3>
@@ -454,57 +510,6 @@ export default function PoliciesPage() {
                             </div>
                           </div>
                         </div>
-                      )}
-
-                      {/* Digital Fingerprint (List View) */}
-                      {viewMode === 'list' && (
-                        <div className="flex-shrink-0 text-right text-xs sm:text-sm opacity-75 space-y-1">
-                          <div>{(policy.fileSize / 1024).toFixed(1)} KB</div>
-                          <div className="font-mono">{uploadDate.toLocaleDateString()}</div>
-                          <div className="font-mono">{uploadDate.toLocaleTimeString()}</div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    {viewMode === 'list' && (
-                      <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2 mt-2 sm:mt-0 sm:ml-4 flex-shrink-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePreview(policy);
-                          }}
-                          className="w-full sm:w-auto text-xs px-2 py-1 bg-white/70 hover:bg-white text-blue-600 border-blue-300"
-                        >
-                          <SemanticBDIIcon semantic="search" size={12} className="mr-1" />
-                          <span className="sm:inline">Preview</span>
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownload(policy);
-                          }}
-                          className="w-full sm:w-auto text-xs px-2 py-1 bg-white/70 hover:bg-white text-green-600 border-green-300"
-                        >
-                          <SemanticBDIIcon semantic="download" size={12} className="mr-1" />
-                          <span className="sm:inline">Download</span>
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(policy);
-                          }}
-                          className="w-full sm:w-auto text-xs px-2 py-1 bg-white/70 hover:bg-white text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
-                        >
-                          <SemanticBDIIcon semantic="delete" size={12} />
-                          <span className="sm:inline ml-1">Delete</span>
-                        </Button>
                       </div>
                     )}
                     
