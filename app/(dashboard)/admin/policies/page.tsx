@@ -596,7 +596,7 @@ export default function PoliciesPage() {
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.doc,.docx,.txt,.md,.html"
+                  accept=".pdf,.doc,.docx,.txt"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="policy-file-input"
@@ -609,7 +609,7 @@ export default function PoliciesPage() {
                   Select Files
                 </Button>
                 <p className="text-xs text-gray-500 mt-2">
-                  Supported formats: PDF, DOC, DOCX, TXT, MD, HTML
+                  Supported formats: PDF, DOC, DOCX, TXT
                 </p>
               </div>
 
