@@ -68,18 +68,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch policy documents' }, { status: 500 });
     }
 
+    // 🔍 GET STEP 1: Log raw files from Supabase
+    console.log('🔍 GET STEP 1: Raw files from Supabase storage:');
+    console.log('  files count:', files?.length || 0);
+    files?.forEach((file, index) => {
+      console.log(`  File ${index}:`, {
+        name: file.name,
+        metadata: file.metadata,
+        created_at: file.created_at
+      });
+    });
+
     // Transform file data to match PolicyDocument interface
-    const policyDocuments = (files || []).map(file => ({
-      id: file.id || file.name,
-      fileName: file.name,
-      filePath: `policies/${file.name}`,
-      fileSize: file.metadata?.size || 0,
-      contentType: file.metadata?.mimetype || 'application/octet-stream',
-      uploadedBy: file.metadata?.uploaderName || dbUser?.name || 'Unknown User',
-      uploadedAt: file.created_at || new Date().toISOString(),
-      description: file.metadata?.description || '',
-      category: file.metadata?.category || 'other'
-    }));
+    const policyDocuments = (files || []).map(file => {
+      const transformed = {
+        id: file.id || file.name,
+        fileName: file.name,
+        filePath: `policies/${file.name}`,
+        fileSize: file.metadata?.size || 0,
+        contentType: file.metadata?.mimetype || 'application/octet-stream',
+        uploadedBy: file.metadata?.uploaderName || dbUser?.name || 'Unknown User',
+        uploadedAt: file.created_at || new Date().toISOString(),
+        description: file.metadata?.description || '',
+        category: file.metadata?.category || 'other'
+      };
+      
+      // 🔍 GET STEP 2: Log transformation for each file
+      console.log(`🔍 GET STEP 2: Transformed file "${file.name}":`, {
+        category: transformed.category,
+        description: transformed.description,
+        metadata_category: file.metadata?.category,
+        metadata_description: file.metadata?.description
+      });
+      
+      return transformed;
+    });
 
     return NextResponse.json(policyDocuments);
 
@@ -140,9 +163,26 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
+    
+    // 🔍 STEP 1: Log all received form data
+    console.log('🔍 API STEP 1: Received form data entries:');
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}: [File] ${value.name} (${value.type}, ${value.size} bytes)`);
+      } else {
+        console.log(`  ${key}: "${value}"`);
+      }
+    }
+    
     const fileCount = parseInt(formData.get('fileCount') as string) || 0;
     const category = formData.get('category') as string || 'other';
     const description = formData.get('description') as string || '';
+    
+    // 🔍 STEP 2: Log parsed values
+    console.log('🔍 API STEP 2: Parsed form values:');
+    console.log(`  fileCount: ${fileCount}`);
+    console.log(`  category: "${category}"`);
+    console.log(`  description: "${description}"`);
 
     if (fileCount === 0) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
@@ -160,22 +200,32 @@ export async function POST(request: NextRequest) {
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const filePath = `policies/${timestamp}_${sanitizedFileName}`;
 
+      // 🔍 STEP 3: Log metadata being sent to Supabase
+      const metadata = {
+        category: category || 'other',
+        description: description || '',
+        uploadedBy: dbUser.authId,
+        uploaderName: dbUser.name || 'Unknown User',
+        uploaderEmail: dbUser.email || '',
+        originalName: file.name,
+        uploadedAt: new Date().toISOString()
+      };
+      console.log('🔍 API STEP 3: Metadata being sent to Supabase:');
+      console.log('  metadata:', JSON.stringify(metadata, null, 2));
+
       // Upload to Supabase storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('organization-documents')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
-          metadata: {
-            category: category || 'other',
-            description: description || '',
-            uploadedBy: dbUser.authId,
-            uploaderName: dbUser.name || 'Unknown User',
-            uploaderEmail: dbUser.email || '',
-            originalName: file.name,
-            uploadedAt: new Date().toISOString()
-          }
+          metadata: metadata
         });
+
+      // 🔍 STEP 4: Log upload result
+      console.log('🔍 API STEP 4: Supabase upload result:');
+      console.log('  uploadData:', uploadData);
+      console.log('  uploadError:', uploadError);
 
       if (uploadError) {
         console.error('Upload error:', uploadError);

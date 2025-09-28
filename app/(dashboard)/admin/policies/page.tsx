@@ -575,13 +575,34 @@ export default function PoliciesPage() {
           
           <form onSubmit={(e) => {
             e.preventDefault();
+            console.log('🚀 STEP 1: Form submission started');
+            
             const formData = new FormData(e.currentTarget);
+            console.log('🚀 STEP 2: FormData created from form');
+            
+            // Log what's in the form before adding files
+            console.log('🚀 STEP 3: Form elements before file addition:');
+            for (const [key, value] of formData.entries()) {
+              console.log(`  Form field: ${key} = "${value}"`);
+            }
             
             // Add selected files
             selectedFiles.forEach((file, index) => {
+              console.log(`🚀 STEP 4: Adding file ${index}: ${file.name} (${file.type})`);
               formData.append(`file${index}`, file);
             });
             formData.append('fileCount', selectedFiles.length.toString());
+            console.log(`🚀 STEP 5: Added fileCount: ${selectedFiles.length}`);
+            
+            // Log final form data
+            console.log('🚀 STEP 6: Final FormData contents:');
+            for (const [key, value] of formData.entries()) {
+              if (value instanceof File) {
+                console.log(`  ${key}: [File] ${value.name} (${value.type}, ${value.size} bytes)`);
+              } else {
+                console.log(`  ${key}: "${value}"`);
+              }
+            }
             
             handleUpload(formData);
           }} className="space-y-6 p-4">
