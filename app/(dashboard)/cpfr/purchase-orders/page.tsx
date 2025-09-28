@@ -1996,22 +1996,22 @@ export default function PurchaseOrdersPage() {
                   <div className="flex justify-between items-end">
                     {/* Left side - Signature with Company Seal */}
                     <div className="relative w-80">
-                      <div className="mb-2">
+                      <div className="mb-6">
+                        <div className="mt-4 mb-2 border-b-2 border-gray-400 w-64"></div>
                         <p className="text-sm font-semibold text-gray-800">Authorized Signature:</p>
-                        <div className="mt-4 mb-6 border-b-2 border-gray-400 w-64"></div>
                       </div>
-                      <div className="mb-2">
+                      <div className="mb-6">
+                        <div className="mt-4 mb-2 border-b-2 border-gray-400 w-32"></div>
                         <p className="text-sm font-semibold text-gray-800">Date:</p>
-                        <div className="mt-4 border-b-2 border-gray-400 w-32"></div>
                       </div>
                       
-                      {/* Company Seal - Transparent overlay */}
-                      <div className="absolute top-0 left-12 opacity-30 pointer-events-none">
+                      {/* Company Seal - Less transparent, positioned to the right */}
+                      <div className="absolute top-0 right-0 opacity-60 pointer-events-none">
                         <img 
                           src="/20250926 Company Seal.png" 
                           alt="BDI Company Seal" 
                           className="w-24 h-24 object-contain"
-                          style={{ filter: 'grayscale(20%)' }}
+                          style={{ filter: 'grayscale(10%)' }}
                         />
                       </div>
                     </div>
