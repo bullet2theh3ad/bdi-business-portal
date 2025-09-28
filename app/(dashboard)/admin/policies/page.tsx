@@ -241,6 +241,12 @@ export default function PoliciesPage() {
   const handleUpload = async (formData: FormData) => {
     setIsUploading(true);
     try {
+      // Debug: Log form data to see what's being sent
+      console.log('📤 Uploading with form data:');
+      for (const [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+      
       const response = await fetch('/api/admin/policies', {
         method: 'POST',
         body: formData,
