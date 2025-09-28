@@ -81,6 +81,9 @@ export async function GET(request: NextRequest) {
 
     // Transform file data to match PolicyDocument interface
     const policyDocuments = (files || []).map(file => {
+      // Cast to access user_metadata which may not be in the FileObject type
+      const fileWithUserMetadata = file as any;
+      
       const transformed = {
         id: file.id || file.name,
         fileName: file.name,
@@ -89,14 +92,16 @@ export async function GET(request: NextRequest) {
         contentType: file.metadata?.mimetype || 'application/octet-stream',
         uploadedBy: file.metadata?.uploaderName || dbUser?.name || 'Unknown User',
         uploadedAt: file.created_at || new Date().toISOString(),
-        description: file.metadata?.description || '',
-        category: file.metadata?.category || 'other'
+        description: fileWithUserMetadata.user_metadata?.description || file.metadata?.description || '',
+        category: fileWithUserMetadata.user_metadata?.category || file.metadata?.category || 'other'
       };
       
       // 🔍 GET STEP 2: Log transformation for each file
       console.log(`🔍 GET STEP 2: Transformed file "${file.name}":`, {
         category: transformed.category,
         description: transformed.description,
+        user_metadata_category: fileWithUserMetadata.user_metadata?.category,
+        user_metadata_description: fileWithUserMetadata.user_metadata?.description,
         metadata_category: file.metadata?.category,
         metadata_description: file.metadata?.description
       });
