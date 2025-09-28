@@ -941,13 +941,12 @@ export default function PurchaseOrdersPage() {
                     </label>
                     <div className="flex space-x-1">
                       <div className="flex-1 p-2 bg-gray-50 rounded border text-center">
-                        <p className="text-xs font-mono font-bold text-blue-600">
+                        <p className="text-sm font-mono font-bold text-blue-600">
                           {(() => {
                             const fullPO = generatePONumber();
                             return typeof fullPO === 'string' && fullPO.length === 13 ? fullPO.slice(-4) : '####';
                           })()}
                         </p>
-                        <p className="text-xs text-gray-500">4-digit</p>
                       </div>
                       <Button
                         type="button"
