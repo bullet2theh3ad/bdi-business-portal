@@ -324,14 +324,16 @@ export default function PoliciesPage() {
             size="sm"
             onClick={() => setViewMode('grid')}
           >
-            🔲 Grid
+            <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
+            Grid
           </Button>
           <Button
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('list')}
           >
-            📋 List
+            <SemanticBDIIcon semantic="document" size={16} className="mr-2" />
+            List
           </Button>
         </div>
       </div>
@@ -476,7 +478,8 @@ export default function PoliciesPage() {
                           }}
                           className="bg-white/50 hover:bg-white text-blue-600 border-blue-300"
                         >
-                          👁️ Preview
+                          <SemanticBDIIcon semantic="search" size={14} className="mr-1" />
+                          Preview
                         </Button>
                         <Button 
                           variant="outline" 
@@ -715,7 +718,8 @@ export default function PoliciesPage() {
         <DialogContent className="w-[95vw] h-[90vh] p-0" style={{ maxWidth: 'none' }}>
           <DialogHeader className="p-4 border-b">
             <DialogTitle className="flex items-center">
-              👁️ Preview: {previewPolicy?.fileName}
+              <SemanticBDIIcon semantic="search" size={20} className="mr-2" />
+              Preview: {previewPolicy?.fileName}
             </DialogTitle>
           </DialogHeader>
           
@@ -753,7 +757,8 @@ export default function PoliciesPage() {
                           window.open(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`, '_blank');
                         }}
                       >
-                        🌐 Open in Office Online
+                        <SemanticBDIIcon semantic="connect" size={16} className="mr-2" />
+                        Open in Office Online
                       </Button>
                     </div>
                   </div>
