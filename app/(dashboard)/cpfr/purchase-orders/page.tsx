@@ -1991,6 +1991,42 @@ export default function PurchaseOrdersPage() {
                   </div>
                 )}
 
+                {/* Signature Section */}
+                <div className="mt-12 mb-8">
+                  <div className="flex justify-between items-end">
+                    {/* Left side - Signature with Company Seal */}
+                    <div className="relative w-80">
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-gray-800">Authorized Signature:</p>
+                        <div className="mt-4 mb-6 border-b-2 border-gray-400 w-64"></div>
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-gray-800">Date:</p>
+                        <div className="mt-4 border-b-2 border-gray-400 w-32"></div>
+                      </div>
+                      
+                      {/* Company Seal - Transparent overlay */}
+                      <div className="absolute top-0 left-12 opacity-30 pointer-events-none">
+                        <img 
+                          src="/20250926 Company Seal.png" 
+                          alt="BDI Company Seal" 
+                          className="w-24 h-24 object-contain"
+                          style={{ filter: 'grayscale(20%)' }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Right side - Company Info */}
+                    <div className="text-right text-sm text-gray-600">
+                      <p className="font-semibold text-gray-800">Boundless Devices, Inc.</p>
+                      <p>343 S Highway 101, Ste 200</p>
+                      <p>Solana Beach, CA 92075</p>
+                      <p>Phone: (415) 516-5975</p>
+                      <p>Email: orders@boundlessdevices.com</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Footer */}
                 <div className="border-t-2 border-gray-300 pt-6 mt-8">
                   <div className="text-left text-sm text-gray-600 mb-4">
