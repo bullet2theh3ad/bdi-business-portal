@@ -193,6 +193,7 @@ export default function PurchaseOrdersPage() {
   // PO Number Builder States (similar to SKU Builder)
   const [usePOBuilder, setUsePOBuilder] = useState(true);
   const [generatedPONumber, setGeneratedPONumber] = useState('');
+  const [currentRandomCode, setCurrentRandomCode] = useState('');
   const [poBuilder, setPOBuilder] = useState({
     supplierOrg: '',
     skuName: '',
@@ -214,10 +215,12 @@ export default function PurchaseOrdersPage() {
   // Initialize PO Builder when modal opens
   useEffect(() => {
     if (showCreateModal && usePOBuilder) {
+      const initialRandomCode = generateRandom4Digit();
+      setCurrentRandomCode(initialRandomCode);
       setPOBuilder(prev => ({
         ...prev,
         date: new Date().toISOString().split('T')[0],
-        randomCode: '' // Not used in new format - random is generated in generatePONumber()
+        randomCode: initialRandomCode
       }));
     }
   }, [showCreateModal, usePOBuilder]);
@@ -277,9 +280,9 @@ export default function PurchaseOrdersPage() {
     const orgCode2Digit = getOrgCode2Digit(supplierOrg);
     const skuCode3Digit = getSku3DigitCode(selectedSku.id);
     const epochDays = calculateEpochDays(new Date(date)).toString().padStart(4, '0');
-    const randomCode = generateRandom4Digit();
     
-    return `${orgCode2Digit}${skuCode3Digit}${epochDays}${randomCode}`;
+    // Use the stored random code to ensure consistency across all displays
+    return `${orgCode2Digit}${skuCode3Digit}${epochDays}${currentRandomCode}`;
   };
 
   // Update PO Builder and regenerate PO number
@@ -942,10 +945,7 @@ export default function PurchaseOrdersPage() {
                     <div className="flex space-x-1">
                       <div className="flex-1 p-2 bg-gray-50 rounded border text-center">
                         <p className="text-sm font-mono font-bold text-blue-600">
-                          {(() => {
-                            const fullPO = generatePONumber();
-                            return typeof fullPO === 'string' && fullPO.length === 13 ? fullPO.slice(-4) : '####';
-                          })()}
+                          {currentRandomCode || '####'}
                         </p>
                       </div>
                       <Button
@@ -953,9 +953,10 @@ export default function PurchaseOrdersPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          // Force regeneration by updating a field to trigger new random
-                          const currentDate = poBuilder.date;
-                          setPOBuilder(prev => ({ ...prev, date: currentDate }));
+                          // Generate new 4-digit random code and store it
+                          const newRandomCode = generateRandom4Digit();
+                          setCurrentRandomCode(newRandomCode);
+                          setPOBuilder(prev => ({ ...prev, randomCode: newRandomCode }));
                         }}
                         className="px-2"
                         title="Generate new random code"
@@ -1001,10 +1002,7 @@ export default function PurchaseOrdersPage() {
                         </div>
                         <div>
                           <span className="font-mono font-bold text-blue-600">
-                            {(() => {
-                              const fullPO = generatePONumber();
-                              return typeof fullPO === 'string' && fullPO.length === 13 ? fullPO.slice(-4) : '####';
-                            })()}
+                            {currentRandomCode || '####'}
                           </span>
                           <p className="text-blue-700">Random (per PO)</p>
                         </div>
