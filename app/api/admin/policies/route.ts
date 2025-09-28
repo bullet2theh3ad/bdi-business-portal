@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     // 🔍 STEP 1: Log all received form data
     console.log('🔍 API STEP 1: Received form data entries:');
     for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
+      if (value && typeof value === 'object' && 'name' in value && 'type' in value) {
         console.log(`  ${key}: [File] ${value.name} (${value.type}, ${value.size} bytes)`);
       } else {
         console.log(`  ${key}: "${value}"`);
