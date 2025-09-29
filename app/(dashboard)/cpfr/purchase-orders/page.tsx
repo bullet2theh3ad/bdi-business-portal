@@ -429,74 +429,127 @@ export default function PurchaseOrdersPage() {
     }
   };
 
-  // PDF Generation Function (similar to invoice PDF)
+  // PDF Generation Function - Simplified and more reliable
   const generatePurchaseOrderPDF = async (purchaseOrder: PurchaseOrder) => {
     console.log('📄 Starting Purchase Order PDF generation...', purchaseOrder.purchaseOrderNumber);
     
-    const poElement = document.querySelector('.po-preview-for-pdf');
-    if (!poElement) {
-      throw new Error('Purchase Order preview element not found');
-    }
+    try {
+      // Wait for any pending renders to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const poElement = document.querySelector('.po-preview-for-pdf') as HTMLElement;
+      if (!poElement) {
+        throw new Error('Purchase Order preview element not found');
+      }
 
-    // Import html2canvas dynamically
-    const html2canvas = (await import('html2canvas')).default;
-    
-    const canvas = await html2canvas(poElement as HTMLElement, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      onclone: (clonedDoc) => {
-        // Fix oklch colors and replace custom fonts
+      console.log('📏 Element found, dimensions:', {
+        offsetWidth: poElement.offsetWidth,
+        offsetHeight: poElement.offsetHeight,
+        scrollWidth: poElement.scrollWidth,
+        scrollHeight: poElement.scrollHeight
+      });
+
+      // Import html2canvas dynamically
+      const html2canvas = (await import('html2canvas')).default;
+      
+      // Optimized canvas capture for smaller file size
+      const canvas = await html2canvas(poElement, {
+        scale: 1.5, // Reduced from 2 to 1.5 for smaller file size
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        removeContainer: false,
+        foreignObjectRendering: false,
+        imageTimeout: 15000,
+      onclone: (clonedDoc, element) => {
+        // Fix oklch colors that html2canvas can't parse
         const allElements = clonedDoc.querySelectorAll('*');
         allElements.forEach(el => {
+          const htmlEl = el as HTMLElement;
           const computedStyle = window.getComputedStyle(el as Element);
           
-          // Fix oklch colors
+          // Fix oklch colors specifically
           if (computedStyle.color && computedStyle.color.includes('oklch')) {
-            (el as HTMLElement).style.color = '#000';
+            htmlEl.style.color = '#000000';
           }
           if (computedStyle.backgroundColor && computedStyle.backgroundColor.includes('oklch')) {
-            (el as HTMLElement).style.backgroundColor = '#fff';
+            htmlEl.style.backgroundColor = '#ffffff';
           }
           if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
-            (el as HTMLElement).style.borderColor = '#ccc';
+            htmlEl.style.borderColor = '#cccccc';
           }
           
-          // Replace custom fonts with system fonts
-          const fontFamily = computedStyle.fontFamily;
-          if (fontFamily && (fontFamily.includes('Manrope') || fontFamily.includes('JetBrains') || fontFamily.includes('Share Tech'))) {
-            (el as HTMLElement).style.fontFamily = 'Arial, Helvetica, sans-serif';
+          // Force standard fonts
+          htmlEl.style.fontFamily = 'Arial, Helvetica, sans-serif';
+          
+          // Fix Tailwind color classes that might use oklch
+          const classList = htmlEl.classList;
+          if (classList.contains('text-blue-600')) htmlEl.style.color = '#2563eb';
+          if (classList.contains('text-green-600')) htmlEl.style.color = '#16a34a';
+          if (classList.contains('text-gray-800')) htmlEl.style.color = '#1f2937';
+          if (classList.contains('text-gray-600')) htmlEl.style.color = '#4b5563';
+          if (classList.contains('text-gray-700')) htmlEl.style.color = '#374151';
+          if (classList.contains('bg-gray-50')) htmlEl.style.backgroundColor = '#f9fafb';
+          if (classList.contains('bg-green-100')) htmlEl.style.backgroundColor = '#dcfce7';
+          if (classList.contains('text-green-800')) htmlEl.style.color = '#166534';
+          
+          // Ensure table borders are visible
+          if (htmlEl.tagName === 'TABLE' || htmlEl.tagName === 'TH' || htmlEl.tagName === 'TD') {
+            htmlEl.style.border = '1px solid #9ca3af';
+            htmlEl.style.borderCollapse = 'collapse';
           }
+          
+          // Fix border classes
+          if (classList.contains('border-blue-600')) htmlEl.style.borderColor = '#2563eb';
+          if (classList.contains('border-gray-300')) htmlEl.style.borderColor = '#d1d5db';
+          if (classList.contains('border-gray-400')) htmlEl.style.borderColor = '#9ca3af';
         });
       }
-    });
+      });
 
-    // Create PDF using jsPDF
-    const jsPDF = (await import('jspdf')).default;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    
-    const imgData = canvas.toDataURL('image/png');
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 295; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+      console.log('📏 Canvas created:', {
+        width: canvas.width,
+        height: canvas.height
+      });
 
-    // Add first page
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+      // Create PDF with simple, reliable settings
+      const jsPDF = (await import('jspdf')).default;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.85); // JPEG with 85% quality for smaller file size
+      
+      // Simple scaling to fit on one page
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const margin = 10;
+      
+      const maxWidth = pdfWidth - (margin * 2);
+      const maxHeight = pdfHeight - (margin * 2);
+      
+      // Calculate dimensions maintaining aspect ratio
+      const imgAspectRatio = canvas.width / canvas.height;
+      let finalWidth = maxWidth;
+      let finalHeight = finalWidth / imgAspectRatio;
+      
+      // If too tall, scale down
+      if (finalHeight > maxHeight) {
+        finalHeight = maxHeight;
+        finalWidth = finalHeight * imgAspectRatio;
+      }
+      
+      // Center on page
+      const x = (pdfWidth - finalWidth) / 2;
+      const y = margin;
+      
+      pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
 
-    // Add additional pages if needed
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      return pdf;
+      
+    } catch (error) {
+      console.error('❌ PDF generation error:', error);
+      throw error;
     }
-
-    return pdf;
   };
 
   // Handle PDF Preview
@@ -1904,76 +1957,76 @@ export default function PurchaseOrdersPage() {
           {pdfPreviewPO && (
             <div className="space-y-4">
               {/* PDF Preview Content */}
-              <div className="po-preview-for-pdf bg-white p-8 border rounded-lg shadow-sm max-w-4xl mx-auto">
-                {/* Header - Same as Invoice */}
-                <div className="flex justify-between items-start mb-8 pb-4 border-b-2 border-blue-600">
+              <div className="po-preview-for-pdf bg-white p-4 border rounded-lg shadow-sm max-w-4xl mx-auto text-sm min-h-[800px] flex flex-col">
+                {/* Header - Compact */}
+                <div className="flex justify-between items-start mb-4 pb-2 border-b-2 border-blue-600">
                   <div>
-                    <h1 className="text-3xl font-bold text-blue-600">PURCHASE ORDER</h1>
-                    <p className="text-lg text-gray-600 mt-1">#{pdfPreviewPO.purchaseOrderNumber}</p>
+                    <h1 className="text-xl font-bold text-blue-600">PURCHASE ORDER</h1>
+                    <p className="text-sm text-gray-600 mt-1">#{pdfPreviewPO.purchaseOrderNumber}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-800">BDI</div>
-                    <div className="text-sm text-gray-600">Boundless Devices, Inc.</div>
-                    <div className="text-sm text-gray-600">Business Portal</div>
+                    <div className="text-lg font-bold text-gray-800">BDI</div>
+                    <div className="text-xs text-gray-600">Boundless Devices, Inc.</div>
+                    <div className="text-xs text-gray-600">Business Portal</div>
                   </div>
                 </div>
 
-                {/* Purchase Order Details */}
-                <div className="grid grid-cols-2 gap-8 mb-8">
+                {/* Purchase Order Details - Compact */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Supplier Information</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-sm font-semibold mb-2 text-gray-800">Supplier Information</h3>
+                    <div className="space-y-1 text-xs">
                       <div><span className="font-medium">Supplier:</span> {pdfPreviewPO.supplierName}</div>
                       <div><span className="font-medium">Terms:</span> {pdfPreviewPO.terms}</div>
                       <div><span className="font-medium">Incoterms:</span> {pdfPreviewPO.incoterms} {pdfPreviewPO.incotermsLocation}</div>
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Order Details</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-sm font-semibold mb-2 text-gray-800">Order Details</h3>
+                    <div className="space-y-1 text-xs">
                       <div><span className="font-medium">PO Date:</span> {new Date(pdfPreviewPO.purchaseOrderDate).toLocaleDateString()}</div>
                       <div><span className="font-medium">Delivery Date:</span> {new Date(pdfPreviewPO.requestedDeliveryDate).toLocaleDateString()}</div>
-                      <div><span className="font-medium">Status:</span> <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{pdfPreviewPO.status.toUpperCase()}</span></div>
+                      <div><span className="font-medium">Status:</span> <span className="text-xs font-medium text-gray-800">{pdfPreviewPO.status.toUpperCase()}</span></div>
                     </div>
                   </div>
                 </div>
 
-                {/* Line Items Table */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Line Items</h3>
-                  <table className="w-full border-collapse border border-gray-300">
+                {/* Line Items Table - Compact */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold mb-2 text-gray-800">Line Items</h3>
+                  <table className="w-full border-collapse border border-gray-300 text-xs">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">SKU</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Description</th>
-                        <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Quantity</th>
-                        <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Unit Cost</th>
-                        <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Total</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left font-semibold">SKU</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left font-semibold">Description</th>
+                        <th className="border border-gray-300 px-2 py-1 text-right font-semibold">Quantity</th>
+                        <th className="border border-gray-300 px-2 py-1 text-right font-semibold">Unit Cost</th>
+                        <th className="border border-gray-300 px-2 py-1 text-right font-semibold">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {purchaseOrderLineItems[pdfPreviewPO.id]?.map((item, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="border border-gray-300 px-4 py-2 font-mono text-sm">{item.skuCode}</td>
-                          <td className="border border-gray-300 px-4 py-2">{item.skuName}</td>
-                          <td className="border border-gray-300 px-4 py-2 text-right">{item.quantity.toLocaleString()}</td>
-                          <td className="border border-gray-300 px-4 py-2 text-right">${item.unitCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td className="border border-gray-300 px-4 py-2 text-right font-semibold">${item.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="border border-gray-300 px-2 py-1 font-mono">{item.skuCode}</td>
+                          <td className="border border-gray-300 px-2 py-1">{item.skuName}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-right">{item.quantity.toLocaleString()}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-right">${item.unitCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-right font-semibold">${item.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                       )) || (
                         <tr>
-                          <td colSpan={5} className="border border-gray-300 px-4 py-2 text-center text-gray-500">No line items found</td>
+                          <td colSpan={5} className="border border-gray-300 px-2 py-1 text-center text-gray-500">No line items found</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
 
-                {/* Total Section */}
-                <div className="flex justify-end mb-8">
-                  <div className="w-64">
-                    <div className="border-t-2 border-gray-300 pt-4">
-                      <div className="flex justify-between items-center text-xl font-bold">
+                {/* Total Section - Compact */}
+                <div className="flex justify-end mb-4">
+                  <div className="w-48">
+                    <div className="border-t-2 border-gray-300 pt-2">
+                      <div className="flex justify-between items-center text-sm font-bold">
                         <span>Total Value:</span>
                         <span className="text-green-600">${Number(pdfPreviewPO.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
@@ -1981,59 +2034,63 @@ export default function PurchaseOrdersPage() {
                   </div>
                 </div>
 
-                {/* Notes Section */}
+                {/* Notes Section - Fixed word wrapping */}
                 {pdfPreviewPO.notes && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Notes</h3>
-                    <div className="bg-gray-50 p-4 rounded border">
-                      <pre className="text-sm text-gray-700 whitespace-pre-wrap">{pdfPreviewPO.notes}</pre>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold mb-1 text-gray-800">Notes</h3>
+                    <div className="bg-gray-50 p-2 rounded border">
+                      <div className="text-xs text-gray-700 leading-relaxed break-words">{pdfPreviewPO.notes}</div>
                     </div>
                   </div>
                 )}
 
-                {/* Signature Section */}
-                <div className="mt-12 mb-8">
+                {/* Fixed spacing to push signature section much lower */}
+                <div className="flex-grow min-h-[120px]"></div>
+                
+                {/* Signature Section - Fixed position at bottom like a form */}
+                <div className="mt-16 mb-4">
                   <div className="flex justify-between items-end">
                     {/* Left side - Signature with Company Seal */}
-                    <div className="relative w-80">
-                      <div className="mb-8">
-                        <div className="mt-4 mb-2 border-b-2 border-gray-400 w-64"></div>
-                        <p className="text-sm font-semibold text-gray-800">Authorized Signature:</p>
+                    <div className="relative w-60">
+                      <div className="mb-6">
+                        <div className="mt-2 mb-1 border-b-2 border-gray-400 w-48"></div>
+                        <p className="text-xs font-semibold text-gray-800">Authorized Signature:</p>
                       </div>
-                      <div className="mb-6 mt-12">
-                        <div className="mt-4 mb-2 border-b-2 border-gray-400 w-32"></div>
-                        <p className="text-sm font-semibold text-gray-800">Date:</p>
+                      <div className="mb-3 mt-12">
+                        <div className="mt-2 mb-1 border-b-2 border-gray-400 w-24"></div>
+                        <p className="text-xs font-semibold text-gray-800">Date:</p>
                       </div>
                       
-                      {/* Company Seal - Full color, no opacity */}
+                      {/* Company Seal - Smaller */}
                       <div className="absolute top-0 right-0 pointer-events-none">
                         <img 
                           src="/20250926%20Company%20Seal.png" 
                           alt="BDI Company Seal" 
-                          className="w-24 h-24 object-contain"
+                          className="w-16 h-16 object-contain"
                         />
                       </div>
                     </div>
                     
-                    {/* Right side - Company Info */}
-                    <div className="text-right text-sm text-gray-600">
-                      <p className="font-semibold text-gray-800">Boundless Devices, Inc.</p>
-                      <p>343 S Highway 101, Ste 200</p>
-                      <p>Solana Beach, CA 92075</p>
-                      <p>Phone: (415) 516-5975</p>
-                      <p>Email: orders@boundlessdevices.com</p>
+                    {/* Right side - Company Info - Fixed line breaks */}
+                    <div className="text-right text-xs text-gray-600">
+                      <div className="font-semibold text-gray-800">Boundless Devices, Inc.</div>
+                      <div>343 S Highway 101, Ste 200</div>
+                      <div>Solana Beach, CA 92075</div>
+                      <div>Phone: (415) 516-5975</div>
+                      <div>Email: orders@boundlessdevices.com</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className="border-t-2 border-gray-300 pt-6 mt-8">
-                  <div className="text-left text-sm text-gray-600 mb-4">
+                {/* Footer - Compact with Form Version */}
+                <div className="border-t border-gray-300 pt-2 mt-4">
+                  <div className="text-left text-xs text-gray-600 mb-2">
                     <p className="italic">Note: Units with $0.00 are Free of Charge (FoC) units.</p>
                   </div>
-                  <div className="text-center text-sm text-gray-600">
+                  <div className="text-center text-xs text-gray-600">
                     <p>This purchase order was generated by BDI Business Portal</p>
                     <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+                    <p className="mt-1 font-mono">Form: {process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0'}</p>
                   </div>
                 </div>
               </div>
@@ -2044,9 +2101,11 @@ export default function PurchaseOrdersPage() {
                   Close Preview
                 </Button>
                 <Button 
-                  onClick={() => {
-                    setShowPdfPreview(false);
-                    handlePdfDownload(pdfPreviewPO);
+                  onClick={async () => {
+                    if (pdfPreviewPO) {
+                      await handlePdfDownload(pdfPreviewPO);
+                      setShowPdfPreview(false);
+                    }
                   }}
                   className="bg-blue-600 hover:bg-blue-700"
                   disabled={isGeneratingPdf}
