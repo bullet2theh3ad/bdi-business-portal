@@ -449,7 +449,7 @@ function generateShipmentFormHTML(shipmentData: any, factoryWarehouse: any, bdiO
             <div class="section">
                 <h2>🏭 Factory Contact Information</h2>
                 <div class="contact-card">
-                    <div class="contact-name">MTN Factory: ${factoryWarehouse.name}</div>
+                    <div class="contact-name">Factory: ${factoryWarehouse.name}</div>
                     <div class="grid">
                         <div class="field">
                             <div class="field-label">Address</div>
