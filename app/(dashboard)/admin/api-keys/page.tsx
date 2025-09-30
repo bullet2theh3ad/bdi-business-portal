@@ -114,6 +114,7 @@ export default function ApiKeysPage() {
         organizationId: '',
         keyName: '',
         permissions: ['production_files_read'],
+        allowedFileTypes: ['PRODUCTION_FILE', 'ROYALTY_ZONE_4'],
         rateLimitPerHour: 1000,
         expiresInDays: 365,
       });

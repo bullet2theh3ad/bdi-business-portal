@@ -163,17 +163,36 @@ export default function ApiDocumentationPage() {
                     <div><code>offset</code> - Number of files to skip for pagination (default: 0)</div>
                     <div><code>organization</code> - Filter by organization code (e.g., "MTN")</div>
                     <div><code>shipment_id</code> - Filter by BDI shipment number</div>
-                    <div><code>file_type</code> - Filter by file type ("production", "testing", etc.)</div>
+                    <div><code>file_type</code> - Filter by file type: PRODUCTION_FILE, ROYALTY_ZONE_1-5, MAC_ADDRESS_LIST, SERIAL_NUMBER_LIST, PRODUCTION_REPORT, TEST_RESULTS, CALIBRATION_DATA, FIRMWARE_VERSION, QUALITY_CONTROL, PACKAGING_LIST, GENERIC</div>
                     <div><code>from_date</code> - Filter files created after this date (ISO format)</div>
                     <div><code>to_date</code> - Filter files created before this date (ISO format)</div>
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="font-medium text-sm">Example Request:</h4>
-                  <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
-                    {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
-     "https://www.bdibusinessportal.com/api/v1/production-files?limit=50&organization=MTN"`}
+                  <h4 className="font-medium text-sm">Example Requests:</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Get all accessible files:</p>
+                      <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
+                        {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
+     "https://www.bdibusinessportal.com/api/v1/production-files"`}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Filter by file type:</p>
+                      <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
+                        {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
+     "https://www.bdibusinessportal.com/api/v1/production-files?file_type=ROYALTY_ZONE_4"`}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Filter by organization and file type:</p>
+                      <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
+                        {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
+     "https://www.bdibusinessportal.com/api/v1/production-files?organization=MTN&file_type=PRODUCTION_FILE"`}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -214,6 +233,61 @@ export default function ApiDocumentationPage() {
 }`}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* File Types and Categories */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">📁 File Types and Categories</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Production files are categorized by type. Your API key permissions determine which file types you can access.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-blue-50 p-3 rounded border">
+                  <h4 className="font-medium text-sm mb-2">Production & Manufacturing</h4>
+                  <div className="text-xs space-y-1">
+                    <div><code>PRODUCTION_FILE</code> - General production data files</div>
+                    <div><code>PRODUCTION_REPORT</code> - Manufacturing summary reports</div>
+                    <div><code>QUALITY_CONTROL</code> - QC inspection results</div>
+                    <div><code>TEST_RESULTS</code> - QA test results and metrics</div>
+                  </div>
+                </div>
+                <div className="bg-green-50 p-3 rounded border">
+                  <h4 className="font-medium text-sm mb-2">Device Data</h4>
+                  <div className="text-xs space-y-1">
+                    <div><code>MAC_ADDRESS_LIST</code> - Device MAC address files</div>
+                    <div><code>SERIAL_NUMBER_LIST</code> - Device serial number files</div>
+                    <div><code>CALIBRATION_DATA</code> - Device calibration settings</div>
+                    <div><code>FIRMWARE_VERSION</code> - Firmware version information</div>
+                  </div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded border">
+                  <h4 className="font-medium text-sm mb-2">Royalty Zones</h4>
+                  <div className="text-xs space-y-1">
+                    <div><code>ROYALTY_ZONE_1</code> - Zone 1 royalty files</div>
+                    <div><code>ROYALTY_ZONE_2</code> - Zone 2 royalty files</div>
+                    <div><code>ROYALTY_ZONE_3</code> - Zone 3 royalty files</div>
+                    <div><code>ROYALTY_ZONE_4</code> - Zone 4 royalty files</div>
+                    <div><code>ROYALTY_ZONE_5</code> - Zone 5 royalty files</div>
+                  </div>
+                </div>
+                <div className="bg-orange-50 p-3 rounded border">
+                  <h4 className="font-medium text-sm mb-2">Other</h4>
+                  <div className="text-xs space-y-1">
+                    <div><code>PACKAGING_LIST</code> - Packaging and shipping details</div>
+                    <div><code>GENERIC</code> - General purpose files</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Your API key permissions determine which file types you can access. 
+                  Contact your BDI administrator to modify file type permissions.
+                </p>
               </div>
             </div>
 
