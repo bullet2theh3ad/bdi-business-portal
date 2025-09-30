@@ -20,7 +20,9 @@
     "organization": "Organization",
     "account": "Account",
     "profile": "Profile",
-    "userGuide": "Portal User Guide"
+    "userGuide": "Portal User Guide",
+    "portalApiGuide": "Portal API Guide",
+    "ediIntegrationGuide": "EDI Integration Guide"
   },
   "common": {
     "save": "Save",

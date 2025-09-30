@@ -20,7 +20,9 @@
     "organization": "组织",
     "account": "账户",
     "profile": "个人资料",
-    "userGuide": "门户用户指南"
+    "userGuide": "门户用户指南",
+    "portalApiGuide": "门户API指南",
+    "ediIntegrationGuide": "EDI集成指南"
   },
   "common": {
     "save": "保存",

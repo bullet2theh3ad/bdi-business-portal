@@ -20,7 +20,9 @@
     "organization": "Tổ chức",
     "account": "Tài khoản",
     "profile": "Hồ sơ",
-    "userGuide": "Hướng dẫn sử dụng Portal"
+    "userGuide": "Hướng dẫn sử dụng Portal",
+    "portalApiGuide": "Hướng dẫn API Portal",
+    "ediIntegrationGuide": "Hướng dẫn Tích hợp EDI"
   },
   "common": {
     "save": "Lưu",

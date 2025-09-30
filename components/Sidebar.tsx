@@ -181,6 +181,16 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     href: '/user-guide',
     icon: 'help',
   },
+  {
+    title: tn('portalApiGuide', 'Portal API Guide'), // 🌍 TRANSLATED
+    href: '/admin/api-keys/documentation',
+    icon: 'connect',
+  },
+  {
+    title: tn('ediIntegrationGuide', 'EDI Integration Guide'), // 🌍 TRANSLATED
+    href: '/edi-integration-guide',
+    icon: 'integration',
+  },
 ]; // 🌍 END: Dynamic navigation items
 
 interface SidebarProps {
