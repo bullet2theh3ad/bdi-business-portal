@@ -94,6 +94,7 @@ export default function ApiKeysPage() {
             acc[perm] = true;
             return acc;
           }, {} as any),
+          allowedFileTypes: apiKeyForm.allowedFileTypes,
           rateLimitPerHour: apiKeyForm.rateLimitPerHour,
           expiresInDays: apiKeyForm.expiresInDays,
         })

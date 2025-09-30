@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { organizationId, keyName, permissions, rateLimitPerHour, expiresInDays } = body;
+    const { organizationId, keyName, permissions, allowedFileTypes, rateLimitPerHour, expiresInDays } = body;
     
     // Validate required fields
     if (!organizationId || !keyName || !permissions) {
@@ -188,6 +188,7 @@ export async function POST(request: NextRequest) {
         keyHash: keyHash,
         keyPrefix: keyPrefix,
         permissions: permissions,
+        allowedFileTypes: allowedFileTypes || ['PRODUCTION_FILE'], // Default to PRODUCTION_FILE
         rateLimitPerHour: rateLimitPerHour || 1000,
         isActive: true,
         expiresAt: expiresAt,
