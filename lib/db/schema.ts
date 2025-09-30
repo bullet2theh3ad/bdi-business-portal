@@ -566,6 +566,7 @@ export const apiKeys = pgTable('api_keys', {
   keyHash: text('key_hash').notNull(), // Hashed version of the API key
   keyPrefix: varchar('key_prefix', { length: 10 }).notNull(), // First few chars for display
   permissions: jsonb('permissions').default({}), // API permissions
+  allowedFileTypes: varchar('allowed_file_types').array(), // File types this key can access
   rateLimitPerHour: integer('rate_limit_per_hour').default(1000),
   lastUsedAt: timestamp('last_used_at'),
   isActive: boolean('is_active').default(true),

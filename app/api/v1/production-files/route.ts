@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/drizzle';
-import { productionFiles, organizations, organizationConnections } from '@/lib/db/schema';
+import { productionFiles, organizations, organizationConnections, apiKeys } from '@/lib/db/schema';
 import { eq, and, or, inArray, gte, lte, desc, count } from 'drizzle-orm';
 import { authenticateApiRequest, hasApiPermission } from '@/lib/auth/api-auth';
 
@@ -16,7 +16,7 @@ import { authenticateApiRequest, hasApiPermission } from '@/lib/auth/api-auth';
  * - offset: Number of files to skip for pagination (default: 0)
  * - organization: Filter by organization code (optional)
  * - shipment_id: Filter by BDI shipment number (optional)
- * - file_type: Filter by file type (optional)
+ * - file_type: Filter by file type - PRODUCTION_FILE, ROYALTY_ZONE_1, ROYALTY_ZONE_2, ROYALTY_ZONE_3, ROYALTY_ZONE_4, ROYALTY_ZONE_5, MAC_ADDRESS_LIST, SERIAL_NUMBER_LIST, PRODUCTION_REPORT, TEST_RESULTS, CALIBRATION_DATA, FIRMWARE_VERSION, QUALITY_CONTROL, PACKAGING_LIST, GENERIC (optional)
  * - from_date: Filter files created after this date (ISO format)
  * - to_date: Filter files created before this date (ISO format)
  * 
@@ -83,6 +83,15 @@ export async function GET(request: NextRequest) {
     const fromDate = url.searchParams.get('from_date');
     const toDate = url.searchParams.get('to_date');
 
+    // Get API key's allowed file types from database
+    const [apiKeyData] = await db
+      .select({ allowedFileTypes: apiKeys.allowedFileTypes })
+      .from(apiKeys)
+      .where(eq(apiKeys.id, authResult.apiKey!.id))
+      .limit(1);
+
+    const allowedFileTypes = apiKeyData?.allowedFileTypes || [];
+
     console.log(`📡 API Request from ${authResult.organization?.code}: production-files (limit: ${limit}, offset: ${offset})`);
 
     // Determine which files this organization can access based on their permissions
@@ -126,6 +135,12 @@ export async function GET(request: NextRequest) {
       inArray(productionFiles.organizationId, accessibleOrganizationIds)
     ];
 
+    // Enforce file type permissions - only show file types this API key can access
+    if (allowedFileTypes.length > 0) {
+      whereConditions.push(inArray(productionFiles.fileType, allowedFileTypes));
+      console.log(`🔐 File type restrictions: ${allowedFileTypes.join(', ')}`);
+    }
+
     // Add filters
     if (organizationFilter) {
       // Filter by organization code
@@ -145,7 +160,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (fileTypeFilter) {
-      whereConditions.push(eq(productionFiles.fileType, fileTypeFilter));
+      // Validate file type
+      const validFileTypes = [
+        'PRODUCTION_FILE', 'ROYALTY_ZONE_1', 'ROYALTY_ZONE_2', 'ROYALTY_ZONE_3', 
+        'ROYALTY_ZONE_4', 'ROYALTY_ZONE_5', 'MAC_ADDRESS_LIST', 'SERIAL_NUMBER_LIST',
+        'PRODUCTION_REPORT', 'TEST_RESULTS', 'CALIBRATION_DATA', 'FIRMWARE_VERSION',
+        'QUALITY_CONTROL', 'PACKAGING_LIST', 'GENERIC'
+      ];
+      
+      if (!validFileTypes.includes(fileTypeFilter.toUpperCase())) {
+        return NextResponse.json({
+          success: false,
+          error: `Invalid file_type. Valid types: ${validFileTypes.join(', ')}`,
+          code: 'INVALID_FILE_TYPE'
+        }, { status: 400 });
+      }
+      
+      whereConditions.push(eq(productionFiles.fileType, fileTypeFilter.toUpperCase()));
     }
 
     if (fromDate) {
@@ -188,15 +219,37 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    // Transform device metadata for API response
+    // Transform device metadata for API response with user-friendly categories
     const transformedFiles = files.map(file => ({
       id: file.id,
       fileName: file.fileName,
       fileSize: file.fileSize,
       contentType: file.contentType,
       shipmentNumber: file.shipmentNumber,
-      deviceCount: file.deviceCount ? JSON.parse(file.deviceCount as string)?.deviceCount || 0 : 0,
+      deviceCount: (() => {
+        try {
+          if (!file.deviceCount) return 0;
+          if (typeof file.deviceCount === 'object') return (file.deviceCount as any).deviceCount || 0;
+          if (typeof file.deviceCount === 'string') return JSON.parse(file.deviceCount)?.deviceCount || 0;
+          return 0;
+        } catch (e) {
+          console.warn('Failed to parse deviceCount:', file.deviceCount);
+          return 0;
+        }
+      })(),
       fileType: file.fileType,
+      fileCategory: (() => {
+        // Map technical file types to user-friendly categories
+        switch (file.fileType) {
+          case 'PRODUCTION_FILE': return 'Production Files';
+          case 'ROYALTY_ZONE_4': return 'Royalty Zone 4 Files';
+          case 'production': return 'Production Files';
+          case 'quality_control': return 'Quality Control Files';
+          case 'manufacturing': return 'Manufacturing Files';
+          case 'testing': return 'Testing & Validation Files';
+          default: return file.fileType || 'Other Files';
+        }
+      })(),
       organizationCode: file.organizationCode,
       organizationName: file.organizationName,
       description: file.description,

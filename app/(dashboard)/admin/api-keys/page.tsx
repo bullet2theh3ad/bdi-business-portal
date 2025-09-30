@@ -29,10 +29,32 @@ const API_PERMISSIONS = [
 
 type ApiPermissionId = typeof API_PERMISSIONS[number]['id'];
 
+// Available file types for API access control
+const FILE_TYPES = [
+  { id: 'PRODUCTION_FILE', name: 'Production Files', description: 'General production data files' },
+  { id: 'ROYALTY_ZONE_1', name: 'Royalty Zone 1', description: 'Zone 1 royalty files' },
+  { id: 'ROYALTY_ZONE_2', name: 'Royalty Zone 2', description: 'Zone 2 royalty files' },
+  { id: 'ROYALTY_ZONE_3', name: 'Royalty Zone 3', description: 'Zone 3 royalty files' },
+  { id: 'ROYALTY_ZONE_4', name: 'Royalty Zone 4', description: 'Zone 4 royalty files' },
+  { id: 'ROYALTY_ZONE_5', name: 'Royalty Zone 5', description: 'Zone 5 royalty files' },
+  { id: 'MAC_ADDRESS_LIST', name: 'MAC Address Lists', description: 'Device MAC address files' },
+  { id: 'SERIAL_NUMBER_LIST', name: 'Serial Number Lists', description: 'Device serial number files' },
+  { id: 'PRODUCTION_REPORT', name: 'Production Reports', description: 'Manufacturing summary reports' },
+  { id: 'TEST_RESULTS', name: 'Test Results', description: 'QA test results and metrics' },
+  { id: 'CALIBRATION_DATA', name: 'Calibration Data', description: 'Device calibration settings' },
+  { id: 'FIRMWARE_VERSION', name: 'Firmware Versions', description: 'Firmware version information' },
+  { id: 'QUALITY_CONTROL', name: 'Quality Control', description: 'QC inspection results' },
+  { id: 'PACKAGING_LIST', name: 'Packaging Lists', description: 'Packaging and shipping details' },
+  { id: 'GENERIC', name: 'Generic Files', description: 'General purpose files' },
+] as const;
+
+type FileTypeId = typeof FILE_TYPES[number]['id'];
+
 interface ApiKeyForm {
   organizationId: string;
   keyName: string;
   permissions: ApiPermissionId[];
+  allowedFileTypes: FileTypeId[];
   rateLimitPerHour: number;
   expiresInDays: number | null;
 }
@@ -49,6 +71,7 @@ export default function ApiKeysPage() {
     organizationId: '',
     keyName: '',
     permissions: ['production_files_read'],
+    allowedFileTypes: ['PRODUCTION_FILE', 'ROYALTY_ZONE_4'],
     rateLimitPerHour: 1000,
     expiresInDays: 365,
   });
