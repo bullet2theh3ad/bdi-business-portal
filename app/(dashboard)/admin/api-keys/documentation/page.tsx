@@ -66,9 +66,8 @@ export default function ApiDocumentationPage() {
             
             <div className="text-xs sm:text-sm text-orange-600 bg-white p-2 sm:p-3 rounded border border-orange-200">
               <strong>Contact:</strong> 
-              <div className="mt-1 space-y-1">
-                <div><a href="mailto:api-support@boundlessdevices.com" className="underline break-all">api-support@boundlessdevices.com</a></div>
-                <div><a href="mailto:partnerships@boundlessdevices.com" className="underline break-all">partnerships@boundlessdevices.com</a></div>
+              <div className="mt-1">
+                <div><a href="mailto:operations@boundlessdevices.com" className="underline break-all">operations@boundlessdevices.com</a></div>
               </div>
             </div>
           </div>
@@ -161,7 +160,7 @@ export default function ApiDocumentationPage() {
                   <div className="bg-gray-50 p-3 rounded text-xs space-y-1">
                     <div><code>limit</code> - Number of files to return (default: 100, max: 1000)</div>
                     <div><code>offset</code> - Number of files to skip for pagination (default: 0)</div>
-                    <div><code>organization</code> - Filter by organization code (e.g., "MTN")</div>
+                    <div><code>organization</code> - Filter by organization code (e.g., "ODM_PARTNER")</div>
                     <div><code>shipment_id</code> - Filter by BDI shipment number</div>
                     <div><code>file_type</code> - Filter by file type: PRODUCTION_FILE, ROYALTY_ZONE_1-5, MAC_ADDRESS_LIST, SERIAL_NUMBER_LIST, PRODUCTION_REPORT, TEST_RESULTS, CALIBRATION_DATA, FIRMWARE_VERSION, QUALITY_CONTROL, PACKAGING_LIST, GENERIC</div>
                     <div><code>from_date</code> - Filter files created after this date (ISO format)</div>
@@ -175,22 +174,22 @@ export default function ApiDocumentationPage() {
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Get all accessible files:</p>
                       <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
-                        {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
+                        {`curl -H "Authorization: Bearer bdi_partner_abc123..." \\
      "https://www.bdibusinessportal.com/api/v1/production-files"`}
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Filter by file type:</p>
                       <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
-                        {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
+                        {`curl -H "Authorization: Bearer bdi_partner_abc123..." \\
      "https://www.bdibusinessportal.com/api/v1/production-files?file_type=ROYALTY_ZONE_4"`}
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Filter by organization and file type:</p>
                       <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
-                        {`curl -H "Authorization: Bearer bdi_gpn_abc123..." \\
-     "https://www.bdibusinessportal.com/api/v1/production-files?organization=MTN&file_type=PRODUCTION_FILE"`}
+                        {`curl -H "Authorization: Bearer bdi_partner_abc123..." \\
+     "https://www.bdibusinessportal.com/api/v1/production-files?organization=ODM_PARTNER&file_type=PRODUCTION_FILE"`}
                       </div>
                     </div>
                   </div>
@@ -204,13 +203,13 @@ export default function ApiDocumentationPage() {
   "data": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
-      "fileName": "MTN_Production_Q1_2025.xlsx",
+      "fileName": "ODM_Production_Q1_2025.xlsx",
       "fileSize": 2048000,
       "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "shipmentNumber": "BDI-2025-001234",
       "deviceCount": 5000,
       "fileType": "production",
-      "organizationCode": "MTN",
+      "organizationCode": "ODM_PARTNER",
       "organizationName": "Mountain Networks",
       "description": "Q1 2025 production run data",
       "tags": ["Q1", "2025", "routers"],
@@ -247,21 +246,21 @@ export default function ApiDocumentationPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="bg-blue-50 p-3 rounded border">
-                  <h4 className="font-medium text-sm mb-2">Production & Manufacturing</h4>
+                  <h4 className="font-medium text-sm mb-2">Production Files (Primary)</h4>
                   <div className="text-xs space-y-1">
-                    <div><code>PRODUCTION_FILE</code> - General production data files</div>
+                    <div><code>PRODUCTION_FILE</code> - General production data files <strong>(includes device data: MAC addresses, serial numbers, calibration data, firmware versions)</strong></div>
                     <div><code>PRODUCTION_REPORT</code> - Manufacturing summary reports</div>
                     <div><code>QUALITY_CONTROL</code> - QC inspection results</div>
                     <div><code>TEST_RESULTS</code> - QA test results and metrics</div>
                   </div>
                 </div>
                 <div className="bg-green-50 p-3 rounded border">
-                  <h4 className="font-medium text-sm mb-2">Device Data</h4>
+                  <h4 className="font-medium text-sm mb-2">Specialized Files</h4>
                   <div className="text-xs space-y-1">
-                    <div><code>MAC_ADDRESS_LIST</code> - Device MAC address files</div>
-                    <div><code>SERIAL_NUMBER_LIST</code> - Device serial number files</div>
-                    <div><code>CALIBRATION_DATA</code> - Device calibration settings</div>
-                    <div><code>FIRMWARE_VERSION</code> - Firmware version information</div>
+                    <div><code>MAC_ADDRESS_LIST</code> - Standalone MAC address files</div>
+                    <div><code>SERIAL_NUMBER_LIST</code> - Standalone serial number files</div>
+                    <div><code>CALIBRATION_DATA</code> - Standalone calibration files</div>
+                    <div><code>FIRMWARE_VERSION</code> - Standalone firmware files</div>
                   </div>
                 </div>
                 <div className="bg-purple-50 p-3 rounded border">
@@ -318,7 +317,7 @@ export default function ApiDocumentationPage() {
                   <h4 className="font-medium text-sm">Example Request:</h4>
                   <div className="bg-gray-100 p-3 rounded-md font-mono text-xs">
                     {`curl -X POST \\
-     -H "Authorization: Bearer bdi_mtn_abc123..." \\
+     -H "Authorization: Bearer bdi_odm_abc123..." \\
      -F "file=@production_data_Q1_2025.xlsx" \\
      -F "description=Q1 2025 production run - Routers" \\
      -F "deviceType=Router" \\
@@ -348,10 +347,10 @@ export default function ApiDocumentationPage() {
     "uploadUrl": "/api/v1/production-files/550e8400-e29b-41d4-a716-446655440000"
   },
   "meta": {
-    "organization": "MTN",
+    "organization": "ODM_PARTNER",
     "uploadedBy": "admin@mtn.com",
     "uploadedAt": "2025-01-15T10:30:00Z",
-    "apiKeyUsed": "MTN Factory Integration"
+    "apiKeyUsed": "ODM Factory Integration"
   }
 }`}
                   </div>
@@ -762,11 +761,15 @@ getProductionFiles();
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <h4 className="font-medium">Technical Support</h4>
-              <p className="text-sm text-gray-600">For API integration support, technical questions, or issues:</p>
-              <p className="text-sm"><strong>Email:</strong> <a href="mailto:api-support@boundlessdevices.com" className="text-blue-600">api-support@boundlessdevices.com</a></p>
+              <h4 className="font-medium text-orange-700">🔧 Technical Support</h4>
+              <div className="text-sm text-gray-600 space-y-1">
+                <div><strong>• Portal Issues:</strong> <a href="mailto:operations@boundlessdevices.com" className="text-blue-600">operations@boundlessdevices.com</a></div>
+                <div><strong>• API Integration:</strong> <a href="mailto:operations@boundlessdevices.com" className="text-blue-600">operations@boundlessdevices.com</a></div>
+                <div><strong>• API Key Requests:</strong> <a href="mailto:operations@boundlessdevices.com" className="text-blue-600">operations@boundlessdevices.com</a></div>
+                <div><strong>• CPFR Questions:</strong> <a href="mailto:cpfr@boundlessdevices.com" className="text-blue-600">cpfr@boundlessdevices.com</a></div>
+              </div>
             </div>
             
             <div>

@@ -140,6 +140,15 @@ export default function ApiKeysPage() {
     }));
   };
 
+  const toggleFileType = (fileTypeId: FileTypeId) => {
+    setApiKeyForm(prev => ({
+      ...prev,
+      allowedFileTypes: prev.allowedFileTypes.includes(fileTypeId)
+        ? prev.allowedFileTypes.filter(id => id !== fileTypeId)
+        : [...prev.allowedFileTypes, fileTypeId]
+    }));
+  };
+
   const handleEditApiKey = (apiKey: any) => {
     setEditingApiKey(apiKey);
   };
@@ -504,6 +513,44 @@ If you need the full key, please request a new API key generation.`;
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">{permission.name}</h4>
                             <p className="text-xs text-gray-500 mt-1">{permission.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* File Type Permissions */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">📁 File Type Access</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Select which file types this API key can access. PRODUCTION_FILE includes device data (MAC addresses, serial numbers, etc.).
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {FILE_TYPES.map((fileType) => (
+                      <div 
+                        key={fileType.id}
+                        className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                          apiKeyForm.allowedFileTypes.includes(fileType.id)
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => toggleFileType(fileType.id)}
+                      >
+                        <div className="flex items-start space-x-2">
+                          <div className={`w-4 h-4 rounded border-2 flex-shrink-0 mt-0.5 ${
+                            apiKeyForm.allowedFileTypes.includes(fileType.id)
+                              ? 'bg-blue-500 border-blue-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {apiKeyForm.allowedFileTypes.includes(fileType.id) && (
+                              <SemanticBDIIcon semantic="check" size={12} className="text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">{fileType.name}</div>
+                            <div className="text-xs text-gray-500 mt-1">{fileType.description}</div>
+                            <div className="text-xs text-gray-400 mt-1 font-mono">{fileType.id}</div>
                           </div>
                         </div>
                       </div>
