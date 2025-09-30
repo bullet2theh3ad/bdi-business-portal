@@ -365,6 +365,20 @@ If you need the full key, please request a new API key generation.`;
                         }
                       </div>
                     </div>
+
+                    {/* File Types */}
+                    {key.allowedFileTypes && key.allowedFileTypes.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">📁 File Types:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {key.allowedFileTypes.map((fileType: string) => (
+                            <Badge key={fileType} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                              {FILE_TYPES.find(ft => ft.id === fileType)?.name || fileType}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-2">

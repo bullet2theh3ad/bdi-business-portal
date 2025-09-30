@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
         keyName: apiKeys.keyName,
         keyPrefix: apiKeys.keyPrefix,
         permissions: apiKeys.permissions,
+        allowedFileTypes: apiKeys.allowedFileTypes,
         rateLimitPerHour: apiKeys.rateLimitPerHour,
         lastUsedAt: apiKeys.lastUsedAt,
         isActive: apiKeys.isActive,
