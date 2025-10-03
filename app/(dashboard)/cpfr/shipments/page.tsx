@@ -147,6 +147,16 @@ export default function ShipmentsPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Timezone-safe date formatting function to avoid UTC conversion issues
+  const formatDateSafe = (date: Date | null) => {
+    if (!date) return 'Not Set';
+    // Parse the date as local date to avoid timezone conversion
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day}/${year}`;
+  };
+
   const getEventIcon = (icon: string) => {
     const iconMap: { [key: string]: string } = {
       plus: 'plus',
@@ -1401,7 +1411,7 @@ export default function ShipmentsPage() {
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Sales</p>
                             <p className="text-xs font-medium text-gray-800 sm:hidden">S</p>
                             <p className="text-xs text-gray-600 hidden sm:block">
-                              {milestones.salesDate.toLocaleDateString()}
+                              {formatDateSafe(milestones.salesDate)}
                             </p>
                             <Badge className={
                               forecast.salesSignal === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -1437,7 +1447,7 @@ export default function ShipmentsPage() {
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Factory EXW</p>
                             <p className="text-xs font-medium text-gray-800 sm:hidden">F</p>
                             <p className="text-xs text-gray-600 hidden sm:block">
-                              {milestones.exwDate.toLocaleDateString()}
+                              {formatDateSafe(milestones.exwDate)}
                             </p>
                             <Badge className={
                               forecast.factorySignal === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -1467,7 +1477,7 @@ export default function ShipmentsPage() {
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">In Transit</p>
                             <p className="text-xs font-medium text-gray-800 sm:hidden">T</p>
                             <p className="text-xs text-gray-600 hidden sm:block">
-                              {milestones.departureDate.toLocaleDateString()}
+                              {formatDateSafe(milestones.departureDate)}
                             </p>
                             <Badge className={
                               forecast.transitSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
@@ -1505,7 +1515,7 @@ export default function ShipmentsPage() {
                             <p className="text-xs font-medium text-gray-800 hidden sm:block">Warehouse</p>
                             <p className="text-xs font-medium text-gray-800 sm:hidden">W</p>
                             <p className="text-xs text-gray-600 hidden sm:block">
-                              {milestones.deliveryDate ? milestones.deliveryDate.toLocaleDateString() : milestones.arrivalDate.toLocaleDateString()}
+                              {milestones.deliveryDate ? formatDateSafe(milestones.deliveryDate) : formatDateSafe(milestones.arrivalDate)}
                             </p>
                             <Badge className={
                               forecast.warehouseSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
