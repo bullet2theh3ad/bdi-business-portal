@@ -157,6 +157,21 @@ export default function ShipmentsPage() {
     return `${month}/${day}/${year}`;
   };
 
+  // Timezone-safe date parsing function to avoid UTC conversion issues
+  const parseDateSafe = (dateString: string | null | undefined) => {
+    if (!dateString) return null;
+    // Parse date string as local date to avoid timezone conversion
+    // For dates like "2025-10-10", create date in local timezone
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2]);
+      return new Date(year, month, day);
+    }
+    return new Date(dateString);
+  };
+
   const getEventIcon = (icon: string) => {
     const iconMap: { [key: string]: string } = {
       plus: 'plus',
@@ -1022,10 +1037,10 @@ export default function ShipmentsPage() {
     });
     
     // Use database dates if available, otherwise fallback to calculations
-    const exwDate = forecast.customExwDate ? new Date(forecast.customExwDate) : null;
-    const transitStartDate = forecast.estimatedTransitStart ? new Date(forecast.estimatedTransitStart) : exwDate;
-    const warehouseArrivalDate = forecast.estimatedWarehouseArrival ? new Date(forecast.estimatedWarehouseArrival) : null;
-    const finalDeliveryDate = forecast.confirmedDeliveryDate ? new Date(forecast.confirmedDeliveryDate) : null;
+    const exwDate = parseDateSafe(forecast.customExwDate);
+    const transitStartDate = parseDateSafe(forecast.estimatedTransitStart) || exwDate;
+    const warehouseArrivalDate = parseDateSafe(forecast.estimatedWarehouseArrival);
+    const finalDeliveryDate = parseDateSafe(forecast.confirmedDeliveryDate);
     
     // Fallback calculations if database dates are missing
     if (!exwDate || !transitStartDate || !warehouseArrivalDate || !finalDeliveryDate) {
