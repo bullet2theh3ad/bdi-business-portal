@@ -200,6 +200,8 @@ export default function ShipmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
+  const [skuFilter, setSkuFilter] = useState('all');
+  const [orgFilter, setOrgFilter] = useState('all');
   
   // Status change modal state
   const [statusChangeModal, setStatusChangeModal] = useState<{
@@ -1152,7 +1154,12 @@ export default function ShipmentsPage() {
     const matchesMethod = methodFilter === 'all' || 
       forecast.shippingPreference.includes(methodFilter);
     
-    return matchesSearch && matchesStatus && matchesMethod;
+    const matchesSku = skuFilter === 'all' || forecast.sku?.sku === skuFilter;
+    
+    const matchesOrg = orgFilter === 'all' || 
+      user?.organization?.code === orgFilter;
+    
+    return matchesSearch && matchesStatus && matchesMethod && matchesSku && matchesOrg;
   });
 
   return (
@@ -1271,7 +1278,7 @@ export default function ShipmentsPage() {
             className="max-w-md"
           />
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center space-x-2">
             <Label htmlFor="status-filter">{tc('status', 'Status')}:</Label>
             <select
@@ -1299,6 +1306,38 @@ export default function ShipmentsPage() {
               <option value="SEA">🚢 {tc('seaFreight', 'Sea Freight')}</option>
               <option value="AIR">✈️ {tc('airFreight', 'Air Freight')}</option>
               <option value="TRUCK">🚛 {tc('ground', 'Ground')}</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="sku-filter">SKU:</Label>
+            <select
+              id="sku-filter"
+              value={skuFilter}
+              onChange={(e) => setSkuFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All SKUs</option>
+              {skus?.map((sku) => (
+                <option key={sku.id} value={sku.sku}>
+                  {sku.sku} - {sku.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="org-filter">Org:</Label>
+            <select
+              id="org-filter"
+              value={orgFilter}
+              onChange={(e) => setOrgFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Organizations</option>
+              {organizations?.map((org: any) => (
+                <option key={org.id} value={org.code}>
+                  {org.code} - {org.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
