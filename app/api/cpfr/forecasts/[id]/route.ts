@@ -68,6 +68,7 @@ export async function GET(
         sku,
         name,
         description,
+        mfg,
         hts_code,
         box_length_cm,
         box_width_cm,

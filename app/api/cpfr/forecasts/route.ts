@@ -154,6 +154,7 @@ export async function GET(request: NextRequest) {
           id: productSkus.id,
           sku: productSkus.sku,
           name: productSkus.name,
+          mfg: productSkus.mfg, // ✅ Added manufacturer field for filtering
           htsCode: productSkus.htsCode,
           boxLengthCm: productSkus.boxLengthCm,
           boxWidthCm: productSkus.boxWidthCm,
