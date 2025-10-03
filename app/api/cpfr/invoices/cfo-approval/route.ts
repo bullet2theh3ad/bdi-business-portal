@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
       
       // Also send the approved invoice PDF to the recipient
       try {
-        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cpfr/invoices/send-email`, {
+        const emailResponse = await fetch(`https://bdibusinessportal.com/api/cpfr/invoices/send-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

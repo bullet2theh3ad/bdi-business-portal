@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     clientSegmentCache: true
   },
   images: {
-    domains: ['localhost'],
+    domains: ['bdibusinessportal.com'],
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

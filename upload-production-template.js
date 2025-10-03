@@ -28,7 +28,7 @@ async function uploadTemplate() {
     formData.append('templateType', 'production-file');
     
     // Upload via API
-    const response = await fetch('http://localhost:3000/api/inventory/production-files/templates', {
+    const response = await fetch('https://bdibusinessportal.com/api/inventory/production-files/templates', {
       method: 'POST',
       body: formData,
     });
