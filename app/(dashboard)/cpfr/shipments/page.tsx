@@ -2374,7 +2374,7 @@ export default function ShipmentsPage() {
 
       {/* Status Change Modal */}
       <Dialog open={statusChangeModal.isOpen} onOpenChange={(open) => setStatusChangeModal(prev => ({ ...prev, isOpen: open }))}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <SemanticBDIIcon 
@@ -2398,7 +2398,7 @@ export default function ShipmentsPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 overflow-y-auto px-1">
             <div>
               <Label htmlFor="newStatus">New Status</Label>
               <select
@@ -2603,7 +2603,7 @@ export default function ShipmentsPage() {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 mt-6">
+          <div className="flex justify-end space-x-2 mt-6 pt-4 border-t bg-white sticky bottom-0">
             <Button
               variant="outline"
               onClick={() => setStatusChangeModal(prev => ({ ...prev, isOpen: false }))}
