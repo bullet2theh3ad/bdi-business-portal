@@ -13,6 +13,7 @@ import { User, ProductSku } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { HolidayCalendarToggle, useHolidayCalendar } from '@/components/ui/holiday-calendar-toggle';
+import { ShipmentCautionIndicator } from '@/components/ui/shipment-caution-indicator';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -99,11 +100,22 @@ export default function SalesForecastsPage() {
   // Auto-classify dates when holiday calendar is enabled or month changes
   useEffect(() => {
     if (holidayCalendar.isEnabled && viewMode === 'calendar') {
+      // Classify a wider range to cover the full calendar view (42 days)
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      // Extend range to cover full calendar grid (previous/next month days)
+      const calendarStart = new Date(startOfMonth);
+      calendarStart.setDate(calendarStart.getDate() - startOfMonth.getDay());
+      
+      const calendarEnd = new Date(endOfMonth);
+      calendarEnd.setDate(calendarEnd.getDate() + (6 - endOfMonth.getDay()));
+      
+      console.log(`🎊 Classifying calendar range: ${calendarStart.toISOString().split('T')[0]} to ${calendarEnd.toISOString().split('T')[0]}`);
+      
       holidayCalendar.classifyDateRange(
-        startOfMonth.toISOString().split('T')[0],
-        endOfMonth.toISOString().split('T')[0]
+        calendarStart.toISOString().split('T')[0],
+        calendarEnd.toISOString().split('T')[0]
       );
     }
   }, [holidayCalendar.isEnabled, currentDate, viewMode]);
@@ -1265,7 +1277,20 @@ export default function SalesForecastsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-4 text-sm">
                           <div>
                             <span className="text-gray-500">Delivery Week:</span>
-                            <p className="font-medium">{forecast.deliveryWeek}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{forecast.deliveryWeek}</p>
+                              {holidayCalendar.isEnabled && (() => {
+                                // Convert delivery week to approximate date for holiday check
+                                const [year, week] = forecast.deliveryWeek.split('-W');
+                                const weekNum = parseInt(week);
+                                const jan1 = new Date(parseInt(year), 0, 1);
+                                const daysToAdd = (weekNum - 1) * 7;
+                                const deliveryDate = new Date(jan1.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+                                const dateStr = deliveryDate.toISOString().split('T')[0];
+                                
+                                return <ShipmentCautionIndicator date={dateStr} showIcon={true} showBadge={false} />;
+                              })()}
+                            </div>
                           </div>
                           <div>
                             <span className="text-gray-500">Quantity:</span>

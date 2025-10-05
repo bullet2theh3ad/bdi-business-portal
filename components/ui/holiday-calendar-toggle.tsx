@@ -133,9 +133,13 @@ export function useHolidayCalendar() {
   const [holidayClassifications, setHolidayClassifications] = useState<Map<string, any>>(new Map());
 
   const classifyDateRange = async (startDate: string, endDate: string) => {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      setHolidayClassifications(new Map());
+      return;
+    }
 
     try {
+      console.log(`🎊 Classifying date range: ${startDate} to ${endDate}`);
       const response = await fetch(`/api/holidays/chinese/periods?start=${startDate}&end=${endDate}`);
       if (response.ok) {
         const data = await response.json();
@@ -143,8 +147,10 @@ export function useHolidayCalendar() {
           const newClassifications = new Map();
           data.classifications.forEach((classification: any) => {
             newClassifications.set(classification.date, classification);
+            console.log(`📅 ${classification.date}: ${classification.type} (${classification.holidayName || 'N/A'})`);
           });
           setHolidayClassifications(newClassifications);
+          console.log(`✅ Classified ${data.classifications.length} dates`);
         }
       }
     } catch (error) {
@@ -157,13 +163,15 @@ export function useHolidayCalendar() {
   };
 
   const getDateStyle = (date: string) => {
+    if (!isEnabled) return '';
+    
     const classification = getDateClassification(date);
     
     switch (classification.type) {
       case 'holiday':
-        return 'bg-red-600 text-white border-red-700 font-bold';
+        return 'bg-red-600 text-white border-red-700 font-bold shadow-lg hover:bg-red-700';
       case 'soft-holiday':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200';
       default:
         return '';
     }

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chinese Holidays Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .holiday { background: #DC2626; color: white; padding: 4px 8px; margin: 2px; border-radius: 4px; }
+        .soft-holiday { background: #FCA5A5; color: #7F1D1D; padding: 4px 8px; margin: 2px; border-radius: 4px; }
+        .neutral { background: #F3F4F6; padding: 4px 8px; margin: 2px; border-radius: 4px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🎊 Chinese Holidays System Test</h1>
+    
+    <div class="test-section">
+        <h2>📊 Holiday Statistics</h2>
+        <div id="stats">Loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🗓️ October 2025 - National Day Golden Week</h2>
+        <div id="october2025">Loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🗓️ February 2026 - Spring Festival</h2>
+        <div id="february2026">Loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🗓️ October 2026 - National Day Golden Week</h2>
+        <div id="october2026">Loading...</div>
+    </div>
+
+    <script>
+        async function loadHolidayStats() {
+            try {
+                const response = await fetch('/api/holidays/chinese?stats=true');
+                const data = await response.json();
+                document.getElementById('stats').innerHTML = `
+                    <strong>Total Holidays:</strong> ${data.stats.totalHolidays}<br>
+                    <strong>Years Covered:</strong> ${data.stats.yearsCovered.join(', ')}<br>
+                    <strong>Last Fetch:</strong> ${data.stats.lastFetch}
+                `;
+            } catch (error) {
+                document.getElementById('stats').innerHTML = 'Error loading stats';
+            }
+        }
+
+        async function loadDateRange(startDate, endDate, elementId) {
+            try {
+                const response = await fetch(`/api/holidays/chinese/periods?start=${startDate}&end=${endDate}`);
+                const data = await response.json();
+                
+                let html = '';
+                data.classifications.forEach(classification => {
+                    const cssClass = classification.type === 'holiday' ? 'holiday' : 
+                                   classification.type === 'soft-holiday' ? 'soft-holiday' : 'neutral';
+                    const icon = classification.type === 'holiday' ? '🚫' : 
+                               classification.type === 'soft-holiday' ? '⚠️' : '✅';
+                    
+                    html += `<span class="${cssClass}">${icon} ${classification.date} - ${classification.type}${classification.holidayName ? ` (${classification.holidayName})` : ''}</span>`;
+                });
+                
+                document.getElementById(elementId).innerHTML = html;
+            } catch (error) {
+                document.getElementById(elementId).innerHTML = 'Error loading data';
+            }
+        }
+
+        // Load all test data
+        loadHolidayStats();
+        loadDateRange('2025-09-28', '2025-10-11', 'october2025');
+        loadDateRange('2026-01-26', '2026-02-11', 'february2026');
+        loadDateRange('2026-09-28', '2026-10-11', 'october2026');
+    </script>
+</body>
+</html>
