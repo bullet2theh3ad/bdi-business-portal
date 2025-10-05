@@ -854,7 +854,10 @@ export default function SalesForecastsPage() {
               if (year === 2025) {
                 return [
                   { name: "Spring Festival", dates: "Jan 28-Feb 4", period: 8 },
+                  { name: "Qingming Festival", dates: "Apr 4-6", period: 3 },
                   { name: "Labour Day", dates: "May 1-5", period: 5 },
+                  { name: "Dragon Boat Festival", dates: "May 31-Jun 2", period: 3 },
+                  { name: "Mid-Autumn Festival", dates: "Oct 6", period: 1 },
                   { name: "National Day", dates: "Oct 1-8", period: 8 }
                 ];
               } else if (year === 2026) {
@@ -865,6 +868,24 @@ export default function SalesForecastsPage() {
                   { name: "Dragon Boat Festival", dates: "Jun 19", period: 1 },
                   { name: "Mid-Autumn Festival", dates: "Sep 25", period: 1 },
                   { name: "National Day", dates: "Oct 1-7", period: 7 }
+                ];
+              } else if (year === 2027) {
+                return [
+                  { name: "Spring Festival", dates: "Feb 5-11", period: 7 },
+                  { name: "Qingming Festival", dates: "Apr 5", period: 1 },
+                  { name: "Labour Day", dates: "May 1-2", period: 2 },
+                  { name: "Dragon Boat Festival", dates: "Jun 7-9", period: 3 },
+                  { name: "Mid-Autumn Festival", dates: "Sep 15-17", period: 3 },
+                  { name: "National Day", dates: "Oct 1-7", period: 7 }
+                ];
+              } else if (year === 2028) {
+                return [
+                  { name: "Spring Festival", dates: "Jan 26", period: 1 },
+                  { name: "Qingming Festival", dates: "Apr 4", period: 1 },
+                  { name: "Labour Day", dates: "May 1", period: 1 },
+                  { name: "Dragon Boat Festival", dates: "Jun 25", period: 1 },
+                  { name: "Mid-Autumn Festival", dates: "Sep 13", period: 1 },
+                  { name: "National Day", dates: "Oct 1", period: 1 }
                 ];
               } else {
                 return [

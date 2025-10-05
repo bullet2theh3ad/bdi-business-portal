@@ -97,8 +97,8 @@ export const CHINESE_HOLIDAY_PERIODS = {
     {
       name: "Spring Festival (Chinese New Year)",
       nameChinese: "春节",
-      startDate: "2025-01-28", // Chinese New Year's Eve
-      endDate: "2025-02-04",   // 8-day holiday period
+      startDate: "2025-01-28",
+      endDate: "2025-02-04",
       duration: 8
     },
     {
@@ -126,8 +126,8 @@ export const CHINESE_HOLIDAY_PERIODS = {
       name: "Mid-Autumn Festival",
       nameChinese: "中秋节",
       startDate: "2025-10-06",
-      endDate: "2025-10-08",
-      duration: 3
+      endDate: "2025-10-06", // Single day
+      duration: 1
     },
     {
       name: "National Day Golden Week",
@@ -186,6 +186,108 @@ export const CHINESE_HOLIDAY_PERIODS = {
       startDate: "2026-10-01",
       endDate: "2026-10-07", // CORRECTED: 7-day period
       duration: 7
+    }
+  ],
+  2027: [
+    {
+      name: "New Year's Day",
+      nameChinese: "元旦",
+      startDate: "2027-01-01",
+      endDate: "2027-01-01",
+      duration: 1
+    },
+    {
+      name: "Spring Festival (Chinese New Year)",
+      nameChinese: "春节",
+      startDate: "2027-02-05",
+      endDate: "2027-02-11",
+      duration: 7
+    },
+    {
+      name: "Qingming Festival (Tomb-Sweeping Day)",
+      nameChinese: "清明节",
+      startDate: "2027-04-05",
+      endDate: "2027-04-05",
+      duration: 1
+    },
+    {
+      name: "Labour Day",
+      nameChinese: "劳动节",
+      startDate: "2027-05-01",
+      endDate: "2027-05-02",
+      duration: 2
+    },
+    {
+      name: "Dragon Boat Festival",
+      nameChinese: "端午节",
+      startDate: "2027-06-07",
+      endDate: "2027-06-09",
+      duration: 3
+    },
+    {
+      name: "Mid-Autumn Festival",
+      nameChinese: "中秋节",
+      startDate: "2027-09-15",
+      endDate: "2027-09-17",
+      duration: 3
+    },
+    {
+      name: "National Day Golden Week",
+      nameChinese: "国庆节",
+      startDate: "2027-10-01",
+      endDate: "2027-10-07",
+      duration: 7
+    }
+  ],
+  2028: [
+    {
+      name: "New Year's Day",
+      nameChinese: "元旦",
+      startDate: "2028-01-01",
+      endDate: "2028-01-01",
+      duration: 1
+    },
+    {
+      name: "Spring Festival (Chinese New Year)",
+      nameChinese: "春节",
+      startDate: "2028-01-26",
+      endDate: "2028-01-26", // Note: 2028 data may be incomplete
+      duration: 1
+    },
+    {
+      name: "Qingming Festival (Tomb-Sweeping Day)",
+      nameChinese: "清明节",
+      startDate: "2028-04-04",
+      endDate: "2028-04-04",
+      duration: 1
+    },
+    {
+      name: "Labour Day",
+      nameChinese: "劳动节",
+      startDate: "2028-05-01",
+      endDate: "2028-05-01",
+      duration: 1
+    },
+    {
+      name: "Dragon Boat Festival",
+      nameChinese: "端午节",
+      startDate: "2028-06-25",
+      endDate: "2028-06-25",
+      duration: 1
+    },
+    {
+      name: "Mid-Autumn Festival",
+      nameChinese: "中秋节",
+      startDate: "2028-09-13",
+      endDate: "2028-09-13",
+      duration: 1
+    },
+    {
+      name: "National Day Golden Week",
+      nameChinese: "国庆节",
+      startDate: "2028-10-01",
+      endDate: "2028-10-01", // Note: 2028 data may be incomplete
+      duration: 1
     }
   ]
 };
