@@ -126,39 +126,39 @@ export function useHolidayCalendar() {
   const [isEnabled, setIsEnabled] = useState(true); // Default to ON
   const [holidayClassifications, setHolidayClassifications] = useState<Map<string, any>>(new Map());
 
-  const classifyDateRange = (startDate: string, endDate: string) => {
+  const classifyDateRange = async (startDate: string, endDate: string) => {
     if (!isEnabled) {
       setHolidayClassifications(new Map());
       return;
     }
 
-    console.log(`🎊 Classifying date range: ${startDate} to ${endDate}`);
-    
-    const newClassifications = new Map();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Classify each date in the range using production service
-    const currentDate = new Date(start);
-    while (currentDate <= end) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      const classification = classifyDateProduction(dateStr);
+    try {
+      console.log(`🎊 Classifying date range via API: ${startDate} to ${endDate}`);
       
-      newClassifications.set(dateStr, {
-        date: dateStr,
-        type: classification.type,
-        holidayName: classification.holidayName
-      });
+      // Use the working API endpoint for date range classification
+      const response = await fetch(`/api/holidays/chinese/periods?start=${startDate}&end=${endDate}`);
       
-      if (classification.type !== 'neutral') {
-        console.log(`📅 ${dateStr}: ${classification.type} (${classification.holidayName || 'N/A'})`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.classifications) {
+          const newClassifications = new Map();
+          data.classifications.forEach((classification: any) => {
+            newClassifications.set(classification.date, classification);
+            if (classification.type !== 'neutral') {
+              console.log(`📅 ${classification.date}: ${classification.type} (${classification.holidayName || 'N/A'})`);
+            }
+          });
+          setHolidayClassifications(newClassifications);
+          console.log(`✅ API classified ${data.classifications.length} dates`);
+        } else {
+          console.log('❌ API response missing classifications');
+        }
+      } else {
+        console.error('❌ API response not ok:', response.status);
       }
-      
-      currentDate.setDate(currentDate.getDate() + 1);
+    } catch (error) {
+      console.error('❌ Error classifying date range via API:', error);
     }
-    
-    setHolidayClassifications(newClassifications);
-    console.log(`✅ Classified ${newClassifications.size} dates`);
   };
 
   const getDateClassification = (date: string) => {
