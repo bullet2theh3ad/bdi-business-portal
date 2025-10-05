@@ -844,6 +844,14 @@ export default function SalesForecastsPage() {
             }}
             className="hidden sm:flex"
           />
+          
+          {/* Holiday List Display */}
+          {holidayCalendar.isEnabled && (
+            <div className="text-xs text-gray-600 bg-red-50 px-3 py-2 rounded border border-red-200">
+              <strong>🎊 2025 Chinese Holidays:</strong> 
+              <br />Jan 28-Feb 4 (Spring Festival), May 1-5 (Labour Day), Oct 1-8 (National Day)
+            </div>
+          )}
 
           {/* Calendar Zoom Controls */}
           {viewMode === 'calendar' && (

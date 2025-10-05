@@ -104,16 +104,6 @@ export function HolidayCalendarToggle({ onToggle, className = '' }: HolidayCalen
         {isEnabled && <span className="text-xs">ON</span>}
       </Button>
 
-      {holidayStats && (
-        <div className="flex items-center gap-1 text-xs text-gray-600">
-          <Badge variant="outline" className="text-xs">
-            {holidayStats.totalHolidays} holidays
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            {holidayStats.yearsCovered.join(', ')}
-          </Badge>
-        </div>
-      )}
 
       {(!holidayStats || holidayStats.totalHolidays === 0) && (
         <Button
