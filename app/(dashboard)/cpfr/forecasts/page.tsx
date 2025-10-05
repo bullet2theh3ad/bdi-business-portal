@@ -1926,7 +1926,7 @@ export default function SalesForecastsPage() {
                             // Debug logging for October dates
                             if (currentDate.getMonth() === 9 && currentDate.getFullYear() === 2025 && dayNum <= 10) {
                               const classification = holidayCalendar.getDateClassification(dateStr);
-                              console.log(`🎊 Oct ${dayNum}, 2025: dateStr="${dateStr}", classification=${JSON.stringify(classification)}, holidayStyle="${holidayStyle}", enabled=${holidayCalendar.isEnabled}, isCurrentMonth=${isCurrentMonth}`);
+                              console.log(`🎊 Oct ${dayNum}, 2025: dateStr="${dateStr}", type="${classification.type}", holiday="${classification.holidayName}", enabled=${holidayCalendar.isEnabled}, isCurrentMonth=${isCurrentMonth}`);
                             }
                             
             // Check if this week is too early based on lead time + shipping
@@ -2061,18 +2061,22 @@ export default function SalesForecastsPage() {
                                   }` : ''
                                 }
                               >
-                                {isCurrentMonth ? dayNum : ''}
+                                {isCurrentMonth ? (
+                                  <span className={`
+                                    ${holidayCalendar.isEnabled && (() => {
+                                      const classification = holidayCalendar.getDateClassification(dateStr);
+                                      if (classification.type === 'holiday') {
+                                        return 'bg-red-600 text-white px-1 py-0.5 rounded font-bold';
+                                      } else if (classification.type === 'soft-holiday') {
+                                        return 'bg-red-200 text-red-800 px-1 py-0.5 rounded';
+                                      }
+                                      return '';
+                                    })()}
+                                  `}>
+                                    {dayNum}
+                                  </span>
+                                ) : ''}
                                 {isCurrentMonth && isToday && <div className="w-1 h-1 bg-white rounded-full mx-auto mt-0.5"></div>}
-                                {/* Holiday indicator overlay */}
-                                {isCurrentMonth && holidayCalendar.isEnabled && (() => {
-                                  const classification = holidayCalendar.getDateClassification(dateStr);
-                                  if (classification.type === 'holiday') {
-                                    return <div className="absolute top-0 right-0 w-2 h-2 bg-red-600 rounded-full border border-white"></div>;
-                                  } else if (classification.type === 'soft-holiday') {
-                                    return <div className="absolute top-0 right-0 w-2 h-2 bg-orange-400 rounded-full border border-white"></div>;
-                                  }
-                                  return null;
-                                })()}
                               </button>
                             );
                             
