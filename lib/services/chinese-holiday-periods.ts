@@ -32,6 +32,7 @@ export interface DateClassification {
 /**
  * Chinese Holiday Periods with accurate durations for 2024-2025
  * Based on official Chinese government holiday schedules
+ * For years beyond 2025, we generate approximate dates based on patterns
  */
 export const CHINESE_HOLIDAY_PERIODS = {
   2024: [
@@ -138,6 +139,67 @@ export const CHINESE_HOLIDAY_PERIODS = {
   ]
 };
 
+/**
+ * Generate approximate Chinese holiday dates for future years
+ * Based on typical patterns (some holidays like Chinese New Year vary by lunar calendar)
+ */
+function generateHolidaysForYear(year: number): any[] {
+  return [
+    {
+      name: "New Year's Day",
+      nameChinese: "元旦",
+      startDate: `${year}-01-01`,
+      endDate: `${year}-01-01`,
+      duration: 1
+    },
+    {
+      name: "Spring Festival (Chinese New Year)",
+      nameChinese: "春节",
+      // Approximate - varies by lunar calendar, typically late Jan to mid Feb
+      startDate: `${year}-02-01`, // Approximate
+      endDate: `${year}-02-08`,   // 8-day period
+      duration: 8
+    },
+    {
+      name: "Qingming Festival (Tomb-Sweeping Day)",
+      nameChinese: "清明节",
+      startDate: `${year}-04-04`,
+      endDate: `${year}-04-06`,
+      duration: 3
+    },
+    {
+      name: "Labour Day",
+      nameChinese: "劳动节",
+      startDate: `${year}-05-01`,
+      endDate: `${year}-05-05`,
+      duration: 5
+    },
+    {
+      name: "Dragon Boat Festival",
+      nameChinese: "端午节",
+      // Approximate - varies by lunar calendar
+      startDate: `${year}-06-01`, // Approximate
+      endDate: `${year}-06-03`,
+      duration: 3
+    },
+    {
+      name: "Mid-Autumn Festival",
+      nameChinese: "中秋节",
+      // Approximate - varies by lunar calendar
+      startDate: `${year}-09-15`, // Approximate
+      endDate: `${year}-09-17`,
+      duration: 3
+    },
+    {
+      name: "National Day Golden Week",
+      nameChinese: "国庆节",
+      startDate: `${year}-10-01`,
+      endDate: `${year}-10-07`,
+      duration: 7
+    }
+  ];
+}
+
 export class ChineseHolidayPeriodsService {
   
   /**
@@ -145,9 +207,12 @@ export class ChineseHolidayPeriodsService {
    */
   async storeHolidayPeriods(year: number): Promise<HolidayPeriod[]> {
     try {
-      const yearPeriods = CHINESE_HOLIDAY_PERIODS[year as keyof typeof CHINESE_HOLIDAY_PERIODS];
+      // Use predefined data for 2024-2025, generate for other years
+      let yearPeriods = CHINESE_HOLIDAY_PERIODS[year as keyof typeof CHINESE_HOLIDAY_PERIODS];
+      
       if (!yearPeriods) {
-        throw new Error(`No holiday period data available for year ${year}`);
+        console.log(`📅 Generating approximate holiday data for year ${year}`);
+        yearPeriods = generateHolidaysForYear(year);
       }
 
       const holidayRecords = yearPeriods.map(period => ({

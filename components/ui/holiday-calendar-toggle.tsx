@@ -49,21 +49,26 @@ export function HolidayCalendarToggle({ onToggle, className = '' }: HolidayCalen
     setIsLoading(true);
     try {
       const currentYear = new Date().getFullYear();
-      const nextYear = currentYear + 1;
+      const years = [
+        currentYear - 1,  // Previous year for historical data
+        currentYear,      // Current year
+        currentYear + 1,  // Next year
+        currentYear + 2,  // Year after next
+        currentYear + 3   // 3 years ahead for long-term planning
+      ];
 
-      // Ensure we have data for current and next year
-      await Promise.all([
-        fetch('/api/holidays/chinese/periods', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ year: currentYear })
-        }),
-        fetch('/api/holidays/chinese/periods', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ year: nextYear })
-        })
-      ]);
+      console.log(`🎊 Ensuring holiday data for years: ${years.join(', ')}`);
+
+      // Ensure we have data for 5 years (past, current, and 3 future)
+      await Promise.all(
+        years.map(year =>
+          fetch('/api/holidays/chinese/periods', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ year })
+          })
+        )
+      );
 
       // Reload stats
       const response = await fetch('/api/holidays/chinese?stats=true');

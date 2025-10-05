@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +95,18 @@ export default function SalesForecastsPage() {
   
   // Holiday calendar functionality
   const holidayCalendar = useHolidayCalendar();
+  
+  // Auto-classify dates when holiday calendar is enabled or month changes
+  useEffect(() => {
+    if (holidayCalendar.isEnabled && viewMode === 'calendar') {
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      holidayCalendar.classifyDateRange(
+        startOfMonth.toISOString().split('T')[0],
+        endOfMonth.toISOString().split('T')[0]
+      );
+    }
+  }, [holidayCalendar.isEnabled, currentDate, viewMode]);
   const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'confirmed'>('draft');
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<string>('');
   
@@ -1866,6 +1878,10 @@ export default function SalesForecastsPage() {
                             const isSelected = selectedDeliveryWeek === isoWeek;
                             const isToday = currentDate.toDateString() === new Date().toDateString();
                             
+                            // Get holiday classification for this date
+                            const dateStr = currentDate.toISOString().split('T')[0];
+                            const holidayStyle = holidayCalendar.getDateStyle(dateStr);
+                            
             // Check if this week is too early based on lead time + shipping
             let isTooEarly = false;
             let weekHasTooEarlyDays = false;
@@ -1972,13 +1988,15 @@ export default function SalesForecastsPage() {
                                   ${isCurrentMonth 
                                     ? isSelected
                                       ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg'
-                                      : weekHasTooEarlyDays
-                                        ? 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer'
-                                        : isTooEarly
-                                          ? 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100'
-                                          : isToday
-                                            ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md'
-                                            : 'text-blue-800 hover:bg-blue-100 hover:text-blue-900'
+                                      : holidayStyle && holidayCalendar.isEnabled
+                                        ? holidayStyle
+                                        : weekHasTooEarlyDays
+                                          ? 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer'
+                                          : isTooEarly
+                                            ? 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100'
+                                            : isToday
+                                              ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md'
+                                              : 'text-blue-800 hover:bg-blue-100 hover:text-blue-900'
                                     : 'text-gray-300 cursor-not-allowed'
                                   }
                                   ${isCurrentMonth && !isTooEarly ? 'hover:shadow-md' : ''}
@@ -1988,6 +2006,10 @@ export default function SalesForecastsPage() {
                                   `Week ${isoWeek}${
                                     weekHasTooEarlyDays ? ' - Will advance to next valid week' : 
                                     isTooEarly ? ' - Too Early' : ''
+                                  }${
+                                    holidayCalendar.isEnabled && holidayStyle ? 
+                                      ` - ${holidayCalendar.getDateClassification(dateStr).holidayName || 'Chinese Holiday Period'}` : 
+                                      ''
                                   }` : ''
                                 }
                               >
