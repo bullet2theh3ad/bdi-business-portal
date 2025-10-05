@@ -136,18 +136,22 @@ export default function SalesForecastsPage() {
   useEffect(() => {
     const classifyCurrentView = async () => {
       if (holidayCalendar.isEnabled) {
-        // Classify a wider range to cover the full calendar view (42 days)
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        // For 6-month view, we need to classify a much wider range that spans multiple years
+        const currentYear = currentDate.getFullYear();
         
-        // Extend range to cover full calendar grid (previous/next month days)
-        const calendarStart = new Date(startOfMonth);
-        calendarStart.setDate(calendarStart.getDate() - startOfMonth.getDay());
+        // Get the full 6-month range being displayed
+        const startMonth = new Date(currentYear, currentDate.getMonth(), 1);
+        const endMonth = new Date(currentYear, currentDate.getMonth() + 5, 0); // 6 months ahead
         
-        const calendarEnd = new Date(endOfMonth);
-        calendarEnd.setDate(calendarEnd.getDate() + (6 - endOfMonth.getDay()));
+        // Extend to cover full calendar grid
+        const calendarStart = new Date(startMonth);
+        calendarStart.setDate(calendarStart.getDate() - startMonth.getDay());
         
-        console.log(`🎊 Auto-classifying calendar range: ${calendarStart.toISOString().split('T')[0]} to ${calendarEnd.toISOString().split('T')[0]}`);
+        const calendarEnd = new Date(endMonth);
+        calendarEnd.setDate(calendarEnd.getDate() + (6 - endMonth.getDay()));
+        
+        console.log(`🎊 Auto-classifying 6-month calendar range: ${calendarStart.toISOString().split('T')[0]} to ${calendarEnd.toISOString().split('T')[0]}`);
+        console.log(`📅 This spans years: ${calendarStart.getFullYear()} to ${calendarEnd.getFullYear()}`);
         
         await holidayCalendar.classifyDateRange(
           calendarStart.toISOString().split('T')[0],
@@ -852,24 +856,50 @@ export default function SalesForecastsPage() {
             className="w-full sm:w-auto"
           />
           
-          {/* Dynamic Holiday List Display */}
+          {/* Dynamic Holiday List Display - Show both years when calendar spans years */}
           {holidayCalendar.isEnabled && (() => {
             const currentYear = currentDate.getFullYear();
-            const holidays = getHolidaySummaryForYear(currentYear);
+            const nextYear = currentYear + 1;
+            
+            // Check if 6-month view spans into next year
+            const endMonth = new Date(currentYear, currentDate.getMonth() + 5, 0);
+            const spansYears = endMonth.getFullYear() > currentYear;
+            
+            const currentYearHolidays = getHolidaySummaryForYear(currentYear);
+            const nextYearHolidays = spansYears ? getHolidaySummaryForYear(nextYear) : [];
             
             return (
               <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
                 <div className="font-semibold text-red-800 text-xs sm:text-sm mb-2">
-                  🎊 {currentYear} Chinese Holidays
+                  🎊 {currentYear}{spansYears ? ` & ${nextYear}` : ''} Chinese Holidays
                 </div>
-                <div className="space-y-1 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
-                  {holidays.map((holiday, index) => (
-                    <div key={index} className="text-xs">
-                      <span className="font-medium text-red-700">{holiday.name}:</span>{' '}
-                      <span className="text-red-600">{holiday.dates}</span>{' '}
-                      <span className="text-gray-500">({holiday.period}d)</span>
+                <div className="space-y-2">
+                  {/* Current Year Holidays */}
+                  <div className="space-y-1 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
+                    {currentYearHolidays.map((holiday, index) => (
+                      <div key={`${currentYear}-${index}`} className="text-xs">
+                        <span className="font-medium text-red-700">{holiday.name}:</span>{' '}
+                        <span className="text-red-600">{holiday.dates}</span>{' '}
+                        <span className="text-gray-500">({holiday.period}d)</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Next Year Holidays (if calendar spans years) */}
+                  {spansYears && nextYearHolidays.length > 0 && (
+                    <div className="border-t border-red-200 pt-2">
+                      <div className="text-xs font-medium text-red-700 mb-1">{nextYear}:</div>
+                      <div className="space-y-1 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
+                        {nextYearHolidays.map((holiday, index) => (
+                          <div key={`${nextYear}-${index}`} className="text-xs">
+                            <span className="font-medium text-red-700">{holiday.name}:</span>{' '}
+                            <span className="text-red-600">{holiday.dates}</span>{' '}
+                            <span className="text-gray-500">({holiday.period}d)</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             );
