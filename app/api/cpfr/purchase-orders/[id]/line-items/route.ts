@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, purchaseOrders, purchaseOrderLineItems, productSkus, organizations, organizationMembers } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
@@ -37,41 +37,111 @@ export async function GET(
 
     const purchaseOrderId = params.id;
 
-    // Fetch line items from database with SKU details
-    const { data: lineItemsData, error: lineItemsError } = await supabase
-      .from('purchase_order_line_items')
-      .select(`
-        id,
-        sku_id,
-        sku_code,
-        sku_name,
-        description,
-        quantity,
-        unit_cost,
-        total_cost,
-        product_skus (
-          id,
-          sku,
-          name
-        )
-      `)
-      .eq('purchase_order_id', purchaseOrderId);
+    // Get requesting user and their organization (same pattern as other working APIs)
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
 
-    if (lineItemsError) {
-      console.error('Database error:', lineItemsError);
-      return NextResponse.json([]);
+    if (!requestingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Get user's organization membership
+    const userOrgMembership = await db
+      .select({
+        user: users,
+        organization: organizations
+      })
+      .from(organizationMembers)
+      .leftJoin(users, eq(organizationMembers.userAuthId, users.authId))
+      .leftJoin(organizations, eq(organizationMembers.organizationUuid, organizations.id))
+      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
+      .limit(1);
+
+    if (userOrgMembership.length === 0) {
+      return NextResponse.json({ error: 'User not associated with any organization' }, { status: 403 });
+    }
+
+    const userOrganization = userOrgMembership[0].organization;
+    if (!userOrganization) {
+      return NextResponse.json({ error: 'Organization data not found' }, { status: 403 });
+    }
+
+    const isBDIUser = userOrganization.code === 'BDI' && userOrganization.type === 'internal';
+
+    console.log(`🔍 Line Items Access Check - User: ${userOrganization.code}, PO ID: ${purchaseOrderId}`);
+
+    // First, verify the user has access to this purchase order
+    let purchaseOrderAccess;
+    
+    if (isBDIUser) {
+      // BDI users can access all purchase orders
+      purchaseOrderAccess = await db
+        .select()
+        .from(purchaseOrders)
+        .where(eq(purchaseOrders.id, purchaseOrderId))
+        .limit(1);
+    } else {
+      // Partner users can only access POs where they are buyer OR supplier
+      purchaseOrderAccess = await db
+        .select()
+        .from(purchaseOrders)
+        .where(
+          and(
+            eq(purchaseOrders.id, purchaseOrderId),
+            or(
+              eq(purchaseOrders.organizationId, userOrganization.id), // User's org is buyer
+              eq(purchaseOrders.supplierName, userOrganization.code || '')   // User's org is supplier
+            )
+          )
+        )
+        .limit(1);
+    }
+
+    if (purchaseOrderAccess.length === 0) {
+      console.log(`❌ Access denied - User ${userOrganization.code} cannot access PO ${purchaseOrderId}`);
+      return NextResponse.json({ error: 'Access denied to this purchase order' }, { status: 403 });
+    }
+
+    console.log(`✅ Access granted - Fetching line items for PO ${purchaseOrderId}`);
+
+    // Use Drizzle ORM to fetch line items (bypasses RLS issues)
+    const lineItemsData = await db
+      .select({
+        id: purchaseOrderLineItems.id,
+        skuId: purchaseOrderLineItems.skuId,
+        skuCode: purchaseOrderLineItems.skuCode,
+        skuName: purchaseOrderLineItems.skuName,
+        description: purchaseOrderLineItems.description,
+        quantity: purchaseOrderLineItems.quantity,
+        unitCost: purchaseOrderLineItems.unitCost,
+        totalCost: purchaseOrderLineItems.totalCost,
+        // Join with product SKUs for additional details
+        productSku: {
+          id: productSkus.id,
+          sku: productSkus.sku,
+          name: productSkus.name
+        }
+      })
+      .from(purchaseOrderLineItems)
+      .leftJoin(productSkus, eq(purchaseOrderLineItems.skuId, productSkus.id))
+      .where(eq(purchaseOrderLineItems.purchaseOrderId, purchaseOrderId))
+      .orderBy(purchaseOrderLineItems.createdAt);
+
+    console.log(`📦 Found ${lineItemsData.length} line items for PO ${purchaseOrderId}`);
+
     // Transform data to match frontend interface
-    const transformedLineItems = (lineItemsData || []).map((row: any) => ({
+    const transformedLineItems = lineItemsData.map((row: any) => ({
       id: row.id,
-      skuId: row.sku_id,
-      skuCode: row.sku_code || row.product_skus?.sku || 'UNKNOWN',
-      skuName: row.sku_name || row.product_skus?.name || 'SKU data not found',
+      skuId: row.skuId,
+      skuCode: row.skuCode || row.productSku?.sku || 'UNKNOWN',
+      skuName: row.skuName || row.productSku?.name || 'SKU data not found',
       description: row.description,
       quantity: row.quantity,
-      unitCost: parseFloat(row.unit_cost || '0'),
-      totalCost: parseFloat(row.total_cost || '0'),
+      unitCost: parseFloat(row.unitCost || '0'),
+      totalCost: parseFloat(row.totalCost || '0'),
     }));
 
     return NextResponse.json(transformedLineItems);

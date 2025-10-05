@@ -1184,6 +1184,38 @@ export type NewIntegrationSetting = typeof integrationSettings.$inferInsert;
 export type OrganizationConnection = typeof organizationConnections.$inferSelect;
 export type NewOrganizationConnection = typeof organizationConnections.$inferInsert;
 
+// ===== CHINESE HOLIDAYS =====
+export const chineseHolidays = pgTable('chinese_holidays', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  // Holiday identification
+  date: date('date').notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(), // English name
+  nameChinese: varchar('name_chinese', { length: 255 }), // Chinese name
+  year: integer('year').notNull(),
+  
+  // Holiday period information
+  startDate: date('start_date').notNull(), // First day of holiday period
+  endDate: date('end_date').notNull(), // Last day of holiday period
+  duration: integer('duration').notNull().default(1), // Number of days
+  
+  // Holiday metadata
+  isOfficial: boolean('is_official').default(true),
+  isAdjustedWorkday: boolean('is_adjusted_workday').default(false), // Government makeup days
+  holidayType: varchar('holiday_type', { length: 50 }).default('public'), // public, traditional, adjusted
+  
+  // Data source tracking
+  source: varchar('source', { length: 50 }).default('api'), // api, manual, government
+  fetchedAt: timestamp('fetched_at').defaultNow(),
+  
+  // Audit
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type ChineseHoliday = typeof chineseHolidays.$inferSelect;
+export type NewChineseHoliday = typeof chineseHolidays.$inferInsert;
+
 // Complex types for UI
 export type OrganizationWithMembers = Organization & {
   members: (typeof organizationMembers.$inferSelect & {
