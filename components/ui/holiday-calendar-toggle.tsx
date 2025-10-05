@@ -129,7 +129,7 @@ export function HolidayCalendarToggle({ onToggle, className = '' }: HolidayCalen
 
 // Hook for managing holiday calendar state
 export function useHolidayCalendar() {
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true); // Default to ON
   const [holidayClassifications, setHolidayClassifications] = useState<Map<string, any>>(new Map());
 
   const classifyDateRange = async (startDate: string, endDate: string) => {
@@ -169,9 +169,9 @@ export function useHolidayCalendar() {
     
     switch (classification.type) {
       case 'holiday':
-        return 'bg-red-600 text-white border-red-700 font-bold shadow-lg hover:bg-red-700';
+        return '!bg-red-600 !text-white !border-red-700 font-bold shadow-lg hover:!bg-red-700';
       case 'soft-holiday':
-        return 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200';
+        return '!bg-red-100 !text-red-800 !border-red-300 hover:!bg-red-200';
       default:
         return '';
     }

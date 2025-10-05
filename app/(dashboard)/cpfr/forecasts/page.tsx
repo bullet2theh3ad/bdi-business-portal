@@ -99,7 +99,7 @@ export default function SalesForecastsPage() {
   
   // Auto-classify dates when holiday calendar is enabled or month changes
   useEffect(() => {
-    if (holidayCalendar.isEnabled && viewMode === 'calendar') {
+    if (holidayCalendar.isEnabled) {
       // Classify a wider range to cover the full calendar view (42 days)
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -119,6 +119,24 @@ export default function SalesForecastsPage() {
       );
     }
   }, [holidayCalendar.isEnabled, currentDate, viewMode]);
+  
+  // Initial holiday data load when component mounts (since holidays are ON by default)
+  useEffect(() => {
+    if (holidayCalendar.isEnabled) {
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      const calendarStart = new Date(startOfMonth);
+      calendarStart.setDate(calendarStart.getDate() - startOfMonth.getDay());
+      const calendarEnd = new Date(endOfMonth);
+      calendarEnd.setDate(calendarEnd.getDate() + (6 - endOfMonth.getDay()));
+      
+      console.log(`🎊 Initial holiday classification for: ${calendarStart.toISOString().split('T')[0]} to ${calendarEnd.toISOString().split('T')[0]}`);
+      holidayCalendar.classifyDateRange(
+        calendarStart.toISOString().split('T')[0],
+        calendarEnd.toISOString().split('T')[0]
+      );
+    }
+  }, []); // Run once on mount
   const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'confirmed'>('draft');
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<string>('');
   
@@ -776,24 +794,22 @@ export default function SalesForecastsPage() {
             </button>
           </div>
 
-          {/* Holiday Calendar Toggle */}
-          {viewMode === 'calendar' && (
-            <HolidayCalendarToggle
-              onToggle={(enabled) => {
-                holidayCalendar.setIsEnabled(enabled);
-                if (enabled) {
-                  // Classify current month when enabled
-                  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-                  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-                  holidayCalendar.classifyDateRange(
-                    startOfMonth.toISOString().split('T')[0],
-                    endOfMonth.toISOString().split('T')[0]
-                  );
-                }
-              }}
-              className="hidden sm:flex"
-            />
-          )}
+          {/* Holiday Calendar Toggle - Show for both calendar and list views */}
+          <HolidayCalendarToggle
+            onToggle={(enabled) => {
+              holidayCalendar.setIsEnabled(enabled);
+              if (enabled) {
+                // Classify current month when enabled
+                const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                holidayCalendar.classifyDateRange(
+                  startOfMonth.toISOString().split('T')[0],
+                  endOfMonth.toISOString().split('T')[0]
+                );
+              }
+            }}
+            className="hidden sm:flex"
+          />
 
           {/* Calendar Zoom Controls */}
           {viewMode === 'calendar' && (
@@ -1907,6 +1923,11 @@ export default function SalesForecastsPage() {
                             const dateStr = currentDate.toISOString().split('T')[0];
                             const holidayStyle = holidayCalendar.getDateStyle(dateStr);
                             
+                            // Debug logging for October dates
+                            if (currentDate.getMonth() === 9 && currentDate.getFullYear() === 2025 && dayNum <= 10) {
+                              console.log(`🎊 Oct ${dayNum}, 2025: holidayStyle="${holidayStyle}", enabled=${holidayCalendar.isEnabled}`);
+                            }
+                            
             // Check if this week is too early based on lead time + shipping
             let isTooEarly = false;
             let weekHasTooEarlyDays = false;
@@ -2011,10 +2032,10 @@ export default function SalesForecastsPage() {
                                 className={`
                                   h-8 text-xs font-medium rounded-md transition-all duration-200 transform hover:scale-105
                                   ${isCurrentMonth 
-                                    ? isSelected
-                                      ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg'
-                                      : holidayStyle && holidayCalendar.isEnabled
-                                        ? holidayStyle
+                                    ? holidayStyle && holidayCalendar.isEnabled
+                                      ? holidayStyle // PRIORITY: Holiday styles first
+                                      : isSelected
+                                        ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg'
                                         : weekHasTooEarlyDays
                                           ? 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer'
                                           : isTooEarly
