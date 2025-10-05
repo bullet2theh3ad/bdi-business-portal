@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { classifyDateProduction } from '@/lib/services/production-holidays';
 
 interface HolidayCalendarToggleProps {
   onToggle?: (enabled: boolean) => void;
@@ -125,30 +126,39 @@ export function useHolidayCalendar() {
   const [isEnabled, setIsEnabled] = useState(true); // Default to ON
   const [holidayClassifications, setHolidayClassifications] = useState<Map<string, any>>(new Map());
 
-  const classifyDateRange = async (startDate: string, endDate: string) => {
+  const classifyDateRange = (startDate: string, endDate: string) => {
     if (!isEnabled) {
       setHolidayClassifications(new Map());
       return;
     }
 
-    try {
-      console.log(`🎊 Classifying date range: ${startDate} to ${endDate}`);
-      const response = await fetch(`/api/holidays/chinese/periods?start=${startDate}&end=${endDate}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.classifications) {
-          const newClassifications = new Map();
-          data.classifications.forEach((classification: any) => {
-            newClassifications.set(classification.date, classification);
-            console.log(`📅 ${classification.date}: ${classification.type} (${classification.holidayName || 'N/A'})`);
-          });
-          setHolidayClassifications(newClassifications);
-          console.log(`✅ Classified ${data.classifications.length} dates`);
-        }
+    console.log(`🎊 Classifying date range: ${startDate} to ${endDate}`);
+    
+    const newClassifications = new Map();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Classify each date in the range using production service
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const classification = classifyDateProduction(dateStr);
+      
+      newClassifications.set(dateStr, {
+        date: dateStr,
+        type: classification.type,
+        holidayName: classification.holidayName
+      });
+      
+      if (classification.type !== 'neutral') {
+        console.log(`📅 ${dateStr}: ${classification.type} (${classification.holidayName || 'N/A'})`);
       }
-    } catch (error) {
-      console.error('Error classifying date range:', error);
+      
+      currentDate.setDate(currentDate.getDate() + 1);
     }
+    
+    setHolidayClassifications(newClassifications);
+    console.log(`✅ Classified ${newClassifications.size} dates`);
   };
 
   const getDateClassification = (date: string) => {
