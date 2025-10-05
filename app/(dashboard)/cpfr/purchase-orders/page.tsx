@@ -12,6 +12,7 @@ import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { User, ProductSku, InvoiceDocument } from '@/lib/db/schema';
+import { HolidayDatePicker } from '@/components/ui/holiday-date-picker';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -978,15 +979,13 @@ export default function PurchaseOrdersPage() {
 
                   {/* Date */}
                   <div className="min-w-0">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Date *
-                    </label>
-                    <input
-                      type="date"
+                    <HolidayDatePicker
+                      label="Date"
                       value={poBuilder.date}
-                      onChange={(e) => updateGeneratedPONumber('date', e.target.value)}
+                      onChange={(value) => updateGeneratedPONumber('date', value)}
+                      required={true}
+                      showHolidayWarnings={true}
                       className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      required
                     />
                   </div>
 
@@ -1116,17 +1115,14 @@ export default function PurchaseOrdersPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="requestedDeliveryDate">Requested Delivery Date *</Label>
-                <Input
+                <HolidayDatePicker
                   id="requestedDeliveryDate"
                   name="requestedDeliveryDate"
-                  type="date"
-                  required
-                  className="mt-1"
+                  label="Requested Delivery Date"
+                  required={true}
+                  showHolidayWarnings={true}
+                  helpText="📅 Target delivery date - avoid Chinese holidays"
                 />
-                <div className="mt-1 text-xs text-gray-600">
-                  📅 Target delivery date
-                </div>
               </div>
             </div>
 

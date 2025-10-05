@@ -12,6 +12,7 @@ import useSWR from 'swr';
 import { User, ProductSku } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
+import { HolidayCalendarToggle, useHolidayCalendar } from '@/components/ui/holiday-calendar-toggle';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -91,6 +92,9 @@ export default function SalesForecastsPage() {
   const [customDate, setCustomDate] = useState<string>('');
   const [confidenceLevel, setConfidenceLevel] = useState<'part_of_po' | 'pre_po' | 'planning'>('planning');
   const [forecastQuantity, setForecastQuantity] = useState<number>(0);
+  
+  // Holiday calendar functionality
+  const holidayCalendar = useHolidayCalendar();
   const [salesForecastStatus, setSalesForecastStatus] = useState<'draft' | 'submitted' | 'rejected' | 'confirmed'>('draft');
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<string>('');
   
@@ -747,6 +751,25 @@ export default function SalesForecastsPage() {
               📋 <span className="hidden sm:inline">List</span>
             </button>
           </div>
+
+          {/* Holiday Calendar Toggle */}
+          {viewMode === 'calendar' && (
+            <HolidayCalendarToggle
+              onToggle={(enabled) => {
+                holidayCalendar.setIsEnabled(enabled);
+                if (enabled) {
+                  // Classify current month when enabled
+                  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                  holidayCalendar.classifyDateRange(
+                    startOfMonth.toISOString().split('T')[0],
+                    endOfMonth.toISOString().split('T')[0]
+                  );
+                }
+              }}
+              className="hidden sm:flex"
+            />
+          )}
 
           {/* Calendar Zoom Controls */}
           {viewMode === 'calendar' && (
