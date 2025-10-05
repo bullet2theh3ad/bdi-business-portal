@@ -136,6 +136,57 @@ export const CHINESE_HOLIDAY_PERIODS = {
       endDate: "2025-10-08",
       duration: 8
     }
+  ],
+  2026: [
+    {
+      name: "New Year's Day",
+      nameChinese: "元旦",
+      startDate: "2026-01-01",
+      endDate: "2026-01-01",
+      duration: 1
+    },
+    {
+      name: "Spring Festival (Chinese New Year)",
+      nameChinese: "春节",
+      startDate: "2026-02-16", // CORRECTED: Official date
+      endDate: "2026-02-22",   // CORRECTED: 7-day period
+      duration: 7
+    },
+    {
+      name: "Qingming Festival (Tomb-Sweeping Day)",
+      nameChinese: "清明节",
+      startDate: "2026-04-05",
+      endDate: "2026-04-05", // Single day, may extend to 4-6
+      duration: 1
+    },
+    {
+      name: "Labour Day",
+      nameChinese: "劳动节",
+      startDate: "2026-05-01",
+      endDate: "2026-05-01", // May extend to May 1-5
+      duration: 1
+    },
+    {
+      name: "Dragon Boat Festival",
+      nameChinese: "端午节",
+      startDate: "2026-06-19", // CORRECTED: Official date
+      endDate: "2026-06-19",
+      duration: 1
+    },
+    {
+      name: "Mid-Autumn Festival",
+      nameChinese: "中秋节",
+      startDate: "2026-09-25", // CORRECTED: Official date
+      endDate: "2026-09-25",
+      duration: 1
+    },
+    {
+      name: "National Day Golden Week",
+      nameChinese: "国庆节",
+      startDate: "2026-10-01",
+      endDate: "2026-10-07", // CORRECTED: 7-day period
+      duration: 7
+    }
   ]
 };
 

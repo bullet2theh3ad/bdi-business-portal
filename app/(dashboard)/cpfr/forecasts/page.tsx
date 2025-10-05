@@ -859,8 +859,11 @@ export default function SalesForecastsPage() {
                 ];
               } else if (year === 2026) {
                 return [
-                  { name: "Spring Festival", dates: "Feb 1-8", period: 8 },
-                  { name: "Labour Day", dates: "May 1-5", period: 5 },
+                  { name: "Spring Festival", dates: "Feb 16-22", period: 7 },
+                  { name: "Qingming Festival", dates: "Apr 5", period: 1 },
+                  { name: "Labour Day", dates: "May 1", period: 1 },
+                  { name: "Dragon Boat Festival", dates: "Jun 19", period: 1 },
+                  { name: "Mid-Autumn Festival", dates: "Sep 25", period: 1 },
                   { name: "National Day", dates: "Oct 1-7", period: 7 }
                 ];
               } else {
