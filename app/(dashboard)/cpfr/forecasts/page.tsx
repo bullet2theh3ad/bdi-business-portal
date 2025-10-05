@@ -845,13 +845,50 @@ export default function SalesForecastsPage() {
             className="hidden sm:flex"
           />
           
-          {/* Holiday List Display */}
-          {holidayCalendar.isEnabled && (
-            <div className="text-xs text-gray-600 bg-red-50 px-3 py-2 rounded border border-red-200">
-              <strong>🎊 2025 Chinese Holidays:</strong> 
-              <br />Jan 28-Feb 4 (Spring Festival), May 1-5 (Labour Day), Oct 1-8 (National Day)
-            </div>
-          )}
+          {/* Dynamic Holiday List Display */}
+          {holidayCalendar.isEnabled && (() => {
+            const currentYear = currentDate.getFullYear();
+            const getHolidaysForYear = (year: number) => {
+              if (year === 2025) {
+                return [
+                  { name: "Spring Festival", dates: "Jan 28-Feb 4", period: 8 },
+                  { name: "Labour Day", dates: "May 1-5", period: 5 },
+                  { name: "National Day", dates: "Oct 1-8", period: 8 }
+                ];
+              } else if (year === 2026) {
+                return [
+                  { name: "Spring Festival", dates: "Feb 1-8", period: 8 },
+                  { name: "Labour Day", dates: "May 1-5", period: 5 },
+                  { name: "National Day", dates: "Oct 1-7", period: 7 }
+                ];
+              } else {
+                return [
+                  { name: "Spring Festival", dates: "Feb 1-8", period: 8 },
+                  { name: "Labour Day", dates: "May 1-5", period: 5 },
+                  { name: "National Day", dates: "Oct 1-7", period: 7 }
+                ];
+              }
+            };
+            
+            const holidays = getHolidaysForYear(currentYear);
+            
+            return (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+                <div className="font-semibold text-red-800 mb-2">
+                  🎊 {currentYear} Chinese Holidays
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  {holidays.map((holiday, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-1">
+                      <span className="font-medium text-red-700">{holiday.name}:</span>
+                      <span className="text-red-600">{holiday.dates}</span>
+                      <span className="text-gray-500">({holiday.period}d)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Calendar Zoom Controls */}
           {viewMode === 'calendar' && (
