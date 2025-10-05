@@ -1925,7 +1925,8 @@ export default function SalesForecastsPage() {
                             
                             // Debug logging for October dates
                             if (currentDate.getMonth() === 9 && currentDate.getFullYear() === 2025 && dayNum <= 10) {
-                              console.log(`🎊 Oct ${dayNum}, 2025: holidayStyle="${holidayStyle}", enabled=${holidayCalendar.isEnabled}`);
+                              const classification = holidayCalendar.getDateClassification(dateStr);
+                              console.log(`🎊 Oct ${dayNum}, 2025: dateStr="${dateStr}", classification=${JSON.stringify(classification)}, holidayStyle="${holidayStyle}", enabled=${holidayCalendar.isEnabled}, isCurrentMonth=${isCurrentMonth}`);
                             }
                             
             // Check if this week is too early based on lead time + shipping
@@ -2030,21 +2031,22 @@ export default function SalesForecastsPage() {
                                   }
                                 }}
                                 className={`
-                                  h-8 text-xs font-medium rounded-md transition-all duration-200 transform hover:scale-105
-                                  ${isCurrentMonth 
-                                    ? holidayStyle && holidayCalendar.isEnabled
-                                      ? holidayStyle // PRIORITY: Holiday styles first
-                                      : isSelected
-                                        ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg'
-                                        : weekHasTooEarlyDays
-                                          ? 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer'
-                                          : isTooEarly
-                                            ? 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100'
-                                            : isToday
-                                              ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md'
-                                              : 'text-blue-800 hover:bg-blue-100 hover:text-blue-900'
-                                    : 'text-gray-300 cursor-not-allowed'
-                                  }
+                                  h-8 text-xs font-medium rounded-md transition-all duration-200 transform hover:scale-105 relative
+                                  ${(() => {
+                                    // PRIORITY 1: Holiday styles (when enabled and style exists)
+                                    if (isCurrentMonth && holidayStyle && holidayCalendar.isEnabled) {
+                                      return holidayStyle;
+                                    }
+                                    // PRIORITY 2: Other states
+                                    if (isCurrentMonth) {
+                                      if (isSelected) return 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg';
+                                      if (weekHasTooEarlyDays) return 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer';
+                                      if (isTooEarly) return 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100';
+                                      if (isToday) return 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md';
+                                      return 'text-blue-800 hover:bg-blue-100 hover:text-blue-900';
+                                    }
+                                    return 'text-gray-300 cursor-not-allowed';
+                                  })()}
                                   ${isCurrentMonth && !isTooEarly ? 'hover:shadow-md' : ''}
                                 `}
                                 disabled={!isCurrentMonth}
@@ -2061,6 +2063,16 @@ export default function SalesForecastsPage() {
                               >
                                 {isCurrentMonth ? dayNum : ''}
                                 {isCurrentMonth && isToday && <div className="w-1 h-1 bg-white rounded-full mx-auto mt-0.5"></div>}
+                                {/* Holiday indicator overlay */}
+                                {isCurrentMonth && holidayCalendar.isEnabled && (() => {
+                                  const classification = holidayCalendar.getDateClassification(dateStr);
+                                  if (classification.type === 'holiday') {
+                                    return <div className="absolute top-0 right-0 w-2 h-2 bg-red-600 rounded-full border border-white"></div>;
+                                  } else if (classification.type === 'soft-holiday') {
+                                    return <div className="absolute top-0 right-0 w-2 h-2 bg-orange-400 rounded-full border border-white"></div>;
+                                  }
+                                  return null;
+                                })()}
                               </button>
                             );
                             

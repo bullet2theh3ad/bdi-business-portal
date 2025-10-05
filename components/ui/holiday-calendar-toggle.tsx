@@ -16,11 +16,11 @@ interface HolidayStats {
 }
 
 export function HolidayCalendarToggle({ onToggle, className = '' }: HolidayCalendarToggleProps) {
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true); // Default to ON
   const [holidayStats, setHolidayStats] = useState<HolidayStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load holiday statistics on component mount
+  // Load holiday statistics on component mount and notify parent of default state
   useEffect(() => {
     const loadHolidayStats = async () => {
       try {
@@ -37,6 +37,9 @@ export function HolidayCalendarToggle({ onToggle, className = '' }: HolidayCalen
     };
 
     loadHolidayStats();
+    
+    // Notify parent that holidays are enabled by default
+    onToggle?.(true);
   }, []);
 
   const handleToggle = () => {
