@@ -810,7 +810,7 @@ export default function SalesForecastsPage() {
       </div>
 
       {/* View Toggle & Calendar Controls */}
-      <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+      <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0 lg:space-x-4">
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
           {/* View Mode Toggle */}
           <div className="flex border rounded-md">
@@ -828,7 +828,7 @@ export default function SalesForecastsPage() {
             </button>
           </div>
 
-          {/* Holiday Calendar Toggle - Show for both calendar and list views */}
+          {/* Holiday Calendar Toggle - Mobile optimized */}
           <HolidayCalendarToggle
             onToggle={(enabled) => {
               holidayCalendar.setIsEnabled(enabled);
@@ -842,7 +842,7 @@ export default function SalesForecastsPage() {
                 );
               }
             }}
-            className="hidden sm:flex"
+            className="w-full sm:w-auto"
           />
           
           {/* Dynamic Holiday List Display */}
@@ -873,15 +873,15 @@ export default function SalesForecastsPage() {
             const holidays = getHolidaysForYear(currentYear);
             
             return (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
-                <div className="font-semibold text-red-800 mb-2">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
+                <div className="font-semibold text-red-800 text-xs sm:text-sm mb-2">
                   🎊 {currentYear} Chinese Holidays
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="space-y-1 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
                   {holidays.map((holiday, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-1">
-                      <span className="font-medium text-red-700">{holiday.name}:</span>
-                      <span className="text-red-600">{holiday.dates}</span>
+                    <div key={index} className="text-xs">
+                      <span className="font-medium text-red-700">{holiday.name}:</span>{' '}
+                      <span className="text-red-600">{holiday.dates}</span>{' '}
                       <span className="text-gray-500">({holiday.period}d)</span>
                     </div>
                   ))}
