@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { useHolidayCheck } from './holiday-date-picker';
+import { classifyDateProduction } from '@/lib/services/production-holidays';
 
 interface ShipmentCautionIndicatorProps {
   date: string;
@@ -19,39 +19,37 @@ export function ShipmentCautionIndicator({
   showTooltip = true,
   className = '' 
 }: ShipmentCautionIndicatorProps) {
-  const { holidayInfo, isLoading } = useHolidayCheck(date);
+  const classification = classifyDateProduction(date);
 
-  if (isLoading) {
-    return showIcon ? <span className="text-xs text-gray-400">🔄</span> : null;
-  }
-
-  if (!holidayInfo?.isCaution) {
+  if (classification.type === 'neutral') {
     return null;
   }
 
+  const isCaution = classification.type === 'holiday' || classification.type === 'soft-holiday';
+
   const getIcon = () => {
-    if (holidayInfo.type === 'holiday') {
+    if (classification.type === 'holiday') {
       return '🚫';
-    } else if (holidayInfo.type === 'soft-holiday') {
+    } else if (classification.type === 'soft-holiday') {
       return '⚠️';
     }
     return '⚠️';
   };
 
   const getBadgeColor = () => {
-    if (holidayInfo.type === 'holiday') {
+    if (classification.type === 'holiday') {
       return 'bg-red-100 text-red-800 border-red-200';
-    } else if (holidayInfo.type === 'soft-holiday') {
+    } else if (classification.type === 'soft-holiday') {
       return 'bg-orange-100 text-orange-800 border-orange-200';
     }
     return 'bg-yellow-100 text-yellow-800 border-yellow-200';
   };
 
   const getTooltipText = () => {
-    if (holidayInfo.type === 'holiday') {
-      return `No shipments during ${holidayInfo.holidayName}`;
-    } else if (holidayInfo.type === 'soft-holiday') {
-      return holidayInfo.reason || 'Caution: Near holiday period';
+    if (classification.type === 'holiday') {
+      return `No shipments during ${classification.holidayName}`;
+    } else if (classification.type === 'soft-holiday') {
+      return `Caution: Near ${classification.holidayName} holiday period`;
     }
     return 'Shipping caution advised';
   };
@@ -72,7 +70,7 @@ export function ShipmentCautionIndicator({
           className={`text-xs ${getBadgeColor()}`}
           title={showTooltip ? getTooltipText() : undefined}
         >
-          {holidayInfo.type === 'holiday' ? 'Holiday' : 'Caution'}
+          {classification.type === 'holiday' ? 'Holiday' : 'Caution'}
         </Badge>
       )}
     </div>
@@ -87,24 +85,33 @@ export function ShipmentCautionText({
   date: string; 
   className?: string; 
 }) {
-  const { holidayInfo, isLoading } = useHolidayCheck(date);
+  const classification = classifyDateProduction(date);
 
-  if (isLoading || !holidayInfo?.isCaution) {
+  if (classification.type === 'neutral') {
     return null;
   }
 
   const getTextColor = () => {
-    if (holidayInfo.type === 'holiday') {
+    if (classification.type === 'holiday') {
       return 'text-red-600';
-    } else if (holidayInfo.type === 'soft-holiday') {
+    } else if (classification.type === 'soft-holiday') {
       return 'text-orange-600';
     }
     return 'text-yellow-600';
   };
 
+  const getReason = () => {
+    if (classification.type === 'holiday') {
+      return `During ${classification.holidayName} holiday period`;
+    } else if (classification.type === 'soft-holiday') {
+      return `Near ${classification.holidayName} holiday period`;
+    }
+    return 'Holiday caution period';
+  };
+
   return (
     <div className={`text-xs font-medium ${getTextColor()} ${className}`}>
-      {holidayInfo.reason}
+      {getReason()}
     </div>
   );
 }
@@ -119,14 +126,14 @@ export function TimelineMilestoneWithCaution({
   children: React.ReactNode; 
   className?: string; 
 }) {
-  const { holidayInfo } = useHolidayCheck(date);
+  const classification = classifyDateProduction(date);
 
   const getWrapperStyle = () => {
-    if (!holidayInfo?.isCaution) return '';
+    if (classification.type === 'neutral') return '';
     
-    if (holidayInfo.type === 'holiday') {
+    if (classification.type === 'holiday') {
       return 'border-l-4 border-red-500 bg-red-50 pl-3';
-    } else if (holidayInfo.type === 'soft-holiday') {
+    } else if (classification.type === 'soft-holiday') {
       return 'border-l-4 border-orange-400 bg-orange-50 pl-3';
     }
     return '';

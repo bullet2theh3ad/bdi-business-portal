@@ -13,6 +13,7 @@ import useSWR from 'swr';
 import { User, ProductSku, Warehouse } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
+import { ShipmentCautionIndicator } from '@/components/ui/shipment-caution-indicator';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -1396,8 +1397,19 @@ export default function ShipmentsPage() {
                             <Badge className="bg-blue-100 text-blue-800 text-xs">
                               {forecast.quantity.toLocaleString()} {tc('units', 'units')}
                             </Badge>
-                            <Badge className="bg-purple-100 text-purple-800 text-xs">
+                            <Badge className="bg-purple-100 text-purple-800 text-xs flex items-center gap-1">
                               {forecast.deliveryWeek}
+                              {(() => {
+                                // Convert delivery week to approximate date for holiday check
+                                const [year, week] = forecast.deliveryWeek.split('-W');
+                                const weekNum = parseInt(week);
+                                const jan1 = new Date(parseInt(year), 0, 1);
+                                const daysToAdd = (weekNum - 1) * 7;
+                                const deliveryDate = new Date(jan1.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+                                const dateStr = deliveryDate.toISOString().split('T')[0];
+                                
+                                return <ShipmentCautionIndicator date={dateStr} showIcon={true} showBadge={false} />;
+                              })()}
                             </Badge>
                             <Badge className="bg-cyan-100 text-cyan-800 text-xs">
                               {shippingIcon} <span className="hidden sm:inline">{forecast.shippingPreference}</span>
