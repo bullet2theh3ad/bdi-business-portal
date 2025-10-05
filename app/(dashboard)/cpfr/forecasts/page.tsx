@@ -97,6 +97,40 @@ export default function SalesForecastsPage() {
   // Holiday calendar functionality
   const holidayCalendar = useHolidayCalendar();
   
+  // Helper function to check if a month contains holidays
+  const getMonthHolidayStyle = (monthDate: Date) => {
+    if (!holidayCalendar.isEnabled) return '';
+    
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    
+    let hasHoliday = false;
+    let hasSoftHoliday = false;
+    
+    // Check entire month for holidays
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const checkDate = new Date(year, month, day);
+      const dateStr = checkDate.toISOString().split('T')[0];
+      const classification = holidayCalendar.getDateClassification(dateStr);
+      
+      if (classification.type === 'holiday') {
+        hasHoliday = true;
+        break; // Holiday takes priority
+      } else if (classification.type === 'soft-holiday') {
+        hasSoftHoliday = true;
+      }
+    }
+    
+    if (hasHoliday) {
+      return 'bg-red-50 border-red-200 hover:border-red-300';
+    } else if (hasSoftHoliday) {
+      return 'bg-orange-50 border-orange-200 hover:border-orange-300';
+    }
+    
+    return '';
+  };
+  
   // Auto-classify dates when holiday calendar is enabled or month changes
   useEffect(() => {
     if (holidayCalendar.isEnabled) {
@@ -970,7 +1004,9 @@ export default function SalesForecastsPage() {
               {generateMonths().map((month) => (
                 <Card 
                   key={month.key} 
-                  className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-blue-300"
+                  className={`hover:shadow-lg transition-all cursor-pointer border-2 ${
+                    getMonthHolidayStyle(month.date) || 'hover:border-blue-300'
+                  }`}
                   onClick={() => {
                     setSelectedMonth(month.date);
                     setCalendarView('weeks');
@@ -2037,12 +2073,23 @@ export default function SalesForecastsPage() {
                                     if (isCurrentMonth && holidayStyle && holidayCalendar.isEnabled) {
                                       return holidayStyle;
                                     }
-                                    // PRIORITY 2: Other states
+                                    // PRIORITY 2: Check if this date has holiday influence for background color
                                     if (isCurrentMonth) {
+                                      const classification = holidayCalendar.getDateClassification(dateStr);
+                                      const hasHolidayInfluence = holidayCalendar.isEnabled && (classification.type === 'holiday' || classification.type === 'soft-holiday');
+                                      
                                       if (isSelected) return 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg';
                                       if (weekHasTooEarlyDays) return 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer';
                                       if (isTooEarly) return 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100';
                                       if (isToday) return 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md';
+                                      
+                                      // Apply reddish hue for holiday-influenced dates
+                                      if (hasHolidayInfluence) {
+                                        return classification.type === 'holiday' 
+                                          ? 'text-red-800 bg-red-100 hover:bg-red-200 border border-red-300'
+                                          : 'text-red-700 bg-red-50 hover:bg-red-100 border border-red-200';
+                                      }
+                                      
                                       return 'text-blue-800 hover:bg-blue-100 hover:text-blue-900';
                                     }
                                     return 'text-gray-300 cursor-not-allowed';
