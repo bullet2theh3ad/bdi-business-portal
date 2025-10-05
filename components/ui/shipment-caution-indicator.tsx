@@ -31,16 +31,23 @@ export function ShipmentCautionIndicator({
     const checkHolidayStatus = async () => {
       setIsLoading(true);
       try {
+        console.log(`🔍 Checking holiday status for date: ${date}`);
         const response = await fetch(`/api/holidays/chinese/periods?date=${date}`);
         if (response.ok) {
           const data = await response.json();
+          console.log(`📅 Holiday API response for ${date}:`, data);
           if (data.success && data.shipmentCaution) {
-            setHolidayInfo({
+            const cautionInfo = {
               isCaution: data.shipmentCaution.isCaution,
               type: data.shipmentCaution.type,
               reason: data.shipmentCaution.reason,
               holidayName: data.shipmentCaution.holidayName
-            });
+            };
+            console.log(`⚠️ Setting holiday info for ${date}:`, cautionInfo);
+            setHolidayInfo(cautionInfo);
+          } else {
+            console.log(`✅ No holiday caution for ${date}`);
+            setHolidayInfo(null);
           }
         }
       } catch (error) {
