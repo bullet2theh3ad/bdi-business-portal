@@ -790,19 +790,21 @@ export default function SalesForecastsPage() {
               <p className="text-sm sm:text-base text-muted-foreground">{tc('forecastsDescription', 'Create demand forecasts for CPFR planning')}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button 
               variant="outline"
               onClick={() => mutateForecasts()}
-              className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+              className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white flex-1 sm:flex-none"
             >
               <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
-              {tc('refreshButton', 'Refresh')}
+              <span className="hidden sm:inline">{tc('refreshButton', 'Refresh')}</span>
+              <span className="sm:hidden">↻</span>
             </Button>
             {canCreateForecasts && (
-              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
+              <Button className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none" onClick={() => setShowCreateModal(true)}>
                 <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-                New Forecast
+                <span className="hidden sm:inline">New Forecast</span>
+                <span className="sm:hidden">+ New</span>
               </Button>
             )}
           </div>
