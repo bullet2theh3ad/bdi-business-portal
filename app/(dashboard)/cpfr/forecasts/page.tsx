@@ -844,6 +844,14 @@ export default function SalesForecastsPage() {
             }}
             className="hidden sm:flex"
           />
+          
+          {/* Holiday List Display */}
+          {holidayCalendar.isEnabled && (
+            <div className="text-xs text-gray-600 bg-red-50 px-3 py-2 rounded border border-red-200">
+              <strong>🎊 2025 Chinese Holidays:</strong> 
+              <br />Jan 28-Feb 4 (Spring Festival), May 1-5 (Labour Day), Oct 1-8 (National Day)
+            </div>
+          )}
 
           {/* Calendar Zoom Controls */}
           {viewMode === 'calendar' && (
@@ -2069,30 +2077,24 @@ export default function SalesForecastsPage() {
                                 className={`
                                   h-8 text-xs font-medium rounded-md transition-all duration-200 transform hover:scale-105 relative
                                   ${(() => {
-                                    // PRIORITY 1: Holiday styles (when enabled and style exists)
-                                    if (isCurrentMonth && holidayStyle && holidayCalendar.isEnabled) {
-                                      return holidayStyle;
-                                    }
-                                    // PRIORITY 2: Check if this date has holiday influence for background color
-                                    if (isCurrentMonth) {
+                                    if (!isCurrentMonth) return 'text-gray-300 cursor-not-allowed';
+                                    
+                                    // SIMPLE: Check if this date is a Chinese holiday
+                                    if (holidayCalendar.isEnabled) {
                                       const classification = holidayCalendar.getDateClassification(dateStr);
-                                      const hasHolidayInfluence = holidayCalendar.isEnabled && (classification.type === 'holiday' || classification.type === 'soft-holiday');
-                                      
-                                      if (isSelected) return 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg';
-                                      if (weekHasTooEarlyDays) return 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer';
-                                      if (isTooEarly) return 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100';
-                                      if (isToday) return 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md';
-                                      
-                                      // Apply reddish hue for holiday-influenced dates
-                                      if (hasHolidayInfluence) {
-                                        return classification.type === 'holiday' 
-                                          ? 'text-red-800 bg-red-100 hover:bg-red-200 border border-red-300'
-                                          : 'text-red-700 bg-red-50 hover:bg-red-100 border border-red-200';
+                                      if (classification.type === 'holiday') {
+                                        return 'bg-red-500 text-white font-bold border-red-600 hover:bg-red-600';
+                                      } else if (classification.type === 'soft-holiday') {
+                                        return 'bg-red-200 text-red-800 border-red-300 hover:bg-red-300';
                                       }
-                                      
-                                      return 'text-blue-800 hover:bg-blue-100 hover:text-blue-900';
                                     }
-                                    return 'text-gray-300 cursor-not-allowed';
+                                    
+                                    // Default calendar styling
+                                    if (isSelected) return 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg';
+                                    if (weekHasTooEarlyDays) return 'text-orange-600 bg-orange-50 border border-orange-300 hover:bg-orange-100 cursor-pointer';
+                                    if (isTooEarly) return 'text-red-500 bg-red-50 border border-red-200 hover:bg-red-100';
+                                    if (isToday) return 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-md';
+                                    return 'text-blue-800 hover:bg-blue-100 hover:text-blue-900';
                                   })()}
                                   ${isCurrentMonth && !isTooEarly ? 'hover:shadow-md' : ''}
                                 `}
@@ -2108,21 +2110,7 @@ export default function SalesForecastsPage() {
                                   }` : ''
                                 }
                               >
-                                {isCurrentMonth ? (
-                                  <span className={`
-                                    ${holidayCalendar.isEnabled && (() => {
-                                      const classification = holidayCalendar.getDateClassification(dateStr);
-                                      if (classification.type === 'holiday') {
-                                        return 'bg-red-600 text-white px-1 py-0.5 rounded font-bold';
-                                      } else if (classification.type === 'soft-holiday') {
-                                        return 'bg-red-200 text-red-800 px-1 py-0.5 rounded';
-                                      }
-                                      return '';
-                                    })()}
-                                  `}>
-                                    {dayNum}
-                                  </span>
-                                ) : ''}
+                                {isCurrentMonth ? dayNum : ''}
                                 {isCurrentMonth && isToday && <div className="w-1 h-1 bg-white rounded-full mx-auto mt-0.5"></div>}
                               </button>
                             );
