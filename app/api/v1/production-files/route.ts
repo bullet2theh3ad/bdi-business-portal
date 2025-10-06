@@ -4,6 +4,100 @@ import { db } from '@/lib/db/drizzle';
 import { productionFiles, organizations, organizationConnections, apiKeys } from '@/lib/db/schema';
 import { eq, and, or, inArray, gte, lte, desc, count } from 'drizzle-orm';
 import { authenticateApiRequest, hasApiPermission } from '@/lib/auth/api-auth';
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// 📧 Send CPFR notification for production file uploads (same as GUI)
+async function sendProductionFileNotification(fileData: any, uploaderOrgCode: string) {
+  console.log('📧 CPFR NOTIFICATION (API) - Production file uploaded by org:', uploaderOrgCode);
+  console.log('📧 CPFR NOTIFICATION (API) - Notifying GPN CPFR team about new file');
+
+  // ALWAYS notify GPN organization when ANY org uploads production files
+
+  // Get GPN organization CPFR contacts
+  const [gpnOrg] = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      code: organizations.code,
+      cpfrContacts: organizations.cpfrContacts
+    })
+    .from(organizations)
+    .where(eq(organizations.code, 'GPN'))
+    .limit(1);
+
+  if (!gpnOrg) {
+    console.log('📧 CPFR NOTIFICATION (API) - GPN organization not found');
+    return;
+  }
+
+  const cpfrContacts = gpnOrg.cpfrContacts as any;
+  if (!cpfrContacts || !cpfrContacts.primary_contacts) {
+    console.log('📧 CPFR NOTIFICATION (API) - No CPFR contacts configured for GPN');
+    return;
+  }
+
+  const primaryContacts = cpfrContacts.primary_contacts || [];
+  const activeContacts = primaryContacts.filter((contact: any) => contact.active && contact.email);
+
+  if (activeContacts.length === 0) {
+    console.log('📧 CPFR NOTIFICATION (API) - No active CPFR contacts found for GPN');
+    return;
+  }
+
+  console.log(`📧 CPFR NOTIFICATION (API) - Sending to ${activeContacts.length} GPN contacts`);
+
+  if (!resend) {
+    console.log('📧 CPFR NOTIFICATION (API) - Resend not configured, skipping email');
+    return;
+  }
+
+  // Send notification email
+  try {
+    const recipients = activeContacts.map((contact: any) => contact.email);
+    
+    const { data: emailData, error: emailError } = await resend.emails.send({
+      from: 'BDI Business Portal <noreply@bdibusinessportal.com>',
+      to: recipients,
+      subject: `🔔 New Production File Uploaded by ${uploaderOrgCode} - ${fileData.fileName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">🔔 New Production File Available</h2>
+          
+          <p>Hello GPN CPFR Team,</p>
+          
+          <p>A new production file has been uploaded by <strong>${uploaderOrgCode} organization</strong> via API and is ready for review:</p>
+          
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">File Details:</h3>
+            <p><strong>Uploaded by:</strong> ${uploaderOrgCode} Organization (via API)</p>
+            <p><strong>File Name:</strong> ${fileData.fileName}</p>
+            <p><strong>File Type:</strong> ${fileData.fileType}</p>
+            <p><strong>Upload Date:</strong> ${new Date().toLocaleString()}</p>
+            ${fileData.description ? `<p><strong>Description:</strong> ${fileData.description}</p>` : ''}
+            ${fileData.bdiShipmentNumber ? `<p><strong>BDI Shipment:</strong> ${fileData.bdiShipmentNumber}</p>` : ''}
+          </div>
+          
+          <p><strong>Next Steps:</strong> Please log into the BDI Business Portal to review and process this production file.</p>
+          
+          <p><a href="https://bdibusinessportal.com/inventory/production-files" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Production Files</a></p>
+          
+          <p>Best regards,<br>BDI Business Portal Team</p>
+        </div>
+      `
+    });
+
+    if (emailError) {
+      console.error('📧 CPFR NOTIFICATION (API) - Email failed:', emailError);
+    } else {
+      console.log('📧 CPFR NOTIFICATION (API) - Email sent successfully:', emailData?.id);
+    }
+
+  } catch (error) {
+    console.error('📧 CPFR NOTIFICATION (API) - Error sending email:', error);
+  }
+}
 
 /**
  * GET /api/v1/production-files
@@ -478,6 +572,14 @@ export async function POST(request: NextRequest) {
     console.log('✅ Database insert successful:', newFile.id);
 
     console.log(`✅ API Upload successful: ${file.name} by ${authResult.organization?.code}`);
+
+    // 📧 CPFR Notification: Send email to GPN organization (same as GUI uploads)
+    try {
+      await sendProductionFileNotification(newFile, authResult.organization?.code || 'UNKNOWN');
+    } catch (emailError) {
+      console.error('⚠️ Failed to send CPFR notification (file upload still successful):', emailError);
+      // Don't fail the upload if email fails
+    }
 
     return NextResponse.json({
       success: true,
