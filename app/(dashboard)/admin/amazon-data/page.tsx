@@ -250,6 +250,9 @@ export default function AmazonDataPage() {
   };
 
   const selectedReportType = reportTypes.find(rt => rt.value === reportType);
+  
+  // Check if current report type needs date ranges
+  const requiresDateRange = !['inventory', 'fees'].includes(reportType);
 
   return (
     <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto">
@@ -306,25 +309,29 @@ export default function AmazonDataPage() {
           {/* Date Range (Optional) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">
-                Start Date <span className="text-muted-foreground">(optional)</span>
+              <Label htmlFor="startDate" className={!requiresDateRange ? 'text-muted-foreground' : ''}>
+                Start Date {requiresDateRange ? <span className="text-muted-foreground">(optional)</span> : <span className="text-muted-foreground">(not used)</span>}
               </Label>
               <Input
                 id="startDate"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                disabled={!requiresDateRange}
+                className={!requiresDateRange ? 'opacity-50 cursor-not-allowed' : ''}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endDate">
-                End Date <span className="text-muted-foreground">(optional)</span>
+              <Label htmlFor="endDate" className={!requiresDateRange ? 'text-muted-foreground' : ''}>
+                End Date {requiresDateRange ? <span className="text-muted-foreground">(optional)</span> : <span className="text-muted-foreground">(not used)</span>}
               </Label>
               <Input
                 id="endDate"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                disabled={!requiresDateRange}
+                className={!requiresDateRange ? 'opacity-50 cursor-not-allowed' : ''}
               />
             </div>
             <div className="space-y-2">
@@ -383,7 +390,7 @@ export default function AmazonDataPage() {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <strong>Note:</strong> Settlement reports are best retrieved by listing existing reports.
-              Other report types can be requested for specific date ranges.
+              Orders and Returns reports require date ranges. Inventory and Fee reports use current data (dates not needed).
             </AlertDescription>
           </Alert>
         </CardContent>

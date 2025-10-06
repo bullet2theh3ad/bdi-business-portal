@@ -23,13 +23,19 @@ export async function POST(request: NextRequest) {
       orders: 'GET_FLAT_FILE_ALL_ORDERS_DATA_BY_ORDER_DATE_GENERAL',
       returns: 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
       fees: 'GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA',
-      inventory: 'GET_FBA_INVENTORY_AGED_DATA',
+      inventory: 'GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA', // Merchant listings inventory
     };
 
     const amazonReportType = reportTypeMap[reportType] || reportType;
 
     // Step 1: Request the report
-    const reportId = await amazon.requestReport(amazonReportType, startDate, endDate);
+    // Note: Inventory and fee reports don't use date ranges
+    const skipDates = ['inventory', 'fees'].includes(reportType);
+    const reportId = await amazon.requestReport(
+      amazonReportType, 
+      skipDates ? undefined : startDate, 
+      skipDates ? undefined : endDate
+    );
 
     return NextResponse.json({
       success: true,

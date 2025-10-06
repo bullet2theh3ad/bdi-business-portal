@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const reportType = searchParams.get('reportType') || 'GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE';
+    let reportType = searchParams.get('reportType') || 'GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE';
+    
+    // Map the inventory report type to match what we use for requesting
+    if (reportType === 'GET_FBA_INVENTORY_AGED_DATA') {
+      reportType = 'GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA';
+    }
+    
     const processingStatus = searchParams.get('processingStatus') || 'DONE';
     
     const credentials = getAmazonCredentials();
