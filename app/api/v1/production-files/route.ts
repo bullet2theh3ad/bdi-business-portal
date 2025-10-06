@@ -440,6 +440,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create database record
+    console.log('📝 Attempting database insert with:', {
+      fileName: file.name,
+      filePath: filePath,
+      fileSize: file.size,
+      contentType: file.type,
+      organizationId: authResult.organization!.id,
+      uploadedBy: authResult.user!.authId,
+      userEmail: authResult.user!.email,
+    });
+
     const [newFile] = await db
       .insert(productionFiles)
       .values({
@@ -464,6 +474,8 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       })
       .returning();
+    
+    console.log('✅ Database insert successful:', newFile.id);
 
     console.log(`✅ API Upload successful: ${file.name} by ${authResult.organization?.code}`);
 
@@ -491,12 +503,19 @@ export async function POST(request: NextRequest) {
       }
     });
     
-  } catch (error) {
-    console.error('Error in production files upload API:', error);
+  } catch (error: any) {
+    console.error('❌ Error in production files upload API:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
     return NextResponse.json({
       success: false,
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR'
+      error: error.message || 'Internal server error',
+      code: error.code || 'INTERNAL_ERROR',
+      detail: error.detail || undefined
     }, { status: 500 });
   }
 }
