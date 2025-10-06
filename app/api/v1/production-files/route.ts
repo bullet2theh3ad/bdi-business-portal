@@ -465,7 +465,7 @@ export async function POST(request: NextRequest) {
           uploadedViaApi: true,
           apiKeyId: authResult.apiKey?.id,
         }),
-        fileType: 'production',
+        fileType: 'PRODUCTION_FILE',
         organizationId: authResult.organization!.id,
         uploadedBy: authResult.user!.authId,
         description: description || `Production file uploaded via API by ${authResult.organization?.code}`,
