@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         console.log(`\nTesting: ${reportConfig.type}`);
         
         // Try to request the report
-        const result = await amazon.requestReport(
+        const reportId = await amazon.requestReport(
           reportConfig.type,
           startDate,
           endDate
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
           description: reportConfig.description,
           status: '✅ AVAILABLE',
           message: 'Report can be requested',
-          reportId: result.reportId,
+          reportId: reportId,
         });
 
         console.log(`  ✅ AVAILABLE: ${reportConfig.description}`);
