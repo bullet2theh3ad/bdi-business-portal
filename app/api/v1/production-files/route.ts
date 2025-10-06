@@ -363,6 +363,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    console.log(`📁 File received: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
+
     // Validate file type (production files should be spreadsheets or text files)
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
@@ -373,9 +375,10 @@ export async function POST(request: NextRequest) {
     ];
 
     if (!allowedTypes.includes(file.type)) {
+      console.log(`❌ File type rejected: "${file.type}" not in allowed types:`, allowedTypes);
       return NextResponse.json({
         success: false,
-        error: `Invalid file type. Allowed types: Excel (.xlsx, .xls), CSV (.csv), Text (.txt), JSON (.json)`,
+        error: `Invalid file type "${file.type}". Allowed types: Excel (.xlsx, .xls), CSV (.csv), Text (.txt), JSON (.json)`,
         code: 'INVALID_FILE_TYPE'
       }, { status: 400 });
     }

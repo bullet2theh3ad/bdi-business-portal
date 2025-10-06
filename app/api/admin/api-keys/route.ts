@@ -167,8 +167,13 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!orgAdmin || !orgAdmin.user) {
-      return NextResponse.json({ error: 'No admin user found for this organization' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'No admin user found for this organization. Please ensure the organization has at least one admin user before creating API keys.',
+        code: 'NO_ADMIN_USER'
+      }, { status: 404 });
     }
+
+    console.log(`🔗 Linking API key to admin user: ${orgAdmin.user.name} (${orgAdmin.user.email})`);
 
     // Generate API key
     const orgCode = targetOrganization.code || 'org';
