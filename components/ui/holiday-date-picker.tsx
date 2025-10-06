@@ -30,7 +30,7 @@ export function HolidayDatePicker({
   id,
   name,
   label,
-  value = '',
+  value,
   onChange,
   required = false,
   className = '',
@@ -39,10 +39,16 @@ export function HolidayDatePicker({
 }: HolidayDatePickerProps) {
   const [holidayInfo, setHolidayInfo] = useState<HolidayInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Track internal value for uncontrolled mode
+  const [internalValue, setInternalValue] = useState('');
+  
+  // Determine if this is controlled or uncontrolled
+  const isControlled = value !== undefined;
+  const currentValue = isControlled ? value : internalValue;
 
   // Check holiday status when date changes
   useEffect(() => {
-    if (!value || !showHolidayWarnings) {
+    if (!currentValue || !showHolidayWarnings) {
       setHolidayInfo(null);
       return;
     }
@@ -50,12 +56,12 @@ export function HolidayDatePicker({
     const checkHolidayStatus = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/holidays/chinese/periods?date=${value}`);
+        const response = await fetch(`/api/holidays/chinese/periods?date=${currentValue}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             setHolidayInfo({
-              date: value,
+              date: currentValue,
               type: data.classification.type,
               holidayName: data.classification.holidayName,
               daysFromHoliday: data.classification.daysFromHoliday,
@@ -74,10 +80,17 @@ export function HolidayDatePicker({
     // Debounce the API call
     const timeoutId = setTimeout(checkHolidayStatus, 300);
     return () => clearTimeout(timeoutId);
-  }, [value, showHolidayWarnings]);
+  }, [currentValue, showHolidayWarnings]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    
+    // Update internal state for uncontrolled mode
+    if (!isControlled) {
+      setInternalValue(newValue);
+    }
+    
+    // Call onChange if provided
     onChange?.(newValue);
   };
 
@@ -157,7 +170,8 @@ export function HolidayDatePicker({
         id={id}
         name={name}
         type="date"
-        value={value}
+        value={isControlled ? value : undefined}
+        defaultValue={!isControlled ? internalValue : undefined}
         onChange={handleDateChange}
         required={required}
         className={getInputClassName()}
