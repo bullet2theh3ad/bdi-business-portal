@@ -127,6 +127,52 @@ export class AmazonSPAPIService {
     );
   }
 
+  /**
+   * Request a report (Step 1 of 3-step process)
+   * Returns reportId to poll for status
+   */
+  async requestReport(
+    reportType: AmazonReportType | string,
+    startDate?: string,
+    endDate?: string,
+    marketplaceIds: string[] = [AmazonMarketplace.US]
+  ): Promise<string> {
+    return await this.reportsClient.requestReport(
+      reportType,
+      startDate,
+      endDate,
+      marketplaceIds
+    );
+  }
+
+  /**
+   * Get report status (Step 2 of 3-step process)
+   * Poll this until processingStatus is 'DONE'
+   */
+  async getReportStatus(reportId: string) {
+    return await this.reportsClient.getReportStatus(reportId);
+  }
+
+  /**
+   * Download report (Step 3 of 3-step process)
+   * Use reportDocumentId from getReportStatus
+   */
+  async downloadReport(reportDocumentId: string): Promise<string> {
+    return await this.reportsClient.downloadReport(reportDocumentId);
+  }
+
+  /**
+   * List existing reports of a specific type
+   */
+  async listReports(
+    reportType: AmazonReportType | string,
+    marketplaceIds: string[] = [AmazonMarketplace.US]
+  ) {
+    // This would need to be implemented in the client
+    // For now, return empty array
+    return [];
+  }
+
   // ==========================================================================
   // FINANCIAL EVENTS API
   // ==========================================================================

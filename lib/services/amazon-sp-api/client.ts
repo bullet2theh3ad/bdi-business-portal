@@ -163,7 +163,7 @@ export class AmazonSPAPIClient {
    * Get report status
    * Based on: BDI_2/amazon_flat_file_v2.py -> wait_for_report()
    */
-  private async getReportStatus(reportId: string): Promise<GetReportResponse> {
+  async getReportStatus(reportId: string): Promise<GetReportResponse> {
     return await this.rateLimiter.executeWithRetry(async () => {
       const path = `/reports/${this.REPORTS_VERSION}/reports/${reportId}`;
       const headers = await this.auth.getSignedHeaders(

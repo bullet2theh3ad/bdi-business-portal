@@ -150,6 +150,13 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         icon: 'collaboration',
         requiresBDI: true, // BDI-only feature
       },
+      {
+        title: tn('amazonData', 'Amazon Data'), // 🌍 TRANSLATED
+        href: '/admin/amazon-data',
+        icon: 'analytics',
+        requiresRole: ['super_admin', 'admin_cfo'], // Super Admin and CFO only
+        requiresBDI: true, // BDI-only feature
+      },
     ],
   },
   {

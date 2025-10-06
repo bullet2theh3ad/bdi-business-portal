@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
         sizeBytes: reportData.length,
       },
       data: parsedData,
-      // Include first 1000 chars of raw data for inspection
-      rawDataPreview: reportData.substring(0, 1000),
+      // Include full content for download
+      content: reportData,
     });
 
   } catch (error) {

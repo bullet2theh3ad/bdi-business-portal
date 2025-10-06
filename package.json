@@ -15,6 +15,7 @@
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.10",
     "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.7",
     "@react-spring/three": "^10.0.1",
     "@react-three/drei": "^10.6.1",
