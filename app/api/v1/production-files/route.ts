@@ -408,10 +408,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create file path for Supabase storage
+    // Create file path for Supabase storage (match GUI structure)
     const fileExtension = file.name.split('.').pop() || 'txt';
     const fileName = `${authResult.organization?.code}_${Date.now()}_${finalShipmentNumber}.${fileExtension}`;
-    const filePath = `${authResult.organization?.id}/production-files/${fileName}`;
+    const filePath = `production-files/${fileName}`; // Match GUI structure - flat directory
 
     // Upload to Supabase Storage
     const supabase = createClient(
