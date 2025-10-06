@@ -64,20 +64,68 @@ export default function AmazonDataPage() {
   }
 
   const reportTypes = [
-    { value: 'settlement', label: 'Settlement Reports', icon: DollarSign, description: 'Financial settlement data from Amazon' },
-    { value: 'orders', label: 'Orders Reports', icon: Package, description: 'Detailed order transaction data' },
-    { value: 'returns', label: 'Returns Reports', icon: RefreshCw, description: 'Customer return information' },
-    { value: 'fees', label: 'Fee Reports', icon: TrendingUp, description: 'FBA fees and cost breakdown' },
-    { value: 'inventory', label: 'Inventory Reports', icon: FileText, description: 'Current inventory levels' },
+    // Settlement
+    { value: 'settlement', label: 'Settlement Reports', icon: DollarSign, description: 'Financial settlement data (auto-generated)', category: 'Settlement' },
+    
+    // Orders (3 types)
+    { value: 'orders_by_date', label: 'Orders by Order Date', icon: Package, description: 'All orders by order date', category: 'Orders' },
+    { value: 'orders_by_update', label: 'Orders by Last Update', icon: Package, description: 'All orders by last update', category: 'Orders' },
+    { value: 'fulfilled_shipments', label: 'Amazon Fulfilled Shipments', icon: Package, description: 'FBA shipment data', category: 'Orders' },
+    
+    // Returns & Reimbursements (4 types)
+    { value: 'returns_fba', label: 'FBA Customer Returns', icon: RefreshCw, description: 'FBA customer return data', category: 'Returns' },
+    { value: 'returns_by_date', label: 'Returns by Return Date', icon: RefreshCw, description: 'Returns by return date', category: 'Returns' },
+    { value: 'returns_xml', label: 'Returns (XML Format)', icon: RefreshCw, description: 'Returns in XML format', category: 'Returns' },
+    { value: 'reimbursements', label: 'FBA Reimbursements', icon: DollarSign, description: 'Amazon reimbursements', category: 'Reimbursements' },
+    
+    // Inventory (6 types)
+    { value: 'inventory_manage', label: 'FBA Manage Inventory', icon: FileText, description: 'FBA unsuppressed inventory', category: 'Inventory' },
+    { value: 'inventory_aged', label: 'FBA Inventory Aged', icon: FileText, description: 'Aged inventory data', category: 'Inventory' },
+    { value: 'inventory_all', label: 'FBA All Inventory', icon: FileText, description: 'All FBA inventory data', category: 'Inventory' },
+    { value: 'listings_all', label: 'All Merchant Listings', icon: FileText, description: 'All merchant listings', category: 'Inventory' },
+    { value: 'listings_active', label: 'Active Merchant Listings', icon: FileText, description: 'Active listings only', category: 'Inventory' },
+    { value: 'listings_inactive', label: 'Inactive Merchant Listings', icon: FileText, description: 'Inactive listings only', category: 'Inventory' },
+    
+    // Fees (2 types)
+    { value: 'fees_estimated', label: 'Estimated FBA Fees', icon: TrendingUp, description: 'Estimated FBA fees', category: 'Fees' },
+    { value: 'fees_storage', label: 'Storage Fee Charges', icon: TrendingUp, description: 'Storage fee charges', category: 'Fees' },
+    
+    // Sales & Catalog (2 types)
+    { value: 'sales_traffic', label: 'Sales and Traffic Report', icon: TrendingUp, description: 'Sales and traffic analytics', category: 'Sales' },
+    { value: 'browse_tree', label: 'Browse Tree Data', icon: FileText, description: 'Catalog browse tree (XML)', category: 'Catalog' },
   ];
 
   const getReportTypeId = (type: string): string => {
     const mapping: Record<string, string> = {
+      // Settlement
       settlement: 'GET_V2_SETTLEMENT_REPORT_DATA_FLAT_FILE',
-      orders: 'GET_FLAT_FILE_ALL_ORDERS_DATA_BY_ORDER_DATE_GENERAL',
-      returns: 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
-      fees: 'GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA',
-      inventory: 'GET_FBA_INVENTORY_AGED_DATA',
+      
+      // Orders
+      orders_by_date: 'GET_FLAT_FILE_ALL_ORDERS_DATA_BY_ORDER_DATE_GENERAL',
+      orders_by_update: 'GET_FLAT_FILE_ALL_ORDERS_DATA_BY_LAST_UPDATE_GENERAL',
+      fulfilled_shipments: 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL',
+      
+      // Returns & Reimbursements
+      returns_fba: 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
+      returns_by_date: 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
+      returns_xml: 'GET_XML_RETURNS_DATA_BY_RETURN_DATE',
+      reimbursements: 'GET_FBA_REIMBURSEMENTS_DATA',
+      
+      // Inventory
+      inventory_manage: 'GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA',
+      inventory_aged: 'GET_FBA_INVENTORY_AGED_DATA',
+      inventory_all: 'GET_FBA_MYI_ALL_INVENTORY_DATA',
+      listings_all: 'GET_MERCHANT_LISTINGS_ALL_DATA',
+      listings_active: 'GET_MERCHANT_LISTINGS_DATA',
+      listings_inactive: 'GET_MERCHANT_LISTINGS_INACTIVE_DATA',
+      
+      // Fees
+      fees_estimated: 'GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA',
+      fees_storage: 'GET_FBA_STORAGE_FEE_CHARGES_DATA',
+      
+      // Sales & Catalog
+      sales_traffic: 'GET_SALES_AND_TRAFFIC_REPORT',
+      browse_tree: 'GET_XML_BROWSE_TREE_DATA',
     };
     return mapping[type] || type;
   };
@@ -251,10 +299,18 @@ export default function AmazonDataPage() {
 
   const selectedReportType = reportTypes.find(rt => rt.value === reportType);
   
-  // Check if current report type needs date ranges
-  const requiresDateRange = !['inventory', 'fees', 'settlement'].includes(reportType);
+  // Reports that don't require date ranges (use current data)
+  const noDateRangeReports = [
+    'settlement',
+    'inventory_manage', 'inventory_aged', 'inventory_all',
+    'listings_all', 'listings_active', 'listings_inactive',
+    'fees_estimated', 'fees_storage',
+  ];
   
-  // Settlement reports should only be listed, not requested
+  // Check if current report type needs date ranges
+  const requiresDateRange = !noDateRangeReports.includes(reportType);
+  
+  // Settlement reports should only be listed, not requested (auto-generated by Amazon)
   const canRequestNewReport = reportType !== 'settlement';
 
   return (
@@ -291,8 +347,87 @@ export default function AmazonDataPage() {
               <SelectTrigger id="reportType">
                 <SelectValue placeholder="Select report type" />
               </SelectTrigger>
-              <SelectContent>
-                {reportTypes.map((type) => (
+              <SelectContent className="max-h-[400px]">
+                {/* Settlement */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Settlement</div>
+                {reportTypes.filter(t => t.category === 'Settlement').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Orders */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Orders</div>
+                {reportTypes.filter(t => t.category === 'Orders').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Returns */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Returns</div>
+                {reportTypes.filter(t => t.category === 'Returns').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Reimbursements */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Reimbursements</div>
+                {reportTypes.filter(t => t.category === 'Reimbursements').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Inventory */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Inventory</div>
+                {reportTypes.filter(t => t.category === 'Inventory').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Fees */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Fees</div>
+                {reportTypes.filter(t => t.category === 'Fees').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Sales */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Sales</div>
+                {reportTypes.filter(t => t.category === 'Sales').map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      {type.label}
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Catalog */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Catalog</div>
+                {reportTypes.filter(t => t.category === 'Catalog').map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     <div className="flex items-center gap-2">
                       <type.icon className="h-4 w-4" />
@@ -394,8 +529,9 @@ export default function AmazonDataPage() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Note:</strong> Settlement reports are generated automatically by Amazon every 14 days - use "List Available Reports" only.
-              Orders and Returns reports can be requested with custom date ranges. Inventory and Fee reports use current data.
+              <strong>Note:</strong> Settlement reports are auto-generated by Amazon every 14 days - use "List Available Reports" only.
+              Orders, Returns, Reimbursements, Sales, and Catalog reports can be requested with custom date ranges.
+              Inventory and Fee reports use current data (dates not needed).
             </AlertDescription>
           </Alert>
         </CardContent>
