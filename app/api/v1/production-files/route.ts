@@ -408,10 +408,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create file path for Supabase storage (match GUI structure)
+    // Create file path for Supabase storage (match GUI structure with org folders)
     const fileExtension = file.name.split('.').pop() || 'txt';
     const fileName = `${authResult.organization?.code}_${Date.now()}_${finalShipmentNumber}.${fileExtension}`;
-    const filePath = `production-files/${fileName}`; // Match GUI structure - flat directory
+    const orgFolder = authResult.organization?.code; // Use org code (BDI, CBN, MTN, etc.)
+    const filePath = `production-files/${orgFolder}/${fileName}`; // Org-specific subfolder
 
     // Upload to Supabase Storage
     const supabase = createClient(
@@ -420,6 +421,8 @@ export async function POST(request: NextRequest) {
     );
 
     const fileBuffer = await file.arrayBuffer();
+    
+    // Supabase automatically creates folders when uploading with path separators
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('organization-documents')
       .upload(filePath, fileBuffer, {
