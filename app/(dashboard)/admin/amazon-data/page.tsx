@@ -252,7 +252,10 @@ export default function AmazonDataPage() {
   const selectedReportType = reportTypes.find(rt => rt.value === reportType);
   
   // Check if current report type needs date ranges
-  const requiresDateRange = !['inventory', 'fees'].includes(reportType);
+  const requiresDateRange = !['inventory', 'fees', 'settlement'].includes(reportType);
+  
+  // Settlement reports should only be listed, not requested
+  const canRequestNewReport = reportType !== 'settlement';
 
   return (
     <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto">
@@ -359,15 +362,17 @@ export default function AmazonDataPage() {
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               List Available Reports
             </Button>
-            <Button
-              onClick={handleRequestNewReport}
-              disabled={isLoading || requestingReport}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Calendar className={`h-4 w-4 ${requestingReport ? 'animate-pulse' : ''}`} />
-              {requestingReport ? 'Requesting...' : 'Request New Report'}
-            </Button>
+            {canRequestNewReport && (
+              <Button
+                onClick={handleRequestNewReport}
+                disabled={isLoading || requestingReport}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Calendar className={`h-4 w-4 ${requestingReport ? 'animate-pulse' : ''}`} />
+                {requestingReport ? 'Requesting...' : 'Request New Report'}
+              </Button>
+            )}
           </div>
 
           {/* Polling Status Display */}
@@ -389,8 +394,8 @@ export default function AmazonDataPage() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Note:</strong> Settlement reports are best retrieved by listing existing reports.
-              Orders and Returns reports require date ranges. Inventory and Fee reports use current data (dates not needed).
+              <strong>Note:</strong> Settlement reports are generated automatically by Amazon every 14 days - use "List Available Reports" only.
+              Orders and Returns reports can be requested with custom date ranges. Inventory and Fee reports use current data.
             </AlertDescription>
           </Alert>
         </CardContent>
