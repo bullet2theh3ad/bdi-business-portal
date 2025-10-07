@@ -157,6 +157,13 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         requiresRole: ['super_admin', 'admin_cfo'], // Super Admin and CFO only
         requiresBDI: true, // BDI-only feature
       },
+      {
+        title: 'NRE Budget',
+        href: '/admin/nre-budget',
+        icon: 'orders',
+        requiresRole: ['super_admin', 'admin_cfo', 'admin_nre'], // Super Admin, CFO, and NRE Manager
+        requiresBDI: true, // BDI-only feature
+      },
     ],
   },
   {

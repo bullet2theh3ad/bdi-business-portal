@@ -1254,3 +1254,121 @@ export enum ActivityType {
   UPDATE_SUPPLY_SIGNAL = 'UPDATE_SUPPLY_SIGNAL',
   COMMIT_SUPPLY_SIGNAL = 'COMMIT_SUPPLY_SIGNAL',
 }
+
+// ===== NRE (NON-RECURRING ENGINEERING) LINE ITEMS =====
+// 100% Private document processing for vendor quotes
+
+export const nreCategories = pgTable('nre_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  keywords: jsonb('keywords').$type<string[]>(), // Keywords for auto-categorization
+  sortOrder: integer('sort_order').default(0),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const nreLineItems = pgTable('nre_line_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Document reference (rag_documents table exists in DB but not in Drizzle schema yet)
+  documentId: uuid('document_id'), // TODO: Add reference when ragDocuments is added to schema
+  documentPath: text('document_path'),
+  
+  // Vendor information
+  vendorName: text('vendor_name'),
+  vendorContact: text('vendor_contact'),
+  quoteNumber: text('quote_number'),
+  quoteDate: date('quote_date'),
+  
+  // Line item details
+  lineItemNumber: integer('line_item_number'),
+  description: text('description').notNull(),
+  category: text('category').notNull(), // References nreCategories.code
+  
+  // Financial details
+  quantity: integer('quantity').default(1),
+  unitPrice: numeric('unit_price', { precision: 12, scale: 2 }),
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(),
+  currency: text('currency').default('USD'),
+  
+  // Payment terms
+  paymentTerms: text('payment_terms'),
+  dueDate: date('due_date'),
+  
+  // Status tracking
+  status: text('status').default('pending'), // pending, approved, rejected, paid
+  approvedBy: uuid('approved_by').references(() => users.id),
+  approvedAt: timestamp('approved_at'),
+  paidAt: timestamp('paid_at'),
+  
+  // Metadata
+  notes: text('notes'),
+  extractedData: jsonb('extracted_data'), // Raw extracted text and metadata
+  confidenceScore: numeric('confidence_score', { precision: 3, scale: 2 }), // OCR confidence
+  
+  // Audit fields
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export type NreCategory = typeof nreCategories.$inferSelect;
+export type NewNreCategory = typeof nreCategories.$inferInsert;
+export type NreLineItem = typeof nreLineItems.$inferSelect;
+export type NewNreLineItem = typeof nreLineItems.$inferInsert;
+
+// ===== NRE BUDGET MANAGEMENT =====
+
+export const nreBudgets = pgTable('nre_budgets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  nreReferenceNumber: text('nre_reference_number').notNull().unique(),
+  vendorName: text('vendor_name').notNull(),
+  quoteNumber: text('quote_number'),
+  quoteDate: date('quote_date'),
+  paymentTerms: text('payment_terms'),
+  paymentStatus: text('payment_status').notNull().default('not_paid'), // not_paid, partially_paid, paid
+  paymentDate: date('payment_date'),
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(),
+  documents: jsonb('documents').$type<string[]>().default([]),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const nreBudgetLineItems = pgTable('nre_budget_line_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  nreBudgetId: uuid('nre_budget_id').notNull().references(() => nreBudgets.id, { onDelete: 'cascade' }),
+  lineItemNumber: integer('line_item_number').notNull(),
+  description: text('description').notNull(),
+  category: text('category').notNull(),
+  quantity: integer('quantity').notNull().default(1),
+  unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const nreBudgetPaymentLineItems = pgTable('nre_budget_payment_line_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  nreBudgetId: uuid('nre_budget_id').notNull().references(() => nreBudgets.id, { onDelete: 'cascade' }),
+  paymentNumber: integer('payment_number').notNull(),
+  paymentDate: date('payment_date').notNull(),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type NreBudget = typeof nreBudgets.$inferSelect;
+export type NewNreBudget = typeof nreBudgets.$inferInsert;
+export type NreBudgetLineItem = typeof nreBudgetLineItems.$inferSelect;
+export type NewNreBudgetLineItem = typeof nreBudgetLineItems.$inferInsert;
+export type NreBudgetPaymentLineItem = typeof nreBudgetPaymentLineItems.$inferSelect;
+export type NewNreBudgetPaymentLineItem = typeof nreBudgetPaymentLineItems.$inferInsert;

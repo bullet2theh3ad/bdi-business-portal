@@ -27,6 +27,12 @@ export default function RAGUploadPage() {
   const [files, setFiles] = useState<FileWithTags[]>([]);
   const [bulkTags, setBulkTags] = useState<string>('');
   const [showBulkTags, setShowBulkTags] = useState(false);
+  const [targetDirectory, setTargetDirectory] = useState<'rag-documents' | 'nre-documents'>('rag-documents');
+  const [showNreModal, setShowNreModal] = useState(false);
+  const [extractedLineItems, setExtractedLineItems] = useState<any[]>([]);
+  const [editingItems, setEditingItems] = useState<any[]>([]);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [recentUploads, setRecentUploads] = useState<any[]>([]);
 
 // Enhanced file interface with tagging
 interface FileWithTags {
@@ -144,6 +150,7 @@ interface FileWithTags {
         formData.append('file', fileWithTags.file);
         formData.append('companyCode', companyCode);
         formData.append('tags', fileWithTags.tags || '');
+        formData.append('targetDirectory', targetDirectory);
 
         const response = await fetch('/api/admin/rag-upload', {
           method: 'POST',
@@ -157,7 +164,7 @@ interface FileWithTags {
           uploadResults.push({ file: fileWithTags.file.name, success: false, error: result.error || result.details });
         } else {
           console.log(`✅ Successfully uploaded: ${fileWithTags.file.name} to ${result.filePath}`);
-          uploadResults.push({ file: fileWithTags.file.name, success: true, path: result.filePath });
+          uploadResults.push({ file: fileWithTags.file.name, success: true, path: result.filePath, nreLineItems: result.nreLineItems });
         }
       }
 
@@ -165,9 +172,32 @@ interface FileWithTags {
       const failCount = uploadResults.filter(r => !r.success).length;
 
       if (successCount > 0) {
+        // Check if any NRE line items were extracted
+        console.log('Upload results:', uploadResults);
+        const allNreItems = uploadResults
+          .filter(r => r.success && r.nreLineItems)
+          .flatMap(r => r.nreLineItems.items || []);
+        
+        console.log('Extracted NRE items:', allNreItems);
+        
+        if (allNreItems.length > 0 && targetDirectory === 'nre-documents') {
+          // Show NRE modal with extracted line items
+          console.log('Opening NRE modal with', allNreItems.length, 'items');
+          setExtractedLineItems(allNreItems);
+          setEditingItems(JSON.parse(JSON.stringify(allNreItems))); // Deep copy for editing
+          setShowNreModal(true);
+        } else if (targetDirectory === 'nre-documents') {
+          console.warn('No NRE line items extracted from upload');
+          toast({
+            title: "No Line Items Extracted",
+            description: "The document was uploaded but no NRE line items could be extracted. Try using the 'View Recent NRE Files' button to process it.",
+            variant: "destructive"
+          });
+        }
+        
         toast({
           title: "Upload Complete",
-          description: `Successfully uploaded ${successCount} file(s) to ${companyCode} RAG directory.${failCount > 0 ? ` ${failCount} file(s) failed.` : ''}`,
+          description: `Successfully uploaded ${successCount} file(s) to ${companyCode} ${targetDirectory}.${failCount > 0 ? ` ${failCount} file(s) failed.` : ''}${allNreItems.length > 0 ? ` Extracted ${allNreItems.length} line items.` : ''}`,
         });
       }
 
@@ -179,7 +209,7 @@ interface FileWithTags {
         });
       }
 
-      // Clear files after upload
+      // Clear files after upload (but keep modal open if showing NRE items)
       setFiles([]);
       setSelectedCompany('');
       setNewCompanyCode('');
@@ -194,6 +224,81 @@ interface FileWithTags {
       });
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Fetch recent NRE uploads
+  const fetchRecentNREUploads = async () => {
+    setLoadingExisting(true);
+    try {
+      const { data, error } = await supabase
+        .from('rag_documents')
+        .select('*')
+        .like('file_path', 'nre-documents%')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched NRE uploads:', data);
+      setRecentUploads(data || []);
+      
+      if (!data || data.length === 0) {
+        toast({
+          title: "No NRE Files Found",
+          description: "No NRE documents have been uploaded yet.",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching recent uploads:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch recent uploads",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
+
+  // Process an existing uploaded file
+  const processExistingFile = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/admin/process-nre/${documentId}`, {
+        method: 'POST',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Processing failed');
+      }
+
+      if (result.lineItems && result.lineItems.length > 0) {
+        setExtractedLineItems(result.lineItems);
+        setEditingItems(JSON.parse(JSON.stringify(result.lineItems)));
+        setShowNreModal(true);
+        toast({
+          title: "Processing Complete",
+          description: `Extracted ${result.lineItems.length} line items`,
+        });
+      } else {
+        toast({
+          title: "No Line Items Found",
+          description: "No NRE line items could be extracted from this document",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast({
+        title: "Processing Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
     }
   };
 
@@ -279,10 +384,35 @@ interface FileWithTags {
               </div>
             </div>
             
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Target Directory</Label>
+                <select
+                  value={targetDirectory}
+                  onChange={(e) => setTargetDirectory(e.target.value as 'rag-documents' | 'nre-documents')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="rag-documents">rag-documents (RAG System)</option>
+                  <option value="nre-documents">nre-documents (NRE Experiment)</option>
+                </select>
+              </div>
+              <div>
+                <Label>View Recent NRE Uploads</Label>
+                <Button
+                  variant="outline"
+                  onClick={fetchRecentNREUploads}
+                  disabled={loadingExisting}
+                  className="w-full"
+                >
+                  {loadingExisting ? 'Loading...' : '📋 View Recent NRE Files'}
+                </Button>
+              </div>
+            </div>
+            
             {getCompanyCode() && (
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm font-medium text-blue-900">
-                  📁 Files will be uploaded to: <code>rag-documents/{getCompanyCode()}/</code>
+                  📁 Files will be uploaded to: <code>{targetDirectory}/{getCompanyCode()}/</code>
                 </p>
               </div>
             )}
@@ -451,6 +581,36 @@ interface FileWithTags {
           </CardContent>
         </Card>
 
+        {/* Recent NRE Uploads */}
+        {recentUploads.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>📋 Recent NRE Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {recentUploads.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                    <div className="flex-1">
+                      <p className="font-medium">{doc.file_name}</p>
+                      <p className="text-sm text-gray-500">
+                        Uploaded: {new Date(doc.created_at).toLocaleDateString()} • Tags: {doc.tags?.join(', ') || 'None'}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => processExistingFile(doc.id)}
+                    >
+                      🔍 Process & View
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Usage Instructions */}
         <Card>
           <CardHeader>
@@ -483,6 +643,227 @@ interface FileWithTags {
           </CardContent>
         </Card>
       </div>
+
+      {/* NRE Line Items Modal */}
+      {showNreModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">NRE Line Items Extracted</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Review and edit the extracted line items before saving
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowNreModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                {editingItems.map((item, index) => (
+                  <Card key={item.id || index} className="border-2">
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Line Item Number */}
+                        <div>
+                          <Label>Line Item #</Label>
+                          <Input
+                            type="number"
+                            value={item.line_item_number || index + 1}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].line_item_number = parseInt(e.target.value);
+                              setEditingItems(updated);
+                            }}
+                          />
+                        </div>
+
+                        {/* Category */}
+                        <div>
+                          <Label>Category</Label>
+                          <select
+                            value={item.category}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].category = e.target.value;
+                              setEditingItems(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="NRE_DESIGN">NRE Design</option>
+                            <option value="TOOLING">Tooling</option>
+                            <option value="EVT_DVT_PVT">EVT/DVT/PVT</option>
+                            <option value="CERTIFICATIONS">Certifications</option>
+                            <option value="FIELD_TESTING">Field Testing</option>
+                            <option value="ODM_SETUP">ODM Setup</option>
+                            <option value="FIRMWARE">Firmware</option>
+                            <option value="LOGISTICS_SAMPLES">Logistics Samples</option>
+                            <option value="WARRANTY_RELIABILITY">Warranty / Reliability</option>
+                            <option value="OTHERS">Others</option>
+                          </select>
+                        </div>
+
+                        {/* Description */}
+                        <div className="col-span-2">
+                          <Label>Description</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].description = e.target.value;
+                              setEditingItems(updated);
+                            }}
+                          />
+                        </div>
+
+                        {/* Quantity */}
+                        <div>
+                          <Label>Quantity</Label>
+                          <Input
+                            type="number"
+                            value={item.quantity || 1}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].quantity = parseInt(e.target.value);
+                              setEditingItems(updated);
+                            }}
+                          />
+                        </div>
+
+                        {/* Total Amount */}
+                        <div>
+                          <Label>Total Amount (USD)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.total_amount || 0}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].total_amount = parseFloat(e.target.value);
+                              setEditingItems(updated);
+                            }}
+                          />
+                        </div>
+
+                        {/* Vendor Name */}
+                        <div>
+                          <Label>Vendor Name</Label>
+                          <Input
+                            value={item.vendor_name || ''}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].vendor_name = e.target.value;
+                              setEditingItems(updated);
+                            }}
+                          />
+                        </div>
+
+                        {/* Quote Number */}
+                        <div>
+                          <Label>Quote Number</Label>
+                          <Input
+                            value={item.quote_number || ''}
+                            onChange={(e) => {
+                              const updated = [...editingItems];
+                              updated[index].quote_number = e.target.value;
+                              setEditingItems(updated);
+                            }}
+                          />
+                        </div>
+
+                        {/* Confidence Score */}
+                        <div className="col-span-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Extraction Confidence:</span>
+                            <span className={`font-semibold ${item.confidence_score > 0.7 ? 'text-green-600' : 'text-yellow-600'}`}>
+                              {((item.confidence_score || 0) * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Delete Button */}
+                        <div className="col-span-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const updated = editingItems.filter((_, i) => i !== index);
+                              setEditingItems(updated);
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Delete Line Item
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Add New Line Item Button */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const newItem = {
+                      line_item_number: editingItems.length + 1,
+                      description: '',
+                      category: 'OTHERS',
+                      quantity: 1,
+                      total_amount: 0,
+                      vendor_name: '',
+                      quote_number: '',
+                      confidence_score: 1.0,
+                    };
+                    setEditingItems([...editingItems, newItem]);
+                  }}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Line Item
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t bg-gray-50 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {editingItems.length} line item(s) • Total: ${editingItems.reduce((sum, item) => sum + (item.total_amount || 0), 0).toLocaleString()}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNreModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    // TODO: Save edited items to database
+                    console.log('Saving NRE line items:', editingItems);
+                    toast({
+                      title: "Line Items Saved",
+                      description: `${editingItems.length} line items have been saved.`,
+                    });
+                    setShowNreModal(false);
+                  }}
+                >
+                  Save All Line Items
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

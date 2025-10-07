@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { processDocument, formatForDatabase } from '@/lib/services/document-processor';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,32 +38,35 @@ export async function POST(request: NextRequest) {
 
     const { data: userData, error: userError } = await serviceSupabase
       .from('users')
-      .select('role')
+      .select('id, role')
       .eq('auth_id', authUser.id)
       .single();
 
     if (userError || !userData || userData.role !== 'super_admin') {
       return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
     }
+    
+    const dbUserId = userData.id; // Database user ID for foreign keys
 
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const companyCode = formData.get('companyCode') as string;
     const tags = formData.get('tags') as string || '';
+    const targetDirectory = (formData.get('targetDirectory') as string) || 'rag-documents';
 
     if (!file || !companyCode) {
       return NextResponse.json({ error: 'File and company code required' }, { status: 400 });
     }
 
-    console.log(`🚀 RAG Upload API: ${file.name} to ${companyCode} with tags: ${tags}`);
+    console.log(`🚀 RAG Upload API: ${file.name} to ${targetDirectory}/${companyCode} with tags: ${tags}`);
 
     // serviceSupabase already created above for user verification
 
     // Upload file with service role (bypasses RLS)
     const timestamp = Date.now();
     const fileName = `${timestamp}_${file.name}`;
-    const filePath = `rag-documents/${companyCode}/${fileName}`;
+    const filePath = `${targetDirectory}/${companyCode}/${fileName}`;
 
     const { data, error } = await serviceSupabase.storage
       .from('organization-documents')
@@ -109,13 +113,54 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ RAG Upload successful: ${filePath} with tags: [${tagsArray.join(', ')}]`);
 
+    // If this is an NRE document, process it locally for line item extraction
+    let nreLineItems = null;
+    if (targetDirectory === 'nre-documents') {
+      try {
+        console.log('🔍 Processing NRE document locally (100% private)...');
+        
+        // Convert file to buffer
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        // Extract text and line items locally (NO external APIs)
+        const extracted = await processDocument(buffer, file.type);
+        console.log(`✅ Extracted ${extracted.lineItems.length} line items locally`);
+        
+        // Format for database using DB user ID
+        const lineItemsData = formatForDatabase(extracted, ragDoc?.id || '', dbUserId);
+        
+        // Insert into nre_line_items table
+        if (lineItemsData.length > 0) {
+          const { data: insertedItems, error: nreError } = await serviceSupabase
+            .from('nre_line_items')
+            .insert(lineItemsData)
+            .select();
+          
+          if (nreError) {
+            console.error('⚠️ Failed to insert NRE line items:', nreError);
+          } else {
+            console.log(`✅ Inserted ${insertedItems.length} NRE line items`);
+            nreLineItems = insertedItems;
+          }
+        }
+      } catch (processError) {
+        console.error('⚠️ NRE processing failed (file still uploaded):', processError);
+        // Don't fail the upload if processing fails
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       filePath,
       fileName: file.name,
       companyCode,
       tags: tagsArray,
-      ragDocumentId: ragDoc?.id
+      ragDocumentId: ragDoc?.id,
+      nreLineItems: nreLineItems ? {
+        count: nreLineItems.length,
+        items: nreLineItems
+      } : null
     });
 
   } catch (error) {
