@@ -86,9 +86,10 @@ export default function AmazonDataPage() {
     { value: 'listings_active', label: 'Active Merchant Listings', icon: FileText, description: 'Active listings only', category: 'Inventory' },
     { value: 'listings_inactive', label: 'Inactive Merchant Listings', icon: FileText, description: 'Inactive listings only', category: 'Inventory' },
     
-    // Fees (2 types)
+    // Fees (3 types)
     { value: 'fees_estimated', label: 'Estimated FBA Fees', icon: TrendingUp, description: 'Estimated FBA fees', category: 'Fees' },
     { value: 'fees_storage', label: 'Storage Fee Charges', icon: TrendingUp, description: 'Storage fee charges', category: 'Fees' },
+    { value: 'sku_economics', label: 'SKU Economics Report', icon: DollarSign, description: 'SKU-level fees, costs, and net proceeds', category: 'Fees' },
     
     // Sales & Catalog (2 types)
     { value: 'sales_traffic', label: 'Sales and Traffic Report', icon: TrendingUp, description: 'Sales and traffic analytics', category: 'Sales' },
@@ -122,6 +123,7 @@ export default function AmazonDataPage() {
       // Fees
       fees_estimated: 'GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA',
       fees_storage: 'GET_FBA_STORAGE_FEE_CHARGES_DATA',
+      sku_economics: 'GET_FBA_FULFILLMENT_SKU_ECONOMY_DATA',
       
       // Sales & Catalog
       sales_traffic: 'GET_SALES_AND_TRAFFIC_REPORT',
@@ -304,7 +306,7 @@ export default function AmazonDataPage() {
     'settlement',
     'inventory_manage', 'inventory_aged', 'inventory_all',
     'listings_all', 'listings_active', 'listings_inactive',
-    'fees_estimated', 'fees_storage',
+    'fees_estimated', 'fees_storage', 'sku_economics',
   ];
   
   // Check if current report type needs date ranges
