@@ -216,6 +216,7 @@ export async function POST(request: NextRequest) {
         paymentDate: payment.paymentDate,
         amount: payment.amount.toString(),
         notes: payment.notes,
+        isPaid: payment.isPaid || false, // Include isPaid status
         createdBy: requestingUser.id,
       }));
 
