@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Download, Trash2, Edit, Upload, FileText } from 'lucide-react';
+import { Plus, Download, Trash2, Edit, Upload, FileText, Check, X } from 'lucide-react';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
@@ -60,6 +60,7 @@ interface PaymentLineItem {
   paymentDate: string;
   amount: number;
   notes?: string;
+  isPaid?: boolean; // Track if payment has been made
 }
 
 interface NREBudget {
@@ -235,6 +236,7 @@ export default function NREBudgetPage() {
       paymentDate: '',
       amount: 0,
       notes: '',
+      isPaid: false, // Default to not paid
     };
     setPaymentLineItems([...paymentLineItems, newPayment]);
   };
@@ -255,6 +257,24 @@ export default function NREBudgetPage() {
 
   const calculateGrandTotal = () => {
     return lineItems.reduce((sum, item) => sum + item.totalAmount, 0);
+  };
+
+  // Determine payment card background color based on status and date
+  const getPaymentCardBackground = (payment: PaymentLineItem) => {
+    if (payment.isPaid) {
+      return 'bg-white'; // Normal/paid - no special color
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day for fair comparison
+    const paymentDate = new Date(payment.paymentDate);
+    paymentDate.setHours(0, 0, 0, 0);
+    
+    if (paymentDate < today) {
+      return 'bg-red-100 border-red-300'; // Overdue - payment date has passed
+    } else {
+      return 'bg-yellow-100 border-yellow-300'; // Upcoming - not paid yet but date is in future
+    }
   };
 
   const handleCreateBudget = async () => {
@@ -716,27 +736,42 @@ export default function NREBudgetPage() {
                   <div className="bg-green-50 p-3 rounded-lg border-2 border-green-200">
                     <h4 className="text-sm font-semibold mb-2 text-green-800">Payment Schedule ({budget.paymentLineItems.length})</h4>
                     <div className="space-y-1 max-h-[200px] overflow-y-auto pr-2">
-                      {budget.paymentLineItems.map((payment, idx) => (
-                        <div key={idx} className="flex justify-between text-xs border-b border-green-200 pb-1">
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-green-200 text-green-800 whitespace-nowrap">
-                              #{payment.paymentNumber}
-                            </Badge>
-                            <span className="text-gray-600 text-[11px] whitespace-nowrap">
-                              {new Date(payment.paymentDate).toLocaleDateString()}
+                      {budget.paymentLineItems.map((payment, idx) => {
+                        const bgColor = getPaymentCardBackground(payment);
+                        const isOverdue = bgColor.includes('red');
+                        const isPending = bgColor.includes('yellow');
+                        
+                        return (
+                          <div key={idx} className={`flex justify-between text-xs border-b pb-1 px-2 py-1 rounded ${bgColor}`}>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-green-200 text-green-800 whitespace-nowrap">
+                                #{payment.paymentNumber}
+                              </Badge>
+                              <span className="text-gray-600 text-[11px] whitespace-nowrap">
+                                {new Date(payment.paymentDate).toLocaleDateString()}
+                              </span>
+                              {payment.isPaid && (
+                                <Check className="h-3 w-3 text-green-600" />
+                              )}
+                              {isOverdue && !payment.isPaid && (
+                                <span className="text-[9px] text-red-600 font-semibold">OVERDUE</span>
+                              )}
+                              {isPending && !payment.isPaid && (
+                                <span className="text-[9px] text-yellow-700 font-semibold">PENDING</span>
+                              )}
+                              {payment.notes && (
+                                <span className="text-[10px] text-gray-500 italic truncate">• {payment.notes}</span>
+                              )}
+                            </div>
+                            <span className="font-bold text-green-600 text-xs ml-2 whitespace-nowrap">
+                              ${payment.amount.toLocaleString()}
                             </span>
-                            {payment.notes && (
-                              <span className="text-[10px] text-gray-500 italic truncate">• {payment.notes}</span>
-                            )}
                           </div>
-                          <span className="font-bold text-green-600 text-xs ml-2 whitespace-nowrap">
-                            ${payment.amount.toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="flex justify-between pt-2 mt-2 border-t-2 border-green-300">
-                      <span className="text-xs font-semibold text-green-800">Total Paid:</span>
+                      <span className="text-xs font-semibold text-green-800">Total Payments:</span>
                       <span className="font-bold text-green-600 text-sm">
                         ${budget.paymentLineItems.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}
                       </span>
@@ -975,7 +1010,7 @@ export default function NREBudgetPage() {
 
               <div className="space-y-4">
                 {paymentLineItems.map((payment, index) => (
-                  <Card key={index} className="p-4 border-2 border-green-200 bg-green-50">
+                  <Card key={index} className={`p-4 border-2 ${getPaymentCardBackground(payment)}`}>
                     <div className="grid grid-cols-12 gap-4">
                       <div className="col-span-1">
                         <Label className="text-sm font-semibold">Payment #</Label>
@@ -1005,7 +1040,7 @@ export default function NREBudgetPage() {
                           className="text-base font-bold text-green-600"
                         />
                       </div>
-                      <div className="col-span-4">
+                      <div className="col-span-3">
                         <Label className="text-sm font-semibold">Notes</Label>
                         <Input
                           value={payment.notes || ''}
@@ -1014,7 +1049,16 @@ export default function NREBudgetPage() {
                           className="text-base"
                         />
                       </div>
-                      <div className="col-span-1 flex items-end">
+                      <div className="col-span-2 flex items-end gap-2">
+                        <Button
+                          variant={payment.isPaid ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => updatePaymentLineItem(index, 'isPaid', !payment.isPaid)}
+                          className={payment.isPaid ? "bg-green-600 hover:bg-green-700" : ""}
+                          title={payment.isPaid ? "Mark as Not Paid" : "Mark as Paid"}
+                        >
+                          {payment.isPaid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                        </Button>
                         <Button
                           variant="destructive"
                           size="sm"

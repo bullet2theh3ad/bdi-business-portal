@@ -1364,6 +1364,7 @@ export const nreBudgetPaymentLineItems = pgTable('nre_budget_payment_line_items'
   paymentDate: date('payment_date').notNull(),
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
   notes: text('notes'),
+  isPaid: boolean('is_paid').default(false), // Track if payment has been made
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
