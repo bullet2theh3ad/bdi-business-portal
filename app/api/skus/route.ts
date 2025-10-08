@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     const { data: { user: authUser } } = await supabase.auth.getUser();
 
     if (!authUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      // Return empty array for unauthorized users to prevent .map() errors
+      return NextResponse.json([]);
     }
 
     // Fetch all SKUs ordered by SKU code

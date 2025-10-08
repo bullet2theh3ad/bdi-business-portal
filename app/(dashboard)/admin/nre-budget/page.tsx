@@ -92,7 +92,7 @@ interface SKU {
 
 export default function NREBudgetPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
-  const { data: skus } = useSWR<SKU[]>('/api/skus', fetcher);
+  const { data: skus = [] } = useSWR<SKU[]>('/api/skus', fetcher);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<NREBudget | null>(null);
   
