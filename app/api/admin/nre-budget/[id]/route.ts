@@ -66,6 +66,9 @@ export async function PUT(
     
     const {
       vendorName,
+      projectName,
+      skuCode,
+      skuName,
       quoteNumber,
       quoteDate,
       paymentTerms,
@@ -138,6 +141,9 @@ export async function PUT(
       .update(nreBudgets)
       .set({
         vendorName,
+        projectName,
+        skuCode,
+        skuName,
         quoteNumber,
         quoteDate,
         paymentTerms,

@@ -60,6 +60,9 @@ interface NREBudget {
   id: string;
   nreReferenceNumber: string;
   vendorName: string;
+  projectName?: string;
+  skuCode?: string;
+  skuName?: string;
   quoteNumber?: string;
   quoteDate?: string;
   paymentTerms?: string;
@@ -82,6 +85,10 @@ export default function NREBudgetPage() {
   
   // Form state
   const [vendorName, setVendorName] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [skuType, setSkuType] = useState<'existing' | 'custom'>('existing');
+  const [skuCode, setSkuCode] = useState('');
+  const [skuName, setSkuName] = useState('');
   const [quoteNumber, setQuoteNumber] = useState('');
   const [quoteDate, setQuoteDate] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
@@ -248,6 +255,9 @@ export default function NREBudgetPage() {
 
       const budgetData = {
         vendorName,
+        projectName,
+        skuCode,
+        skuName,
         quoteNumber,
         quoteDate,
         paymentTerms,
@@ -303,6 +313,9 @@ export default function NREBudgetPage() {
       const budgetData = {
         nreReferenceNumber: nreNumber,
         vendorName,
+        projectName,
+        skuCode,
+        skuName,
         quoteNumber,
         quoteDate,
         paymentTerms,
@@ -403,6 +416,10 @@ export default function NREBudgetPage() {
 
   const resetForm = () => {
     setVendorName('');
+    setProjectName('');
+    setSkuType('existing');
+    setSkuCode('');
+    setSkuName('');
     setQuoteNumber('');
     setQuoteDate('');
     setPaymentTerms('');
@@ -418,6 +435,10 @@ export default function NREBudgetPage() {
   const handleEdit = (budget: NREBudget) => {
     setEditingBudget(budget);
     setVendorName(budget.vendorName);
+    setProjectName(budget.projectName || '');
+    setSkuCode(budget.skuCode || '');
+    setSkuName(budget.skuName || '');
+    setSkuType(budget.skuCode ? 'custom' : 'existing');
     setQuoteNumber(budget.quoteNumber || '');
     setQuoteDate(budget.quoteDate || '');
     setPaymentTerms(budget.paymentTerms || '');
@@ -804,6 +825,52 @@ export default function NREBudgetPage() {
                   placeholder={editingBudget ? "Vendor name" : "Select vendor organization above"}
                   readOnly={!editingBudget}
                   className={!editingBudget ? "bg-gray-50" : ""}
+                />
+              </div>
+              <div>
+                <Label>Project Name</Label>
+                <Input
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g., MNQ15 DVT"
+                />
+              </div>
+              <div>
+                <Label>SKU Type</Label>
+                <select
+                  value={skuType}
+                  onChange={(e) => {
+                    const type = e.target.value as 'existing' | 'custom';
+                    setSkuType(type);
+                    if (type === 'existing') {
+                      setSkuCode('');
+                      setSkuName('');
+                    }
+                  }}
+                  className="w-full px-3 py-2 border rounded-md text-base"
+                >
+                  <option value="existing">Select Existing SKU</option>
+                  <option value="custom">Custom SKU (Enter Manually)</option>
+                </select>
+              </div>
+              <div>
+                <Label>SKU Code</Label>
+                <Input
+                  value={skuCode}
+                  onChange={(e) => setSkuCode(e.target.value)}
+                  placeholder={skuType === 'custom' ? "Enter SKU code" : "Select from dropdown"}
+                  readOnly={skuType !== 'custom'}
+                  className={skuType !== 'custom' ? "bg-gray-50" : ""}
+                />
+              </div>
+              <div>
+                <Label>SKU Name</Label>
+                <Input
+                  value={skuName}
+                  onChange={(e) => setSkuName(e.target.value)}
+                  placeholder={skuType === 'custom' ? "Enter SKU name" : "Select from dropdown"}
+                  readOnly={skuType !== 'custom'}
+                  className={skuType !== 'custom' ? "bg-gray-50" : ""}
                 />
               </div>
               <div>
