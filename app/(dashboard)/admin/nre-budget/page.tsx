@@ -78,8 +78,15 @@ interface NREBudget {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+interface SKU {
+  id: string;
+  sku_code: string;
+  sku_name: string;
+}
+
 export default function NREBudgetPage() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
+  const { data: skus } = useSWR<SKU[]>('/api/skus', fetcher);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<NREBudget | null>(null);
   
@@ -644,6 +651,7 @@ export default function NREBudgetPage() {
                   <CardTitle className="text-xl">{budget.nreReferenceNumber}</CardTitle>
                   <CardDescription className="mt-1">
                     Vendor: {budget.vendorName}
+                    {budget.projectName && ` • Project: ${budget.projectName}`}
                     {budget.quoteNumber && ` • Quote: ${budget.quoteNumber}`}
                   </CardDescription>
                 </div>
@@ -853,26 +861,48 @@ export default function NREBudgetPage() {
                   <option value="custom">Custom SKU (Enter Manually)</option>
                 </select>
               </div>
-              <div>
-                <Label>SKU Code</Label>
-                <Input
-                  value={skuCode}
-                  onChange={(e) => setSkuCode(e.target.value)}
-                  placeholder={skuType === 'custom' ? "Enter SKU code" : "Select from dropdown"}
-                  readOnly={skuType !== 'custom'}
-                  className={skuType !== 'custom' ? "bg-gray-50" : ""}
-                />
-              </div>
-              <div>
-                <Label>SKU Name</Label>
-                <Input
-                  value={skuName}
-                  onChange={(e) => setSkuName(e.target.value)}
-                  placeholder={skuType === 'custom' ? "Enter SKU name" : "Select from dropdown"}
-                  readOnly={skuType !== 'custom'}
-                  className={skuType !== 'custom' ? "bg-gray-50" : ""}
-                />
-              </div>
+              {skuType === 'existing' ? (
+                <div className="col-span-2">
+                  <Label>Select SKU</Label>
+                  <select
+                    value={skuCode}
+                    onChange={(e) => {
+                      const selectedSku = skus?.find(sku => sku.sku_code === e.target.value);
+                      if (selectedSku) {
+                        setSkuCode(selectedSku.sku_code);
+                        setSkuName(selectedSku.sku_name);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border rounded-md text-base"
+                  >
+                    <option value="">-- Select a SKU --</option>
+                    {skus?.map((sku) => (
+                      <option key={sku.id} value={sku.sku_code}>
+                        {sku.sku_code} - {sku.sku_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <Label>SKU Code</Label>
+                    <Input
+                      value={skuCode}
+                      onChange={(e) => setSkuCode(e.target.value)}
+                      placeholder="Enter SKU code"
+                    />
+                  </div>
+                  <div>
+                    <Label>SKU Name</Label>
+                    <Input
+                      value={skuName}
+                      onChange={(e) => setSkuName(e.target.value)}
+                      placeholder="Enter SKU name"
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <Label>Quote Number</Label>
                 <Input
