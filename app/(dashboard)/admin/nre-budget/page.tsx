@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Download, Trash2, Edit, Upload, FileText, Check, X } from 'lucide-react';
+import { Plus, Download, Trash2, Edit, Upload, FileText, Check, DollarSign, Clock } from 'lucide-react';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
@@ -1049,22 +1049,34 @@ export default function NREBudgetPage() {
                           className="text-base"
                         />
                       </div>
-                      <div className="col-span-2 flex items-end gap-2">
+                      <div className="col-span-2 flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
                         <Button
                           variant={payment.isPaid ? "default" : "outline"}
                           size="sm"
                           onClick={() => updatePaymentLineItem(index, 'isPaid', !payment.isPaid)}
-                          className={payment.isPaid ? "bg-green-600 hover:bg-green-700" : ""}
+                          className={`flex-1 sm:flex-initial ${payment.isPaid ? "bg-green-600 hover:bg-green-700 text-white" : "border-yellow-500 text-yellow-700 hover:bg-yellow-50"}`}
                           title={payment.isPaid ? "Mark as Not Paid" : "Mark as Paid"}
                         >
-                          {payment.isPaid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                          {payment.isPaid ? (
+                            <>
+                              <Check className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Paid</span>
+                            </>
+                          ) : (
+                            <>
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">To Pay</span>
+                            </>
+                          )}
                         </Button>
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => removePaymentLineItem(index)}
+                          className="flex-1 sm:flex-initial"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 sm:mr-0" />
+                          <span className="sm:hidden ml-1">Delete</span>
                         </Button>
                       </div>
                     </div>
@@ -1318,7 +1330,7 @@ export default function NREBudgetPage() {
                 Cancel
               </Button>
               <Button onClick={handleCreateBudget}>
-                Create NRE Budget
+                {editingBudget ? 'Save NRE Budget' : 'Create NRE Budget'}
               </Button>
             </div>
           </div>

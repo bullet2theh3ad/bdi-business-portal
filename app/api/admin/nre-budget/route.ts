@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
             paymentDate: payment.paymentDate,
             amount: parseFloat(payment.amount) || 0,
             notes: payment.notes,
+            isPaid: payment.isPaid || false, // Include isPaid status
           })),
           createdAt: budget.createdAt,
           updatedAt: budget.updatedAt,
