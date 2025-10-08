@@ -93,7 +93,6 @@ export default function NREBudgetPage() {
   // Form state
   const [vendorName, setVendorName] = useState('');
   const [projectName, setProjectName] = useState('');
-  const [skuType, setSkuType] = useState<'existing' | 'custom'>('existing');
   const [skuCode, setSkuCode] = useState('');
   const [skuName, setSkuName] = useState('');
   const [quoteNumber, setQuoteNumber] = useState('');
@@ -424,7 +423,6 @@ export default function NREBudgetPage() {
   const resetForm = () => {
     setVendorName('');
     setProjectName('');
-    setSkuType('existing');
     setSkuCode('');
     setSkuName('');
     setQuoteNumber('');
@@ -445,7 +443,6 @@ export default function NREBudgetPage() {
     setProjectName(budget.projectName || '');
     setSkuCode(budget.skuCode || '');
     setSkuName(budget.skuName || '');
-    setSkuType(budget.skuCode ? 'custom' : 'existing');
     setQuoteNumber(budget.quoteNumber || '');
     setQuoteDate(budget.quoteDate || '');
     setPaymentTerms(budget.paymentTerms || '');
@@ -844,65 +841,50 @@ export default function NREBudgetPage() {
                 />
               </div>
               <div>
-                <Label>SKU Type</Label>
+                <Label>Select SKU *</Label>
                 <select
-                  value={skuType}
+                  value={skuCode}
                   onChange={(e) => {
-                    const type = e.target.value as 'existing' | 'custom';
-                    setSkuType(type);
-                    if (type === 'existing') {
+                    const selectedSkuCode = e.target.value;
+                    const selectedSku = skus?.find(sku => sku.sku_code === selectedSkuCode);
+                    if (selectedSku) {
+                      setSkuCode(selectedSku.sku_code);
+                      setSkuName(selectedSku.sku_name);
+                      // Auto-fill Project Name with first 7 characters of SKU code
+                      const projectNameAuto = selectedSku.sku_code.substring(0, 7);
+                      setProjectName(projectNameAuto);
+                    } else if (selectedSkuCode === 'MANUAL') {
+                      // Manual entry option
                       setSkuCode('');
                       setSkuName('');
+                      setProjectName('');
                     }
                   }}
                   className="w-full px-3 py-2 border rounded-md text-base"
                 >
-                  <option value="existing">Select Existing SKU</option>
-                  <option value="custom">Custom SKU (Enter Manually)</option>
+                  <option value="">-- Select a SKU --</option>
+                  {skus?.map((sku) => (
+                    <option key={sku.id} value={sku.sku_code}>
+                      {sku.sku_code} - {sku.sku_name}
+                    </option>
+                  ))}
+                  <option value="MANUAL">-- Enter Manually Below --</option>
                 </select>
               </div>
-              {skuType === 'existing' ? (
-                <div className="col-span-2">
-                  <Label>Select SKU</Label>
-                  <select
-                    value={skuCode}
-                    onChange={(e) => {
-                      const selectedSku = skus?.find(sku => sku.sku_code === e.target.value);
-                      if (selectedSku) {
-                        setSkuCode(selectedSku.sku_code);
-                        setSkuName(selectedSku.sku_name);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border rounded-md text-base"
-                  >
-                    <option value="">-- Select a SKU --</option>
-                    {skus?.map((sku) => (
-                      <option key={sku.id} value={sku.sku_code}>
-                        {sku.sku_code} - {sku.sku_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <Label>SKU Code</Label>
-                    <Input
-                      value={skuCode}
-                      onChange={(e) => setSkuCode(e.target.value)}
-                      placeholder="Enter SKU code"
-                    />
-                  </div>
-                  <div>
-                    <Label>SKU Name</Label>
-                    <Input
-                      value={skuName}
-                      onChange={(e) => setSkuName(e.target.value)}
-                      placeholder="Enter SKU name"
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <Label>SKU Code</Label>
+                <Input
+                  value={skuCode}
+                  onChange={(e) => {
+                    const manualSku = e.target.value;
+                    setSkuCode(manualSku);
+                    // If manual entry, entire SKU becomes project name
+                    setProjectName(manualSku);
+                  }}
+                  placeholder="Manual SKU entry (if selected above)"
+                  className="text-base"
+                />
+              </div>
               <div>
                 <Label>Quote Number</Label>
                 <Input
