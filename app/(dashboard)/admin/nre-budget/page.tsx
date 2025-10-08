@@ -656,7 +656,10 @@ export default function NREBudgetPage() {
           <h1 className="text-3xl font-bold">NRE Budget Management</h1>
           <p className="text-gray-600 mt-1">Track Non-Recurring Engineering costs and payments</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
+        <Button onClick={() => {
+          resetForm();
+          setShowCreateDialog(true);
+        }}>
           <Plus className="h-4 w-4 mr-2" />
           Create NRE Budget
         </Button>
@@ -772,7 +775,10 @@ export default function NREBudgetPage() {
       </div>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) resetForm(); // Reset form when dialog closes
+      }}>
         <DialogContent className="!max-w-[95vw] !w-[95vw] max-h-[95vh] overflow-y-auto p-4 sm:p-6 md:p-8">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
