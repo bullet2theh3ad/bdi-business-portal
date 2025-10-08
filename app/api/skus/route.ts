@@ -44,9 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(skusList);
   } catch (error) {
     console.error('Error in GET /api/skus:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    // Return empty array on error so frontend .map() doesn't fail
+    return NextResponse.json([]);
   }
 }

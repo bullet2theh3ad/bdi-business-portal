@@ -1,4 +1,4 @@
--- Elevate amartinez@boundlessdevice.com to super_admin (system role)
+-- Elevate amartinez@boundlessdevices.com to super_admin (system role)
 
 -- First, check current status
 SELECT 
@@ -13,14 +13,14 @@ SELECT
 FROM users u
 LEFT JOIN organization_members om ON u.auth_id = om.user_auth_id
 LEFT JOIN organizations o ON om.organization_uuid = o.id
-WHERE u.email = 'amartinez@boundlessdevice.com';
+WHERE u.email = 'amartinez@boundlessdevices.com';
 
 -- Update to super_admin system role in users table
 UPDATE users
 SET 
     role = 'super_admin',
     updated_at = NOW()
-WHERE email = 'amartinez@boundlessdevice.com';
+WHERE email = 'amartinez@boundlessdevices.com';
 
 -- Verify the change
 SELECT 
@@ -35,5 +35,5 @@ SELECT
 FROM users u
 LEFT JOIN organization_members om ON u.auth_id = om.user_auth_id
 LEFT JOIN organizations o ON om.organization_uuid = o.id
-WHERE u.email = 'amartinez@boundlessdevice.com';
+WHERE u.email = 'amartinez@boundlessdevices.com';
 
