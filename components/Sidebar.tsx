@@ -231,7 +231,17 @@ export function Sidebar({ className }: SidebarProps) {
   const hasRequiredRole = (requiredRoles?: string[]) => {
     if (!requiredRoles) return true;
     if (!user) return false;
-    return requiredRoles.includes(user.role);
+    
+    // Check system role
+    if (requiredRoles.includes(user.role)) return true;
+    
+    // Also check organization membership roles
+    if ((user as any).organizations && Array.isArray((user as any).organizations)) {
+      const orgRoles = (user as any).organizations.map((org: any) => org.membershipRole);
+      return requiredRoles.some(role => orgRoles.includes(role));
+    }
+    
+    return false;
   };
 
   const isActive = (href: string) => {

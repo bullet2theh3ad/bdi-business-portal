@@ -609,7 +609,25 @@ export default function NREBudgetPage() {
   };
 
   // Access control - only BDI super_admin, admin_cfo, and admin_nre can access
-  if (!user || !['super_admin', 'admin_cfo', 'admin_nre'].includes(user.role) || (user as any).organization?.code !== 'BDI') {
+  const hasAccess = () => {
+    if (!user) return false;
+    
+    // Check if user is from BDI organization
+    if ((user as any).organization?.code !== 'BDI') return false;
+    
+    // Check system role
+    if (['super_admin', 'admin_cfo', 'admin_nre'].includes(user.role)) return true;
+    
+    // Check organization membership roles
+    if ((user as any).organizations && Array.isArray((user as any).organizations)) {
+      const orgRoles = (user as any).organizations.map((org: any) => org.membershipRole);
+      return ['super_admin', 'admin_cfo', 'admin_nre'].some(role => orgRoles.includes(role));
+    }
+    
+    return false;
+  };
+
+  if (!hasAccess()) {
     return (
       <div className="flex-1 p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
