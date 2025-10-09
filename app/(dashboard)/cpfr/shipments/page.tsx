@@ -2393,37 +2393,7 @@ export default function ShipmentsPage() {
                   </Button>
                 </div>
 
-                {/* Show uploaded documents from database */}
-                {documentsForCurrentShipment.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-green-200">
-                    <h5 className="text-sm font-medium text-green-800 mb-3">Existing Documents</h5>
-                    <div className="space-y-2">
-                      {documentsForCurrentShipment.map((doc: any, index: number) => (
-                        <div key={doc.id || doc.file_name || index} className="flex items-center justify-between bg-green-50 p-3 rounded border border-green-200">
-                          <div className="flex items-center space-x-3">
-                            <SemanticBDIIcon semantic="document" size={16} className="text-green-600" />
-                            <span className="text-sm text-green-800">{doc.file_name || doc.name || 'Unknown File'}</span>
-                            <span className="text-sm text-green-600">
-                              ({doc.file_size ? (doc.file_size / 1024).toFixed(1) : 'Unknown'} KB)
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const shipmentId = createdShipments.get(selectedShipment.id)?.id || 
-                                               actualShipmentsArray.find((s: any) => s.forecast_id === selectedShipment.id)?.id;
-                              if (shipmentId) {
-                                window.open(`/api/cpfr/shipments/${shipmentId}/documents/${doc.id || doc.name}`, '_blank');
-                              }
-                            }}
-                            className="text-green-600 hover:text-green-800 text-sm underline"
-                          >
-                            Download
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* REMOVED: Duplicate "Existing Documents" section - already shown at top in success message */}
                 
                 <div className="flex space-x-3">
                   <Button
