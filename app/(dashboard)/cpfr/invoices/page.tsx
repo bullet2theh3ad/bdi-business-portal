@@ -3566,7 +3566,12 @@ export default function InvoicesPage() {
                           if (statusResponse.ok) {
                             // Step 2: Send email with PDF
                             console.log('📧 CFO Invoice Data being sent:', cfoInvoiceData);
-                            await sendInvoiceEmail(cfoInvoiceData, cfoInvoicePDFUrl, emailRecipients, emailCCRecipients);
+                            // Convert relative PDF URL to absolute URL for email API
+                            const absolutePdfUrl = cfoInvoicePDFUrl.startsWith('http') 
+                              ? cfoInvoicePDFUrl 
+                              : `${window.location.origin}${cfoInvoicePDFUrl}`;
+                            console.log('📧 Using absolute PDF URL for email:', absolutePdfUrl);
+                            await sendInvoiceEmail(cfoInvoiceData, absolutePdfUrl, emailRecipients, emailCCRecipients);
                             
                             console.log('✅ Invoice approved and email sent');
                             alert(`✅ Invoice approved and sent!\n\nRecipients: ${emailRecipients}\n${emailCCRecipients ? `CC: ${emailCCRecipients}` : ''}`);
@@ -3763,8 +3768,14 @@ export default function InvoicesPage() {
 
                       console.log('📧 RESENDING APPROVED INVOICE EMAIL');
                       
+                      // Convert relative PDF URL to absolute URL for email API
+                      const absolutePdfUrl = approvedInvoicePDFUrl.startsWith('http') 
+                        ? approvedInvoicePDFUrl 
+                        : `${window.location.origin}${approvedInvoicePDFUrl}`;
+                      console.log('📧 Using absolute PDF URL for email:', absolutePdfUrl);
+                      
                       // Send email with PDF (no status update needed - already approved)
-                      await sendInvoiceEmail(approvedInvoiceData, approvedInvoicePDFUrl, emailRecipients, emailCCRecipients);
+                      await sendInvoiceEmail(approvedInvoiceData, absolutePdfUrl, emailRecipients, emailCCRecipients);
                       
                       console.log('✅ Approved invoice resent successfully');
                       alert(`✅ Invoice resent successfully!\n\nRecipients: ${emailRecipients}\n${emailCCRecipients ? `CC: ${emailCCRecipients}` : ''}`);
