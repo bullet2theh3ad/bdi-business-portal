@@ -160,13 +160,18 @@ export async function PUT(
     
     console.log('✏️ UPDATING Invoice ID:', invoiceId, 'with data:', body);
 
-    // Check if this is a status-only update (from CFO approval/rejection)
+    // Check if this is a status-only update (from CFO approval/rejection) OR payment-only update
     const isStatusOnlyUpdate = Object.keys(body).length <= 4 && 
       (body.status || body.financeApproverName || body.financeApprovalDate || body.rejectionReason);
+    
+    const isPaymentOnlyUpdate = Object.keys(body).length === 1 && body.paymentLineItems;
 
     let updateData: any = {};
 
-    if (isStatusOnlyUpdate) {
+    if (isPaymentOnlyUpdate) {
+      // Payment-only update - don't update the invoice itself, just the payment line items
+      console.log('💰 Payment-only update detected - skipping invoice update');
+    } else if (isStatusOnlyUpdate) {
       // Status-only update - only update the fields that are provided
       if (body.status) updateData.status = body.status;
       if (body.financeApproverName) updateData.notes = (body.notes || '') + `\n[Finance Approved by: ${body.financeApproverName}]`;
@@ -176,14 +181,13 @@ export async function PUT(
         console.log('💾 STORING FILE PATH:', body.approvedPdfUrl);
         console.log('🔧 DRIZZLE FIX: Using camelCase approvedPdfUrl instead of snake_case');
       }
-      updateData.updatedAt = new Date();
     } else {
       // Full invoice update - update all fields
       updateData = {
         invoiceNumber: body.invoiceNumber || body.poNumber,
         customerName: body.customerName || body.supplierName,
-        invoiceDate: new Date(body.invoiceDate || body.orderDate),
-        requestedDeliveryWeek: body.requestedDeliveryWeek ? new Date(body.requestedDeliveryWeek) : null,
+        invoiceDate: body.invoiceDate || body.orderDate,
+        requestedDeliveryWeek: body.requestedDeliveryWeek || null,
         status: body.status || 'draft',
         terms: body.terms,
         incoterms: body.incoterms,
@@ -203,18 +207,23 @@ export async function PUT(
         bankAddress: body.bankAddress || null,
         bankCountry: body.bankCountry || null,
         bankCurrency: body.bankCurrency || 'USD',
-        updatedAt: new Date(),
+        // Don't manually set updatedAt - let the database trigger handle it
       };
     }
 
-    // Update invoice in database
-    const [updatedInvoice] = await db
-      .update(invoices)
-      .set(updateData)
-      .where(eq(invoices.id, invoiceId))
-      .returning();
+    // Update invoice in database (skip if payment-only update)
+    let updatedInvoice;
+    if (!isPaymentOnlyUpdate) {
+      [updatedInvoice] = await db
+        .update(invoices)
+        .set(updateData)
+        .where(eq(invoices.id, invoiceId))
+        .returning();
 
-    console.log('✅ Updated invoice:', updatedInvoice);
+      console.log('✅ Updated invoice:', updatedInvoice);
+    } else {
+      console.log('⏭️  Skipping invoice update for payment-only change');
+    }
 
     // Update line items if provided
     if (body.lineItems && body.lineItems.length > 0) {
@@ -251,31 +260,42 @@ export async function PUT(
 
     // Update payment line items if provided
     if (body.paymentLineItems !== undefined) {
-      // Delete existing payment line items
-      await db
-        .delete(invoicePaymentLineItems)
-        .where(eq(invoicePaymentLineItems.invoiceId, invoiceId));
+      try {
+        console.log('💰 Updating payment line items for invoice:', invoiceId);
+        console.log('💰 Payment items received:', body.paymentLineItems);
+        
+        // Delete existing payment line items
+        await db
+          .delete(invoicePaymentLineItems)
+          .where(eq(invoicePaymentLineItems.invoiceId, invoiceId));
 
-      // Insert updated payment line items (if any)
-      if (body.paymentLineItems.length > 0) {
-        const paymentItemsToInsert = body.paymentLineItems.map((payment: any) => ({
-          invoiceId: invoiceId,
-          paymentNumber: payment.paymentNumber,
-          paymentDate: new Date(payment.paymentDate),
-          amount: parseFloat(payment.amount).toString(),
-          notes: payment.notes || null,
-          isPaid: payment.isPaid || false,
-          createdBy: requestingUser.authId,
-        }));
+        // Insert updated payment line items (if any)
+        if (body.paymentLineItems.length > 0) {
+          const paymentItemsToInsert = body.paymentLineItems.map((payment: any) => ({
+            invoiceId: invoiceId,
+            paymentNumber: payment.paymentNumber,
+            paymentDate: payment.paymentDate, // Keep as string, Drizzle will handle conversion
+            amount: parseFloat(payment.amount).toString(),
+            notes: payment.notes || null,
+            isPaid: payment.isPaid || false,
+            createdBy: requestingUser.authId,
+          }));
 
-        const insertedPaymentItems = await db
-          .insert(invoicePaymentLineItems)
-          .values(paymentItemsToInsert)
-          .returning();
+          console.log('💰 Inserting payment items:', paymentItemsToInsert);
 
-        console.log('✅ Updated payment line items:', insertedPaymentItems.length);
-      } else {
-        console.log('✅ Cleared all payment line items');
+          const insertedPaymentItems = await db
+            .insert(invoicePaymentLineItems)
+            .values(paymentItemsToInsert)
+            .returning();
+
+          console.log('✅ Updated payment line items:', insertedPaymentItems.length);
+        } else {
+          console.log('✅ Cleared all payment line items');
+        }
+      } catch (paymentError) {
+        console.error('❌ Error updating payment line items:', paymentError);
+        console.error('❌ Payment error details:', JSON.stringify(paymentError, null, 2));
+        throw new Error(`Failed to update payment line items: ${paymentError}`);
       }
     }
 
@@ -290,16 +310,23 @@ export async function PUT(
       }
     }
     
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true, 
       message: 'Invoice updated successfully!',
-      id: updatedInvoice.id,
-      invoice: updatedInvoice
+      id: invoiceId,
+      invoice: updatedInvoice || { id: invoiceId }
     });
 
   } catch (error) {
     console.error('❌ Error updating invoice:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error : undefined 
+    }, { status: 500 });
   }
 }
 

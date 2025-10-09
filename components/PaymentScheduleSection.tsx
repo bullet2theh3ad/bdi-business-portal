@@ -79,7 +79,7 @@ export function PaymentScheduleSection({
               <Label className="text-xs">Payment Date *</Label>
               <Input
                 type="date"
-                value={payment.paymentDate}
+                value={payment.paymentDate || ''}
                 onChange={(e) => onUpdate(index, 'paymentDate', e.target.value)}
                 required
                 className="h-9"
@@ -92,7 +92,7 @@ export function PaymentScheduleSection({
               <Input
                 type="number"
                 step="0.01"
-                value={payment.amount}
+                value={payment.amount || ''}
                 onChange={(e) => onUpdate(index, 'amount', parseFloat(e.target.value) || 0)}
                 required
                 className="h-9 text-green-600 font-semibold"
@@ -104,7 +104,7 @@ export function PaymentScheduleSection({
               <Label className="text-xs">Notes</Label>
               <Input
                 type="text"
-                value={payment.notes}
+                value={payment.notes || ''}
                 onChange={(e) => onUpdate(index, 'notes', e.target.value)}
                 placeholder="e.g., 50% of tooling"
                 className="h-9"

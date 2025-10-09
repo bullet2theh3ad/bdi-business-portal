@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
       const paymentItemsToInsert = body.paymentLineItems.map((payment: any) => ({
         invoiceId: newInvoice.id,
         paymentNumber: payment.paymentNumber,
-        paymentDate: new Date(payment.paymentDate),
+        paymentDate: payment.paymentDate, // Keep as string, Drizzle will handle conversion
         amount: parseFloat(payment.amount).toString(),
         notes: payment.notes || null,
         isPaid: payment.isPaid || false,
