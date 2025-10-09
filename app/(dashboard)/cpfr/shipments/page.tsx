@@ -402,9 +402,33 @@ export default function ShipmentsPage() {
       if (docs && docs.length > 0) {
         console.log('👀 WATCHER - Documents found for shipment, updating display state:', docs);
         setDocumentsForCurrentShipment(docs);
+      } else {
+        // CRITICAL FIX: If no documents in state, refetch from server
+        const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === selectedShipment.id);
+        const localShipment = createdShipments.get(selectedShipment.id);
+        const shipmentId = existingShipment?.id || localShipment?.id;
+        
+        if (shipmentId && !loadingDocuments) {
+          console.log('🔄 REFETCH - No documents in state, fetching from server for shipment:', shipmentId);
+          setLoadingDocuments(true);
+          fetch(`/api/cpfr/shipments/${shipmentId}/documents`)
+            .then(res => res.json())
+            .then(fetchedDocs => {
+              console.log('🔄 REFETCH - Fetched documents:', fetchedDocs);
+              if (fetchedDocs && fetchedDocs.length > 0) {
+                setUploadedDocumentsFromDB(prev => new Map(prev.set(selectedShipment.id, fetchedDocs)));
+                setDocumentsForCurrentShipment(fetchedDocs);
+              }
+              setLoadingDocuments(false);
+            })
+            .catch(err => {
+              console.error('🔄 REFETCH - Error fetching documents:', err);
+              setLoadingDocuments(false);
+            });
+        }
       }
     }
-  }, [uploadedDocumentsFromDB, selectedShipment]);
+  }, [uploadedDocumentsFromDB, selectedShipment, actualShipmentsArray, createdShipments, loadingDocuments]);
 
   // Drag and drop for cost documents (shipment-specific)
   const onDrop = useCallback((confirmedFiles: File[]) => {
@@ -650,6 +674,16 @@ export default function ShipmentsPage() {
                 setDocumentsForCurrentShipment(uploadedDocs || []);
                 console.log('📎 UPDATE PATH - State updated');
                 console.log('📎 UPDATE PATH - documentsForCurrentShipment set to:', uploadedDocs || []);
+                
+                // CRITICAL FIX: Clear the upload queue after successful upload
+                setShipmentDocuments(prev => {
+                  const newMap = new Map(prev);
+                  newMap.delete(selectedShipment.id);
+                  return newMap;
+                });
+                
+                // CRITICAL FIX: Force a refresh of shipments data to include new documents
+                mutateShipments();
               } else {
                 console.error('📎 Failed to fetch documents after upload:', fetchDocsResponse.status);
               }
