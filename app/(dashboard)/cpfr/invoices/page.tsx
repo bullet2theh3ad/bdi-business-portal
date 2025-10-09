@@ -511,6 +511,48 @@ export default function InvoicesPage() {
     setIsLoading(false);
   };
 
+  // Helper functions for payment schedule validation
+  const getPaymentScheduleStatus = (invoice: Invoice) => {
+    if (!invoice.paymentLineItems || invoice.paymentLineItems.length === 0) {
+      return { type: 'none', label: '', color: '' };
+    }
+
+    const totalPayments = invoice.paymentLineItems.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    const invoiceTotal = Number(invoice.totalValue) || 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if payments match invoice total
+    const paymentMatch = Math.abs(totalPayments - invoiceTotal) < 0.01; // Allow for floating point errors
+
+    // Check for overdue payments
+    const hasOverdue = invoice.paymentLineItems.some(payment => {
+      if (payment.isPaid) return false;
+      const paymentDate = new Date(payment.paymentDate);
+      paymentDate.setHours(0, 0, 0, 0);
+      return paymentDate < today;
+    });
+
+    // Check for pending payments (not paid, not overdue)
+    const hasPending = invoice.paymentLineItems.some(payment => {
+      if (payment.isPaid) return false;
+      const paymentDate = new Date(payment.paymentDate);
+      paymentDate.setHours(0, 0, 0, 0);
+      return paymentDate >= today;
+    });
+
+    // Priority: Overdue > Mismatch > Pending > Match
+    if (hasOverdue) {
+      return { type: 'overdue', label: 'Overdue', color: 'bg-red-100 text-red-800 border-red-300' };
+    } else if (!paymentMatch) {
+      return { type: 'mismatch', label: 'Payment Mismatch', color: 'bg-red-100 text-red-800 border-red-300' };
+    } else if (hasPending) {
+      return { type: 'pending', label: 'Payment Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+    } else {
+      return { type: 'match', label: 'Payment Match', color: 'bg-green-100 text-green-800 border-green-300' };
+    }
+  };
+
   const invoicesArray = Array.isArray(invoices) ? invoices : [];
   const filteredInvoices = invoicesArray.filter(invoice => {
     const matchesSearch = !searchTerm || 
@@ -651,7 +693,7 @@ export default function InvoicesPage() {
                 <div key={invoice.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
+                      <div className="flex items-center space-x-3 mb-3 flex-wrap gap-2">
                         <h3 className="font-semibold text-lg">
                           <DynamicTranslation userLanguage={userLocale} context="business">
                             Invoice #{invoice.invoiceNumber}
@@ -660,6 +702,17 @@ export default function InvoicesPage() {
                         <Badge className={getStatusColor(invoice.status)}>
                           {tc(`status${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}`, invoice.status)}
                         </Badge>
+                        {(() => {
+                          const paymentStatus = getPaymentScheduleStatus(invoice);
+                          if (paymentStatus.type !== 'none') {
+                            return (
+                              <Badge className={`${paymentStatus.color} border font-medium`}>
+                                {paymentStatus.label}
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       
                       {/* Action Buttons - Right under invoice number */}
