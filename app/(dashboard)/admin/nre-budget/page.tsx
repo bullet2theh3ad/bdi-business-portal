@@ -749,20 +749,20 @@ export default function NREBudgetPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">NRE Budget Management</h1>
-          <p className="text-gray-600 mt-1">Track Non-Recurring Engineering costs and payments</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">NRE Budget Management</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Track Non-Recurring Engineering costs and payments</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setShowReportModal(true)}>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <Button variant="outline" onClick={() => setShowReportModal(true)} className="w-full sm:w-auto">
             <BarChart3 className="h-4 w-4 mr-2" />
             Generate Report
           </Button>
           <Button onClick={() => {
             resetForm();
             setShowCreateDialog(true);
-          }}>
+          }} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Create NRE Budget
           </Button>
@@ -864,16 +864,16 @@ export default function NREBudgetPage() {
                 )}
 
                 {/* Total and Actions */}
-                <div className="flex justify-between items-center pt-4 border-t">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t">
                   <div className="text-lg font-bold">
                     Total: ${budget.totalAmount.toLocaleString()}
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(budget)}>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(budget)} className="w-full sm:w-auto">
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPDF(budget)}>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPDF(budget)} className="w-full sm:w-auto">
                       <Download className="h-4 w-4 mr-1" />
                       PDF
                     </Button>
@@ -881,6 +881,7 @@ export default function NREBudgetPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDelete(budget.id)}
+                      className="w-full sm:w-auto"
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
                       Delete
@@ -1570,11 +1571,11 @@ export default function NREBudgetPage() {
 
       {/* Payment Schedule Report Modal */}
       <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
-        <DialogContent className="!max-w-[98vw] !w-[98vw] max-h-[98vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="!max-w-[98vw] !w-[98vw] max-h-[98vh] overflow-y-auto p-3 sm:p-4 md:p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center justify-between">
+            <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <span>NRE Payment Schedule Report</span>
-              <Button onClick={handleDownloadCSV} variant="default" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleDownloadCSV} variant="default" className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-sm">
                 <FileDown className="h-4 w-4 mr-2" />
                 Download CSV
               </Button>
@@ -1601,16 +1602,16 @@ export default function NREBudgetPage() {
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
+                    <CardContent className="p-2 sm:p-4">
+                      <div className="overflow-x-auto -mx-2 sm:mx-0">
+                        <table className="w-full border-collapse min-w-[600px]">
                           <thead>
                             <tr className="bg-gray-100 border-b-2">
-                              <th className="text-left px-3 py-2 font-semibold">Payment #</th>
-                              <th className="text-left px-3 py-2 font-semibold">Payment Date</th>
-                              <th className="text-right px-3 py-2 font-semibold">Amount</th>
-                              <th className="text-center px-3 py-2 font-semibold">Status</th>
-                              <th className="text-left px-3 py-2 font-semibold">Notes</th>
+                              <th className="text-left px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">Payment #</th>
+                              <th className="text-left px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">Date</th>
+                              <th className="text-right px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">Amount</th>
+                              <th className="text-center px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">Status</th>
+                              <th className="text-left px-2 sm:px-3 py-2 font-semibold text-xs sm:text-sm">Notes</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1620,36 +1621,36 @@ export default function NREBudgetPage() {
                               
                               return (
                                 <tr key={idx} className={`border-b ${bgColor}`}>
-                                  <td className="px-3 py-2">
-                                    <Badge variant="secondary" className="font-mono">
+                                  <td className="px-2 sm:px-3 py-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
                                       #{payment.paymentNumber}
                                     </Badge>
                                   </td>
-                                  <td className="px-3 py-2">
+                                  <td className="px-2 sm:px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
                                     {new Date(payment.paymentDate).toLocaleDateString()}
                                   </td>
-                                  <td className="px-3 py-2 text-right font-semibold text-green-600">
+                                  <td className="px-2 sm:px-3 py-2 text-right font-semibold text-green-600 text-xs sm:text-sm whitespace-nowrap">
                                     ${payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </td>
-                                  <td className="px-3 py-2 text-center">
+                                  <td className="px-2 sm:px-3 py-2 text-center">
                                     <Badge 
                                       variant={status === 'PAID' ? 'default' : status === 'OVERDUE' ? 'destructive' : 'secondary'}
-                                      className={status === 'PAID' ? 'bg-green-600' : status === 'PENDING' ? 'bg-yellow-500' : ''}
+                                      className={`text-xs ${status === 'PAID' ? 'bg-green-600' : status === 'PENDING' ? 'bg-yellow-500' : ''}`}
                                     >
                                       {status}
                                     </Badge>
                                   </td>
-                                  <td className="px-3 py-2 text-sm text-gray-600">
+                                  <td className="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600">
                                     {payment.notes || '-'}
                                   </td>
                                 </tr>
                               );
                             })}
                             <tr className="bg-blue-50 border-t-2 font-bold">
-                              <td colSpan={2} className="px-3 py-3 text-right">
+                              <td colSpan={2} className="px-2 sm:px-3 py-2 sm:py-3 text-right text-xs sm:text-sm">
                                 TOTAL FOR {budget.nreReferenceNumber}:
                               </td>
-                              <td className="px-3 py-3 text-right text-blue-600 text-lg">
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right text-blue-600 text-sm sm:text-base md:text-lg whitespace-nowrap">
                                 ${budget.paymentLineItems.reduce((sum, p) => sum + p.amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                               <td colSpan={2}></td>
@@ -1671,17 +1672,17 @@ export default function NREBudgetPage() {
             {/* Grand Total Summary */}
             {nreBudgets && nreBudgets.length > 0 && (
               <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white border-none">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-center">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
-                      <h3 className="text-xl font-bold">Grand Total - All NRE Budgets</h3>
-                      <p className="text-blue-100 text-sm">
+                      <h3 className="text-lg sm:text-xl font-bold">Grand Total - All NRE Budgets</h3>
+                      <p className="text-blue-100 text-xs sm:text-sm">
                         {nreBudgets.filter(b => b.paymentLineItems && b.paymentLineItems.length > 0).length} Budget(s) • {' '}
                         {nreBudgets.reduce((sum, b) => sum + (b.paymentLineItems?.length || 0), 0)} Total Payments
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold">
+                    <div className="text-left sm:text-right">
+                      <p className="text-2xl sm:text-3xl font-bold">
                         ${nreBudgets.reduce((sum, b) => 
                           sum + (b.paymentLineItems?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0
                         ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1693,11 +1694,11 @@ export default function NREBudgetPage() {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowReportModal(false)}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowReportModal(false)} className="w-full sm:w-auto">
               Close
             </Button>
-            <Button onClick={handleDownloadCSV} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={handleDownloadCSV} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
               <FileDown className="h-4 w-4 mr-2" />
               Download CSV
             </Button>
