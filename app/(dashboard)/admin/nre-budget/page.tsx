@@ -98,6 +98,11 @@ export default function NREBudgetPage() {
   const [editingBudget, setEditingBudget] = useState<NREBudget | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   
+  // Filter states
+  const [filterVendor, setFilterVendor] = useState<string>('all');
+  const [filterProject, setFilterProject] = useState<string>('all');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('all');
+  
   // Form state
   const [vendorName, setVendorName] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -769,9 +774,104 @@ export default function NREBudgetPage() {
         </div>
       </div>
 
+      {/* Filter Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Filter NRE Budgets</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Vendor Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
+              <select
+                value={filterVendor}
+                onChange={(e) => setFilterVendor(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Vendors</option>
+                {Array.from(new Set(nreBudgets?.map(b => b.vendorName) || [])).sort().map(vendor => (
+                  <option key={vendor} value={vendor}>{vendor}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Project Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Project</label>
+              <select
+                value={filterProject}
+                onChange={(e) => setFilterProject(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Projects</option>
+                {Array.from(new Set(nreBudgets?.filter(b => b.projectName).map(b => b.projectName!) || [])).sort().map(project => (
+                  <option key={project} value={project}>{project}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Payment Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
+              <select
+                value={filterPaymentStatus}
+                onChange={(e) => setFilterPaymentStatus(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="PAID">Fully Paid</option>
+                <option value="PARTIAL">Partially Paid</option>
+                <option value="NOT_PAID">Not Paid</option>
+                <option value="OVERDUE">Overdue</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Clear Filters Button */}
+          {(filterVendor !== 'all' || filterProject !== 'all' || filterPaymentStatus !== 'all') && (
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setFilterVendor('all');
+                  setFilterProject('all');
+                  setFilterPaymentStatus('all');
+                }}
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* NRE Budget List */}
       <div className="grid gap-4">
-        {nreBudgets?.map((budget) => (
+        {nreBudgets?.filter(budget => {
+          // Vendor filter
+          if (filterVendor !== 'all' && budget.vendorName !== filterVendor) return false;
+          
+          // Project filter
+          if (filterProject !== 'all' && budget.projectName !== filterProject) return false;
+          
+          // Payment Status filter
+          if (filterPaymentStatus !== 'all') {
+            const payments = budget.paymentLineItems || [];
+            const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+            const paidAmount = payments.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0);
+            const today = new Date();
+            const hasOverdue = payments.some(p => !p.isPaid && new Date(p.paymentDate) < today);
+            
+            if (filterPaymentStatus === 'PAID' && (paidAmount < totalAmount || totalAmount === 0)) return false;
+            if (filterPaymentStatus === 'PARTIAL' && (paidAmount === 0 || paidAmount >= totalAmount)) return false;
+            if (filterPaymentStatus === 'NOT_PAID' && paidAmount > 0) return false;
+            if (filterPaymentStatus === 'OVERDUE' && !hasOverdue) return false;
+          }
+          
+          return true;
+        }).map((budget) => (
           <Card key={budget.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
