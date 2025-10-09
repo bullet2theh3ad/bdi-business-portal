@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, invoices, invoiceLineItems, organizations, organizationMembers } from '@/lib/db/schema';
+import { users, invoices, invoiceLineItems, invoicePaymentLineItems, organizations, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { Resend } from 'resend';
 
@@ -192,8 +192,30 @@ export async function GET(request: NextRequest) {
         .orderBy(invoices.createdAt);
     }
 
-    console.log('Fetched invoices:', invoicesList.length);
-    return NextResponse.json(invoicesList);
+    // Fetch payment line items for each invoice
+    const invoicesWithPayments = await Promise.all(
+      invoicesList.map(async (invoice) => {
+        const paymentLineItemsList = await db.select()
+          .from(invoicePaymentLineItems)
+          .where(eq(invoicePaymentLineItems.invoiceId, invoice.id))
+          .orderBy(invoicePaymentLineItems.paymentNumber);
+
+        return {
+          ...invoice,
+          paymentLineItems: paymentLineItemsList.map((payment) => ({
+            id: payment.id,
+            paymentNumber: payment.paymentNumber,
+            paymentDate: payment.paymentDate,
+            amount: parseFloat(payment.amount) || 0,
+            notes: payment.notes,
+            isPaid: payment.isPaid || false,
+          })),
+        };
+      })
+    );
+
+    console.log('Fetched invoices:', invoicesWithPayments.length);
+    return NextResponse.json(invoicesWithPayments);
 
   } catch (error) {
     console.error('Error fetching invoices:', error);
@@ -299,6 +321,26 @@ export async function POST(request: NextRequest) {
         .returning();
 
       console.log('Created line items:', insertedLineItems.length);
+    }
+
+    // Insert payment line items if provided
+    if (body.paymentLineItems && body.paymentLineItems.length > 0) {
+      const paymentItemsToInsert = body.paymentLineItems.map((payment: any) => ({
+        invoiceId: newInvoice.id,
+        paymentNumber: payment.paymentNumber,
+        paymentDate: new Date(payment.paymentDate),
+        amount: parseFloat(payment.amount).toString(),
+        notes: payment.notes || null,
+        isPaid: payment.isPaid || false,
+        createdBy: requestingUser.authId,
+      }));
+
+      const insertedPaymentItems = await db
+        .insert(invoicePaymentLineItems)
+        .values(paymentItemsToInsert)
+        .returning();
+
+      console.log('Created payment line items:', insertedPaymentItems.length);
     }
 
     // 📧 Send finance notification if invoice submitted to finance

@@ -1376,3 +1376,21 @@ export type NreBudgetLineItem = typeof nreBudgetLineItems.$inferSelect;
 export type NewNreBudgetLineItem = typeof nreBudgetLineItems.$inferInsert;
 export type NreBudgetPaymentLineItem = typeof nreBudgetPaymentLineItems.$inferSelect;
 export type NewNreBudgetPaymentLineItem = typeof nreBudgetPaymentLineItems.$inferInsert;
+
+// ===== INVOICE PAYMENT LINE ITEMS =====
+// Track payment schedule for invoices (when we pay vendors)
+export const invoicePaymentLineItems = pgTable('invoice_payment_line_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  invoiceId: uuid('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  paymentNumber: integer('payment_number').notNull(),
+  paymentDate: date('payment_date').notNull(),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+  notes: text('notes'),
+  isPaid: boolean('is_paid').default(false), // Track if payment has been made
+  createdBy: uuid('created_by').references(() => users.authId),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type InvoicePaymentLineItem = typeof invoicePaymentLineItems.$inferSelect;
+export type NewInvoicePaymentLineItem = typeof invoicePaymentLineItems.$inferInsert;
