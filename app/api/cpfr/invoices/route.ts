@@ -269,8 +269,8 @@ export async function POST(request: NextRequest) {
       .values({
         invoiceNumber: body.invoiceNumber || body.poNumber, // Support both new and old field names
         customerName: body.customerName || body.supplierName, // Support both new and old field names
-        invoiceDate: new Date(body.invoiceDate || body.orderDate), // Support both new and old field names
-        requestedDeliveryWeek: body.requestedDeliveryWeek ? new Date(body.requestedDeliveryWeek) : null,
+        invoiceDate: body.invoiceDate || body.orderDate, // Pass string directly, let Drizzle handle conversion
+        requestedDeliveryWeek: body.requestedDeliveryWeek && body.requestedDeliveryWeek.trim() !== '' ? body.requestedDeliveryWeek : null,
         status: body.status || 'draft', // Use provided status or default to 'draft'
         terms: body.terms,
         incoterms: body.incoterms,
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
         shipToAddress: body.shipToAddress || null,
-        shipDate: body.shipDate || null,
+        shipDate: body.shipDate && body.shipDate.trim() !== '' ? body.shipDate : null,
         // NEW FIELDS: Bank information
         bankName: body.bankName || null,
         bankAccountNumber: body.bankAccountNumber || null,

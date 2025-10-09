@@ -186,8 +186,8 @@ export async function PUT(
       updateData = {
         invoiceNumber: body.invoiceNumber || body.poNumber,
         customerName: body.customerName || body.supplierName,
-        invoiceDate: body.invoiceDate || body.orderDate,
-        requestedDeliveryWeek: body.requestedDeliveryWeek || null,
+        invoiceDate: body.invoiceDate || body.orderDate, // Pass string directly, let Drizzle handle conversion
+        requestedDeliveryWeek: body.requestedDeliveryWeek && body.requestedDeliveryWeek.trim() !== '' ? body.requestedDeliveryWeek : null,
         status: body.status || 'draft',
         terms: body.terms,
         incoterms: body.incoterms,
@@ -197,7 +197,7 @@ export async function PUT(
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
         shipToAddress: body.shipToAddress || null,
-        shipDate: body.shipDate || null,
+        shipDate: body.shipDate && body.shipDate.trim() !== '' ? body.shipDate : null,
         // NEW FIELDS: Bank information
         bankName: body.bankName || null,
         bankAccountNumber: body.bankAccountNumber || null,

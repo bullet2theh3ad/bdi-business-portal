@@ -514,9 +514,10 @@ export default function InvoicesPage() {
   // Helper functions for payment schedule validation
   const getPaymentScheduleStatus = (invoice: Invoice) => {
     if (!invoice.paymentLineItems || invoice.paymentLineItems.length === 0) {
-      return { type: 'none', label: '', color: '' };
+      return [];
     }
 
+    const badges = [];
     const totalPayments = invoice.paymentLineItems.reduce((sum, payment) => sum + (payment.amount || 0), 0);
     const invoiceTotal = Number(invoice.totalValue) || 0;
     const today = new Date();
@@ -541,16 +542,22 @@ export default function InvoicesPage() {
       return paymentDate >= today;
     });
 
-    // Priority: Overdue > Mismatch > Pending > Match
+    // Add badges based on conditions (can have multiple)
     if (hasOverdue) {
-      return { type: 'overdue', label: 'Overdue', color: 'bg-red-100 text-red-800 border-red-300' };
-    } else if (!paymentMatch) {
-      return { type: 'mismatch', label: 'Payment Mismatch', color: 'bg-red-100 text-red-800 border-red-300' };
-    } else if (hasPending) {
-      return { type: 'pending', label: 'Payment Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
-    } else {
-      return { type: 'match', label: 'Payment Match', color: 'bg-green-100 text-green-800 border-green-300' };
+      badges.push({ type: 'overdue', label: 'Overdue', color: 'bg-red-100 text-red-800 border-red-300' });
     }
+    
+    if (!paymentMatch) {
+      badges.push({ type: 'mismatch', label: 'Payment Mismatch', color: 'bg-red-100 text-red-800 border-red-300' });
+    } else if (hasPending && !hasOverdue) {
+      // Only show "Pending" if there's no overdue and payments match
+      badges.push({ type: 'pending', label: 'Payment Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' });
+    } else if (!hasOverdue && !hasPending) {
+      // All paid and matches - show success badge
+      badges.push({ type: 'match', label: 'Payment Match', color: 'bg-green-100 text-green-800 border-green-300' });
+    }
+
+    return badges;
   };
 
   const invoicesArray = Array.isArray(invoices) ? invoices : [];
@@ -702,17 +709,11 @@ export default function InvoicesPage() {
                         <Badge className={getStatusColor(invoice.status)}>
                           {tc(`status${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}`, invoice.status)}
                         </Badge>
-                        {(() => {
-                          const paymentStatus = getPaymentScheduleStatus(invoice);
-                          if (paymentStatus.type !== 'none') {
-                            return (
-                              <Badge className={`${paymentStatus.color} border font-medium`}>
-                                {paymentStatus.label}
-                              </Badge>
-                            );
-                          }
-                          return null;
-                        })()}
+                        {getPaymentScheduleStatus(invoice).map((badge, index) => (
+                          <Badge key={index} className={`${badge.color} border font-medium`}>
+                            {badge.label}
+                          </Badge>
+                        ))}
                       </div>
                       
                       {/* Action Buttons - Right under invoice number */}
