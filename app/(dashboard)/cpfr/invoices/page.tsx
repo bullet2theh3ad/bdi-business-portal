@@ -3546,10 +3546,11 @@ export default function InvoicesPage() {
                           console.log('📧 SENDING INVOICE EMAIL');
                           
                           // Step 1: Update invoice status to approved and store PDF FILE PATH
-                          // Extract file path from the current PDF URL
-                          const urlParts = cfoInvoicePDFUrl.split('/');
-                          const filePath = `invoices/${cfoInvoiceData.id}/${urlParts[urlParts.length - 1].split('?')[0]}`;
-                          console.log('💾 Storing file path instead of signed URL:', filePath);
+                          // Fetch the invoice to get the existing approvedPdfUrl (which is already the correct file path)
+                          const invoiceResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`);
+                          const invoiceData = await invoiceResponse.json();
+                          const existingFilePath = invoiceData.approvedPdfUrl || `invoices/${cfoInvoiceData.id}/invoice-${cfoInvoiceData.id}-cfo-approval.pdf`;
+                          console.log('💾 Using existing file path from database:', existingFilePath);
                           
                           const statusResponse = await fetch(`/api/cpfr/invoices/${cfoInvoiceData.id}`, {
                             method: 'PUT',
@@ -3558,7 +3559,7 @@ export default function InvoicesPage() {
                               status: 'approved_by_finance',
                               financeApproverName: user?.name,
                               financeApprovalDate: new Date().toISOString(),
-                              approvedPdfUrl: filePath // Store FILE PATH, not signed URL
+                              approvedPdfUrl: existingFilePath // Keep the existing correct file path
                             })
                           });
 
