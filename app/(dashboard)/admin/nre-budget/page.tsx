@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Download, Trash2, Edit, Upload, FileText, Check, DollarSign, Clock } from 'lucide-react';
+import { Plus, Download, Trash2, Edit, Upload, FileText, Check, DollarSign, Clock, FileDown, BarChart3 } from 'lucide-react';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
@@ -96,6 +96,7 @@ export default function NREBudgetPage() {
   const { data: skus = [] } = useSWR<SKU[]>('/api/skus', fetcher);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<NREBudget | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   
   // Form state
   const [vendorName, setVendorName] = useState('');
@@ -275,6 +276,83 @@ export default function NREBudgetPage() {
     } else {
       return 'bg-yellow-100 border-yellow-300'; // Upcoming - not paid yet but date is in future
     }
+  };
+
+  // Get payment status label
+  const getPaymentStatus = (payment: PaymentLineItem) => {
+    if (payment.isPaid) {
+      return 'PAID';
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const paymentDate = new Date(payment.paymentDate);
+    paymentDate.setHours(0, 0, 0, 0);
+    
+    if (paymentDate < today) {
+      return 'OVERDUE';
+    } else {
+      return 'PENDING';
+    }
+  };
+
+  // Generate and download CSV report
+  const handleDownloadCSV = () => {
+    if (!nreBudgets) return;
+
+    // CSV Header
+    const headers = ['NRE Number', 'Vendor', 'Project', 'Payment #', 'Payment Date', 'Amount', 'Status', 'Notes'];
+    const rows = [headers];
+
+    // Add data rows
+    nreBudgets.forEach((budget) => {
+      if (budget.paymentLineItems && budget.paymentLineItems.length > 0) {
+        budget.paymentLineItems.forEach((payment) => {
+          rows.push([
+            budget.nreReferenceNumber,
+            budget.vendorName,
+            budget.projectName || '',
+            payment.paymentNumber.toString(),
+            new Date(payment.paymentDate).toLocaleDateString(),
+            payment.amount.toFixed(2),
+            getPaymentStatus(payment),
+            payment.notes || ''
+          ]);
+        });
+
+        // Add total row for this NRE
+        const total = budget.paymentLineItems.reduce((sum, p) => sum + p.amount, 0);
+        rows.push([
+          budget.nreReferenceNumber,
+          'TOTAL',
+          '',
+          '',
+          '',
+          total.toFixed(2),
+          '',
+          ''
+        ]);
+        
+        // Add empty row for spacing
+        rows.push(['', '', '', '', '', '', '', '']);
+      }
+    });
+
+    // Convert to CSV string
+    const csvContent = rows.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `NRE_Payment_Schedule_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleCreateBudget = async () => {
@@ -676,13 +754,19 @@ export default function NREBudgetPage() {
           <h1 className="text-3xl font-bold">NRE Budget Management</h1>
           <p className="text-gray-600 mt-1">Track Non-Recurring Engineering costs and payments</p>
         </div>
-        <Button onClick={() => {
-          resetForm();
-          setShowCreateDialog(true);
-        }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create NRE Budget
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setShowReportModal(true)}>
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Generate Report
+          </Button>
+          <Button onClick={() => {
+            resetForm();
+            setShowCreateDialog(true);
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create NRE Budget
+          </Button>
+        </div>
       </div>
 
       {/* NRE Budget List */}
@@ -1481,6 +1565,143 @@ export default function NREBudgetPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Schedule Report Modal */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="!max-w-[98vw] !w-[98vw] max-h-[98vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center justify-between">
+              <span>NRE Payment Schedule Report</span>
+              <Button onClick={handleDownloadCSV} variant="default" className="bg-green-600 hover:bg-green-700">
+                <FileDown className="h-4 w-4 mr-2" />
+                Download CSV
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {nreBudgets && nreBudgets.length > 0 ? (
+              nreBudgets.map((budget) => (
+                budget.paymentLineItems && budget.paymentLineItems.length > 0 && (
+                  <Card key={budget.id} className="border-2">
+                    <CardHeader className="bg-blue-50 border-b-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-lg font-bold text-blue-900">{budget.nreReferenceNumber}</h3>
+                          <p className="text-sm text-gray-600">
+                            Vendor: {budget.vendorName}
+                            {budget.projectName && ` • Project: ${budget.projectName}`}
+                            {budget.quoteNumber && ` • Quote: ${budget.quoteNumber}`}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-sm">
+                          {budget.paymentLineItems.length} Payment{budget.paymentLineItems.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100 border-b-2">
+                              <th className="text-left px-3 py-2 font-semibold">Payment #</th>
+                              <th className="text-left px-3 py-2 font-semibold">Payment Date</th>
+                              <th className="text-right px-3 py-2 font-semibold">Amount</th>
+                              <th className="text-center px-3 py-2 font-semibold">Status</th>
+                              <th className="text-left px-3 py-2 font-semibold">Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {budget.paymentLineItems.map((payment, idx) => {
+                              const status = getPaymentStatus(payment);
+                              const bgColor = getPaymentCardBackground(payment);
+                              
+                              return (
+                                <tr key={idx} className={`border-b ${bgColor}`}>
+                                  <td className="px-3 py-2">
+                                    <Badge variant="secondary" className="font-mono">
+                                      #{payment.paymentNumber}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {new Date(payment.paymentDate).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-semibold text-green-600">
+                                    ${payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <Badge 
+                                      variant={status === 'PAID' ? 'default' : status === 'OVERDUE' ? 'destructive' : 'secondary'}
+                                      className={status === 'PAID' ? 'bg-green-600' : status === 'PENDING' ? 'bg-yellow-500' : ''}
+                                    >
+                                      {status}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-600">
+                                    {payment.notes || '-'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            <tr className="bg-blue-50 border-t-2 font-bold">
+                              <td colSpan={2} className="px-3 py-3 text-right">
+                                TOTAL FOR {budget.nreReferenceNumber}:
+                              </td>
+                              <td className="px-3 py-3 text-right text-blue-600 text-lg">
+                                ${budget.paymentLineItems.reduce((sum, p) => sum + p.amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td colSpan={2}></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              ))
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p>No NRE budgets with payment schedules found.</p>
+              </div>
+            )}
+
+            {/* Grand Total Summary */}
+            {nreBudgets && nreBudgets.length > 0 && (
+              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white border-none">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-xl font-bold">Grand Total - All NRE Budgets</h3>
+                      <p className="text-blue-100 text-sm">
+                        {nreBudgets.filter(b => b.paymentLineItems && b.paymentLineItems.length > 0).length} Budget(s) • {' '}
+                        {nreBudgets.reduce((sum, b) => sum + (b.paymentLineItems?.length || 0), 0)} Total Payments
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold">
+                        ${nreBudgets.reduce((sum, b) => 
+                          sum + (b.paymentLineItems?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0
+                        ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowReportModal(false)}>
+              Close
+            </Button>
+            <Button onClick={handleDownloadCSV} className="bg-green-600 hover:bg-green-700">
+              <FileDown className="h-4 w-4 mr-2" />
+              Download CSV
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
