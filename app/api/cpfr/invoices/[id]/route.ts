@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, invoices, invoiceLineItems } from '@/lib/db/schema';
+import { users, invoices, invoiceLineItems, invoicePaymentLineItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { Resend } from 'resend';
 
@@ -247,6 +247,36 @@ export async function PUT(
         .returning();
 
       console.log('✅ Updated line items:', insertedLineItems.length);
+    }
+
+    // Update payment line items if provided
+    if (body.paymentLineItems !== undefined) {
+      // Delete existing payment line items
+      await db
+        .delete(invoicePaymentLineItems)
+        .where(eq(invoicePaymentLineItems.invoiceId, invoiceId));
+
+      // Insert updated payment line items (if any)
+      if (body.paymentLineItems.length > 0) {
+        const paymentItemsToInsert = body.paymentLineItems.map((payment: any) => ({
+          invoiceId: invoiceId,
+          paymentNumber: payment.paymentNumber,
+          paymentDate: new Date(payment.paymentDate),
+          amount: parseFloat(payment.amount).toString(),
+          notes: payment.notes || null,
+          isPaid: payment.isPaid || false,
+          createdBy: requestingUser.authId,
+        }));
+
+        const insertedPaymentItems = await db
+          .insert(invoicePaymentLineItems)
+          .values(paymentItemsToInsert)
+          .returning();
+
+        console.log('✅ Updated payment line items:', insertedPaymentItems.length);
+      } else {
+        console.log('✅ Cleared all payment line items');
+      }
     }
 
     // 📧 Send rejection notification if invoice was rejected

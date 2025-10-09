@@ -336,6 +336,11 @@ export default function InvoicesPage() {
   const [filterSupplier, setFilterSupplier] = useState<string>('all');
   const [showReportModal, setShowReportModal] = useState(false);
   
+  // Payment Schedule Modal states
+  const [showPaymentScheduleModal, setShowPaymentScheduleModal] = useState(false);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
+  const [isSavingPayments, setIsSavingPayments] = useState(false);
+  
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
   const [selectedInvoiceForApproval, setSelectedInvoiceForApproval] = useState<any>(null);
@@ -439,6 +444,19 @@ export default function InvoicesPage() {
   const calculateTotalPaid = () => {
     return paymentLineItems.reduce((sum, payment) => sum + (payment.amount || 0), 0);
   };
+
+  // Load existing payment items when modal opens
+  useEffect(() => {
+    if (showPaymentScheduleModal && selectedInvoiceForPayment) {
+      // Fetch existing payment line items for this invoice
+      if (selectedInvoiceForPayment.paymentLineItems && selectedInvoiceForPayment.paymentLineItems.length > 0) {
+        setPaymentLineItems(selectedInvoiceForPayment.paymentLineItems);
+      } else {
+        // Initialize with empty array if no existing payments
+        setPaymentLineItems([]);
+      }
+    }
+  }, [showPaymentScheduleModal, selectedInvoiceForPayment]);
 
         // Access control - Sales team and admins can manage Invoices
   if (!user || !['super_admin', 'admin', 'sales', 'member'].includes(user.role)) {
@@ -1046,6 +1064,19 @@ export default function InvoicesPage() {
                           </Button>
                         )}
                         
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full sm:w-auto text-green-600 border-green-300 hover:bg-green-50"
+                          onClick={() => {
+                            // Open Payment Schedule modal
+                            setSelectedInvoiceForPayment(invoice);
+                            setShowPaymentScheduleModal(true);
+                          }}
+                        >
+                          <span className="mr-1 text-sm">💰</span>
+                          Edit Payment Schedule
+                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -2661,15 +2692,6 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
-                        {/* Step 4: Payment Schedule */}
-                        <PaymentScheduleSection
-                          paymentLineItems={paymentLineItems}
-                          onAdd={addPaymentLineItem}
-                          onUpdate={updatePaymentLineItem}
-                          onRemove={removePaymentLineItem}
-                          totalPaid={calculateTotalPaid()}
-                        />
-
                       </>
                     )}
                   </form>
@@ -2781,9 +2803,7 @@ export default function InvoicesPage() {
                               bankIban: bankInfo.iban,
                               bankAddress: bankInfo.bankAddress,
                               bankCountry: bankInfo.bankCountry,
-                              bankCurrency: bankInfo.currency,
-                              // NEW FIELD: Payment Schedule
-                              paymentLineItems: paymentLineItems
+                              bankCurrency: bankInfo.currency
                             };
 
                             console.log('Saving invoice:', invoiceData);
@@ -3764,6 +3784,111 @@ export default function InvoicesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Payment Schedule Modal - Full Page */}
+      {showPaymentScheduleModal && selectedInvoiceForPayment && (
+        <Dialog open={showPaymentScheduleModal} onOpenChange={(open) => {
+          if (!open) {
+            setShowPaymentScheduleModal(false);
+            setSelectedInvoiceForPayment(null);
+            setPaymentLineItems([]);
+          }
+        }}>
+          <DialogContent className="!max-w-[98vw] !w-[98vw] max-h-[98vh] overflow-y-auto p-4 sm:p-6 md:p-8">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">
+                💰 Payment Schedule - Invoice #{selectedInvoiceForPayment.invoiceNumber}
+              </DialogTitle>
+              <DialogDescription>
+                Manage payment dates, amounts, and status for {selectedInvoiceForPayment.customerName}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 mt-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Invoice Total:</span>
+                    <p className="font-bold text-blue-600 text-lg">
+                      ${Number(selectedInvoiceForPayment.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Invoice Date:</span>
+                    <p className="font-medium">{new Date(selectedInvoiceForPayment.invoiceDate).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Payment Terms:</span>
+                    <p className="font-medium">{selectedInvoiceForPayment.terms}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Schedule Section */}
+              <PaymentScheduleSection
+                paymentLineItems={paymentLineItems}
+                onAdd={addPaymentLineItem}
+                onUpdate={updatePaymentLineItem}
+                onRemove={removePaymentLineItem}
+                totalPaid={calculateTotalPaid()}
+              />
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPaymentScheduleModal(false);
+                    setSelectedInvoiceForPayment(null);
+                    setPaymentLineItems([]);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={isSavingPayments}
+                  onClick={async () => {
+                    try {
+                      setIsSavingPayments(true);
+                      
+                      // Save payment schedule via API
+                      const response = await fetch(`/api/cpfr/invoices/${selectedInvoiceForPayment.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          paymentLineItems: paymentLineItems
+                        })
+                      });
+
+                      if (response.ok) {
+                        alert('✅ Payment schedule saved successfully!');
+                        mutateInvoices(); // Refresh invoice list
+                        setShowPaymentScheduleModal(false);
+                        setSelectedInvoiceForPayment(null);
+                        setPaymentLineItems([]);
+                      } else {
+                        const errorData = await response.json();
+                        alert(`❌ Failed to save payment schedule: ${errorData.error || 'Unknown error'}`);
+                      }
+                    } catch (error) {
+                      console.error('Error saving payment schedule:', error);
+                      alert('❌ Failed to save payment schedule');
+                    } finally {
+                      setIsSavingPayments(false);
+                    }
+                  }}
+                >
+                  {isSavingPayments ? 'Saving...' : 'Save Payment Schedule'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
