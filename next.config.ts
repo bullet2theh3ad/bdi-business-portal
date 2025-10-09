@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  // Enable static exports for better performance
+  // Enable standalone for production deployment
   output: 'standalone',
 };
 
