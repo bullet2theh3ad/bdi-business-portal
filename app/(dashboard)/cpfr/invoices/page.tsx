@@ -15,6 +15,7 @@ import { DynamicTranslation } from '@/components/DynamicTranslation';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { createClient } from '@supabase/supabase-js';
+import { PaymentScheduleSection, PaymentLineItem } from '@/components/PaymentScheduleSection';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -53,6 +54,8 @@ interface Invoice {
   bankAddress?: string;
   bankCountry?: string;
   bankCurrency?: string;
+  // NEW FIELD: Payment Schedule
+  paymentLineItems?: PaymentLineItem[];
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -319,6 +322,19 @@ export default function InvoicesPage() {
   const [approvedInvoiceData, setApprovedInvoiceData] = useState<any>(null);
   const [approvedInvoicePDFUrl, setApprovedInvoicePDFUrl] = useState<string>('');
   
+  // Payment Schedule state (mirroring NRE Budget)
+  interface PaymentLineItem {
+    paymentNumber: number;
+    paymentDate: string;
+    amount: number;
+    notes: string;
+    isPaid?: boolean;
+  }
+  const [paymentLineItems, setPaymentLineItems] = useState<PaymentLineItem[]>([]);
+  
+  // Filter states (for Supplier filter)
+  const [filterSupplier, setFilterSupplier] = useState<string>('all');
+  const [showReportModal, setShowReportModal] = useState(false);
   
   // CFO Approval states
   const [showCFOApprovalModal, setShowCFOApprovalModal] = useState(false);
@@ -396,6 +412,32 @@ export default function InvoicesPage() {
 
   const calculateTotal = () => {
     return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  };
+
+  // Payment Schedule functions (mirroring NRE Budget)
+  const addPaymentLineItem = () => {
+    const newPayment: PaymentLineItem = {
+      paymentNumber: paymentLineItems.length + 1,
+      paymentDate: '',
+      amount: 0,
+      notes: '',
+      isPaid: false,
+    };
+    setPaymentLineItems([...paymentLineItems, newPayment]);
+  };
+
+  const updatePaymentLineItem = (index: number, field: keyof PaymentLineItem, value: any) => {
+    const updated = [...paymentLineItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setPaymentLineItems(updated);
+  };
+
+  const removePaymentLineItem = (index: number) => {
+    setPaymentLineItems(paymentLineItems.filter((_, i) => i !== index));
+  };
+
+  const calculateTotalPaid = () => {
+    return paymentLineItems.reduce((sum, payment) => sum + (payment.amount || 0), 0);
   };
 
         // Access control - Sales team and admins can manage Invoices
@@ -2619,6 +2661,15 @@ export default function InvoicesPage() {
                           </div>
                         </div>
 
+                        {/* Step 4: Payment Schedule */}
+                        <PaymentScheduleSection
+                          paymentLineItems={paymentLineItems}
+                          onAdd={addPaymentLineItem}
+                          onUpdate={updatePaymentLineItem}
+                          onRemove={removePaymentLineItem}
+                          totalPaid={calculateTotalPaid()}
+                        />
+
                       </>
                     )}
                   </form>
@@ -2730,7 +2781,9 @@ export default function InvoicesPage() {
                               bankIban: bankInfo.iban,
                               bankAddress: bankInfo.bankAddress,
                               bankCountry: bankInfo.bankCountry,
-                              bankCurrency: bankInfo.currency
+                              bankCurrency: bankInfo.currency,
+                              // NEW FIELD: Payment Schedule
+                              paymentLineItems: paymentLineItems
                             };
 
                             console.log('Saving invoice:', invoiceData);
