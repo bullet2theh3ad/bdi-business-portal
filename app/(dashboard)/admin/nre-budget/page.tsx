@@ -97,6 +97,8 @@ export default function NREBudgetPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<NREBudget | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [analyticsGroupBy, setAnalyticsGroupBy] = useState<'project' | 'sku' | 'category'>('project');
   
   // Filter states
   const [filterVendor, setFilterVendor] = useState<string>('all');
@@ -760,9 +762,13 @@ export default function NREBudgetPage() {
           <p className="text-sm sm:text-base text-gray-600 mt-1">Track Non-Recurring Engineering costs and payments</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <Button variant="outline" onClick={() => setShowReportModal(true)} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={() => setShowAnalyticsModal(true)} className="w-full sm:w-auto bg-purple-50 hover:bg-purple-100 border-purple-300">
             <BarChart3 className="h-4 w-4 mr-2" />
-            Generate Report
+            Analytics Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => setShowReportModal(true)} className="w-full sm:w-auto">
+            <FileDown className="h-4 w-4 mr-2" />
+            Payment Report
           </Button>
           <Button onClick={() => {
             resetForm();
@@ -1801,6 +1807,248 @@ export default function NREBudgetPage() {
             <Button onClick={handleDownloadCSV} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
               <FileDown className="h-4 w-4 mr-2" />
               Download CSV
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Analytics Dashboard Modal */}
+      <Dialog open={showAnalyticsModal} onOpenChange={setShowAnalyticsModal}>
+        <DialogContent className="!max-w-[98vw] !w-[98vw] max-h-[98vh] overflow-y-auto p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-purple-600" />
+              NRE Budget Analytics Dashboard
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Group By Selector */}
+          <div className="flex gap-4 items-center p-4 bg-purple-50 rounded-lg border-2 border-purple-200 mt-4">
+            <Label className="font-semibold text-purple-900">Group By:</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={analyticsGroupBy === 'project' ? 'default' : 'outline'}
+                onClick={() => setAnalyticsGroupBy('project')}
+                className={analyticsGroupBy === 'project' ? 'bg-purple-600' : ''}
+              >
+                Project
+              </Button>
+              <Button
+                variant={analyticsGroupBy === 'sku' ? 'default' : 'outline'}
+                onClick={() => setAnalyticsGroupBy('sku')}
+                className={analyticsGroupBy === 'sku' ? 'bg-purple-600' : ''}
+              >
+                SKU
+              </Button>
+              <Button
+                variant={analyticsGroupBy === 'category' ? 'default' : 'outline'}
+                onClick={() => setAnalyticsGroupBy('category')}
+                className={analyticsGroupBy === 'category' ? 'bg-purple-600' : ''}
+              >
+                Category
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            {/* Group by Project */}
+            {analyticsGroupBy === 'project' && (() => {
+              const projectTotals = new Map<string, { total: number; count: number; budgets: NREBudget[] }>();
+              nreBudgets?.forEach(budget => {
+                const projectKey = budget.projectName || 'Unassigned';
+                const existing = projectTotals.get(projectKey) || { total: 0, count: 0, budgets: [] };
+                projectTotals.set(projectKey, {
+                  total: existing.total + budget.totalAmount,
+                  count: existing.count + 1,
+                  budgets: [...existing.budgets, budget]
+                });
+              });
+
+              const sortedProjects = Array.from(projectTotals.entries()).sort((a, b) => b[1].total - a[1].total);
+              const grandTotal = Array.from(projectTotals.values()).reduce((sum, p) => sum + p.total, 0);
+
+              return (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
+                    <h3 className="text-xl font-bold mb-2">Total NRE Budget by Project</h3>
+                    <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
+                    <p className="text-purple-100 text-sm mt-1">{sortedProjects.length} Projects • {nreBudgets?.length || 0} Total Budgets</p>
+                  </div>
+
+                  {sortedProjects.map(([project, data]) => (
+                    <Card key={project} className="border-2 hover:shadow-lg transition-shadow">
+                      <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">{project}</CardTitle>
+                            <CardDescription>{data.count} Budget{data.count !== 1 ? 's' : ''}</CardDescription>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-purple-600">
+                              ${data.total.toLocaleString()}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {((data.total / grandTotal) * 100).toFixed(1)}% of total
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-4">
+                        <div className="space-y-2">
+                          {data.budgets.map(budget => (
+                            <div key={budget.id} className="grid grid-cols-3 items-center text-sm border-b pb-2">
+                              <span className="font-mono text-xs">{budget.nreReferenceNumber}</span>
+                              <span className="text-gray-600 text-center">{budget.vendorName}</span>
+                              <span className="font-semibold text-green-600 text-right">${budget.totalAmount.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Group by SKU */}
+            {analyticsGroupBy === 'sku' && (() => {
+              const skuTotals = new Map<string, { total: number; count: number; budgets: NREBudget[] }>();
+              nreBudgets?.forEach(budget => {
+                const skuKey = budget.skuCode || 'No SKU';
+                const existing = skuTotals.get(skuKey) || { total: 0, count: 0, budgets: [] };
+                skuTotals.set(skuKey, {
+                  total: existing.total + budget.totalAmount,
+                  count: existing.count + 1,
+                  budgets: [...existing.budgets, budget]
+                });
+              });
+
+              const sortedSkus = Array.from(skuTotals.entries()).sort((a, b) => b[1].total - a[1].total);
+              const grandTotal = Array.from(skuTotals.values()).reduce((sum, s) => sum + s.total, 0);
+
+              return (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
+                    <h3 className="text-xl font-bold mb-2">Total NRE Budget by SKU</h3>
+                    <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
+                    <p className="text-purple-100 text-sm mt-1">{sortedSkus.length} SKUs • {nreBudgets?.length || 0} Total Budgets</p>
+                  </div>
+
+                  {sortedSkus.map(([sku, data]) => {
+                    const skuInfo = skus.find(s => s.sku_code === sku);
+                    return (
+                      <Card key={sku} className="border-2 hover:shadow-lg transition-shadow">
+                        <CardHeader className="bg-gradient-to-r from-green-50 to-purple-50">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-lg font-mono">{sku}</CardTitle>
+                              <CardDescription>
+                                {skuInfo?.sku_name || `${data.count} Budget${data.count !== 1 ? 's' : ''}`}
+                              </CardDescription>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-purple-600">
+                                ${data.total.toLocaleString()}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {((data.total / grandTotal) * 100).toFixed(1)}% of total
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                          <div className="space-y-2">
+                            {data.budgets.map(budget => (
+                              <div key={budget.id} className="grid grid-cols-3 items-center text-sm border-b pb-2">
+                                <span className="font-mono text-xs">{budget.nreReferenceNumber}</span>
+                                <span className="text-gray-600 text-center">{budget.projectName || 'No Project'}</span>
+                                <span className="font-semibold text-green-600 text-right">${budget.totalAmount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Group by Category */}
+            {analyticsGroupBy === 'category' && (() => {
+              const categoryTotals = new Map<string, { total: number; count: number; lineItems: Array<{ budget: NREBudget; item: NRELineItem }> }>();
+              nreBudgets?.forEach(budget => {
+                budget.lineItems.forEach(item => {
+                  const categoryKey = item.category;
+                  const existing = categoryTotals.get(categoryKey) || { total: 0, count: 0, lineItems: [] };
+                  categoryTotals.set(categoryKey, {
+                    total: existing.total + item.totalAmount,
+                    count: existing.count + 1,
+                    lineItems: [...existing.lineItems, { budget, item }]
+                  });
+                });
+              });
+
+              const sortedCategories = Array.from(categoryTotals.entries()).sort((a, b) => b[1].total - a[1].total);
+              const grandTotal = Array.from(categoryTotals.values()).reduce((sum, c) => sum + c.total, 0);
+
+              return (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
+                    <h3 className="text-xl font-bold mb-2">Total NRE Budget by Category</h3>
+                    <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
+                    <p className="text-purple-100 text-sm mt-1">{sortedCategories.length} Categories • {Array.from(categoryTotals.values()).reduce((sum, c) => sum + c.count, 0)} Line Items</p>
+                  </div>
+
+                  {sortedCategories.map(([category, data]) => {
+                    const categoryLabel = NRE_CATEGORIES.find(c => c.value === category)?.label || category;
+                    return (
+                      <Card key={category} className="border-2 hover:shadow-lg transition-shadow">
+                        <CardHeader className="bg-gradient-to-r from-orange-50 to-purple-50">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-lg">{categoryLabel}</CardTitle>
+                              <CardDescription>{data.count} Line Item{data.count !== 1 ? 's' : ''}</CardDescription>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-purple-600">
+                                ${data.total.toLocaleString()}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {((data.total / grandTotal) * 100).toFixed(1)}% of total
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {data.lineItems.slice(0, 10).map(({ budget, item }, idx) => (
+                              <div key={`${budget.id}-${idx}`} className="flex justify-between items-center text-sm border-b pb-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-mono text-xs text-gray-500">{budget.nreReferenceNumber}</div>
+                                  <div className="text-xs text-gray-600 truncate">{item.description}</div>
+                                </div>
+                                <span className="font-semibold text-green-600 ml-2">${item.totalAmount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            {data.lineItems.length > 10 && (
+                              <div className="text-center text-sm text-gray-500 py-2">
+                                +{data.lineItems.length - 10} more items
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowAnalyticsModal(false)}>
+              Close
             </Button>
           </div>
         </DialogContent>

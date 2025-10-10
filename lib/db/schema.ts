@@ -1394,3 +1394,69 @@ export const invoicePaymentLineItems = pgTable('invoice_payment_line_items', {
 
 export type InvoicePaymentLineItem = typeof invoicePaymentLineItems.$inferSelect;
 export type NewInvoicePaymentLineItem = typeof invoicePaymentLineItems.$inferInsert;
+
+// ===== BUDGET TARGETS (ESTIMATES vs ACTUALS) =====
+// Separate from nre_budgets (which tracks actuals)
+// This tracks ESTIMATED/TARGET budget numbers for comparison and analysis
+
+export const budgetTargets = pgTable('budget_targets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Project Identification
+  projectName: text('project_name').notNull(),
+  skuCode: text('sku_code'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  fiscalQuarter: integer('fiscal_quarter'),
+  
+  // Budget Metadata
+  budgetCategory: text('budget_category').notNull().default('NRE_GENERAL'),
+  budgetDescription: text('budget_description'),
+  
+  // Budget Amounts
+  totalBudgetAmount: numeric('total_budget_amount', { precision: 15, scale: 2 }).notNull(),
+  
+  // Payment Timeline Preference
+  paymentFrequency: text('payment_frequency').default('monthly'),
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  
+  // Notes & Context
+  notes: text('notes'),
+  assumptions: text('assumptions'),
+  
+  // Status
+  status: text('status').default('draft'),
+  isLocked: boolean('is_locked').default(false),
+  
+  // Audit
+  createdBy: uuid('created_by').references(() => users.authId),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const budgetTargetPayments = pgTable('budget_target_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  budgetTargetId: uuid('budget_target_id').notNull().references(() => budgetTargets.id, { onDelete: 'cascade' }),
+  
+  // Payment Period
+  paymentNumber: integer('payment_number').notNull(),
+  paymentPeriodStart: date('payment_period_start').notNull(),
+  paymentPeriodEnd: date('payment_period_end').notNull(),
+  paymentLabel: text('payment_label'),
+  
+  // Estimated Amount
+  estimatedAmount: numeric('estimated_amount', { precision: 12, scale: 2 }).notNull(),
+  
+  // Notes
+  notes: text('notes'),
+  
+  // Audit
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type BudgetTarget = typeof budgetTargets.$inferSelect;
+export type NewBudgetTarget = typeof budgetTargets.$inferInsert;
+export type BudgetTargetPayment = typeof budgetTargetPayments.$inferSelect;
+export type NewBudgetTargetPayment = typeof budgetTargetPayments.$inferInsert;

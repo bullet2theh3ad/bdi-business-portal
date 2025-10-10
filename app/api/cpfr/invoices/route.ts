@@ -264,9 +264,7 @@ export async function POST(request: NextRequest) {
     console.log('Creating Invoice with data:', body);
 
     // Insert invoice into database with all new fields
-    const [newInvoice] = await db
-      .insert(invoices)
-      .values({
+    const invoiceData: any = {
         invoiceNumber: body.invoiceNumber || body.poNumber, // Support both new and old field names
         customerName: body.customerName || body.supplierName, // Support both new and old field names
         invoiceDate: body.invoiceDate || body.orderDate, // Pass string directly, let Drizzle handle conversion
@@ -291,7 +289,11 @@ export async function POST(request: NextRequest) {
         bankAddress: body.bankAddress || null,
         bankCountry: body.bankCountry || null,
         bankCurrency: body.bankCurrency || 'USD',
-      })
+    };
+
+    const [newInvoice] = await db
+      .insert(invoices)
+      .values(invoiceData)
       .returning();
 
     console.log('Created invoice:', newInvoice);
