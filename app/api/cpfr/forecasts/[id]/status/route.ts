@@ -76,6 +76,35 @@ async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, 
       changeDescription = 'Warehouse has updated final customer delivery commitment';
     }
 
+    // Get current milestone status from forecast
+    const currentStatus = milestone === 'sales' ? forecastEmailData.sales_signal :
+                         milestone === 'factory' ? forecastEmailData.factory_signal :
+                         milestone === 'transit' ? forecastEmailData.transit_signal :
+                         milestone === 'warehouse' ? forecastEmailData.warehouse_signal :
+                         'unknown';
+
+    // Map status to display-friendly names
+    const statusDisplayName = currentStatus === 'confirmed' ? 'Confirmed' :
+                              currentStatus === 'in_transit' ? 'In Transit' :
+                              currentStatus === 'submitted' ? 'Submitted' :
+                              currentStatus === 'delayed' ? 'Delayed' :
+                              currentStatus === 'at_warehouse' ? 'At Warehouse' :
+                              currentStatus === 'delivered' ? 'Delivered' :
+                              currentStatus;
+
+    // Map milestone to icon and color
+    const milestoneIcon = milestone === 'sales' ? '👤' :
+                         milestone === 'factory' ? '🏭' :
+                         milestone === 'transit' ? '✈️' :
+                         milestone === 'warehouse' ? '📦' :
+                         '📅';
+
+    const milestoneColor = milestone === 'sales' ? '#3b82f6' :
+                          milestone === 'factory' ? '#f59e0b' :
+                          milestone === 'transit' ? '#10b981' :
+                          milestone === 'warehouse' ? '#8b5cf6' :
+                          '#2563eb';
+
     // Build change details
     const changeDetails = Object.entries(changeEntry.changes)
       .map(([field, change]: [string, any]) => {
@@ -97,11 +126,22 @@ async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, 
       subject: `${emailSubject} - ${forecastEmailData.sku?.sku || 'SKU'} - ${forecastEmailData.delivery_week}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">📅 CPFR Timeline Update</h2>
+          <h2 style="color: #2563eb;">${milestoneIcon} CPFR Timeline Update</h2>
           
           <p>Hello CPFR Team,</p>
           
           <p>${changeDescription}:</p>
+
+          <!-- STATUS UPDATE - PROMINENT -->
+          <div style="background-color: ${milestoneColor}15; border: 3px solid ${milestoneColor}; border-radius: 8px; padding: 24px; margin: 24px 0; text-align: center;">
+            <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">Current Shipment Status:</h2>
+            <div style="font-size: 32px; font-weight: bold; color: ${milestoneColor}; margin: 12px 0;">
+              ${milestoneIcon} ${statusDisplayName}
+            </div>
+            <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">
+              Updated by ${milestone.charAt(0).toUpperCase() + milestone.slice(1)} Team
+            </p>
+          </div>
           
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 20px; margin: 20px 0;">
             <h3 style="margin-top: 0; color: #1f2937;">Forecast Details:</h3>
