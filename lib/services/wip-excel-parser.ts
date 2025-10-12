@@ -54,9 +54,8 @@ function parseExcelDate(value: any): string | undefined {
 /**
  * Parse Raw Data sheet into WIP units
  */
-export function parseRawDataSheet(filePath: string): Partial<WIPUnit>[] {
+export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
   try {
-    const workbook = XLSX.readFile(filePath);
     const sheetName = 'Raw Data';
     
     if (!workbook.SheetNames.includes(sheetName)) {
@@ -70,15 +69,23 @@ export function parseRawDataSheet(filePath: string): Partial<WIPUnit>[] {
     
     const units: (Partial<WIPUnit> | null)[] = rawData.map((row: any, index: number) => {
       try {
-        // Extract and normalize data
-        const serialNumber = row['Serial Number']?.toString().trim();
-        const modelNumber = row['Model Number']?.toString().trim();
-        const source = row['Source']?.toString().trim();
-        const wipValue = row['WIP (1/0)'];
-        const isWip = wipValue === 1 || wipValue === '1' || wipValue === true;
+        // Skip empty rows (all values are null/undefined)
+        const hasAnyData = Object.values(row).some(val => val !== null && val !== undefined && val !== '');
+        if (!hasAnyData) {
+          return null;
+        }
+
+        // Extract and normalize data (handle missing/messy values)
+        const serialNumber = row['Serial Number']?.toString().trim() || '';
+        const modelNumber = row['Model Number']?.toString().trim() || '';
+        const source = row['Source']?.toString().trim() || '';
         
-        // Detect flags from source
-        const sourceLower = source?.toLowerCase() || '';
+        // Handle messy WIP field
+        const wipValue = row['WIP (1/0)'] ?? row['WIP'] ?? row['WIP (1/0) '] ?? row['WIP(1/0)'];
+        const isWip = wipValue === 1 || wipValue === '1' || wipValue === true || wipValue === 'Yes' || wipValue === 'yes';
+        
+        // Detect flags from source (handle null/undefined)
+        const sourceLower = (source || '').toLowerCase();
         const isRma = sourceLower.includes('rma');
         const isCatvIntake = sourceLower.includes('catv');
         
@@ -92,14 +99,17 @@ export function parseRawDataSheet(filePath: string): Partial<WIPUnit>[] {
         const jiraTransferIsoWeek = row['Jira Transfer ISO Week']?.toString().trim();
         const jiraTransferDate = parseExcelDate(row['Jira Transfer Date']);
         
-        if (!serialNumber) {
-          console.warn(`Row ${index + 2}: Missing serial number, skipping`);
+        // Only skip if BOTH serial and model are missing (truly empty row)
+        if (!serialNumber && !modelNumber) {
           return null;
         }
         
+        // Warn about partial data but keep the row
+        if (!serialNumber) {
+          console.warn(`Row ${index + 2}: Missing serial number`);
+        }
         if (!modelNumber) {
-          console.warn(`Row ${index + 2}: Missing model number for ${serialNumber}, skipping`);
-          return null;
+          console.warn(`Row ${index + 2}: Missing model number`);
         }
         
         const unit: Partial<WIPUnit> = {
@@ -142,9 +152,8 @@ export function parseRawDataSheet(filePath: string): Partial<WIPUnit>[] {
 /**
  * Parse Weekly Summary sheet into structured data
  */
-export function parseWeeklySummarySheet(filePath: string): WeeklyMatrix | null {
+export function parseWeeklySummarySheet(workbook: XLSX.WorkBook): WeeklyMatrix | null {
   try {
-    const workbook = XLSX.readFile(filePath);
     const sheetName = 'Weekly Summary';
     
     if (!workbook.SheetNames.includes(sheetName)) {
@@ -250,11 +259,15 @@ export interface ParsedExcelData {
   };
 }
 
-export function parseWIPExcelFile(filePath: string): ParsedExcelData {
-  console.log(`📂 Parsing WIP Excel file: ${filePath}`);
+export function parseWIPExcelFile(buffer: ArrayBuffer): ParsedExcelData {
+  console.log(`📂 Parsing WIP Excel file from buffer (${buffer.byteLength} bytes)`);
   
-  const units = parseRawDataSheet(filePath);
-  const weeklySummary = parseWeeklySummarySheet(filePath);
+  // Read workbook from buffer
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  console.log(`📋 Workbook sheets:`, workbook.SheetNames);
+  
+  const units = parseRawDataSheet(workbook);
+  const weeklySummary = parseWeeklySummarySheet(workbook);
   
   return {
     units,
@@ -267,22 +280,18 @@ export function parseWIPExcelFile(filePath: string): ParsedExcelData {
 }
 
 /**
- * Validate parsed unit data
+ * Validate parsed unit data (lenient - only reject truly invalid rows)
  */
 export function validateWIPUnit(unit: Partial<WIPUnit>): string[] {
   const errors: string[] = [];
   
+  // Only require serial number as truly critical
   if (!unit.serialNumber) {
     errors.push('Missing serial number');
   }
   
-  if (!unit.modelNumber) {
-    errors.push('Missing model number');
-  }
-  
-  if (!unit.receivedDate && !unit.isoYearWeekReceived) {
-    errors.push('Missing received date or ISO week');
-  }
+  // Warn about other missing fields but don't fail validation
+  // This allows processing of messy/incomplete data
   
   return errors;
 }

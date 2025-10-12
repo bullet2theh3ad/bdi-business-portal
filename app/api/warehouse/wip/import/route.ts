@@ -6,9 +6,6 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { parseWIPExcelFile, validateWIPUnit } from '@/lib/services/wip-excel-parser';
 import { createClient } from '@supabase/supabase-js';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -19,8 +16,6 @@ const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
  * Upload and import WIP Excel file
  */
 export async function POST(request: NextRequest) {
-  let tempFilePath: string | null = null;
-  
   try {
     console.log('🚀 WIP Import API: Processing request');
     
@@ -107,17 +102,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`📦 Created import batch: ${importBatch.id}`);
 
-    // Save file to temp directory
+    // Read file buffer
     const buffer = await file.arrayBuffer();
-    const tempDir = os.tmpdir();
-    tempFilePath = path.join(tempDir, `wip_${importBatch.id}_${fileName}`);
-    
-    fs.writeFileSync(tempFilePath, Buffer.from(buffer));
-    console.log(`💾 Saved temp file: ${tempFilePath}`);
+    console.log(`📥 File buffer size: ${buffer.byteLength} bytes`);
 
-    // Parse Excel file
+    // Parse Excel file directly from buffer
     console.log('📊 Parsing Excel file...');
-    const { units, weeklySummary, stats } = parseWIPExcelFile(tempFilePath);
+    const { units, weeklySummary, stats } = parseWIPExcelFile(buffer);
 
     console.log(`✅ Parsed ${stats.totalUnits} units from Excel`);
     console.log(`📅 Weekly summary: ${stats.hasWeeklySummary ? 'Found' : 'Not found'}`);
@@ -218,12 +209,6 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', importBatch.id);
 
-    // Clean up temp file
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-      console.log('🗑️ Cleaned up temp file');
-    }
-
     console.log(`✅ Import completed: ${processedCount} processed, ${failedCount} failed`);
 
     return NextResponse.json({
@@ -241,15 +226,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Import error:', error);
-
-    // Clean up temp file on error
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      try {
-        fs.unlinkSync(tempFilePath);
-      } catch (cleanupError) {
-        console.error('Error cleaning up temp file:', cleanupError);
-      }
-    }
 
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
