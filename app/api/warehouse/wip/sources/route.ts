@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Build query for distinct sources
+    // Build query for sources with high limit to avoid pagination issues
     let query = supabaseService
       .from('warehouse_wip_units')
       .select('source')
       .not('source', 'is', null)
-      .order('source');
+      .limit(50000); // High limit to get all sources
 
     // Apply filter if provided
     if (importBatchId) {
@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // Get unique sources
-    const uniqueSources = [...new Set(sources?.map((s: any) => s.source) || [])];
+    // Get unique sources and sort
+    const uniqueSources = [...new Set(sources?.map((s: any) => s.source) || [])].sort();
 
     return NextResponse.json({ sources: uniqueSources });
 
