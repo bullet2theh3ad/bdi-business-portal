@@ -86,6 +86,16 @@ export default function WarehouseWIPDashboard() {
 
   const hasFilters = importBatchId || sku || source || search || selectedStage;
 
+  // Build filter label for metric cards
+  const getFilterLabel = () => {
+    const parts = [];
+    if (source) parts.push(source);
+    if (sku) parts.push(sku);
+    return parts.length > 0 ? ` (${parts.join(' • ')})` : '';
+  };
+
+  const filterLabel = getFilterLabel();
+
   return (
     <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
       {/* Header */}
@@ -179,7 +189,9 @@ export default function WarehouseWIPDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Intake</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Intake{filterLabel}
+            </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -190,7 +202,9 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active WIP</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active WIP{filterLabel}
+            </CardTitle>
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -201,7 +215,9 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">RMA</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              RMA{filterLabel}
+            </CardTitle>
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -212,7 +228,9 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outflow</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Outflow{filterLabel}
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -223,7 +241,9 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Aging</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg. Aging{filterLabel}
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
