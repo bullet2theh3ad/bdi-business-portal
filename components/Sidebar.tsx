@@ -181,6 +181,13 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         requiresBDI: true, // BDI-only feature
         requiresFeatureFlag: canAccessQuickBooks, // Email-based whitelist
       },
+      {
+        title: '📦 WIP Flow',
+        href: '/admin/warehouse-wip',
+        icon: 'inventory_analytics',
+        requiresRole: ['super_admin', 'admin', 'operations'], // Operations team access
+        requiresBDI: true, // BDI-only feature
+      },
     ],
   },
   {
