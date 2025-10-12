@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Comprehensive CPFR Change Notifications
-async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, currentForecast: any) {
+async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, currentForecast: any, newStatus: string) {
   if (!resend) {
     console.log('📧 Resend not configured - skipping CPFR change emails');
     return false;
@@ -76,12 +76,8 @@ async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, 
       changeDescription = 'Warehouse has updated final customer delivery commitment';
     }
 
-    // Get current milestone status from forecast
-    const currentStatus = milestone === 'sales' ? forecastEmailData.sales_signal :
-                         milestone === 'factory' ? forecastEmailData.factory_signal :
-                         milestone === 'transit' ? forecastEmailData.transit_signal :
-                         milestone === 'warehouse' ? forecastEmailData.warehouse_signal :
-                         'unknown';
+    // Use the NEW status that was just set (not the old one from database)
+    const currentStatus = newStatus;
 
     // Map status to display-friendly names
     const statusDisplayName = currentStatus === 'confirmed' ? 'Confirmed' :
@@ -466,7 +462,7 @@ export async function PUT(
         // updateData.last_date_change_by = userId;
 
         // 📧 COMPREHENSIVE EMAIL NOTIFICATIONS: Send to all affected stakeholders
-        await sendCPFRChangeNotifications(milestone, changeEntry, currentForecast);
+        await sendCPFRChangeNotifications(milestone, changeEntry, currentForecast, status);
       }
     }
 

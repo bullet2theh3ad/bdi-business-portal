@@ -12,6 +12,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { User as UserType } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
+import { canAccessQuickBooks } from '@/lib/feature-flags';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -23,6 +24,7 @@ interface NavItem {
   requiresRole?: string[];
   requiresBDI?: boolean; // Only show for BDI organization users
   requiresNonBDI?: boolean; // Only show for non-BDI organization users
+  requiresFeatureFlag?: (email: string) => boolean; // Custom feature flag check
 }
 
 // 🌍 DYNAMIC: Navigation items will be created inside component for translations
@@ -171,6 +173,14 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         requiresRole: ['super_admin', 'admin_cfo'], // Super Admin and CFO only
         requiresBDI: true, // BDI-only feature
       },
+      {
+        title: '💰 QuickBooks',
+        href: '/admin/quickbooks',
+        icon: 'analytics',
+        requiresRole: ['super_admin'], // Super Admin only
+        requiresBDI: true, // BDI-only feature
+        requiresFeatureFlag: canAccessQuickBooks, // Email-based whitelist
+      },
     ],
   },
   {
@@ -270,6 +280,11 @@ export function Sidebar({ className }: SidebarProps) {
 
     // Check if item requires non-BDI organization access
     if (item.requiresNonBDI && ((user as any)?.organization?.code === 'BDI' || (user as any)?.organization?.type === 'internal')) {
+      return null;
+    }
+
+    // Check feature flag (email-based whitelist)
+    if (item.requiresFeatureFlag && !item.requiresFeatureFlag(user?.email || '')) {
       return null;
     }
 
