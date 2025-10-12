@@ -183,10 +183,21 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
       },
       {
         title: '📦 WIP Flow',
-        href: '/admin/warehouse-wip',
         icon: 'inventory_analytics',
         requiresRole: ['super_admin', 'admin', 'operations'], // Operations team access
         requiresBDI: true, // BDI-only feature
+        children: [
+          {
+            title: '📊 Dashboard',
+            href: '/admin/warehouse-wip/dashboard',
+            icon: 'dashboard',
+          },
+          {
+            title: '📤 Data Upload',
+            href: '/admin/warehouse-wip',
+            icon: 'upload',
+          },
+        ],
       },
     ],
   },
