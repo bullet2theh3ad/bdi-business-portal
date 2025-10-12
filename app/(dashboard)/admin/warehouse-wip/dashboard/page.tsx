@@ -45,6 +45,7 @@ export default function WarehouseWIPDashboard() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFromDate, setExportFromDate] = useState('');
   const [exportToDate, setExportToDate] = useState('');
+  const [exportAllData, setExportAllData] = useState(false); // Toggle to ignore filters
   const [exporting, setExporting] = useState(false);
 
   // Build query params
@@ -116,9 +117,13 @@ export default function WarehouseWIPDashboard() {
       const params = new URLSearchParams();
       params.append('dateFrom', exportFromDate);
       params.append('dateTo', exportToDate);
-      if (importBatchId) params.append('importId', importBatchId);
-      if (sku) params.append('sku', sku);
-      if (source) params.append('source', source);
+      
+      // Only apply filters if NOT exporting all data
+      if (!exportAllData) {
+        if (importBatchId) params.append('importId', importBatchId);
+        if (sku) params.append('sku', sku);
+        if (source) params.append('source', source);
+      }
 
       const response = await fetch(`/api/warehouse/wip/export?${params.toString()}`);
       
@@ -139,6 +144,7 @@ export default function WarehouseWIPDashboard() {
       setShowExportModal(false);
       setExportFromDate('');
       setExportToDate('');
+      setExportAllData(false);
     } catch (error) {
       console.error('Export error:', error);
       alert('Failed to export report. Please try again.');
@@ -146,6 +152,17 @@ export default function WarehouseWIPDashboard() {
       setExporting(false);
     }
   };
+
+  // Get export preview count
+  const { data: exportPreviewData } = useSWR(
+    showExportModal && exportFromDate && exportToDate
+      ? `/api/warehouse/wip/units?${buildParams({
+          ...(exportAllData ? {} : { source, sku }),
+          limit: '0',
+        })}&dateFrom=${exportFromDate}&dateTo=${exportToDate}`
+      : null,
+    fetcher
+  );
 
   return (
     <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
@@ -495,13 +512,42 @@ export default function WarehouseWIPDashboard() {
               />
             </div>
 
-            {(source || sku) && (
-              <div className="rounded-lg bg-muted p-3 text-sm">
-                <p className="font-medium mb-1">Active Filters:</p>
-                <ul className="list-disc list-inside text-muted-foreground">
-                  {source && <li>Source: {source}</li>}
-                  {sku && <li>SKU: {sku}</li>}
-                </ul>
+            {/* Export Mode Selection */}
+            <div className="space-y-3 rounded-lg border p-4">
+              <Label className="text-sm font-medium">Export Mode</Label>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={!exportAllData}
+                    onChange={() => setExportAllData(false)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">
+                    Export Filtered Data {(source || sku) && `(${[source, sku].filter(Boolean).join(', ')})`}
+                  </span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={exportAllData}
+                    onChange={() => setExportAllData(true)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm font-medium">Export All Data (All Sources, All SKUs)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Preview Count */}
+            {exportFromDate && exportToDate && exportPreviewData?.total !== undefined && (
+              <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm">
+                <p className="font-medium text-green-900">
+                  Ready to export: <span className="text-lg">{exportPreviewData.total.toLocaleString()}</span> records
+                </p>
+                <p className="text-green-700 text-xs mt-1">
+                  {exportAllData ? 'All sources and SKUs' : (source || sku) ? `Filtered by ${[source, sku].filter(Boolean).join(', ')}` : 'No filters applied'}
+                </p>
               </div>
             )}
           </div>
@@ -513,6 +559,7 @@ export default function WarehouseWIPDashboard() {
                 setShowExportModal(false);
                 setExportFromDate('');
                 setExportToDate('');
+                setExportAllData(false);
               }}
               disabled={exporting}
             >

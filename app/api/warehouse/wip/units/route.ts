@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get('source');
     const stage = searchParams.get('stage');
     const search = searchParams.get('search'); // For serial number search
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
@@ -62,13 +64,19 @@ export async function GET(request: NextRequest) {
       query = query.eq('model_number', sku);
     }
     if (source) {
-      query = query.ilike('source', `%${source}%`);
+      query = query.eq('source', source);
     }
     if (stage) {
       query = query.eq('stage', stage);
     }
     if (search) {
       query = query.ilike('serial_number', `%${search}%`);
+    }
+    if (dateFrom) {
+      query = query.gte('received_date', dateFrom);
+    }
+    if (dateTo) {
+      query = query.lte('received_date', dateTo);
     }
 
     // Apply pagination and sorting
