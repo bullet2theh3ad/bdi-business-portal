@@ -137,9 +137,13 @@ export async function GET(request: NextRequest) {
       'Imported At'
     ];
 
-    const csvRows = [
-      headers.join(','),
-      ...units.map(unit => [
+    // Build CSV rows
+    console.log(`📝 Building CSV with ${units.length} units...`);
+    const csvRows: string[] = [headers.join(',')];
+    
+    // Add each unit row
+    for (const unit of units) {
+      csvRows.push([
         `"${unit.serial_number || ''}"`,
         `"${unit.model_number || ''}"`,
         `"${unit.source || ''}"`,
@@ -155,16 +159,18 @@ export async function GET(request: NextRequest) {
         unit.emg_ship_date || '',
         unit.jira_transfer_date || '',
         unit.imported_at || ''
-      ].join(','))
-    ];
+      ].join(','));
+    }
 
+    console.log(`📊 CSV has ${csvRows.length} rows (including header)`);
     const csvContent = csvRows.join('\n');
+    console.log(`📦 CSV content size: ${csvContent.length} characters`);
 
     // Generate filename
     const timestamp = new Date().toISOString().split('T')[0];
     const filename = `wip_export_${timestamp}.csv`;
 
-    console.log(`✅ Exported ${units.length} units to CSV`);
+    console.log(`✅ Exported ${units.length} units to CSV (${csvRows.length} total rows)`);
 
     // Return CSV file
     return new NextResponse(csvContent, {
