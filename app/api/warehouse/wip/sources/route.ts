@@ -42,26 +42,30 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Build query for sources with high limit to avoid pagination issues
+    // Build query for sources - use range to bypass 1000 row limit
     let query = supabaseService
       .from('warehouse_wip_units')
       .select('source')
-      .not('source', 'is', null)
-      .limit(50000); // High limit to get all sources
+      .not('source', 'is', null);
 
     // Apply filter if provided
     if (importBatchId) {
       query = query.eq('import_batch_id', importBatchId);
     }
 
-    const { data: sources, error } = await query;
+    // Use range() to fetch up to 50k rows (bypasses default 1000 limit)
+    const { data: sources, error } = await query.range(0, 49999);
 
     if (error) {
       throw error;
     }
 
+    console.log(`📊 Fetched ${sources?.length || 0} source rows`);
+
     // Get unique sources and sort
     const uniqueSources = [...new Set(sources?.map((s: any) => s.source) || [])].sort();
+
+    console.log(`📊 Unique sources found: ${uniqueSources.length}`, uniqueSources);
 
     return NextResponse.json({ sources: uniqueSources });
 
