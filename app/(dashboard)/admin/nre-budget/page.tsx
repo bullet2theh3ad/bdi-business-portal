@@ -758,7 +758,7 @@ export default function NREBudgetPage() {
     <div className="container mx-auto p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">NRE Budget Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">NRE Spend Management</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Track Non-Recurring Engineering costs and payments</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -1818,7 +1818,7 @@ export default function NREBudgetPage() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <BarChart3 className="h-6 w-6 text-purple-600" />
-              NRE Budget Analytics Dashboard
+              NRE Spend Analytics Dashboard
             </DialogTitle>
           </DialogHeader>
 
@@ -1870,7 +1870,7 @@ export default function NREBudgetPage() {
               return (
                 <div className="space-y-4">
                   <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-2">Total NRE Budget by Project</h3>
+                    <h3 className="text-xl font-bold mb-2">Total NRE Spend by Project</h3>
                     <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
                     <p className="text-purple-100 text-sm mt-1">{sortedProjects.length} Projects • {nreBudgets?.length || 0} Total Budgets</p>
                   </div>
@@ -1929,7 +1929,7 @@ export default function NREBudgetPage() {
               return (
                 <div className="space-y-4">
                   <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-2">Total NRE Budget by SKU</h3>
+                    <h3 className="text-xl font-bold mb-2">Total NRE Spend by SKU</h3>
                     <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
                     <p className="text-purple-100 text-sm mt-1">{sortedSkus.length} SKUs • {nreBudgets?.length || 0} Total Budgets</p>
                   </div>
@@ -1995,7 +1995,7 @@ export default function NREBudgetPage() {
               return (
                 <div className="space-y-4">
                   <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-2">Total NRE Budget by Category</h3>
+                    <h3 className="text-xl font-bold mb-2">Total NRE Spend by Category</h3>
                     <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
                     <p className="text-purple-100 text-sm mt-1">{sortedCategories.length} Categories • {Array.from(categoryTotals.values()).reduce((sum, c) => sum + c.count, 0)} Line Items</p>
                   </div>
