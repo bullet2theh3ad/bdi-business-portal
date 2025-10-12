@@ -42,32 +42,24 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Build query for sources - use range to bypass 1000 row limit
-    let query = supabaseService
-      .from('warehouse_wip_units')
-      .select('source')
-      .not('source', 'is', null);
-
-    // Apply filter if provided
-    if (importBatchId) {
-      query = query.eq('import_batch_id', importBatchId);
-    }
-
-    // Use range() to fetch up to 50k rows (bypasses default 1000 limit)
-    const { data: sources, error } = await query.range(0, 49999);
+    // Use database function to get distinct sources efficiently
+    // This returns only unique sources (5 rows) instead of all 12k+ unit rows
+    const { data: sources, error } = await supabaseService.rpc(
+      'get_warehouse_wip_distinct_sources',
+      { batch_id: importBatchId || null }
+    );
 
     if (error) {
+      console.error('❌ RPC error:', error);
       throw error;
     }
 
-    console.log(`📊 Fetched ${sources?.length || 0} source rows`);
+    console.log(`📊 Distinct sources from DB: ${sources?.length || 0}`, sources);
 
-    // Get unique sources and sort
-    const uniqueSources = [...new Set(sources?.map((s: any) => s.source) || [])].sort();
+    // Extract source values (RPC returns array of objects with 'source' property)
+    const sourceList = sources?.map((s: any) => s.source) || [];
 
-    console.log(`📊 Unique sources found: ${uniqueSources.length}`, uniqueSources);
-
-    return NextResponse.json({ sources: uniqueSources });
+    return NextResponse.json({ sources: sourceList });
 
   } catch (error: any) {
     console.error('❌ Sources API error:', error);
