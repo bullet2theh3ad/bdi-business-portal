@@ -41,10 +41,11 @@ export async function GET(request: NextRequest) {
     const importId = searchParams.get('importId');
     const stage = searchParams.get('stage');
     const sku = searchParams.get('sku');
+    const source = searchParams.get('source');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
 
-    console.log('📥 Exporting WIP units with filters:', { importId, stage, sku, dateFrom, dateTo });
+    console.log('📥 Exporting WIP units with filters:', { importId, stage, sku, source, dateFrom, dateTo });
 
     // Build query with filters
     let query = supabaseService
@@ -60,6 +61,9 @@ export async function GET(request: NextRequest) {
     }
     if (sku) {
       query = query.eq('model_number', sku);
+    }
+    if (source) {
+      query = query.eq('source', source);
     }
     if (dateFrom) {
       query = query.gte('received_date', dateFrom);

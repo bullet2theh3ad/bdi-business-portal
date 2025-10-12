@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Package,
   Wrench,
@@ -15,6 +16,7 @@ import {
   Download,
   Filter,
   X,
+  Loader2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -38,6 +40,12 @@ export default function WarehouseWIPDashboard() {
   const [source, setSource] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<string>('');
+
+  // Export modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFromDate, setExportFromDate] = useState('');
+  const [exportToDate, setExportToDate] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   // Build query params
   const buildParams = (additional?: Record<string, string>) => {
@@ -96,6 +104,49 @@ export default function WarehouseWIPDashboard() {
 
   const filterLabel = getFilterLabel();
 
+  // Export handler
+  const handleExport = async () => {
+    if (!exportFromDate || !exportToDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('dateFrom', exportFromDate);
+      params.append('dateTo', exportToDate);
+      if (importBatchId) params.append('importId', importBatchId);
+      if (sku) params.append('sku', sku);
+      if (source) params.append('source', source);
+
+      const response = await fetch(`/api/warehouse/wip/export?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `warehouse-wip-report-${exportFromDate}-to-${exportToDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setShowExportModal(false);
+      setExportFromDate('');
+      setExportToDate('');
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export report. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
       {/* Header */}
@@ -106,7 +157,7 @@ export default function WarehouseWIPDashboard() {
             Monitor inventory flow and work-in-progress analytics
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => setShowExportModal(true)}>
           <Download className="h-4 w-4" />
           Export Report
         </Button>
@@ -412,6 +463,77 @@ export default function WarehouseWIPDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Export Report Modal */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Export WIP Report</DialogTitle>
+            <DialogDescription>
+              Select a date range to export all WIP data as a CSV file. Current filters will be applied.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="export-from-date">Start Date</Label>
+              <Input
+                id="export-from-date"
+                type="date"
+                value={exportFromDate}
+                onChange={(e) => setExportFromDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="export-to-date">End Date</Label>
+              <Input
+                id="export-to-date"
+                type="date"
+                value={exportToDate}
+                onChange={(e) => setExportToDate(e.target.value)}
+              />
+            </div>
+
+            {(source || sku) && (
+              <div className="rounded-lg bg-muted p-3 text-sm">
+                <p className="font-medium mb-1">Active Filters:</p>
+                <ul className="list-disc list-inside text-muted-foreground">
+                  {source && <li>Source: {source}</li>}
+                  {sku && <li>SKU: {sku}</li>}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowExportModal(false);
+                setExportFromDate('');
+                setExportToDate('');
+              }}
+              disabled={exporting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleExport} disabled={exporting || !exportFromDate || !exportToDate}>
+              {exporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
