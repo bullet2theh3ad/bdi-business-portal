@@ -15,7 +15,8 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  Database
+  Database,
+  Trash2
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -49,6 +50,7 @@ export default function WarehouseWIPPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<any>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // Dropzone
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -103,6 +105,49 @@ export default function WarehouseWIPPage() {
       window.location.href = url;
     } catch (error) {
       console.error('Export error:', error);
+    }
+  };
+
+  // Delete import batch
+  const handleDelete = async (importId: string, fileName: string) => {
+    const importToDelete = importsData?.imports.find(i => i.id === importId);
+    const unitsCount = importToDelete?.processed_rows || 0;
+    
+    if (!confirm(
+      `⚠️  Are you sure you want to delete "${fileName}"?\n\n` +
+      `This will permanently delete:\n` +
+      `• ${unitsCount.toLocaleString()} imported units\n` +
+      `• All associated weekly summary data\n` +
+      `• The import batch record\n\n` +
+      `This action CANNOT be undone!`
+    )) {
+      return;
+    }
+
+    setDeleting(importId);
+    
+    try {
+      const response = await fetch(`/api/warehouse/wip/imports/${importId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Delete failed');
+      }
+
+      // Clear any upload success message for the deleted import
+      if (uploadSuccess?.importId === importId) {
+        setUploadSuccess(null);
+      }
+
+      mutate(); // Refresh imports list
+    } catch (error: any) {
+      console.error('Delete failed:', error);
+      alert(`Failed to delete import: ${error.message}`);
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -322,7 +367,7 @@ export default function WarehouseWIPPage() {
                         )}
                       </div>
 
-                      <div className="ml-4">
+                      <div className="ml-4 flex flex-col gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -331,6 +376,25 @@ export default function WarehouseWIPPage() {
                         >
                           <Download className="h-4 w-4" />
                           Export
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(batch.id, batch.file_name)}
+                          disabled={deleting === batch.id}
+                          className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          {deleting === batch.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

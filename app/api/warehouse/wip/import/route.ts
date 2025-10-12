@@ -79,8 +79,29 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Processing WIP file: ${fileName} (${file.size} bytes)`);
 
+    // Check if this filename was already imported (prevent duplicates)
+    const { data: existingImport } = await supabaseService
+      .from('warehouse_wip_imports')
+      .select('id, file_name, completed_at, status')
+      .eq('file_name', fileName)
+      .eq('status', 'completed')
+      .maybeSingle();
+
+    if (existingImport) {
+      const completedDate = new Date(existingImport.completed_at).toLocaleString();
+      console.warn(`⚠️  File "${fileName}" was already imported at ${completedDate}`);
+      return NextResponse.json(
+        { 
+          error: 'Duplicate file',
+          message: `This file "${fileName}" has already been imported on ${completedDate}. Please delete the previous import first, or rename your file.`,
+          existingImportId: existingImport.id
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+
     // Create import batch record
-    const { data: importBatch, error: batchError } = await supabaseService
+    const { data: importBatch, error: batchError} = await supabaseService
       .from('warehouse_wip_imports')
       .insert({
         file_name: fileName,
@@ -113,72 +134,117 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Parsed ${stats.totalUnits} units from Excel`);
     console.log(`📅 Weekly summary: ${stats.hasWeeklySummary ? 'Found' : 'Not found'}`);
 
-    // Validate and count errors
+    // Validate and prepare units for batch insert
     let processedCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
+    const validUnits: any[] = [];
 
-    // Insert units into database
+    console.log('🔍 Validating units...');
     for (const unit of units) {
-      try {
-        const validationErrors = validateWIPUnit(unit);
-        if (validationErrors.length > 0) {
-          failedCount++;
-          errors.push(`${unit.serialNumber}: ${validationErrors.join(', ')}`);
-          continue;
-        }
-
-        // Insert unit
-        await supabaseService.from('warehouse_wip_units').insert({
-          serial_number: unit.serialNumber,
-          model_number: unit.modelNumber,
-          source: unit.source,
-          received_date: unit.receivedDate,
-          iso_year_week_received: unit.isoYearWeekReceived,
-          emg_ship_date: unit.emgShipDate,
-          emg_invoice_date: unit.emgInvoiceDate,
-          jira_iso_year_week: unit.jiraIsoYearWeek,
-          jira_invoice_date: unit.jiraInvoiceDate,
-          jira_transfer_iso_week: unit.jiraTransferIsoWeek,
-          jira_transfer_date: unit.jiraTransferDate,
-          is_wip: unit.isWip,
-          is_rma: unit.isRma,
-          is_catv_intake: unit.isCatvIntake,
-          import_batch_id: importBatch.id,
-          raw_data: unit.rawData
-        });
-
-        processedCount++;
-      } catch (error: any) {
+      const validationErrors = validateWIPUnit(unit);
+      if (validationErrors.length > 0) {
         failedCount++;
-        // Handle duplicate serial number
-        if (error.code === '23505') {
-          errors.push(`${unit.serialNumber}: Duplicate serial number`);
+        errors.push(`${unit.serialNumber}: ${validationErrors.join(', ')}`);
+        continue;
+      }
+
+      validUnits.push({
+        serial_number: unit.serialNumber,
+        model_number: unit.modelNumber,
+        source: unit.source || null,
+        received_date: unit.receivedDate || null,
+        iso_year_week_received: unit.isoYearWeekReceived || null,
+        emg_ship_date: unit.emgShipDate || null,
+        emg_invoice_date: unit.emgInvoiceDate || null,
+        jira_iso_year_week: unit.jiraIsoYearWeek || null,
+        jira_invoice_date: unit.jiraInvoiceDate || null,
+        jira_transfer_iso_week: unit.jiraTransferIsoWeek || null,
+        jira_transfer_date: unit.jiraTransferDate || null,
+        is_wip: unit.isWip ?? false,
+        is_rma: unit.isRma ?? false,
+        is_catv_intake: unit.isCatvIntake ?? false,
+        import_batch_id: importBatch.id,
+        raw_data: unit.rawData || null
+        // Note: stage, outflow_date, aging_days, aging_bucket are auto-computed by DB trigger
+      });
+    }
+
+    console.log(`✅ ${validUnits.length} units validated, ${failedCount} failed`);
+
+    // Batch insert units (500 at a time for performance)
+    const BATCH_SIZE = 500;
+    const totalBatches = Math.ceil(validUnits.length / BATCH_SIZE);
+    
+    console.log(`💾 Inserting ${validUnits.length} units in ${totalBatches} batches...`);
+    
+    for (let i = 0; i < validUnits.length; i += BATCH_SIZE) {
+      const batch = validUnits.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      
+      try {
+        console.log(`📦 Batch ${batchNum}/${totalBatches}: Inserting ${batch.length} units...`);
+        
+        const { error: insertError } = await supabaseService
+          .from('warehouse_wip_units')
+          .insert(batch);
+        
+        if (insertError) {
+          // If batch fails, try individual inserts for this batch
+          console.error(`⚠️  Batch ${batchNum} failed:`, insertError.message);
+          console.log(`🔄 Retrying ${batch.length} units individually...`);
+          
+          for (const unit of batch) {
+            try {
+              const { error: unitError } = await supabaseService.from('warehouse_wip_units').insert(unit);
+              if (unitError) throw unitError;
+              processedCount++;
+            } catch (error: any) {
+              failedCount++;
+              if (error.code === '23505') {
+                errors.push(`${unit.serial_number}: Duplicate serial number`);
+              } else {
+                console.error(`❌ Failed to insert ${unit.serial_number}:`, error.message);
+                errors.push(`${unit.serial_number}: ${error.message}`);
+              }
+            }
+          }
+          console.log(`✅ Individual inserts for batch ${batchNum}: ${batch.length - failedCount} succeeded`);
         } else {
-          errors.push(`${unit.serialNumber}: ${error.message}`);
+          processedCount += batch.length;
+          console.log(`✅ Batch ${batchNum}/${totalBatches} inserted successfully`);
         }
+      } catch (error: any) {
+        console.error(`❌ Batch ${batchNum} error:`, error);
+        failedCount += batch.length;
       }
     }
+    
+    console.log(`✅ Database insertion complete: ${processedCount} succeeded, ${failedCount} failed`);
 
     // Insert weekly summary data if available
     if (weeklySummary) {
-      console.log('📅 Inserting weekly summary data...');
+      console.log(`📅 Inserting weekly summary data (${weeklySummary.weeks.length} weeks)...`);
       
-      for (const week of weeklySummary.weeks) {
-        try {
-          await supabaseService.from('warehouse_wip_weekly_summary').insert({
-            iso_year: weeklySummary.isoYear,
-            week_number: parseInt(week),
-            received_in: weeklySummary.metrics.receivedIn[week] || 0,
-            jira_shipped_out: weeklySummary.metrics.jiraShippedOut[week] || 0,
-            emg_shipped_out: weeklySummary.metrics.emgShippedOut[week] || 0,
-            wip_in_house: weeklySummary.metrics.wipInHouse[week] || 0,
-            wip_cumulative: weeklySummary.metrics.wipCumulative[week] || 0,
-            import_batch_id: importBatch.id
-          });
-        } catch (error) {
-          console.error(`Warning: Failed to insert week ${week}:`, error);
-        }
+      const weeklyRecords = weeklySummary.weeks.map(week => ({
+        iso_year: weeklySummary.isoYear,
+        week_number: parseInt(week),
+        received_in: weeklySummary.metrics.receivedIn[week] || 0,
+        jira_shipped_out: weeklySummary.metrics.jiraShippedOut[week] || 0,
+        emg_shipped_out: weeklySummary.metrics.emgShippedOut[week] || 0,
+        wip_in_house: weeklySummary.metrics.wipInHouse[week] || 0,
+        wip_cumulative: weeklySummary.metrics.wipCumulative[week] || 0,
+        import_batch_id: importBatch.id
+      }));
+
+      const { error: weeklyError } = await supabaseService
+        .from('warehouse_wip_weekly_summary')
+        .insert(weeklyRecords);
+      
+      if (weeklyError) {
+        console.error('⚠️  Warning: Failed to insert weekly summary:', weeklyError);
+      } else {
+        console.log(`✅ Weekly summary inserted successfully`);
       }
     }
 
