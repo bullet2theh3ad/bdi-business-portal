@@ -365,8 +365,8 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   return (
-    <div className={cn('flex flex-col w-64 bg-white border-r border-gray-200', className)}>
-      <div className="flex items-center px-6 py-4 border-b border-gray-200">
+    <div className={cn('flex flex-col w-64 bg-white border-r border-gray-200 h-screen', className)}>
+      <div className="flex items-center px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <Link href="/dashboard" className="flex items-center space-x-3">
           <img 
             src="/logos/SVG/Full Lockup Color.svg" 
@@ -378,12 +378,12 @@ export function Sidebar({ className }: SidebarProps) {
         </Link>
       </div>
       
-      <nav className="flex-1 px-4 py-4 space-y-2">
+      <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
         {getNavigationItems(tn).map(item => renderNavItem(item))}
       </nav>
       
       {user && (
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 p-4 flex-shrink-0">
           <div className="flex items-center text-sm">
             <div className="w-8 h-8 bg-bdi-green-1/10 rounded-full flex items-center justify-center mr-3">
               <SemanticBDIIcon semantic="profile" size={16} className="text-bdi-green-1" priority={true} />
