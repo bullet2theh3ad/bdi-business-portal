@@ -47,40 +47,69 @@ export async function GET(request: NextRequest) {
 
     console.log('📥 Exporting WIP units with filters:', { importId, stage, sku, source, dateFrom, dateTo });
 
-    // Build query with filters
-    let query = supabaseService
-      .from('warehouse_wip_units')
-      .select('*')
-      .order('received_date', { ascending: false });
+    // Build base query with filters
+    const buildQuery = () => {
+      let query = supabaseService
+        .from('warehouse_wip_units')
+        .select('*')
+        .order('received_date', { ascending: false });
 
-    if (importId) {
-      query = query.eq('import_batch_id', importId);
-    }
-    if (stage) {
-      query = query.eq('stage', stage);
-    }
-    if (sku) {
-      query = query.eq('model_number', sku);
-    }
-    if (source) {
-      query = query.eq('source', source);
-    }
-    if (dateFrom) {
-      query = query.gte('received_date', dateFrom);
-    }
-    if (dateTo) {
-      query = query.lte('received_date', dateTo);
+      if (importId) {
+        query = query.eq('import_batch_id', importId);
+      }
+      if (stage) {
+        query = query.eq('stage', stage);
+      }
+      if (sku) {
+        query = query.eq('model_number', sku);
+      }
+      if (source) {
+        query = query.eq('source', source);
+      }
+      if (dateFrom) {
+        query = query.gte('received_date', dateFrom);
+      }
+      if (dateTo) {
+        query = query.lte('received_date', dateTo);
+      }
+
+      return query;
+    };
+
+    // Fetch ALL units in batches to bypass Supabase 1000-row limit
+    console.log('📦 Fetching all units in batches...');
+    const BATCH_SIZE = 5000;
+    let allUnits: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch, error } = await buildQuery().range(offset, offset + BATCH_SIZE - 1);
+      
+      if (error) {
+        console.error('Error fetching units:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch units' },
+          { status: 500 }
+        );
+      }
+
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allUnits = allUnits.concat(batch);
+        console.log(`✅ Fetched batch: ${batch.length} units (total so far: ${allUnits.length})`);
+        
+        if (batch.length < BATCH_SIZE) {
+          hasMore = false; // Last batch
+        } else {
+          offset += BATCH_SIZE;
+        }
+      }
     }
 
-    const { data: units, error } = await query;
-
-    if (error) {
-      console.error('Error fetching units:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch units' },
-        { status: 500 }
-      );
-    }
+    const units = allUnits;
+    console.log(`✅ Total units fetched: ${units.length}`);
 
     if (!units || units.length === 0) {
       return NextResponse.json(
