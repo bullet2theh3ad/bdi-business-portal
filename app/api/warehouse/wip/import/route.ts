@@ -248,18 +248,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Compute summary stats by stage
-    const { data: stageCounts } = await supabaseService
+    // Compute summary stats by stage using SQL COUNT (works with unlimited rows)
+    const { count: totalCount } = await supabaseService
       .from('warehouse_wip_units')
-      .select('stage')
+      .select('*', { count: 'exact', head: true })
       .eq('import_batch_id', importBatch.id);
 
+    const { count: wipCount } = await supabaseService
+      .from('warehouse_wip_units')
+      .select('*', { count: 'exact', head: true })
+      .eq('import_batch_id', importBatch.id)
+      .eq('stage', 'WIP');
+
+    const { count: rmaCount } = await supabaseService
+      .from('warehouse_wip_units')
+      .select('*', { count: 'exact', head: true })
+      .eq('import_batch_id', importBatch.id)
+      .eq('stage', 'RMA');
+
+    const { count: outflowCount } = await supabaseService
+      .from('warehouse_wip_units')
+      .select('*', { count: 'exact', head: true })
+      .eq('import_batch_id', importBatch.id)
+      .eq('stage', 'Outflow');
+
     const summaryStats = {
-      intake: stageCounts?.filter(u => u.stage === 'Intake' || u.stage === 'Other Intake').length || 0,
-      wip: stageCounts?.filter(u => u.stage === 'WIP').length || 0,
-      rma: stageCounts?.filter(u => u.stage === 'RMA').length || 0,
-      outflow: stageCounts?.filter(u => u.stage === 'Outflow').length || 0
+      intake: totalCount || 0, // Total units received (all of them)
+      wip: wipCount || 0,
+      rma: rmaCount || 0,
+      outflow: outflowCount || 0
     };
+
+    console.log('📊 Summary Stats Calculated:', summaryStats);
 
     // Update import batch with results
     await supabaseService
