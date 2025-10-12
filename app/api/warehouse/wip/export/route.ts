@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch ALL units in batches to bypass Supabase 1000-row limit
     console.log('📦 Fetching all units in batches...');
-    const BATCH_SIZE = 5000;
+    const BATCH_SIZE = 1000; // Supabase max rows per request
     let allUnits: any[] = [];
     let offset = 0;
     let hasMore = true;
