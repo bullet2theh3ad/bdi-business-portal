@@ -68,25 +68,34 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // Group by week and stage
+    // Group by week
+    // For Intake: count units received in that week (regardless of current stage)
+    // For other stages: count units in that stage received in/before that week
     const weeklyData: Record<string, Record<string, number>> = {};
 
     units?.forEach((unit: any) => {
       const week = unit.iso_year_week_received;
-      const stage = unit.stage;
 
       if (!weeklyData[week]) {
         weeklyData[week] = {
           Intake: 0,
-          'Other Intake': 0,
           WIP: 0,
           RMA: 0,
           Outflow: 0,
         };
       }
 
-      if (weeklyData[week].hasOwnProperty(stage)) {
-        weeklyData[week][stage]++;
+      // Count all units received this week as Intake
+      weeklyData[week].Intake++;
+
+      // Also count by current stage for the other metrics
+      const stage = unit.stage;
+      if (stage === 'WIP') {
+        weeklyData[week].WIP++;
+      } else if (stage === 'RMA') {
+        weeklyData[week].RMA++;
+      } else if (stage === 'Outflow') {
+        weeklyData[week].Outflow++;
       }
     });
 

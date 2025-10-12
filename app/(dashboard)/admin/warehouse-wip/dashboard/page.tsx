@@ -70,6 +70,11 @@ export default function WarehouseWIPDashboard() {
   );
 
   const { data: importsData } = useSWR('/api/warehouse/wip/imports', fetcher);
+  
+  const { data: sourcesData } = useSWR(
+    `/api/warehouse/wip/sources?${importBatchId ? `importBatchId=${importBatchId}` : ''}`,
+    fetcher
+  );
 
   const clearFilters = () => {
     setImportBatchId('');
@@ -143,11 +148,19 @@ export default function WarehouseWIPDashboard() {
 
             <div className="space-y-2">
               <Label>Source</Label>
-              <Input
-                placeholder="Filter by source..."
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-              />
+              <Select value={source || 'all'} onValueChange={(val) => setSource(val === 'all' ? '' : val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  {sourcesData?.sources?.map((src: string) => (
+                    <SelectItem key={src} value={src}>
+                      {src}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -293,9 +306,9 @@ export default function WarehouseWIPDashboard() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full">
-                <thead className="bg-muted/50">
+                <thead className="bg-muted/50 sticky top-0 z-10">
                   <tr className="border-b">
                     <th className="h-12 px-4 text-left align-middle font-medium">Serial Number</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">SKU</th>
