@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Build base query
+    // Build base query for total intake
     let query = supabaseService.from('warehouse_wip_units').select('*', { count: 'exact', head: true });
 
     // Apply filters
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('model_number', sku);
     }
     if (source) {
-      query = query.ilike('source', `%${source}%`);
+      query = query.eq('source', source); // Changed from ilike to eq for exact match
     }
     if (fromDate) {
       query = query.gte('received_date', fromDate);
@@ -69,38 +69,63 @@ export async function GET(request: NextRequest) {
     // Get total count
     const { count: totalIntake } = await query;
 
-    // Get counts by stage
-    const { count: wipCount } = await supabaseService
+    // Get counts by stage (with proper source filtering)
+    let wipQuery = supabaseService
       .from('warehouse_wip_units')
       .select('*', { count: 'exact', head: true })
-      .eq('stage', 'WIP')
-      .match(buildFilters(importBatchId, sku, source, fromDate, toDate));
+      .eq('stage', 'WIP');
+    if (importBatchId) wipQuery = wipQuery.eq('import_batch_id', importBatchId);
+    if (sku) wipQuery = wipQuery.eq('model_number', sku);
+    if (source) wipQuery = wipQuery.eq('source', source);
+    if (fromDate) wipQuery = wipQuery.gte('received_date', fromDate);
+    if (toDate) wipQuery = wipQuery.lte('received_date', toDate);
+    const { count: wipCount } = await wipQuery;
 
-    const { count: rmaCount } = await supabaseService
+    let rmaQuery = supabaseService
       .from('warehouse_wip_units')
       .select('*', { count: 'exact', head: true })
-      .eq('stage', 'RMA')
-      .match(buildFilters(importBatchId, sku, source, fromDate, toDate));
+      .eq('stage', 'RMA');
+    if (importBatchId) rmaQuery = rmaQuery.eq('import_batch_id', importBatchId);
+    if (sku) rmaQuery = rmaQuery.eq('model_number', sku);
+    if (source) rmaQuery = rmaQuery.eq('source', source);
+    if (fromDate) rmaQuery = rmaQuery.gte('received_date', fromDate);
+    if (toDate) rmaQuery = rmaQuery.lte('received_date', toDate);
+    const { count: rmaCount } = await rmaQuery;
 
-    const { count: outflowCount } = await supabaseService
+    let outflowQuery = supabaseService
       .from('warehouse_wip_units')
       .select('*', { count: 'exact', head: true })
-      .eq('stage', 'Outflow')
-      .match(buildFilters(importBatchId, sku, source, fromDate, toDate));
+      .eq('stage', 'Outflow');
+    if (importBatchId) outflowQuery = outflowQuery.eq('import_batch_id', importBatchId);
+    if (sku) outflowQuery = outflowQuery.eq('model_number', sku);
+    if (source) outflowQuery = outflowQuery.eq('source', source);
+    if (fromDate) outflowQuery = outflowQuery.gte('received_date', fromDate);
+    if (toDate) outflowQuery = outflowQuery.lte('received_date', toDate);
+    const { count: outflowCount } = await outflowQuery;
 
-    const { count: intakeCount } = await supabaseService
+    let intakeQuery = supabaseService
       .from('warehouse_wip_units')
       .select('*', { count: 'exact', head: true })
-      .in('stage', ['Intake', 'Other Intake'])
-      .match(buildFilters(importBatchId, sku, source, fromDate, toDate));
+      .in('stage', ['Intake', 'Other Intake']);
+    if (importBatchId) intakeQuery = intakeQuery.eq('import_batch_id', importBatchId);
+    if (sku) intakeQuery = intakeQuery.eq('model_number', sku);
+    if (source) intakeQuery = intakeQuery.eq('source', source);
+    if (fromDate) intakeQuery = intakeQuery.gte('received_date', fromDate);
+    if (toDate) intakeQuery = intakeQuery.lte('received_date', toDate);
+    const { count: intakeCount } = await intakeQuery;
 
-    // Calculate average aging for active WIP
-    const { data: agingData } = await supabaseService
+    // Calculate average aging for active WIP (with proper source filtering)
+    let agingQuery = supabaseService
       .from('warehouse_wip_units')
       .select('aging_days')
       .eq('stage', 'WIP')
-      .match(buildFilters(importBatchId, sku, source, fromDate, toDate))
       .not('aging_days', 'is', null);
+    if (importBatchId) agingQuery = agingQuery.eq('import_batch_id', importBatchId);
+    if (sku) agingQuery = agingQuery.eq('model_number', sku);
+    if (source) agingQuery = agingQuery.eq('source', source);
+    if (fromDate) agingQuery = agingQuery.gte('received_date', fromDate);
+    if (toDate) agingQuery = agingQuery.lte('received_date', toDate);
+    const { data: agingData } = await agingQuery;
 
     const avgAgingDays = agingData && agingData.length > 0
       ? Math.round(agingData.reduce((sum: number, u: any) => sum + (u.aging_days || 0), 0) / agingData.length)

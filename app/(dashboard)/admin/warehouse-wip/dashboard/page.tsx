@@ -189,10 +189,15 @@ export default function WarehouseWIPDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Intake{filterLabel}
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="text-sm font-medium">Total Intake</CardTitle>
+              {filterLabel && (
+                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
+                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
+                </span>
+              )}
+            </div>
+            <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.totalIntake?.toLocaleString() || 0}</div>
@@ -202,10 +207,15 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active WIP{filterLabel}
-            </CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="text-sm font-medium">Active WIP</CardTitle>
+              {filterLabel && (
+                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
+                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
+                </span>
+              )}
+            </div>
+            <Wrench className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.wip?.toLocaleString() || 0}</div>
@@ -215,10 +225,15 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              RMA{filterLabel}
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="text-sm font-medium">RMA</CardTitle>
+              {filterLabel && (
+                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
+                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
+                </span>
+              )}
+            </div>
+            <AlertCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.rma?.toLocaleString() || 0}</div>
@@ -228,10 +243,15 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Outflow{filterLabel}
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="text-sm font-medium">Outflow</CardTitle>
+              {filterLabel && (
+                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
+                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
+                </span>
+              )}
+            </div>
+            <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.outflow?.toLocaleString() || 0}</div>
@@ -241,10 +261,15 @@ export default function WarehouseWIPDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg. Aging{filterLabel}
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="text-sm font-medium">Avg. Aging</CardTitle>
+              {filterLabel && (
+                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
+                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
+                </span>
+              )}
+            </div>
+            <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.avgAgingDays || 0} days</div>
