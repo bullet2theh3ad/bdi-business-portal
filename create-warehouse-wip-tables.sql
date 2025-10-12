@@ -3,12 +3,15 @@
 -- Track CATV intake, repair, RMA, and outflow
 -- =====================================================
 
+-- MIGRATION: If upgrading from a previous version, run this first:
+-- ALTER TABLE warehouse_wip_units DROP CONSTRAINT IF EXISTS warehouse_wip_units_serial_number_key;
+
 -- WIP Unit Records (parsed from Excel)
 CREATE TABLE IF NOT EXISTS warehouse_wip_units (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Core Identifiers
-    serial_number TEXT NOT NULL UNIQUE,
+    serial_number TEXT NOT NULL, -- Can repeat (units come back multiple times)
     model_number TEXT NOT NULL, -- SKU
     source TEXT, -- e.g., "CATV", "RMA", etc.
     
