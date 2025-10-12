@@ -686,11 +686,11 @@ export default function WarehousesPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => setShowCatvInventoryModal(true)}
+                          onClick={() => window.location.href = '/admin/warehouse-wip/dashboard'}
                           className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                         >
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
-                          Inventory
+                          WIP Dashboard
                         </Button>
                       )}
                       <Button
