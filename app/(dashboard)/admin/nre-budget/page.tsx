@@ -363,12 +363,47 @@ export default function NREBudgetPage() {
   };
 
   const handleCreateBudget = async () => {
+    // Validate required fields
+    const missingFields: string[] = [];
+    
+    if (!vendorName.trim()) {
+      missingFields.push('Vendor Name');
+    }
+    
+    if (lineItems.length === 0) {
+      missingFields.push('At least one Line Item');
+    }
+    
+    // Validate each line item
+    lineItems.forEach((item, index) => {
+      if (!item.description.trim()) {
+        missingFields.push(`Line Item #${item.lineItemNumber}: Description`);
+      }
+      if (!item.category || item.category === '') {
+        missingFields.push(`Line Item #${item.lineItemNumber}: Category`);
+      }
+      if (item.unitPrice <= 0) {
+        missingFields.push(`Line Item #${item.lineItemNumber}: Unit Price (must be greater than 0)`);
+      }
+    });
+    
+    // Validate payment line items if any exist
+    paymentLineItems.forEach((payment, index) => {
+      if (!payment.paymentDate) {
+        missingFields.push(`Payment #${payment.paymentNumber}: Payment Date`);
+      }
+      if (payment.amount <= 0) {
+        missingFields.push(`Payment #${payment.paymentNumber}: Amount (must be greater than 0)`);
+      }
+    });
+    
+    if (missingFields.length > 0) {
+      alert(`⚠️ Please fill in the following required fields:\n\n${missingFields.map(f => '• ' + f).join('\n')}`);
+      return;
+    }
+    
     if (editingBudget) {
       // Edit mode
-      if (!vendorName || lineItems.length === 0) {
-        alert('Please provide vendor name and add at least one line item.');
-        return;
-      }
 
       const budgetData = {
         vendorName,
@@ -417,13 +452,14 @@ export default function NREBudgetPage() {
       // Create mode
       const nreNumber = generateNRENumber();
       
-      if (!nreBuilder.vendorOrg || !vendorName || lineItems.length === 0) {
-        alert('Please select vendor organization and add at least one line item.');
+      // Additional validation for create mode
+      if (!nreBuilder.vendorOrg) {
+        alert('⚠️ Please select Vendor Organization in the NRE Reference Number Builder.');
         return;
       }
       
       if (nreNumber.includes('Select options')) {
-        alert('Please complete the NRE Number Builder fields.');
+        alert('⚠️ Please complete all NRE Number Builder fields.');
         return;
       }
       
@@ -1097,7 +1133,7 @@ export default function NREBudgetPage() {
                 />
               </div>
               <div>
-                <Label>Select SKU *</Label>
+                <Label>Select SKU (Optional)</Label>
                 <select
                   value={skuCode}
                   onChange={(e) => {
@@ -1128,7 +1164,7 @@ export default function NREBudgetPage() {
                 </select>
               </div>
               <div>
-                <Label>SKU Code</Label>
+                <Label>SKU Code (Optional)</Label>
                 <Input
                   value={skuCode}
                   onChange={(e) => {
@@ -1368,7 +1404,7 @@ export default function NREBudgetPage() {
                           />
                         </div>
                         <div className="col-span-3">
-                          <Label className="text-sm font-semibold">Unit Price ($)</Label>
+                          <Label className="text-sm font-semibold">Unit Price ($) *</Label>
                           <Input
                             type="number"
                             step="0.01"
