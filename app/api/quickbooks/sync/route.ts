@@ -111,6 +111,10 @@ export async function POST(request: NextRequest) {
     let expensesFetched = 0;
     let expensesCreated = 0;
     let expensesUpdated = 0;
+    let itemCount = 0;
+    let itemsFetched = 0;
+    let itemsCreated = 0;
+    let itemsUpdated = 0;
 
     try {
       // Fetch Customers from QuickBooks (with pagination)
@@ -634,16 +638,151 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${expenseCount} expenses (${expensesCreated} created, ${expensesUpdated} updated)`);
 
+      // ===============================================
+      // PHASE 6: SYNC ITEMS/PRODUCTS (with pagination)
+      // ===============================================
+      console.log('📥 Fetching items from QuickBooks...');
+      let allItems: any[] = [];
+      let itemStartPosition = 1;
+      let hasMoreItems = true;
+      
+      while (hasMoreItems) {
+        const itemsQuery = `SELECT * FROM Item WHERE Active IN (true, false) STARTPOSITION ${itemStartPosition} MAXRESULTS 1000`;
+        console.log(`Item Query (page ${Math.ceil(itemStartPosition / 1000)}):`, itemsQuery);
+        
+        const itemsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(itemsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!itemsResponse.ok) {
+          const errorBody = await itemsResponse.text();
+          console.error('QuickBooks Items API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (items, ${itemsResponse.status}): ${itemsResponse.statusText} - ${errorBody}`);
+        }
+
+        const itemsData = await itemsResponse.json();
+        const items = itemsData.QueryResponse?.Item || [];
+        
+        if (items.length > 0) {
+          allItems = allItems.concat(items);
+          console.log(`✅ Fetched ${items.length} items (total so far: ${allItems.length})`);
+          
+          if (items.length < 1000) {
+            hasMoreItems = false;
+          } else {
+            itemStartPosition += 1000;
+          }
+        } else {
+          hasMoreItems = false;
+        }
+      }
+      
+      const items = allItems;
+      itemsFetched = items.length;
+
+      console.log(`✅ Fetched ${itemsFetched} total items from QuickBooks`);
+
+      // Upsert items to database
+      for (const item of items) {
+        let itemData: any;
+        try {
+          itemData = {
+            connection_id: connection.id,
+            qb_item_id: item.Id,
+            qb_sync_token: item.SyncToken,
+            name: item.Name,
+            sku: item.Sku || null,
+            description: item.Description || null,
+            type: item.Type, // Inventory, Service, NonInventory, etc.
+            
+            // Pricing
+            unit_price: item.UnitPrice || 0,
+            purchase_cost: item.PurchaseCost || 0,
+            
+            // Inventory (if applicable)
+            qty_on_hand: item.QtyOnHand || 0,
+            reorder_point: item.ReorderPoint || 0,
+            
+            // Accounting references
+            income_account_ref: item.IncomeAccountRef?.value || null,
+            expense_account_ref: item.ExpenseAccountRef?.value || null,
+            asset_account_ref: item.AssetAccountRef?.value || null,
+            
+            // Status
+            is_active: item.Active !== false,
+            taxable: item.Taxable === true,
+            
+            // Parent reference (for sub-items)
+            parent_ref: item.ParentRef?.value || null,
+            
+            // Full data for reference
+            full_data: item,
+            
+            // Metadata
+            qb_created_at: item.MetaData?.CreateTime,
+            qb_updated_at: item.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if item exists
+          const { data: existing, error: existingError } = await supabaseService
+            .from('quickbooks_items')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_item_id', item.Id)
+            .single();
+
+          if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+          }
+
+          if (existing) {
+            const { error: updateError } = await supabaseService
+              .from('quickbooks_items')
+              .update(itemData)
+              .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for item ${item.Id}:`, updateError);
+              throw updateError;
+            }
+            itemsUpdated++;
+          } else {
+            const { error: insertError } = await supabaseService
+              .from('quickbooks_items')
+              .insert(itemData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for item ${item.Id}:`, insertError);
+              throw insertError;
+            }
+            itemsCreated++;
+          }
+
+          itemCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting item ${item.Id}:`, err);
+          console.error('Item data:', JSON.stringify(itemData, null, 2));
+        }
+      }
+
+      console.log(`✅ Synced ${itemCount} items (${itemsCreated} created, ${itemsUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched,
-            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated,
-            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated,
+            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched,
+            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated,
+            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -681,6 +820,11 @@ export async function POST(request: NextRequest) {
             fetched: expensesFetched,
             created: expensesCreated,
             updated: expensesUpdated,
+          },
+          items: {
+            fetched: itemsFetched,
+            created: itemsCreated,
+            updated: itemsUpdated,
           },
         },
       });

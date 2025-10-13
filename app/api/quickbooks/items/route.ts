@@ -29,13 +29,10 @@ export async function GET(request: NextRequest) {
 
     // Check feature flag access
     if (!canAccessQuickBooks(user.email)) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Use service role client to bypass RLS (we've already checked authorization)
+    // Use service role for data access
     const supabaseService = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -51,28 +48,61 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Get counts from each QuickBooks table
-    const [customersCount, invoicesCount, vendorsCount, expensesCount, itemsCount] = await Promise.all([
-      supabaseService.from('quickbooks_customers').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_invoices').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_vendors').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_expenses').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_items').select('id', { count: 'exact', head: true }),
-    ]);
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search') || '';
+    const type = searchParams.get('type') || '';
+    const activeOnly = searchParams.get('activeOnly') === 'true';
+
+    // Build query
+    let query = supabaseService
+      .from('quickbooks_items')
+      .select('*')
+      .order('name');
+
+    // Apply filters
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+
+    if (activeOnly) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data: items, error: itemsError } = await query;
+
+    if (itemsError) {
+      console.error('Error fetching items:', itemsError);
+      throw itemsError;
+    }
+
+    // Get item stats
+    const { data: stats } = await supabaseService
+      .from('quickbooks_items')
+      .select('type, is_active', { count: 'exact', head: false });
+
+    const itemStats = {
+      total: items?.length || 0,
+      active: stats?.filter(s => s.is_active).length || 0,
+      inactive: stats?.filter(s => !s.is_active).length || 0,
+      byType: stats?.reduce((acc: any, item) => {
+        acc[item.type] = (acc[item.type] || 0) + 1;
+        return acc;
+      }, {}) || {},
+    };
 
     return NextResponse.json({
-      stats: {
-        customers: customersCount.count || 0,
-        invoices: invoicesCount.count || 0,
-        vendors: vendorsCount.count || 0,
-        expenses: expensesCount.count || 0,
-        items: itemsCount.count || 0,
-      },
-      message: 'Stats retrieved successfully'
+      items: items || [],
+      stats: itemStats,
+      message: 'Items retrieved successfully'
     });
 
   } catch (error) {
-    console.error('Error in GET /api/quickbooks/stats:', error);
+    console.error('Error in GET /api/quickbooks/items:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

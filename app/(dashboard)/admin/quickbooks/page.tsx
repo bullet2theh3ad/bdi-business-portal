@@ -17,7 +17,8 @@ import {
   DollarSign,
   AlertCircle,
   ExternalLink,
-  Loader2
+  Loader2,
+  Package
 } from 'lucide-react';
 
 interface QuickBooksConnection {
@@ -37,6 +38,7 @@ interface SyncStats {
   invoices: number;
   vendors: number;
   expenses: number;
+  items: number;
 }
 
 export default function QuickBooksIntegrationPage() {
@@ -159,7 +161,7 @@ export default function QuickBooksIntegrationPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}`);
+        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}`);
         await loadConnection();
         await loadSyncStats();
       } else {
@@ -172,6 +174,10 @@ export default function QuickBooksIntegrationPage() {
       setSyncing(false);
     }
   }
+
+  const isTokenExpired = connection
+    ? new Date(connection.token_expires_at).getTime() < Date.now()
+    : false;
 
   const isTokenExpiringSoon = connection 
     ? new Date(connection.token_expires_at).getTime() - Date.now() < 24 * 60 * 60 * 1000 
@@ -261,8 +267,26 @@ export default function QuickBooksIntegrationPage() {
                 </div>
               </div>
 
+              {/* Token Expired Warning */}
+              {isTokenExpired && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between">
+                    <span className="font-semibold">Your QuickBooks access token has expired. Please reconnect to continue syncing data.</span>
+                    <Button
+                      onClick={handleConnectToQuickBooks}
+                      variant="outline"
+                      size="sm"
+                      className="ml-4 bg-white text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      Reconnect Now
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Token Expiry Warning */}
-              {isTokenExpiringSoon && (
+              {!isTokenExpired && isTokenExpiringSoon && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -361,8 +385,9 @@ export default function QuickBooksIntegrationPage() {
               <div className="flex gap-3 pt-4">
                 <Button 
                   onClick={handleSync} 
-                  disabled={syncing}
-                  className="bg-green-600 hover:bg-green-700"
+                  disabled={syncing || isTokenExpired}
+                  className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isTokenExpired ? "Token expired - please reconnect" : ""}
                 >
                   {syncing ? (
                     <>
@@ -406,7 +431,7 @@ export default function QuickBooksIntegrationPage() {
 
       {/* Sync Statistics */}
       {syncStats && connection?.is_active && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -456,6 +481,19 @@ export default function QuickBooksIntegrationPage() {
             <CardContent>
               <div className="text-2xl font-bold">{syncStats.expenses.toLocaleString()}</div>
               <p className="text-xs text-gray-500 mt-1">Synced from QuickBooks</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">Products/Items</CardTitle>
+                <Package className="h-4 w-4 text-indigo-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{syncStats.items.toLocaleString()}</div>
+              <p className="text-xs text-gray-500 mt-1">Product catalog</p>
             </CardContent>
           </Card>
         </div>
