@@ -175,11 +175,22 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
       },
       {
         title: '💰 QuickBooks',
-        href: '/admin/quickbooks',
         icon: 'analytics',
         requiresRole: ['super_admin'], // Super Admin only
         requiresBDI: true, // BDI-only feature
         requiresFeatureFlag: canAccessQuickBooks, // Email-based whitelist
+        children: [
+          {
+            title: '🏠 Dashboard',
+            href: '/admin/quickbooks',
+            icon: 'dashboard',
+          },
+          {
+            title: '📊 Reports',
+            href: '/admin/quickbooks/reports',
+            icon: 'assessment',
+          },
+        ],
       },
       {
         title: '📦 WIP Flow',
