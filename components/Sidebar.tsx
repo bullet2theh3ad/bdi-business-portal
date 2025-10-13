@@ -181,14 +181,14 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         requiresFeatureFlag: canAccessQuickBooks, // Email-based whitelist
         children: [
           {
-            title: '🏠 Dashboard',
+            title: 'Dashboard',
             href: '/admin/quickbooks',
             icon: 'dashboard',
           },
           {
-            title: '📊 Reports',
+            title: 'Reports',
             href: '/admin/quickbooks/reports',
-            icon: 'assessment',
+            icon: 'bar_chart',
           },
         ],
       },
@@ -330,7 +330,6 @@ export function Sidebar({ className }: SidebarProps) {
               'flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors',
               'hover:bg-gray-100 hover:text-bdi-green-1',
               'focus:outline-none focus:ring-2 focus:ring-bdi-green-1',
-              level > 0 && 'ml-4',
               active && 'bg-bdi-green-1/10 text-bdi-green-1'
             )}
           >
@@ -345,7 +344,7 @@ export function Sidebar({ className }: SidebarProps) {
             )}
           </button>
           {isExpanded && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-1 ml-4">
               {item.children?.map(child => renderNavItem(child, level + 1))}
             </div>
           )}
@@ -363,7 +362,6 @@ export function Sidebar({ className }: SidebarProps) {
           'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
           'hover:bg-gray-100 hover:text-bdi-green-1',
           'focus:outline-none focus:ring-2 focus:ring-bdi-green-1',
-          level > 0 && 'ml-4',
           active 
             ? 'bg-bdi-green-1/10 text-bdi-green-1 border-r-2 border-bdi-green-1' 
             : 'text-gray-700'
