@@ -370,6 +370,10 @@ export default function NREBudgetPage() {
       missingFields.push('Vendor Name');
     }
     
+    if (!skuCode.trim()) {
+      missingFields.push('SKU Code (select from dropdown or enter manually)');
+    }
+    
     if (lineItems.length === 0) {
       missingFields.push('At least one Line Item');
     }
@@ -1133,7 +1137,7 @@ export default function NREBudgetPage() {
                 />
               </div>
               <div>
-                <Label>Select SKU (Optional)</Label>
+                <Label>Select SKU *</Label>
                 <select
                   value={skuCode}
                   onChange={(e) => {
@@ -1164,7 +1168,7 @@ export default function NREBudgetPage() {
                 </select>
               </div>
               <div>
-                <Label>SKU Code (Optional)</Label>
+                <Label>SKU Code *</Label>
                 <Input
                   value={skuCode}
                   onChange={(e) => {
