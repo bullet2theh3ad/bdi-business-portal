@@ -28,30 +28,6 @@ The system automatically compares your **budget targets** against **actual NRE s
 
 ---
 
-## 🎨 Three Layout Options
-
-You can test **three different ways** to enter and view budget data:
-
-### Option 1: Weekly Table View 📋
-- Simple table format
-- Weekly or bi-weekly breakdown
-- Best for: Short-term projects, granular tracking
-- **Use when**: You need week-by-week budget allocation
-
-### Option 2: Monthly Calendar View 📅
-- Calendar-style input
-- Monthly payment periods
-- Best for: Standard project timelines, fiscal reporting
-- **Use when**: You think in months and quarters
-
-### Option 3: Category Matrix View 🎛️
-- Categories across timeline
-- Multi-project overview
-- Best for: Portfolio management, executive dashboards
-- **Use when**: Managing multiple projects simultaneously
-
----
-
 ## 📝 How to Use
 
 ### Step 1: Create a Budget Target
@@ -61,11 +37,7 @@ You can test **three different ways** to enter and view budget data:
 3. Fill in **Basic Info** tab:
    - **Project Name**: e.g., "MNQ15 DVT"
    - **SKU Code**: Link to a product SKU (optional but recommended)
-   - **Fiscal Year**: 2025, 2026, etc.
-   - **Budget Category**: NRE Design, Tooling, EVT/DVT/PVT, etc.
-   - **Total Budget Amount**: Your estimated budget (e.g., $150,000)
-   - **Payment Frequency**: Weekly, Monthly, Quarterly, or Custom
-   - **Start/End Dates**: Budget period timeline
+   
 
 ### Step 2: Set Payment Schedule
 

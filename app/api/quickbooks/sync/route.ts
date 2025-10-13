@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       .from('quickbooks_sync_log')
       .insert({
         connection_id: connection.id,
-        sync_type: 'customers',
+        sync_type: 'full',
         status: 'started',
         triggered_by: user.id,
       })
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       console.error('Error creating sync log:', logError);
     }
 
-    console.log('🔄 Starting QuickBooks sync...');
+    console.log('🔄 Starting QuickBooks full sync...');
 
     // Determine API base URL
     const apiBaseUrl = process.env.QUICKBOOKS_ENVIRONMENT === 'production'
@@ -93,6 +93,10 @@ export async function POST(request: NextRequest) {
     let customersFetched = 0;
     let customersCreated = 0;
     let customersUpdated = 0;
+    let invoiceCount = 0;
+    let invoicesFetched = 0;
+    let invoicesCreated = 0;
+    let invoicesUpdated = 0;
 
     try {
       // Fetch Customers from QuickBooks
@@ -185,15 +189,110 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${customerCount} customers (${customersCreated} created, ${customersUpdated} updated)`);
 
+      // ===============================================
+      // PHASE 4: SYNC INVOICES
+      // ===============================================
+      console.log('📥 Fetching invoices from QuickBooks...');
+      const invoicesResponse = await fetch(
+        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=SELECT * FROM Invoice MAXRESULTS 1000`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${connection.access_token}`,
+          },
+        }
+      );
+
+      if (!invoicesResponse.ok) {
+        throw new Error(`QuickBooks API error (invoices): ${invoicesResponse.statusText}`);
+      }
+
+      const invoicesData = await invoicesResponse.json();
+      const invoices = invoicesData.QueryResponse?.Invoice || [];
+      invoicesFetched = invoices.length;
+
+      console.log(`✅ Fetched ${invoicesFetched} invoices from QuickBooks`);
+
+      // Upsert invoices to database
+      for (const invoice of invoices) {
+        try {
+          const invoiceData = {
+            connection_id: connection.id,
+            qb_invoice_id: invoice.Id,
+            qb_sync_token: invoice.SyncToken,
+            doc_number: invoice.DocNumber,
+            
+            // Customer reference
+            qb_customer_id: invoice.CustomerRef?.value,
+            customer_name: invoice.CustomerRef?.name,
+            
+            // Dates
+            txn_date: invoice.TxnDate,
+            due_date: invoice.DueDate,
+            ship_date: invoice.ShipDate,
+            
+            // Amounts
+            total_amount: invoice.TotalAmt || 0,
+            balance: invoice.Balance || 0,
+            currency_code: invoice.CurrencyRef?.value || 'USD',
+            exchange_rate: invoice.ExchangeRate || 1,
+            
+            // Status
+            email_status: invoice.EmailStatus,
+            print_status: invoice.PrintStatus,
+            
+            // Addresses
+            bill_email: invoice.BillEmail?.Address,
+            billing_address: invoice.BillAddr ? JSON.stringify(invoice.BillAddr) : null,
+            shipping_address: invoice.ShipAddr ? JSON.stringify(invoice.ShipAddr) : null,
+            
+            // Line Items (stored as JSON)
+            line_items: invoice.Line ? JSON.stringify(invoice.Line) : null,
+            
+            // Metadata
+            qb_created_at: invoice.MetaData?.CreateTime,
+            qb_updated_at: invoice.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if invoice exists
+          const { data: existing } = await supabaseService
+            .from('quickbooks_invoices')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_invoice_id', invoice.Id)
+            .single();
+
+          if (existing) {
+            await supabaseService
+              .from('quickbooks_invoices')
+              .update(invoiceData)
+              .eq('id', existing.id);
+            invoicesUpdated++;
+          } else {
+            await supabaseService
+              .from('quickbooks_invoices')
+              .insert(invoiceData);
+            invoicesCreated++;
+          }
+
+          invoiceCount++;
+        } catch (err) {
+          console.error(`Error upserting invoice ${invoice.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${invoiceCount} invoices (${invoicesCreated} created, ${invoicesUpdated} updated)`);
+
       // Update sync log as completed
+      const totalRecords = customerCount + invoiceCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched,
-            records_created: customersCreated,
-            records_updated: customersUpdated,
+            records_fetched: customersFetched + invoicesFetched,
+            records_created: customersCreated + invoicesCreated,
+            records_updated: customersUpdated + invoicesUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -209,13 +308,18 @@ export async function POST(request: NextRequest) {
         .eq('id', connection.id);
 
       return NextResponse.json({
-        message: 'Customer sync completed successfully',
-        totalRecords: customerCount,
+        message: 'QuickBooks sync completed successfully',
+        totalRecords: totalRecords,
         details: {
           customers: {
             fetched: customersFetched,
             created: customersCreated,
             updated: customersUpdated,
+          },
+          invoices: {
+            fetched: invoicesFetched,
+            created: invoicesCreated,
+            updated: invoicesUpdated,
           },
         },
       });
