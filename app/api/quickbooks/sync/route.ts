@@ -52,6 +52,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get date range from request body (default to last 60 days)
+    const body = await request.json().catch(() => ({}));
+    const { startDate, endDate } = body;
+    
+    console.log('📅 Sync date range:', { startDate, endDate });
+
     // Get active QuickBooks connection
     const { data: connection, error: connError } = await supabase
       .from('quickbooks_connections')
@@ -99,10 +105,16 @@ export async function POST(request: NextRequest) {
     let invoicesUpdated = 0;
 
     try {
-      // Fetch Customers from QuickBooks
+      // Fetch Customers from QuickBooks (with optional date filter)
       console.log('📥 Fetching customers from QuickBooks...');
+      let customersQuery = 'SELECT * FROM Customer';
+      if (startDate && endDate) {
+        customersQuery += ` WHERE MetaData.LastUpdatedTime >= '${startDate}' AND MetaData.LastUpdatedTime <= '${endDate}'`;
+      }
+      customersQuery += ' MAXRESULTS 10000'; // Increased limit to handle more records
+      
       const customersResponse = await fetch(
-        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=SELECT * FROM Customer MAXRESULTS 1000`,
+        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(customersQuery)}`,
         {
           headers: {
             'Accept': 'application/json',
@@ -193,8 +205,14 @@ export async function POST(request: NextRequest) {
       // PHASE 4: SYNC INVOICES
       // ===============================================
       console.log('📥 Fetching invoices from QuickBooks...');
+      let invoicesQuery = 'SELECT * FROM Invoice';
+      if (startDate && endDate) {
+        invoicesQuery += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
+      }
+      invoicesQuery += ' MAXRESULTS 10000'; // Increased limit to handle more records
+      
       const invoicesResponse = await fetch(
-        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=SELECT * FROM Invoice MAXRESULTS 1000`,
+        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(invoicesQuery)}`,
         {
           headers: {
             'Accept': 'application/json',

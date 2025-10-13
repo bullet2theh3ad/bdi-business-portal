@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -43,6 +45,11 @@ export default function QuickBooksIntegrationPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Date range options
+  const [dateRange, setDateRange] = useState<'60' | '30' | 'custom'>('60');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
     loadConnection();
@@ -117,13 +124,42 @@ export default function QuickBooksIntegrationPage() {
       setSyncing(true);
       setError(null);
       
+      // Calculate date range
+      let startDate = '';
+      let endDate = new Date().toISOString().split('T')[0]; // Today
+      
+      if (dateRange === '60') {
+        const date = new Date();
+        date.setDate(date.getDate() - 60);
+        startDate = date.toISOString().split('T')[0];
+      } else if (dateRange === '30') {
+        const date = new Date();
+        date.setDate(date.getDate() - 30);
+        startDate = date.toISOString().split('T')[0];
+      } else if (dateRange === 'custom') {
+        if (!customStartDate || !customEndDate) {
+          setError('Please select both start and end dates for custom range');
+          setSyncing(false);
+          return;
+        }
+        startDate = customStartDate;
+        endDate = customEndDate;
+      }
+      
       const response = await fetch('/api/quickbooks/sync', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate,
+          endDate,
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Sync completed! Synced ${data.totalRecords} records.`);
+        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}`);
         await loadConnection();
         await loadSyncStats();
       } else {
@@ -255,6 +291,71 @@ export default function QuickBooksIntegrationPage() {
                   </div>
                 </div>
               )}
+
+              {/* Sync Date Range Options */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+                <div>
+                  <Label className="text-sm font-semibold text-blue-900">Sync Date Range</Label>
+                  <p className="text-xs text-blue-700 mt-1">Select the date range for syncing transactions and records</p>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={dateRange === '60'}
+                        onChange={() => setDateRange('60')}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm font-medium">Last 60 days (Recommended)</span>
+                    </label>
+                    
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={dateRange === '30'}
+                        onChange={() => setDateRange('30')}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm font-medium">Last 30 days</span>
+                    </label>
+                    
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={dateRange === 'custom'}
+                        onChange={() => setDateRange('custom')}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm font-medium">Custom Range</span>
+                    </label>
+                  </div>
+                  
+                  {dateRange === 'custom' && (
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div>
+                        <Label className="text-xs text-gray-600">Start Date</Label>
+                        <Input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-600">End Date</Label>
+                        <Input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
