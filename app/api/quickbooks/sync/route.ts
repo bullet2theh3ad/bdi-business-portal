@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       .from('quickbooks_sync_log')
       .insert({
         connection_id: connection.id,
-        sync_type: 'full',
+        sync_type: 'customers',
         status: 'started',
         triggered_by: user.id,
       })
@@ -82,67 +82,171 @@ export async function POST(request: NextRequest) {
       console.error('Error creating sync log:', logError);
     }
 
-    // TODO: Implement actual sync logic
-    // const QuickBooks = require('node-quickbooks');
-    // const qbo = new QuickBooks(
-    //   process.env.QUICKBOOKS_CLIENT_ID!,
-    //   process.env.QUICKBOOKS_CLIENT_SECRET!,
-    //   connection.access_token,
-    //   false, // no token secret for oAuth 2.0
-    //   connection.realm_id,
-    //   process.env.QUICKBOOKS_ENVIRONMENT === 'sandbox',
-    //   true, // enable debugging
-    //   null, // minorversion
-    //   '2.0', // oauth version
-    //   connection.refresh_token
-    // );
-    // 
-    // // Sync Customers
-    // qbo.findCustomers({ limit: 1000 }, async (err, customers) => {
-    //   if (err) { ... }
-    //   // Upsert customers to database
-    // });
-    // 
-    // // Sync Invoices
-    // qbo.findInvoices({ limit: 1000 }, async (err, invoices) => {
-    //   if (err) { ... }
-    //   // Upsert invoices to database
-    // });
-    // 
-    // // etc...
+    console.log('🔄 Starting QuickBooks sync...');
 
-    // Update sync log as completed (placeholder)
-    if (syncLog) {
+    // Determine API base URL
+    const apiBaseUrl = process.env.QUICKBOOKS_ENVIRONMENT === 'production'
+      ? 'https://quickbooks.api.intuit.com'
+      : 'https://sandbox-quickbooks.api.intuit.com';
+
+    let customerCount = 0;
+    let customersFetched = 0;
+    let customersCreated = 0;
+    let customersUpdated = 0;
+
+    try {
+      // Fetch Customers from QuickBooks
+      console.log('📥 Fetching customers from QuickBooks...');
+      const customersResponse = await fetch(
+        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=SELECT * FROM Customer MAXRESULTS 1000`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${connection.access_token}`,
+          },
+        }
+      );
+
+      if (!customersResponse.ok) {
+        throw new Error(`QuickBooks API error: ${customersResponse.statusText}`);
+      }
+
+      const customersData = await customersResponse.json();
+      const customers = customersData.QueryResponse?.Customer || [];
+      customersFetched = customers.length;
+
+      console.log(`✅ Fetched ${customersFetched} customers from QuickBooks`);
+
+      // Use service role for inserting (bypass RLS)
+      const supabaseService = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          cookies: {
+            getAll: () => cookieStore.getAll(),
+            setAll: (cookiesArray) => {
+              cookiesArray.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            },
+          },
+        }
+      );
+
+      // Upsert customers to database
+      for (const customer of customers) {
+        try {
+          const customerData = {
+            connection_id: connection.id,
+            qb_customer_id: customer.Id,
+            qb_sync_token: customer.SyncToken,
+            display_name: customer.DisplayName || customer.FullyQualifiedName,
+            given_name: customer.GivenName,
+            family_name: customer.FamilyName,
+            company_name: customer.CompanyName,
+            primary_email: customer.PrimaryEmailAddr?.Address,
+            primary_phone: customer.PrimaryPhone?.FreeFormNumber,
+            website: customer.WebAddr?.URI,
+            billing_address: customer.BillAddr ? JSON.stringify(customer.BillAddr) : null,
+            shipping_address: customer.ShipAddr ? JSON.stringify(customer.ShipAddr) : null,
+            balance: customer.Balance || 0,
+            currency_code: customer.CurrencyRef?.value || 'USD',
+            is_active: customer.Active !== false,
+            qb_created_at: customer.MetaData?.CreateTime,
+            qb_updated_at: customer.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if customer exists
+          const { data: existing } = await supabaseService
+            .from('quickbooks_customers')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_customer_id', customer.Id)
+            .single();
+
+          if (existing) {
+            await supabaseService
+              .from('quickbooks_customers')
+              .update(customerData)
+              .eq('id', existing.id);
+            customersUpdated++;
+          } else {
+            await supabaseService
+              .from('quickbooks_customers')
+              .insert(customerData);
+            customersCreated++;
+          }
+
+          customerCount++;
+        } catch (err) {
+          console.error(`Error upserting customer ${customer.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${customerCount} customers (${customersCreated} created, ${customersUpdated} updated)`);
+
+      // Update sync log as completed
+      if (syncLog) {
+        await supabase
+          .from('quickbooks_sync_log')
+          .update({
+            status: 'completed',
+            records_fetched: customersFetched,
+            records_created: customersCreated,
+            records_updated: customersUpdated,
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', syncLog.id);
+      }
+
+      // Update connection last sync time
       await supabase
-        .from('quickbooks_sync_log')
+        .from('quickbooks_connections')
         .update({
-          status: 'completed',
-          records_fetched: 0, // Placeholder
-          completed_at: new Date().toISOString(),
+          last_sync_at: new Date().toISOString(),
+          last_sync_status: 'success',
         })
-        .eq('id', syncLog.id);
+        .eq('id', connection.id);
+
+      return NextResponse.json({
+        message: 'Customer sync completed successfully',
+        totalRecords: customerCount,
+        details: {
+          customers: {
+            fetched: customersFetched,
+            created: customersCreated,
+            updated: customersUpdated,
+          },
+        },
+      });
+
+    } catch (syncError: any) {
+      console.error('Sync error:', syncError);
+
+      // Update sync log as failed
+      if (syncLog) {
+        await supabase
+          .from('quickbooks_sync_log')
+          .update({
+            status: 'failed',
+            error_message: syncError.message,
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', syncLog.id);
+      }
+
+      // Update connection with error
+      await supabase
+        .from('quickbooks_connections')
+        .update({
+          last_sync_at: new Date().toISOString(),
+          last_sync_status: 'failed',
+          last_sync_error: syncError.message,
+        })
+        .eq('id', connection.id);
+
+      throw syncError;
     }
-
-    // Update connection last sync time
-    await supabase
-      .from('quickbooks_connections')
-      .update({
-        last_sync_at: new Date().toISOString(),
-        last_sync_status: 'success',
-      })
-      .eq('id', connection.id);
-
-    return NextResponse.json({
-      message: 'Sync placeholder - Implementation pending',
-      totalRecords: 0,
-      details: {
-        customers: 0,
-        invoices: 0,
-        vendors: 0,
-        expenses: 0,
-      },
-      note: 'Install node-quickbooks package and implement sync logic in this endpoint'
-    });
 
   } catch (error) {
     console.error('Error in POST /api/quickbooks/sync:', error);

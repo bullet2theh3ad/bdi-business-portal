@@ -49,125 +49,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if QuickBooks credentials are configured
-    if (!process.env.QUICKBOOKS_CLIENT_ID || !process.env.QUICKBOOKS_CLIENT_SECRET) {
-      return new NextResponse(
-        `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>QuickBooks Setup Required</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-                max-width: 800px;
-                margin: 50px auto;
-                padding: 20px;
-                background: #f5f5f5;
-              }
-              .card {
-                background: white;
-                padding: 40px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              }
-              h1 { color: #2ca01c; }
-              code {
-                background: #f0f0f0;
-                padding: 2px 6px;
-                border-radius: 3px;
-                font-family: 'Courier New', monospace;
-              }
-              .step {
-                margin: 20px 0;
-                padding: 15px;
-                background: #f9f9f9;
-                border-left: 4px solid #2ca01c;
-              }
-              a {
-                color: #2ca01c;
-                text-decoration: none;
-              }
-              a:hover {
-                text-decoration: underline;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <h1>🔧 QuickBooks Setup Required</h1>
-              <p>The QuickBooks integration needs to be configured before you can connect.</p>
-              
-              <div class="step">
-                <h3>Step 1: Create QuickBooks App</h3>
-                <p>Go to <a href="https://developer.intuit.com/" target="_blank">QuickBooks Developer Portal</a> and create a new app.</p>
-              </div>
-              
-              <div class="step">
-                <h3>Step 2: Get Credentials</h3>
-                <p>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong> from the app dashboard.</p>
-              </div>
-              
-              <div class="step">
-                <h3>Step 3: Configure Environment</h3>
-                <p>Add these to your <code>.env.local</code> file:</p>
-                <pre>
-QUICKBOOKS_CLIENT_ID=your_client_id_here
-QUICKBOOKS_CLIENT_SECRET=your_client_secret_here
-QUICKBOOKS_REDIRECT_URI=http://localhost:3001/api/quickbooks/callback
-QUICKBOOKS_ENVIRONMENT=sandbox
-                </pre>
-              </div>
-              
-              <div class="step">
-                <h3>Step 4: Run Database Migration</h3>
-                <p>Run the SQL migration: <code>create-quickbooks-integration.sql</code></p>
-              </div>
-              
-              <div class="step">
-                <h3>Step 5: Install Dependencies</h3>
-                <p>Run: <code>pnpm add intuit-oauth node-quickbooks</code></p>
-              </div>
-              
-              <p style="margin-top: 30px;">
-                <a href="/admin/quickbooks">← Back to QuickBooks Dashboard</a>
-              </p>
-              
-              <p style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
-                📚 For detailed instructions, see <code>QUICKBOOKS_INTEGRATION_GUIDE.md</code>
-              </p>
-            </div>
-          </body>
-        </html>
-        `,
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html',
-          },
-        }
+    if (!process.env.QUICKBOOKS_CLIENT_ID || !process.env.QUICKBOOKS_CLIENT_SECRET || !process.env.QUICKBOOKS_REDIRECT_URI) {
+      return NextResponse.redirect(
+        new URL('/admin/quickbooks?error=missing_credentials', request.url)
       );
     }
 
-    // TODO: Implement OAuth flow
-    // const OAuthClient = require('intuit-oauth');
-    // const oauthClient = new OAuthClient({
-    //   clientId: process.env.QUICKBOOKS_CLIENT_ID,
-    //   clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET,
-    //   environment: process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox',
-    //   redirectUri: process.env.QUICKBOOKS_REDIRECT_URI,
-    // });
-    // 
-    // const authUri = oauthClient.authorizeUri({
-    //   scope: [OAuthClient.scopes.Accounting],
-    //   state: 'testState', // TODO: Generate random state and store in session
-    // });
-    // 
-    // return NextResponse.redirect(authUri);
+    // Generate state for CSRF protection
+    const state = Math.random().toString(36).substring(7);
 
-    return new NextResponse(
-      'QuickBooks OAuth not yet implemented. Configure credentials first.',
-      { status: 501 }
-    );
+    // Build QuickBooks OAuth URL
+    const authUrl = new URL('https://appcenter.intuit.com/connect/oauth2');
+    authUrl.searchParams.append('client_id', process.env.QUICKBOOKS_CLIENT_ID);
+    authUrl.searchParams.append('scope', 'com.intuit.quickbooks.accounting');
+    authUrl.searchParams.append('redirect_uri', process.env.QUICKBOOKS_REDIRECT_URI);
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('state', state);
+
+    console.log('🔐 Redirecting to QuickBooks OAuth:', authUrl.toString());
+
+    // Redirect to QuickBooks for authorization
+    return NextResponse.redirect(authUrl.toString());
 
   } catch (error) {
     console.error('Error in GET /api/quickbooks/auth:', error);
