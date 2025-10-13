@@ -124,6 +124,21 @@ export async function POST(request: NextRequest) {
     let billsCreated = 0;
     let billsUpdated = 0;
 
+    let salesReceiptCount = 0;
+    let salesReceiptsFetched = 0;
+    let salesReceiptsCreated = 0;
+    let salesReceiptsUpdated = 0;
+
+    let creditMemoCount = 0;
+    let creditMemosFetched = 0;
+    let creditMemosCreated = 0;
+    let creditMemosUpdated = 0;
+
+    let poCount = 0;
+    let posFetched = 0;
+    let posCreated = 0;
+    let posUpdated = 0;
+
     try {
       // Fetch Customers from QuickBooks (with pagination)
       // Note: QB has a hard limit of 1000 records per query, so we need to paginate
@@ -1012,16 +1027,291 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${billCount} bills (${billsCreated} created, ${billsUpdated} updated)`);
 
+      // =============================================
+      // Phase 9: Sales Receipts Sync
+      // =============================================
+      console.log('📥 Fetching sales receipts from QuickBooks...');
+      let allSalesReceipts: any[] = [];
+      startPosition = 1;
+      const maxSalesReceiptsPerQuery = 1000;
+
+      while (true) {
+        const salesReceiptsQuery = `SELECT * FROM SalesReceipt STARTPOSITION ${startPosition} MAXRESULTS ${maxSalesReceiptsPerQuery}`;
+        
+        const salesReceiptsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(salesReceiptsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!salesReceiptsResponse.ok) {
+          console.error('QuickBooks API Error fetching sales receipts');
+          break;
+        }
+
+        const salesReceiptsData = await salesReceiptsResponse.json();
+        const salesReceiptsBatch = salesReceiptsData?.QueryResponse?.SalesReceipt || [];
+        
+        if (salesReceiptsBatch.length === 0) break;
+        
+        allSalesReceipts = allSalesReceipts.concat(salesReceiptsBatch);
+        salesReceiptsFetched += salesReceiptsBatch.length;
+        
+        if (salesReceiptsBatch.length < maxSalesReceiptsPerQuery) break;
+        startPosition += maxSalesReceiptsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${salesReceiptsFetched} sales receipts from QuickBooks`);
+
+      for (const receipt of allSalesReceipts) {
+        try {
+          const receiptData = {
+            connection_id: connection.id,
+            qb_sales_receipt_id: receipt.Id,
+            qb_sync_token: receipt.SyncToken,
+            customer_ref: receipt.CustomerRef?.value || null,
+            customer_name: receipt.CustomerRef?.name || null,
+            doc_number: receipt.DocNumber || null,
+            txn_date: receipt.TxnDate || null,
+            total_amount: receipt.TotalAmt || 0,
+            balance: receipt.Balance || 0,
+            payment_method_ref: receipt.PaymentMethodRef?.value || null,
+            payment_method_name: receipt.PaymentMethodRef?.name || null,
+            deposit_to_account_ref: receipt.DepositToAccountRef?.value || null,
+            email_status: receipt.EmailStatus || null,
+            print_status: receipt.PrintStatus || null,
+            memo: receipt.PrivateNote || null,
+            full_data: receipt,
+            qb_created_at: receipt.MetaData?.CreateTime || null,
+            qb_updated_at: receipt.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_sales_receipts')
+            .upsert(receiptData, {
+              onConflict: 'connection_id,qb_sales_receipt_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting sales receipt ${receipt.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            salesReceiptsCreated++;
+          } else {
+            salesReceiptsUpdated++;
+          }
+
+          salesReceiptCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting sales receipt ${receipt.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${salesReceiptCount} sales receipts (${salesReceiptsCreated} created, ${salesReceiptsUpdated} updated)`);
+
+      // =============================================
+      // Phase 10: Credit Memos Sync
+      // =============================================
+      console.log('📥 Fetching credit memos from QuickBooks...');
+      let allCreditMemos: any[] = [];
+      startPosition = 1;
+      const maxCreditMemosPerQuery = 1000;
+
+      while (true) {
+        const creditMemosQuery = `SELECT * FROM CreditMemo STARTPOSITION ${startPosition} MAXRESULTS ${maxCreditMemosPerQuery}`;
+        
+        const creditMemosResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(creditMemosQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!creditMemosResponse.ok) {
+          console.error('QuickBooks API Error fetching credit memos');
+          break;
+        }
+
+        const creditMemosData = await creditMemosResponse.json();
+        const creditMemosBatch = creditMemosData?.QueryResponse?.CreditMemo || [];
+        
+        if (creditMemosBatch.length === 0) break;
+        
+        allCreditMemos = allCreditMemos.concat(creditMemosBatch);
+        creditMemosFetched += creditMemosBatch.length;
+        
+        if (creditMemosBatch.length < maxCreditMemosPerQuery) break;
+        startPosition += maxCreditMemosPerQuery;
+      }
+
+      console.log(`📦 Fetched ${creditMemosFetched} credit memos from QuickBooks`);
+
+      for (const memo of allCreditMemos) {
+        try {
+          const memoData = {
+            connection_id: connection.id,
+            qb_credit_memo_id: memo.Id,
+            qb_sync_token: memo.SyncToken,
+            customer_ref: memo.CustomerRef?.value || null,
+            customer_name: memo.CustomerRef?.name || null,
+            doc_number: memo.DocNumber || null,
+            txn_date: memo.TxnDate || null,
+            total_amount: memo.TotalAmt || 0,
+            balance: memo.Balance || 0,
+            remaining_credit: memo.RemainingCredit || 0,
+            email_status: memo.EmailStatus || null,
+            print_status: memo.PrintStatus || null,
+            apply_tax_after_discount: memo.ApplyTaxAfterDiscount || false,
+            memo: memo.CustomerMemo?.value || null,
+            private_note: memo.PrivateNote || null,
+            full_data: memo,
+            qb_created_at: memo.MetaData?.CreateTime || null,
+            qb_updated_at: memo.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_credit_memos')
+            .upsert(memoData, {
+              onConflict: 'connection_id,qb_credit_memo_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting credit memo ${memo.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            creditMemosCreated++;
+          } else {
+            creditMemosUpdated++;
+          }
+
+          creditMemoCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting credit memo ${memo.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${creditMemoCount} credit memos (${creditMemosCreated} created, ${creditMemosUpdated} updated)`);
+
+      // =============================================
+      // Phase 11: Purchase Orders Sync
+      // =============================================
+      console.log('📥 Fetching purchase orders from QuickBooks...');
+      let allPOs: any[] = [];
+      startPosition = 1;
+      const maxPOsPerQuery = 1000;
+
+      while (true) {
+        const posQuery = `SELECT * FROM PurchaseOrder STARTPOSITION ${startPosition} MAXRESULTS ${maxPOsPerQuery}`;
+        
+        const posResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(posQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!posResponse.ok) {
+          console.error('QuickBooks API Error fetching purchase orders');
+          break;
+        }
+
+        const posData = await posResponse.json();
+        const posBatch = posData?.QueryResponse?.PurchaseOrder || [];
+        
+        if (posBatch.length === 0) break;
+        
+        allPOs = allPOs.concat(posBatch);
+        posFetched += posBatch.length;
+        
+        if (posBatch.length < maxPOsPerQuery) break;
+        startPosition += maxPOsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${posFetched} purchase orders from QuickBooks`);
+
+      for (const po of allPOs) {
+        try {
+          const poData = {
+            connection_id: connection.id,
+            qb_po_id: po.Id,
+            qb_sync_token: po.SyncToken,
+            vendor_ref: po.VendorRef?.value || null,
+            vendor_name: po.VendorRef?.name || null,
+            doc_number: po.DocNumber || null,
+            txn_date: po.TxnDate || null,
+            total_amount: po.TotalAmt || 0,
+            ship_method_ref: po.ShipMethodRef?.value || null,
+            ship_method_name: po.ShipMethodRef?.name || null,
+            ship_date: po.ShipDate || null,
+            tracking_num: po.TrackingNum || null,
+            email_status: po.EmailStatus || null,
+            print_status: po.PrintStatus || null,
+            po_status: po.POStatus || null,
+            memo: po.Memo || null,
+            private_note: po.PrivateNote || null,
+            full_data: po,
+            qb_created_at: po.MetaData?.CreateTime || null,
+            qb_updated_at: po.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_purchase_orders_qb')
+            .upsert(poData, {
+              onConflict: 'connection_id,qb_po_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting purchase order ${po.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            posCreated++;
+          } else {
+            posUpdated++;
+          }
+
+          poCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting purchase order ${po.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${poCount} purchase orders (${posCreated} created, ${posUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount + paymentCount + billCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched,
-            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated,
-            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated,
+            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched + salesReceiptsFetched + creditMemosFetched + posFetched,
+            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated + salesReceiptsCreated + creditMemosCreated + posCreated,
+            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated + salesReceiptsUpdated + creditMemosUpdated + posUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -1074,6 +1364,21 @@ export async function POST(request: NextRequest) {
             fetched: billsFetched,
             created: billsCreated,
             updated: billsUpdated,
+          },
+          salesReceipts: {
+            fetched: salesReceiptsFetched,
+            created: salesReceiptsCreated,
+            updated: salesReceiptsUpdated,
+          },
+          creditMemos: {
+            fetched: creditMemosFetched,
+            created: creditMemosCreated,
+            updated: creditMemosUpdated,
+          },
+          purchaseOrders: {
+            fetched: posFetched,
+            created: posCreated,
+            updated: posUpdated,
           },
         },
       });

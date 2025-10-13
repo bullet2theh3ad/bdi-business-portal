@@ -42,6 +42,9 @@ interface SyncStats {
   items: number;
   payments: number;
   bills: number;
+  salesReceipts: number;
+  creditMemos: number;
+  purchaseOrders: number;
 }
 
 export default function QuickBooksIntegrationPage() {
@@ -164,7 +167,7 @@ export default function QuickBooksIntegrationPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}\nPayments: ${data.details.payments.fetched}\nBills: ${data.details.bills.fetched}`);
+        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}\nPayments: ${data.details.payments.fetched}\nBills: ${data.details.bills.fetched}\nSales Receipts: ${data.details.salesReceipts.fetched}\nCredit Memos: ${data.details.creditMemos.fetched}\nPurchase Orders: ${data.details.purchaseOrders.fetched}`);
         await loadConnection();
         await loadSyncStats();
       } else {

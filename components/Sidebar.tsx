@@ -200,6 +200,21 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/quickbooks/payments-bills',
             icon: 'finance',
           },
+          {
+            title: 'Sales Receipts',
+            href: '/admin/quickbooks/sales-receipts',
+            icon: 'orders',
+          },
+          {
+            title: 'Credit Memos',
+            href: '/admin/quickbooks/credit-memos',
+            icon: 'document',
+          },
+          {
+            title: 'Purchase Orders',
+            href: '/admin/quickbooks/purchase-orders',
+            icon: 'shipping',
+          },
         ],
       },
       {
