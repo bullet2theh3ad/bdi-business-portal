@@ -165,6 +165,7 @@ export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   ai: 'mobile-15', // AI/brain icon
   query: 'mobile-16', // Query icon
   delete: 'repair-5', // Delete/trash icon
+  finance: 'ecommerce-5', // Finance/payments/bills icon
 };
 
 interface SemanticBDIIconProps {
