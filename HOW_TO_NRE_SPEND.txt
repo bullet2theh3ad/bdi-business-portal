@@ -1,0 +1,441 @@
+================================================================================
+                        HOW TO USE NRE SPEND MANAGEMENT
+                           BDI Business Portal Guide
+================================================================================
+
+OVERVIEW
+--------
+The NRE Spend Management system tracks all Non-Recurring Engineering expenses
+including design costs, tooling, samples, certifications, and vendor payments.
+
+ACCESS
+------
+Location: Admin → NRE Spend (in sidebar)
+Required Role: Super Admin, Admin
+
+
+================================================================================
+CREATING A NEW NRE BUDGET
+================================================================================
+
+STEP 1: OPEN CREATE DIALOG
+---------------------------
+1. Click "Create NRE Budget" button (top right)
+2. The Create NRE Budget modal will open
+
+
+STEP 2: BUILD NRE REFERENCE NUMBER (REQUIRED)
+----------------------------------------------
+The system auto-generates a unique reference number:
+
+1. Vendor Organization* - Select from dropdown:
+   - Elecom
+   - Yuze
+   - EMG
+   - ELESOL
+   - CATV
+   - Other vendor organizations
+
+2. Generated Format: NRE-[Org Code][Days Since Jan 1, 2025][Random Code]
+   Example: NRE-ELC123ABC
+
+3. This number is permanent and cannot be changed after creation
+
+
+STEP 3: FILL BASIC INFORMATION (REQUIRED FIELDS MARKED WITH *)
+---------------------------------------------------------------
+1. Vendor Name* - Auto-filled from organization selection
+   - Can be edited if needed
+
+2. Project Name - Optional
+   - Example: "MNQ15 DVT", "RTC700 Certification"
+
+3. Select SKU* - REQUIRED
+   - Choose from dropdown of existing SKUs
+   - OR select "Enter Manually Below"
+   - Auto-fills Project Name with first 7 characters of SKU
+
+4. SKU Code* - REQUIRED
+   - Auto-filled if selected from dropdown
+   - OR enter manually if not in system
+
+5. Quote Number* - REQUIRED
+   - Enter vendor quote/proposal number
+   - Example: "Q-2025-1234"
+
+6. Quote Date - Optional
+   - Date vendor provided the quote
+
+7. Payment Terms - Optional
+   - Example: "50% Deposit, Rest Before 1st Lot"
+
+8. Payment Status - Select one:
+   - Not Paid (default)
+   - Partially Paid
+   - Paid
+
+9. Payment Date - Optional
+   - Actual payment date if applicable
+
+
+STEP 4: ADD LINE ITEMS (REQUIRED - AT LEAST ONE)
+-------------------------------------------------
+Each NRE budget must have at least one line item:
+
+1. Click "Add Line Item" button
+
+2. Fill in line item details:
+   - Line # - Auto-numbered (1, 2, 3...)
+   - Description* - REQUIRED - What is being purchased
+     Example: "PCB Design Services", "Tooling for Battery Cover"
+   
+   - Category* - REQUIRED - Select from dropdown:
+     • NRE (General)
+     • NRE Design
+     • Tooling
+     • Samples (EVT/DVT/PVT)
+     • Certifications
+     • Field Testing
+     • ODM Setup
+     • Firmware
+     • Application Software
+     • Logistics Samples
+     • Warranty / Reliability
+     • DevOps
+     • NRE (FW)
+     • NRE (Special Project)
+     • NRE (Weekly)
+     • NRE (iOS/Android)
+     • NRE (QA Test)
+     • NRE (Project Mgt)
+     • Others
+     • Custom (Enter Below)
+   
+   - Quantity - Default: 1
+   
+   - Unit Price ($)* - REQUIRED - Must be greater than 0
+   
+   - Line Total - AUTO-CALCULATED (Quantity × Unit Price)
+   
+   - Notes - Optional - Additional details
+
+3. Click "Add Another Line Item" to add more items
+
+4. Click trash icon to remove unwanted line items
+
+5. Grand Total shows at bottom (sum of all line items)
+
+
+STEP 5: ADD PAYMENT SCHEDULE (OPTIONAL)
+----------------------------------------
+Track when payments are due or have been made:
+
+1. Click "Add Payment" button
+
+2. Fill in payment details:
+   - Payment # - Sequential number (1, 2, 3...)
+   
+   - Payment Date* - REQUIRED - When payment is due or was made
+   
+   - Amount ($)* - REQUIRED - Payment amount (must be > 0)
+   
+   - Notes - Optional - Payment details
+     Example: "50% Deposit", "Final Payment"
+   
+   - Payment Status Button:
+     • "To Pay" (yellow) - Payment not yet made
+     • "Paid" (green) - Click to mark as paid
+
+3. Add multiple payments for phased payment schedules
+
+4. Delete unwanted payments with trash icon
+
+
+STEP 6: ATTACH DOCUMENTS (OPTIONAL BUT RECOMMENDED)
+----------------------------------------------------
+1. Click "Browse Files" or drag-and-drop into upload area
+
+2. Supported formats:
+   - PDF documents
+   - Images (JPEG, PNG)
+   - Excel spreadsheets
+   - Word documents
+
+3. Multiple files can be uploaded
+
+4. Existing documents shown with download/delete options
+
+
+STEP 7: SAVE NRE BUDGET
+------------------------
+1. Review all information for accuracy
+
+2. Click "Create NRE Budget" button
+
+3. System validates required fields:
+   - If fields are missing, you'll see an alert listing them:
+     "⚠️ Please fill in the following required fields:
+      • Vendor Name
+      • SKU Code
+      • Quote Number
+      • Line Item #1: Description"
+
+4. Once validation passes, budget is saved
+
+5. Success message appears
+
+6. Modal closes automatically
+
+
+================================================================================
+MANAGING EXISTING NRE BUDGETS
+================================================================================
+
+VIEWING BUDGETS
+---------------
+Main page shows all NRE budgets in card format:
+
+- NRE Reference Number (top)
+- Project Name and SKU Code
+- Vendor Name
+- Total Amount ($)
+- Payment Status badge (color-coded)
+- Payment Date (if applicable)
+- Creation date
+
+
+FILTERING BUDGETS
+-----------------
+Use filter controls at top of page:
+
+1. Search - Filter by SKU code or project name
+
+2. Vendor - Dropdown to filter by specific vendor
+
+3. Payment Status - Filter by:
+   - All
+   - Not Paid
+   - Partially Paid
+   - Paid
+
+
+EDITING A BUDGET
+----------------
+1. Click "Edit" button on any budget card
+
+2. Same form opens with existing data pre-filled
+
+3. NRE Reference Number is locked (cannot be changed)
+
+4. Modify any fields as needed
+
+5. Add/remove line items
+
+6. Add/remove payment schedules
+
+7. Upload additional documents
+
+8. Click "Save NRE Budget"
+
+
+DELETING A BUDGET
+-----------------
+1. Click "Delete" button on budget card
+
+2. Confirm deletion in popup dialog
+
+3. Budget is soft-deleted (archived, not permanently removed)
+
+
+================================================================================
+GENERATING REPORTS AND DOCUMENTS
+================================================================================
+
+VIEW PDF PREVIEW
+----------------
+1. Click "View PDF" button on any budget card
+
+2. Full-screen PDF preview opens showing:
+   - Header with BDI logo
+   - NRE Reference Number
+   - Vendor and project details
+   - Line items table
+   - Payment schedule (if exists)
+   - Grand total
+
+3. Close preview when done
+
+
+DOWNLOAD PDF
+------------
+1. Click "Download PDF" button on any budget card
+
+2. PDF file downloads to your computer
+
+3. Filename format: NRE-{reference-number}.pdf
+
+4. Use for sharing with vendors, accounting, or records
+
+
+EXPORT PAYMENT SCHEDULE TO CSV
+-------------------------------
+1. Click "Export CSV" button on any budget card
+
+2. CSV file downloads with payment schedule data
+
+3. Includes: Payment #, Date, Amount, Status, Notes
+
+4. Open in Excel for financial tracking
+
+
+VIEW ANALYTICS DASHBOARD
+-------------------------
+1. Click "Analytics Dashboard" button (top right)
+
+2. Full-screen modal opens with three grouping options:
+   - By Project
+   - By SKU
+   - By Category
+
+3. Shows:
+   - Grand Total NRE Spend
+   - Count of budgets
+   - Breakdown by selected grouping
+   - Individual budget details within each group
+
+4. Use for executive reporting and spend analysis
+
+
+================================================================================
+NRE SPEND ANALYTICS
+================================================================================
+
+The Analytics Dashboard provides three views:
+
+BY PROJECT
+----------
+- Groups all NRE spend by Project Name
+- Shows total spend per project
+- Lists all budgets contributing to each project
+- Useful for project cost tracking
+
+
+BY SKU
+------
+- Groups all NRE spend by SKU Code
+- Shows total NRE investment per product
+- Lists all related budgets
+- Useful for product profitability analysis
+
+
+BY CATEGORY
+-----------
+- Groups all NRE spend by Category
+- Examples: Design, Tooling, Certifications, Samples
+- Shows total spend per category type
+- Lists all budgets in each category
+- Useful for understanding where NRE dollars go
+
+
+================================================================================
+BEST PRACTICES
+================================================================================
+
+1. ALWAYS FILL REQUIRED FIELDS
+   - Vendor Name
+   - SKU Code
+   - Quote Number
+   - Line Item Descriptions
+   - Unit Prices
+
+2. USE DESCRIPTIVE LINE ITEMS
+   - Good: "PCB Layout Design - 8 Layer Board"
+   - Bad: "Design work"
+
+3. ATTACH VENDOR QUOTES
+   - Upload PDF quotes as documentation
+   - Makes auditing easier
+
+4. TRACK PAYMENT SCHEDULE
+   - Record when payments are due
+   - Mark as paid when completed
+   - Helps with cash flow planning
+
+5. USE CORRECT CATEGORIES
+   - Enables better spend analysis
+   - Makes reporting more meaningful
+
+6. REGULAR REVIEW
+   - Check payment status weekly
+   - Update as payments are made
+   - Export reports for finance team
+
+
+================================================================================
+COMMON ISSUES AND SOLUTIONS
+================================================================================
+
+ISSUE: "Create NRE Budget" button fails
+SOLUTION: Check that all required fields (*) are filled in
+          System will show which fields are missing
+
+ISSUE: Cannot find my SKU in dropdown
+SOLUTION: Select "Enter Manually Below" option
+          Type SKU Code in the text field below
+
+ISSUE: Grand Total doesn't match my quote
+SOLUTION: Review each line item Unit Price and Quantity
+          Ensure all line items are added
+          Check for decimal point errors
+
+ISSUE: Upload fails for documents
+SOLUTION: Check file size (max 10MB per file)
+          Ensure file format is supported
+          Try uploading fewer files at once
+
+ISSUE: Cannot edit old NRE budget
+SOLUTION: Ensure you have Admin or Super Admin role
+          Check that budget is not locked
+
+
+================================================================================
+SUPPORT
+================================================================================
+
+For technical issues or questions:
+- Contact: IT Support
+- Email: support@boundlessdevices.com
+
+For budget approval questions:
+- Contact: Finance Department
+
+For vendor quote questions:
+- Contact: Procurement Team
+
+
+================================================================================
+CHANGE LOG
+================================================================================
+
+Version 2.1 (Current)
+- Added required field validation
+- Added SKU requirement in UX
+- Added Quote Number requirement
+- Improved error messages
+- Added field indicators (*)
+
+Version 2.0
+- Renamed from "NRE Budget" to "NRE Spend"
+- Added Analytics Dashboard
+- Added payment line items tracking
+- Added payment status toggle
+- Enhanced PDF export
+
+Version 1.0
+- Initial release
+
+
+================================================================================
+                              END OF GUIDE
+================================================================================
+

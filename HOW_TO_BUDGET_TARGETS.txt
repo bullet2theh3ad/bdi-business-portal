@@ -1,0 +1,529 @@
+================================================================================
+                       HOW TO USE BUDGET TARGETS SYSTEM
+                           BDI Business Portal Guide
+================================================================================
+
+OVERVIEW
+--------
+The Budget Targets system allows you to set ESTIMATED/TARGET budget numbers
+for projects and compare them against ACTUAL NRE Spend. This helps with:
+- Budget planning and forecasting
+- Variance analysis (over/under budget)
+- Project cost control
+- Executive reporting
+
+KEY CONCEPT: TARGETS vs ACTUALS
+--------------------------------
+• BUDGET TARGETS = What you PLAN to spend (this system)
+• NRE SPEND = What you ACTUALLY spent (separate system)
+• VARIANCE = The difference between target and actual
+
+
+ACCESS
+------
+Location: Admin → Budget Targets (in sidebar)
+Required Role: Super Admin, Admin
+
+
+================================================================================
+CREATING A BUDGET TARGET
+================================================================================
+
+STEP 1: OPEN CREATE DIALOG
+---------------------------
+1. Click "Create Budget Target" button (top right, green)
+2. The Create/Edit Budget Target modal opens
+
+
+STEP 2: FILL BASIC INFORMATION
+-------------------------------
+All fields in the initial tab are REQUIRED:
+
+1. Project Name* - REQUIRED
+   - Name of the project this budget is for
+   - Example: "MNQ15 Development", "RTC700 Certification"
+
+2. SKU Code* - REQUIRED
+   - Enter the product SKU this budget applies to
+   - Example: "MNQ15-C", "RTC700"
+   - System will match this against actual NRE Spend
+   - IMPORTANT: Must match SKU in NRE Spend for variance analysis
+
+3. Budget Category* - Select from dropdown:
+   - TOTAL_BUDGET (default for initial estimate)
+   - NRE (General)
+   - NRE Design
+   - Tooling
+   - Samples (EVT/DVT/PVT)
+   - Certifications
+   - Field Testing
+   - ODM Setup
+   - Firmware
+   - Application Software
+   - And many more...
+
+4. Budget Description - Optional
+   - Additional context about this budget
+   - Example: "Q1 2025 Development Budget"
+
+5. Total Budget Amount* - REQUIRED
+   - Enter your estimated/target spending amount
+   - Example: 50000 (for $50,000)
+   - This is what you PLAN to spend
+
+
+STEP 3: SAVE BUDGET TARGET
+---------------------------
+1. Review information for accuracy
+
+2. Click "Create Budget Target" button
+
+3. Budget is saved and appears in the list
+
+4. System will automatically calculate variance when actual NRE Spend exists
+
+
+================================================================================
+UNDERSTANDING THE DASHBOARD
+================================================================================
+
+SUMMARY CARDS
+-------------
+Top of page shows four key metrics:
+
+1. TOTAL TARGET BUDGET
+   - Sum of all budget targets
+   - What you planned to spend across all projects
+
+2. TOTAL ACTUAL SPEND
+   - Sum of all actual NRE spending
+   - What you've actually spent
+   - Comes from NRE Spend system
+
+3. TOTAL VARIANCE
+   - Difference between target and actual
+   - GREEN (positive %) = Under budget (good!)
+   - RED (negative %) = Over budget (needs attention)
+   - Formula: Target - Actual
+
+4. BUDGET COUNT
+   - Number of budget targets created
+   - Number of actual NRE budgets matched
+
+
+BUDGET TARGET CARDS
+-------------------
+Each target shows:
+
+- Project Name
+- SKU Code (used for matching)
+- Budget Category
+- Target Amount (what you planned)
+- Actual Spend (what was actually spent)
+- Variance:
+  • Shows dollar amount difference
+  • Shows percentage
+  • Color coded: Green = under budget, Red = over budget
+- Edit and Delete buttons
+
+
+ACTUAL NRE BUDGETS SECTION (COLLAPSIBLE)
+-----------------------------------------
+Below targets, you'll see matched actual NRE Spend:
+
+1. Click to expand/collapse section
+
+2. Shows all NRE budgets that match your target's SKU Code
+
+3. For each NRE budget, displays:
+   - NRE Reference Number
+   - Vendor Name
+   - Total Amount
+   - Payment Status
+   - Payment Schedule details
+   - Individual line items with:
+     • Description
+     • Category
+     • Amount
+
+4. This is how the system knows what you "actually" spent
+
+
+================================================================================
+EDITING A BUDGET TARGET
+================================================================================
+
+1. Click "Edit" button on any budget target card
+
+2. Modal opens with existing data
+
+3. You can change:
+   - Project Name
+   - SKU Code (be careful - affects variance matching)
+   - Budget Category
+   - Budget Description
+   - Total Budget Amount
+
+4. Click "Save Budget Target"
+
+5. Variance recalculates automatically
+
+
+================================================================================
+DELETING A BUDGET TARGET
+================================================================================
+
+1. Click "Delete" button on budget target card
+
+2. Confirm deletion in popup
+
+3. Budget target is removed (soft deleted)
+
+4. Does NOT affect actual NRE Spend data
+
+
+================================================================================
+VARIANCE ANALYSIS GUIDE
+================================================================================
+
+UNDERSTANDING VARIANCE
+----------------------
+Variance = Target Budget - Actual Spend
+
+POSITIVE VARIANCE (Green)
+- You spent LESS than planned
+- Example: Target $50,000, Actual $45,000 = +$5,000 (10% under)
+- Generally good news!
+
+NEGATIVE VARIANCE (Red)
+- You spent MORE than planned
+- Example: Target $50,000, Actual $55,000 = -$5,000 (-10% over)
+- Requires investigation
+
+ZERO VARIANCE
+- Perfect match between target and actual
+- Rare but indicates accurate forecasting
+
+
+HOW MATCHING WORKS
+------------------
+System matches Budget Targets to Actual NRE Spend by SKU Code:
+
+1. You create a Budget Target for "MNQ15-C" = $50,000
+
+2. System looks for NRE Budgets with SKU Code = "MNQ15-C"
+
+3. Finds matching budgets:
+   - NRE-ELC123ABC: $25,000 (Tooling)
+   - NRE-ELC456DEF: $20,000 (Certifications)
+   - Total Actual: $45,000
+
+4. Calculates: $50,000 - $45,000 = +$5,000 variance (10% under)
+
+5. Displays green indicator (under budget)
+
+
+IMPORTANT: SKU CODE MUST MATCH EXACTLY
+---------------------------------------
+For variance analysis to work:
+- Budget Target SKU: "MNQ15-C"
+- NRE Spend SKU: "MNQ15-C" ✓ MATCH
+
+Will NOT match:
+- "MNQ15" vs "MNQ15-C"
+- "MNQ15-C" vs "mnq15-c" (case sensitive)
+- "MNQ15-C" vs "MNQ15 C" (space difference)
+
+
+================================================================================
+USING BUDGET TARGETS FOR PROJECT MANAGEMENT
+================================================================================
+
+INITIAL PROJECT SETUP
+---------------------
+When starting a new product:
+
+1. Create a Budget Target for total estimated NRE
+   - SKU Code: Enter product SKU
+   - Category: TOTAL_BUDGET
+   - Amount: Your total estimated spending
+
+2. As project progresses, actual NRE costs get entered in NRE Spend system
+
+3. Check Budget Targets page weekly to monitor variance
+
+
+MID-PROJECT REVIEW
+------------------
+1. Review variance for each project
+
+2. Green (under budget):
+   - Great! Continue as planned
+   - Consider if estimate was too conservative
+
+3. Red (over budget):
+   - Investigate why actual > target
+   - Common causes:
+     • Scope creep
+     • Vendor price increases
+     • Additional testing required
+     • Timeline delays
+   - Update target if justified
+   - Or take corrective action on spending
+
+
+END OF PROJECT
+--------------
+1. Final variance shows forecast accuracy
+
+2. Use learnings for future project estimates
+
+3. Export data for post-mortem analysis
+
+
+================================================================================
+BEST PRACTICES
+================================================================================
+
+1. CREATE TARGETS EARLY
+   - Set targets BEFORE spending begins
+   - Use initial vendor quotes as basis
+   - Add contingency buffer (10-15%)
+
+2. USE CORRECT SKU CODES
+   - Must match exactly with NRE Spend entries
+   - Check NRE Spend system for existing SKUs
+   - Be consistent with format
+
+3. SINGLE TARGET PER SKU
+   - Create ONE total target per product
+   - Avoid creating multiple overlapping targets
+   - Simplifies variance tracking
+
+4. REVIEW WEEKLY
+   - Check variance every Monday
+   - Act quickly on negative variances
+   - Update stakeholders on status
+
+5. UPDATE TARGETS WHEN APPROPRIATE
+   - If project scope changes significantly
+   - If approved budget increases
+   - Document reason in Budget Description
+
+6. MATCH CATEGORIES
+   - Use same categories as NRE Spend
+   - Makes drill-down analysis easier
+
+
+================================================================================
+REPORTING AND ANALYSIS
+================================================================================
+
+EXECUTIVE SUMMARY
+-----------------
+Use Summary Cards to report:
+- Total budgeted: $X
+- Total actual: $Y
+- Overall variance: $Z (green/red)
+- "We are X% under/over budget across all projects"
+
+
+PROJECT-LEVEL REPORTING
+-----------------------
+For each project, report:
+- Project Name
+- SKU Code
+- Target vs Actual
+- Variance amount and %
+- Status (on track, needs attention)
+
+
+DETAILED DRILL-DOWN
+-------------------
+Click expand on "Actual NRE Budgets" section:
+- See exactly what was spent
+- Which vendors
+- What categories
+- Payment schedules
+- Support variance explanations with details
+
+
+================================================================================
+WORKFLOW INTEGRATION
+================================================================================
+
+STEP 1: PROJECT KICK-OFF
+-------------------------
+→ Create Budget Target (this system)
+→ Document total estimated NRE spend
+→ Share with finance and project team
+
+
+STEP 2: VENDOR QUOTES RECEIVED
+-------------------------------
+→ Review quotes against target
+→ Adjust target if necessary
+→ Get approval for adjusted budget
+
+
+STEP 3: PURCHASE ORDERS ISSUED
+-------------------------------
+→ Create NRE Spend entries (NRE Spend system)
+→ Ensure SKU codes match target
+→ Track payment schedules
+
+
+STEP 4: ONGOING MONITORING
+---------------------------
+→ Review Budget Targets weekly
+→ Monitor variance trends
+→ Flag issues early
+→ Update forecasts
+
+
+STEP 5: PROJECT CLOSE
+----------------------
+→ Final variance report
+→ Lessons learned documentation
+→ Archive or delete target
+→ Use data for future estimates
+
+
+================================================================================
+COMMON SCENARIOS
+================================================================================
+
+SCENARIO 1: STARTING A NEW PRODUCT
+-----------------------------------
+Problem: Need to track NRE spending for new product
+Solution:
+1. Create Budget Target with product SKU
+2. Enter estimated total NRE (from initial quotes)
+3. As vendors submit quotes, create NRE Spend entries
+4. Check variance weekly
+5. Adjust project spending if going over
+
+
+SCENARIO 2: MULTIPLE VENDORS FOR ONE PRODUCT
+---------------------------------------------
+Problem: Three vendors, one product, want total view
+Solution:
+1. Create ONE Budget Target for total estimate
+2. Create separate NRE Spend entries for each vendor
+3. System automatically sums all actual spending for that SKU
+4. Shows total variance in one place
+
+
+SCENARIO 3: PROJECT SCOPE INCREASED
+------------------------------------
+Problem: Original estimate $50K, scope grew, now need $70K
+Solution:
+1. Edit existing Budget Target
+2. Update Total Budget Amount to $70,000
+3. Add note in Budget Description: "Scope increase - added WiFi certification"
+4. Variance recalculates
+5. Communicate to stakeholders
+
+
+SCENARIO 4: FORECAST TOO HIGH
+------------------------------
+Problem: Budgeted $100K, actually spent $75K
+Solution:
+1. Review why estimate was high
+2. Document lessons learned
+3. Use for future project estimates
+4. Celebrate the savings!
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: Variance shows $0 but I know we spent money
+SOLUTION: Check SKU codes match exactly between target and NRE Spend
+          Case sensitive, must be identical
+
+ISSUE: Showing "over budget" but spending was approved
+SOLUTION: Edit Budget Target and increase Total Budget Amount
+          Add explanation in Budget Description
+
+ISSUE: Cannot create Budget Target
+SOLUTION: Ensure all required fields (*) are filled:
+          • Project Name
+          • SKU Code
+          • Total Budget Amount
+
+ISSUE: Too many targets, getting confusing
+SOLUTION: Delete old/closed project targets
+          Use clear Project Names
+          Consider one target per active SKU
+
+ISSUE: Actual NRE Budgets section is empty
+SOLUTION: Ensure NRE Spend entries exist with matching SKU Code
+          Create NRE Spend entries in NRE Spend system
+
+
+================================================================================
+DIFFERENCES FROM NRE SPEND SYSTEM
+================================================================================
+
+BUDGET TARGETS (This System)
+-----------------------------
+• Purpose: Planning and forecasting
+• When: Created BEFORE spending
+• What: ESTIMATED amounts
+• Why: Set targets for comparison
+
+
+NRE SPEND (Different System)
+-----------------------------
+• Purpose: Record actual costs
+• When: Created AS spending occurs
+• What: ACTUAL amounts paid to vendors
+• Why: Track real spending, vendor payments
+
+
+TOGETHER THEY PROVIDE:
+-----------------------
+• Target vs Actual comparison
+• Variance analysis
+• Budget control
+• Forecast accuracy
+
+
+================================================================================
+SUPPORT
+================================================================================
+
+For technical issues:
+- Contact: IT Support
+- Email: support@boundlessdevices.com
+
+For budget questions:
+- Contact: Finance Department
+
+For project scope questions:
+- Contact: Project Management Office
+
+
+================================================================================
+CHANGE LOG
+================================================================================
+
+Version 2.0 (Current)
+- Simplified to single-tab design
+- Removed payment schedule (use NRE Spend for actuals)
+- Removed fiscal year/quarter fields
+- Made SKU Code required
+- Added total variance percentage to summary
+- Made actual NRE budgets section collapsible
+- Improved mobile responsiveness
+
+Version 1.0
+- Initial release
+
+
+================================================================================
+                              END OF GUIDE
+================================================================================
+
