@@ -159,7 +159,7 @@ export default function QuickBooksIntegrationPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}`);
+        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}`);
         await loadConnection();
         await loadSyncStats();
       } else {

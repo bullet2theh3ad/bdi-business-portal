@@ -386,16 +386,264 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${invoiceCount} invoices (${invoicesCreated} created, ${invoicesUpdated} updated)`);
 
+      // ===============================================
+      // PHASE 5: SYNC VENDORS (with pagination)
+      // ===============================================
+      console.log('📥 Fetching vendors from QuickBooks...');
+      let allVendors: any[] = [];
+      let vendorStartPosition = 1;
+      let hasMoreVendors = true;
+      
+      while (hasMoreVendors) {
+        const vendorsQuery = `SELECT * FROM Vendor STARTPOSITION ${vendorStartPosition} MAXRESULTS 1000`;
+        console.log(`Vendor Query (page ${Math.ceil(vendorStartPosition / 1000)}):`, vendorsQuery);
+        
+        const vendorsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(vendorsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!vendorsResponse.ok) {
+          const errorBody = await vendorsResponse.text();
+          console.error('QuickBooks Vendors API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (vendors, ${vendorsResponse.status}): ${vendorsResponse.statusText} - ${errorBody}`);
+        }
+
+        const vendorsData = await vendorsResponse.json();
+        const vendors = vendorsData.QueryResponse?.Vendor || [];
+        
+        if (vendors.length > 0) {
+          allVendors = allVendors.concat(vendors);
+          console.log(`✅ Fetched ${vendors.length} vendors (total so far: ${allVendors.length})`);
+          
+          if (vendors.length < 1000) {
+            hasMoreVendors = false;
+          } else {
+            vendorStartPosition += 1000;
+          }
+        } else {
+          hasMoreVendors = false;
+        }
+      }
+      
+      const vendors = allVendors;
+      vendorsFetched = vendors.length;
+
+      console.log(`✅ Fetched ${vendorsFetched} total vendors from QuickBooks`);
+
+      // Upsert vendors to database
+      for (const vendor of vendors) {
+        let vendorData: any;
+        try {
+          vendorData = {
+            connection_id: connection.id,
+            qb_vendor_id: vendor.Id,
+            qb_sync_token: vendor.SyncToken,
+            display_name: vendor.DisplayName || vendor.CompanyName,
+            company_name: vendor.CompanyName,
+            primary_email: vendor.PrimaryEmailAddr?.Address,
+            primary_phone: vendor.PrimaryPhone?.FreeFormNumber,
+            website: vendor.WebAddr?.URI,
+            billing_address: vendor.BillAddr ? JSON.stringify(vendor.BillAddr) : null,
+            balance: vendor.Balance || 0,
+            currency_code: vendor.CurrencyRef?.value || 'USD',
+            is_active: vendor.Active !== false,
+            qb_created_at: vendor.MetaData?.CreateTime,
+            qb_updated_at: vendor.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if vendor exists
+          const { data: existing, error: existingError } = await supabaseService
+            .from('quickbooks_vendors')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_vendor_id', vendor.Id)
+            .single();
+
+          if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+          }
+
+          if (existing) {
+            const { error: updateError } = await supabaseService
+              .from('quickbooks_vendors')
+              .update(vendorData)
+              .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for vendor ${vendor.Id}:`, updateError);
+              throw updateError;
+            }
+            vendorsUpdated++;
+          } else {
+            const { error: insertError } = await supabaseService
+              .from('quickbooks_vendors')
+              .insert(vendorData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for vendor ${vendor.Id}:`, insertError);
+              throw insertError;
+            }
+            vendorsCreated++;
+          }
+
+          vendorCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting vendor ${vendor.Id}:`, err);
+          console.error('Vendor data:', JSON.stringify(vendorData, null, 2));
+        }
+      }
+
+      console.log(`✅ Synced ${vendorCount} vendors (${vendorsCreated} created, ${vendorsUpdated} updated)`);
+
+      // ===============================================
+      // PHASE 5: SYNC EXPENSES (with pagination)
+      // ===============================================
+      console.log('📥 Fetching expenses from QuickBooks...');
+      let allExpenses: any[] = [];
+      let expenseStartPosition = 1;
+      let hasMoreExpenses = true;
+      
+      while (hasMoreExpenses) {
+        let expensesQuery = 'SELECT * FROM Purchase WHERE PaymentType = \'Cash\'';
+        if (startDate && endDate) {
+          expensesQuery += ` AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
+        }
+        expensesQuery += ` STARTPOSITION ${expenseStartPosition} MAXRESULTS 1000`;
+        console.log(`Expense Query (page ${Math.ceil(expenseStartPosition / 1000)}):`, expensesQuery);
+        
+        const expensesResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(expensesQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!expensesResponse.ok) {
+          const errorBody = await expensesResponse.text();
+          console.error('QuickBooks Expenses API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (expenses, ${expensesResponse.status}): ${expensesResponse.statusText} - ${errorBody}`);
+        }
+
+        const expensesData = await expensesResponse.json();
+        const expenses = expensesData.QueryResponse?.Purchase || [];
+        
+        if (expenses.length > 0) {
+          allExpenses = allExpenses.concat(expenses);
+          console.log(`✅ Fetched ${expenses.length} expenses (total so far: ${allExpenses.length})`);
+          
+          if (expenses.length < 1000) {
+            hasMoreExpenses = false;
+          } else {
+            expenseStartPosition += 1000;
+          }
+        } else {
+          hasMoreExpenses = false;
+        }
+      }
+      
+      const expenses = allExpenses;
+      expensesFetched = expenses.length;
+
+      console.log(`✅ Fetched ${expensesFetched} total expenses from QuickBooks`);
+
+      // Upsert expenses to database
+      for (const expense of expenses) {
+        let expenseData: any;
+        try {
+          expenseData = {
+            connection_id: connection.id,
+            qb_expense_id: expense.Id,
+            qb_sync_token: expense.SyncToken,
+            
+            // Transaction details
+            expense_date: expense.TxnDate,
+            payment_type: expense.PaymentType,
+            
+            // Vendor/Entity reference
+            qb_vendor_id: expense.EntityRef?.value,
+            vendor_name: expense.EntityRef?.name,
+            
+            // Financial
+            total_amount: expense.TotalAmt || 0,
+            currency_code: expense.CurrencyRef?.value || 'USD',
+            
+            // Account reference
+            account_ref: expense.AccountRef?.value,
+            
+            // Memo/Description
+            memo: expense.PrivateNote,
+            
+            // Line Items (stored as JSON)
+            line_items: expense.Line ? JSON.stringify(expense.Line) : null,
+            
+            // Metadata
+            qb_created_at: expense.MetaData?.CreateTime,
+            qb_updated_at: expense.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if expense exists
+          const { data: existing, error: existingError } = await supabaseService
+            .from('quickbooks_expenses')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_expense_id', expense.Id)
+            .single();
+
+          if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+          }
+
+          if (existing) {
+            const { error: updateError } = await supabaseService
+              .from('quickbooks_expenses')
+              .update(expenseData)
+              .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for expense ${expense.Id}:`, updateError);
+              throw updateError;
+            }
+            expensesUpdated++;
+          } else {
+            const { error: insertError } = await supabaseService
+              .from('quickbooks_expenses')
+              .insert(expenseData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for expense ${expense.Id}:`, insertError);
+              throw insertError;
+            }
+            expensesCreated++;
+          }
+
+          expenseCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting expense ${expense.Id}:`, err);
+          console.error('Expense data:', JSON.stringify(expenseData, null, 2));
+        }
+      }
+
+      console.log(`✅ Synced ${expenseCount} expenses (${expensesCreated} created, ${expensesUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched + invoicesFetched,
-            records_created: customersCreated + invoicesCreated,
-            records_updated: customersUpdated + invoicesUpdated,
+            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched,
+            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated,
+            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -423,6 +671,16 @@ export async function POST(request: NextRequest) {
             fetched: invoicesFetched,
             created: invoicesCreated,
             updated: invoicesUpdated,
+          },
+          vendors: {
+            fetched: vendorsFetched,
+            created: vendorsCreated,
+            updated: vendorsUpdated,
+          },
+          expenses: {
+            fetched: expensesFetched,
+            created: expensesCreated,
+            updated: expensesUpdated,
           },
         },
       });
