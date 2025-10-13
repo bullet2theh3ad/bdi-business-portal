@@ -103,35 +103,65 @@ export async function POST(request: NextRequest) {
     let invoicesFetched = 0;
     let invoicesCreated = 0;
     let invoicesUpdated = 0;
+    let vendorCount = 0;
+    let vendorsFetched = 0;
+    let vendorsCreated = 0;
+    let vendorsUpdated = 0;
+    let expenseCount = 0;
+    let expensesFetched = 0;
+    let expensesCreated = 0;
+    let expensesUpdated = 0;
 
     try {
-      // Fetch Customers from QuickBooks (with optional date filter)
+      // Fetch Customers from QuickBooks (with pagination)
+      // Note: QB has a hard limit of 1000 records per query, so we need to paginate
       console.log('📥 Fetching customers from QuickBooks...');
-      let customersQuery = 'SELECT * FROM Customer';
-      if (startDate && endDate) {
-        customersQuery += ` WHERE MetaData.LastUpdatedTime >= '${startDate}' AND MetaData.LastUpdatedTime <= '${endDate}'`;
-      }
-      customersQuery += ' MAXRESULTS 10000'; // Increased limit to handle more records
+      let allCustomers: any[] = [];
+      let startPosition = 1;
+      let hasMoreCustomers = true;
       
-      const customersResponse = await fetch(
-        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(customersQuery)}`,
-        {
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${connection.access_token}`,
-          },
+      while (hasMoreCustomers) {
+        const customersQuery = `SELECT * FROM Customer STARTPOSITION ${startPosition} MAXRESULTS 1000`;
+        console.log(`Customer Query (page ${Math.ceil(startPosition / 1000)}):`, customersQuery);
+        
+        const customersResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(customersQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!customersResponse.ok) {
+          const errorBody = await customersResponse.text();
+          console.error('QuickBooks API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (${customersResponse.status}): ${customersResponse.statusText} - ${errorBody}`);
         }
-      );
 
-      if (!customersResponse.ok) {
-        throw new Error(`QuickBooks API error: ${customersResponse.statusText}`);
+        const customersData = await customersResponse.json();
+        const customers = customersData.QueryResponse?.Customer || [];
+        
+        if (customers.length > 0) {
+          allCustomers = allCustomers.concat(customers);
+          console.log(`✅ Fetched ${customers.length} customers (total so far: ${allCustomers.length})`);
+          
+          // If we got less than 1000, we're done
+          if (customers.length < 1000) {
+            hasMoreCustomers = false;
+          } else {
+            startPosition += 1000;
+          }
+        } else {
+          hasMoreCustomers = false;
+        }
       }
-
-      const customersData = await customersResponse.json();
-      const customers = customersData.QueryResponse?.Customer || [];
+      
+      const customers = allCustomers;
       customersFetched = customers.length;
 
-      console.log(`✅ Fetched ${customersFetched} customers from QuickBooks`);
+      console.log(`✅ Fetched ${customersFetched} total customers from QuickBooks`);
 
       // Use service role for inserting (bypass RLS)
       const supabaseService = createServerClient(
@@ -151,8 +181,9 @@ export async function POST(request: NextRequest) {
 
       // Upsert customers to database
       for (const customer of customers) {
+        let customerData: any;
         try {
-          const customerData = {
+          customerData = {
             connection_id: connection.id,
             qb_customer_id: customer.Id,
             qb_sync_token: customer.SyncToken,
@@ -173,96 +204,134 @@ export async function POST(request: NextRequest) {
           };
 
           // Check if customer exists
-          const { data: existing } = await supabaseService
+          const { data: existing, error: existingError } = await supabaseService
             .from('quickbooks_customers')
             .select('id')
             .eq('connection_id', connection.id)
             .eq('qb_customer_id', customer.Id)
             .single();
 
+          if (existingError && existingError.code !== 'PGRST116') {
+            // PGRST116 = no rows returned, which is expected for new customers
+            throw existingError;
+          }
+
           if (existing) {
-            await supabaseService
+            const { error: updateError } = await supabaseService
               .from('quickbooks_customers')
               .update(customerData)
               .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for customer ${customer.Id}:`, updateError);
+              throw updateError;
+            }
             customersUpdated++;
           } else {
-            await supabaseService
+            const { error: insertError } = await supabaseService
               .from('quickbooks_customers')
               .insert(customerData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for customer ${customer.Id}:`, insertError);
+              throw insertError;
+            }
             customersCreated++;
           }
 
           customerCount++;
-        } catch (err) {
-          console.error(`Error upserting customer ${customer.Id}:`, err);
+        } catch (err: any) {
+          console.error(`❌ Error upserting customer ${customer.Id}:`, err);
+          console.error('Customer data:', JSON.stringify(customerData, null, 2));
         }
       }
 
       console.log(`✅ Synced ${customerCount} customers (${customersCreated} created, ${customersUpdated} updated)`);
 
       // ===============================================
-      // PHASE 4: SYNC INVOICES
+      // PHASE 4: SYNC INVOICES (with pagination)
       // ===============================================
       console.log('📥 Fetching invoices from QuickBooks...');
-      let invoicesQuery = 'SELECT * FROM Invoice';
-      if (startDate && endDate) {
-        invoicesQuery += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
-      }
-      invoicesQuery += ' MAXRESULTS 10000'; // Increased limit to handle more records
+      let allInvoices: any[] = [];
+      let invoiceStartPosition = 1;
+      let hasMoreInvoices = true;
       
-      const invoicesResponse = await fetch(
-        `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(invoicesQuery)}`,
-        {
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${connection.access_token}`,
-          },
+      while (hasMoreInvoices) {
+        let invoicesQuery = 'SELECT * FROM Invoice';
+        if (startDate && endDate) {
+          invoicesQuery += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
         }
-      );
+        invoicesQuery += ` STARTPOSITION ${invoiceStartPosition} MAXRESULTS 1000`;
+        console.log(`Invoice Query (page ${Math.ceil(invoiceStartPosition / 1000)}):`, invoicesQuery);
+        
+        const invoicesResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(invoicesQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
 
-      if (!invoicesResponse.ok) {
-        throw new Error(`QuickBooks API error (invoices): ${invoicesResponse.statusText}`);
+        if (!invoicesResponse.ok) {
+          const errorBody = await invoicesResponse.text();
+          console.error('QuickBooks Invoices API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (invoices, ${invoicesResponse.status}): ${invoicesResponse.statusText} - ${errorBody}`);
+        }
+
+        const invoicesData = await invoicesResponse.json();
+        const invoices = invoicesData.QueryResponse?.Invoice || [];
+        
+        if (invoices.length > 0) {
+          allInvoices = allInvoices.concat(invoices);
+          console.log(`✅ Fetched ${invoices.length} invoices (total so far: ${allInvoices.length})`);
+          
+          // If we got less than 1000, we're done
+          if (invoices.length < 1000) {
+            hasMoreInvoices = false;
+          } else {
+            invoiceStartPosition += 1000;
+          }
+        } else {
+          hasMoreInvoices = false;
+        }
       }
-
-      const invoicesData = await invoicesResponse.json();
-      const invoices = invoicesData.QueryResponse?.Invoice || [];
+      
+      const invoices = allInvoices;
       invoicesFetched = invoices.length;
 
-      console.log(`✅ Fetched ${invoicesFetched} invoices from QuickBooks`);
+      console.log(`✅ Fetched ${invoicesFetched} total invoices from QuickBooks`);
 
       // Upsert invoices to database
       for (const invoice of invoices) {
+        let invoiceData: any;
         try {
-          const invoiceData = {
+          invoiceData = {
             connection_id: connection.id,
             qb_invoice_id: invoice.Id,
             qb_sync_token: invoice.SyncToken,
-            doc_number: invoice.DocNumber,
+            qb_doc_number: invoice.DocNumber, // Fixed: was doc_number
             
             // Customer reference
             qb_customer_id: invoice.CustomerRef?.value,
             customer_name: invoice.CustomerRef?.name,
             
             // Dates
-            txn_date: invoice.TxnDate,
+            invoice_date: invoice.TxnDate, // Fixed: was txn_date
             due_date: invoice.DueDate,
-            ship_date: invoice.ShipDate,
             
             // Amounts
             total_amount: invoice.TotalAmt || 0,
             balance: invoice.Balance || 0,
             currency_code: invoice.CurrencyRef?.value || 'USD',
-            exchange_rate: invoice.ExchangeRate || 1,
             
-            // Status
-            email_status: invoice.EmailStatus,
-            print_status: invoice.PrintStatus,
+            // Status (combining email and print status)
+            status: invoice.EmailStatus || invoice.PrintStatus || 'NotSet',
             
-            // Addresses
-            bill_email: invoice.BillEmail?.Address,
-            billing_address: invoice.BillAddr ? JSON.stringify(invoice.BillAddr) : null,
-            shipping_address: invoice.ShipAddr ? JSON.stringify(invoice.ShipAddr) : null,
+            // Payment info
+            payment_status: invoice.Balance === 0 ? 'Paid' : (invoice.Balance < invoice.TotalAmt ? 'Partial' : 'Unpaid'),
+            paid_amount: invoice.TotalAmt - invoice.Balance,
             
             // Line Items (stored as JSON)
             line_items: invoice.Line ? JSON.stringify(invoice.Line) : null,
@@ -273,29 +342,45 @@ export async function POST(request: NextRequest) {
           };
 
           // Check if invoice exists
-          const { data: existing } = await supabaseService
+          const { data: existing, error: existingError } = await supabaseService
             .from('quickbooks_invoices')
             .select('id')
             .eq('connection_id', connection.id)
             .eq('qb_invoice_id', invoice.Id)
             .single();
 
+          if (existingError && existingError.code !== 'PGRST116') {
+            // PGRST116 = no rows returned, which is expected for new invoices
+            throw existingError;
+          }
+
           if (existing) {
-            await supabaseService
+            const { error: updateError } = await supabaseService
               .from('quickbooks_invoices')
               .update(invoiceData)
               .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for invoice ${invoice.Id}:`, updateError);
+              throw updateError;
+            }
             invoicesUpdated++;
           } else {
-            await supabaseService
+            const { error: insertError } = await supabaseService
               .from('quickbooks_invoices')
               .insert(invoiceData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for invoice ${invoice.Id}:`, insertError);
+              throw insertError;
+            }
             invoicesCreated++;
           }
 
           invoiceCount++;
-        } catch (err) {
-          console.error(`Error upserting invoice ${invoice.Id}:`, err);
+        } catch (err: any) {
+          console.error(`❌ Error upserting invoice ${invoice.Id}:`, err);
+          console.error('Invoice data:', JSON.stringify(invoiceData, null, 2));
         }
       }
 

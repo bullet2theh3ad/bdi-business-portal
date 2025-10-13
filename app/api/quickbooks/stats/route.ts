@@ -35,12 +35,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Use service role client to bypass RLS (we've already checked authorization)
+    const supabaseService = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     // Get counts from each QuickBooks table
     const [customersCount, invoicesCount, vendorsCount, expensesCount] = await Promise.all([
-      supabase.from('quickbooks_customers').select('id', { count: 'exact', head: true }),
-      supabase.from('quickbooks_invoices').select('id', { count: 'exact', head: true }),
-      supabase.from('quickbooks_vendors').select('id', { count: 'exact', head: true }),
-      supabase.from('quickbooks_expenses').select('id', { count: 'exact', head: true }),
+      supabaseService.from('quickbooks_customers').select('id', { count: 'exact', head: true }),
+      supabaseService.from('quickbooks_invoices').select('id', { count: 'exact', head: true }),
+      supabaseService.from('quickbooks_vendors').select('id', { count: 'exact', head: true }),
+      supabaseService.from('quickbooks_expenses').select('id', { count: 'exact', head: true }),
     ]);
 
     return NextResponse.json({
