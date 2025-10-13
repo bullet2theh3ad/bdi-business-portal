@@ -188,7 +188,7 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
           {
             title: 'Reports',
             href: '/admin/quickbooks/reports',
-            icon: 'bar_chart',
+            icon: 'reports',
           },
         ],
       },
