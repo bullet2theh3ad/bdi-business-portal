@@ -251,20 +251,20 @@ export default function QuickBooksIntegrationPage() {
               {/* Company Info */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h3 className="font-semibold text-blue-900 mb-2">Connected Company</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div className="overflow-hidden">
                     <span className="text-gray-600">Company Name:</span>
-                    <p className="font-medium">{connection.company_name || 'N/A'}</p>
+                    <p className="font-medium break-words">{connection.company_name || 'N/A'}</p>
                   </div>
-                  <div>
+                  <div className="overflow-hidden">
                     <span className="text-gray-600">Company Email:</span>
-                    <p className="font-medium">{connection.company_email || 'N/A'}</p>
+                    <p className="font-medium break-all">{connection.company_email || 'N/A'}</p>
                   </div>
-                  <div>
+                  <div className="overflow-hidden">
                     <span className="text-gray-600">Realm ID:</span>
-                    <p className="font-mono text-xs">{connection.realm_id}</p>
+                    <p className="font-mono text-xs break-all">{connection.realm_id}</p>
                   </div>
-                  <div>
+                  <div className="overflow-hidden">
                     <span className="text-gray-600">Connected Since:</span>
                     <p className="font-medium">
                       {new Date(connection.connected_at).toLocaleDateString()}
