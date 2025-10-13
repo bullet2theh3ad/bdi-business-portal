@@ -54,6 +54,43 @@ interface FinancialMetrics {
   monthlyBurnRate: number;
 }
 
+interface MasterMetrics {
+  summary: {
+    netRevenue: number;
+    totalInvoiceRevenue: number;
+    totalSalesReceiptRevenue: number;
+    totalCreditMemos: number;
+    totalPaymentsReceived: number;
+    totalExpensesPaid: number;
+    netCashFlow: number;
+    totalAR: number;
+    totalAP: number;
+    netPosition: number;
+    totalOpenPOValue: number;
+    totalUnpaidBills: number;
+    availableCredits: number;
+    avgInvoiceValue: number;
+    avgPaymentValue: number;
+    avgBillValue: number;
+    activeCustomers: number;
+    activeVendors: number;
+    openPOsCount: number;
+    unpaidBillsCount: number;
+  };
+  timelines: {
+    revenue: Array<{ week: string; invoices: number; salesReceipts: number; credits: number }>;
+    cashFlow: Array<{ week: string; inflow: number; outflow: number }>;
+  };
+  top: {
+    customers: Array<{ name: string; revenue: number }>;
+    vendors: Array<{ name: string; spend: number }>;
+  };
+  cashFlowBreakdown: {
+    inflows: { payments: number; salesReceipts: number };
+    outflows: { expenses: number; bills: number };
+  };
+}
+
 interface ARAgingBucket {
   label: string;
   amount: number;
@@ -104,6 +141,7 @@ interface Expense {
 
 export default function QuickBooksReportsPage() {
   const [metrics, setMetrics] = useState<FinancialMetrics | null>(null);
+  const [masterMetrics, setMasterMetrics] = useState<MasterMetrics | null>(null);
   const [arAging, setARAging] = useState<ARAgingBucket[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -127,8 +165,9 @@ export default function QuickBooksReportsPage() {
       setError(null);
       
       // Load all data in parallel
-      const [metricsRes, arAgingRes, customersRes, vendorsRes, invoicesRes, expensesRes] = await Promise.all([
+      const [metricsRes, masterMetricsRes, arAgingRes, customersRes, vendorsRes, invoicesRes, expensesRes] = await Promise.all([
         fetch(`/api/quickbooks/reports/metrics?days=${dateRange === 'all' ? 365 : dateRange}`),
+        fetch(`/api/quickbooks/reports/master-metrics`),
         fetch(`/api/quickbooks/reports/ar-aging`),
         fetch(`/api/quickbooks/reports/customers`),
         fetch(`/api/quickbooks/reports/vendors`),
@@ -137,6 +176,7 @@ export default function QuickBooksReportsPage() {
       ]);
 
       if (metricsRes.ok) setMetrics(await metricsRes.json());
+      if (masterMetricsRes.ok) setMasterMetrics(await masterMetricsRes.json());
       if (arAgingRes.ok) setARAging(await arAgingRes.json());
       if (customersRes.ok) setCustomers(await customersRes.json());
       if (vendorsRes.ok) setVendors(await vendorsRes.json());
@@ -355,222 +395,315 @@ export default function QuickBooksReportsPage() {
           </TabsList>
         </div>
 
-        {/* Overview Tab */}
+        {/* Overview Tab - MASTER FINANCIAL DASHBOARD */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
-                <CardDescription>Key business metrics at a glance</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {metrics && (
-                  <>
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-600">Active Customers</span>
-                      <span className="font-bold">{metrics.activeCustomers}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-600">Active Vendors</span>
-                      <span className="font-bold">{metrics.activeVendors}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-600">Average Invoice Value</span>
-                      <span className="font-bold">{formatCurrency(metrics.avgInvoiceValue)}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-600">Monthly Burn Rate</span>
-                      <span className="font-bold text-orange-600">{formatCurrency(metrics.monthlyBurnRate)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Net Position (AR - AP)</span>
-                      <span className={`font-bold ${metrics.totalAR - metrics.totalAP >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(metrics.totalAR - metrics.totalAP)}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+          {masterMetrics && (
+            <>
+              {/* Executive KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                <Card className="border-l-4 border-l-green-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Net Revenue</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-green-600">{formatCurrency(masterMetrics.summary.netRevenue)}</div>
+                  </CardContent>
+                </Card>
 
-            {/* Revenue vs Expenses Chart */}
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader>
-                <CardTitle>Revenue vs Expenses</CardTitle>
-                <CardDescription>Financial performance comparison</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={[
-                      {
-                        name: 'Financial Overview',
-                        Revenue: metrics?.totalRevenue || 0,
-                        Expenses: metrics?.totalExpenses || 0,
-                        Outstanding: metrics?.totalAR || 0,
-                      }
-                    ]}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="name" style={{ fontSize: '11px' }} />
-                    <YAxis style={{ fontSize: '11px' }} />
-                    <Tooltip 
-                      formatter={(value: any) => formatCurrency(Number(value))}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Bar dataKey="Revenue" fill="#10b981" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="Expenses" fill="#f59e0b" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="Outstanding" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Cash Flow</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-lg font-bold ${masterMetrics.summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      {formatCurrency(masterMetrics.summary.netCashFlow)}
+                    </div>
+                  </CardContent>
+                </Card>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Customers Chart */}
-            <Card className="border-l-4 border-l-purple-500">
-              <CardHeader>
-                <CardTitle>Top 10 Customers by Balance</CardTitle>
-                <CardDescription>Customers with highest outstanding balances</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart
-                    data={customers
-                      .filter(c => c.balance > 0)
-                      .sort((a, b) => b.balance - a.balance)
-                      .slice(0, 10)
-                      .map(c => ({
-                        name: c.displayName.length > 12 ? c.displayName.substring(0, 12) + '...' : c.displayName,
-                        fullName: c.displayName,
-                        balance: c.balance,
-                        overdue: c.overdueAmount,
-                      }))}
-                    layout="vertical"
-                    margin={{ left: 120, right: 10 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" style={{ fontSize: '11px' }} />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={110} 
-                      style={{ fontSize: '11px' }}
-                      tick={{ fill: '#374151' }}
-                    />
-                    <Tooltip 
-                      formatter={(value: any) => formatCurrency(Number(value))}
-                      labelFormatter={(label: any, payload: any) => {
-                        return payload?.[0]?.payload?.fullName || label;
-                      }}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Bar dataKey="balance" fill="#8b5cf6" name="Total Balance" radius={[0, 8, 8, 0]} />
-                    <Bar dataKey="overdue" fill="#ef4444" name="Overdue" radius={[0, 8, 8, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Net Position</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-lg font-bold ${masterMetrics.summary.netPosition >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                      {formatCurrency(masterMetrics.summary.netPosition)}
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Top Vendors by Spending Chart */}
-            <Card className="border-l-4 border-l-orange-500">
-              <CardHeader>
-                <CardTitle>Top 10 Vendors by Spending</CardTitle>
-                <CardDescription>Highest vendor expenses</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart
-                    data={vendors
-                      .sort((a, b) => b.totalSpent - a.totalSpent)
-                      .slice(0, 10)
-                      .map(v => ({
-                        name: v.displayName.length > 12 ? v.displayName.substring(0, 12) + '...' : v.displayName,
-                        fullName: v.displayName,
-                        spent: v.totalSpent,
-                        balance: v.balance,
-                      }))}
-                    layout="vertical"
-                    margin={{ left: 120, right: 10 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" style={{ fontSize: '11px' }} />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={110} 
-                      style={{ fontSize: '11px' }}
-                      tick={{ fill: '#374151' }}
-                    />
-                    <Tooltip 
-                      formatter={(value: any) => formatCurrency(Number(value))}
-                      labelFormatter={(label: any, payload: any) => {
-                        return payload?.[0]?.payload?.fullName || label;
-                      }}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Bar dataKey="spent" fill="#f97316" name="Total Spent" radius={[0, 8, 8, 0]} />
-                    <Bar dataKey="balance" fill="#dc2626" name="Balance Due" radius={[0, 8, 8, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Total AR</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-orange-600">{formatCurrency(masterMetrics.summary.totalAR)}</div>
+                  </CardContent>
+                </Card>
 
-          {/* Recent Invoices */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Invoices</CardTitle>
-              <CardDescription>Latest invoices from QuickBooks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b bg-gray-50">
-                    <tr>
-                      <th className="text-left p-3 font-semibold">Invoice #</th>
-                      <th className="text-left p-3 font-semibold">Customer</th>
-                      <th className="text-left p-3 font-semibold">Date</th>
-                      <th className="text-left p-3 font-semibold">Due Date</th>
-                      <th className="text-right p-3 font-semibold">Amount</th>
-                      <th className="text-right p-3 font-semibold">Balance</th>
-                      <th className="text-left p-3 font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoices.slice(0, 10).map((invoice) => (
-                      <tr key={invoice.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-mono text-xs">{invoice.docNumber}</td>
-                        <td className="p-3">{invoice.customerName}</td>
-                        <td className="p-3">{new Date(invoice.date).toLocaleDateString()}</td>
-                        <td className="p-3">{new Date(invoice.dueDate).toLocaleDateString()}</td>
-                        <td className="p-3 text-right">{formatCurrency(invoice.amount)}</td>
-                        <td className="p-3 text-right font-semibold">{formatCurrency(invoice.balance)}</td>
-                        <td className="p-3">
-                          <Badge
-                            variant={
-                              invoice.paymentStatus === 'Paid' ? 'default' :
-                              invoice.paymentStatus === 'Partial' ? 'secondary' :
-                              invoice.daysOverdue > 0 ? 'destructive' : 'outline'
-                            }
-                            className="text-xs"
-                          >
-                            {invoice.daysOverdue > 0 ? `Overdue ${invoice.daysOverdue}d` : invoice.paymentStatus}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Card className="border-l-4 border-l-red-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Total AP</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-red-600">{formatCurrency(masterMetrics.summary.totalAP)}</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-yellow-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Open POs</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-yellow-600">{formatCurrency(masterMetrics.summary.totalOpenPOValue)}</div>
+                    <p className="text-xs text-gray-500">{masterMetrics.summary.openPOsCount} orders</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-pink-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Unpaid Bills</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-pink-600">{formatCurrency(masterMetrics.summary.totalUnpaidBills)}</div>
+                    <p className="text-xs text-gray-500">{masterMetrics.summary.unpaidBillsCount} bills</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-indigo-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-gray-600">Credits Available</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-indigo-600">{formatCurrency(masterMetrics.summary.availableCredits)}</div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Revenue Timeline - Stacked Area Chart */}
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                    Revenue Timeline (Last 12 Weeks)
+                  </CardTitle>
+                  <CardDescription>Invoices + Sales Receipts - Credit Memos</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={masterMetrics.timelines.revenue}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="week" 
+                        tickFormatter={(week) => new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        style={{ fontSize: '11px' }}
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                        style={{ fontSize: '11px' }}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatCurrency(value), '']}
+                        labelFormatter={(week) => `Week of ${new Date(week).toLocaleDateString()}`}
+                        contentStyle={{ fontSize: '12px' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Area type="monotone" dataKey="invoices" stackId="1" stroke="#3b82f6" fill="#3b82f6" name="Invoices" />
+                      <Area type="monotone" dataKey="salesReceipts" stackId="1" stroke="#10b981" fill="#10b981" name="Sales Receipts" />
+                      <Area type="monotone" dataKey="credits" stackId="2" stroke="#ef4444" fill="#ef4444" name="Credit Memos" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Cash Flow Timeline - Dual Line Chart */}
+              <Card className="border-l-4 border-l-blue-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-blue-600" />
+                    Cash Flow Timeline (Last 12 Weeks)
+                  </CardTitle>
+                  <CardDescription>Payments received vs expenses paid</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={masterMetrics.timelines.cashFlow}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="week" 
+                        tickFormatter={(week) => new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        style={{ fontSize: '11px' }}
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                        style={{ fontSize: '11px' }}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatCurrency(value), '']}
+                        labelFormatter={(week) => `Week of ${new Date(week).toLocaleDateString()}`}
+                        contentStyle={{ fontSize: '12px' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Line type="monotone" dataKey="inflow" stroke="#10b981" strokeWidth={3} name="Cash Inflow" />
+                      <Line type="monotone" dataKey="outflow" stroke="#ef4444" strokeWidth={3} name="Cash Outflow" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Combined Row: AR vs AP + Cash Flow Breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* AR vs AP Comparison */}
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardHeader>
+                    <CardTitle>AR vs AP Comparison</CardTitle>
+                    <CardDescription>Accounts receivable vs accounts payable</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={[
+                          { name: 'Receivable', AR: masterMetrics.summary.totalAR, AP: 0 },
+                          { name: 'Payable', AR: 0, AP: masterMetrics.summary.totalAP },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="name" style={{ fontSize: '11px' }} />
+                        <YAxis 
+                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                          style={{ fontSize: '11px' }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [formatCurrency(value), '']}
+                          contentStyle={{ fontSize: '12px' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Bar dataKey="AR" fill="#8b5cf6" name="Accounts Receivable" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="AP" fill="#ef4444" name="Accounts Payable" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Cash Flow Breakdown */}
+                <Card className="border-l-4 border-l-cyan-500">
+                  <CardHeader>
+                    <CardTitle>Cash Flow Breakdown</CardTitle>
+                    <CardDescription>Inflows vs outflows</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={[
+                          { category: 'Inflows', Payments: masterMetrics.cashFlowBreakdown.inflows.payments, SalesReceipts: masterMetrics.cashFlowBreakdown.inflows.salesReceipts },
+                          { category: 'Outflows', Expenses: masterMetrics.cashFlowBreakdown.outflows.expenses, Bills: masterMetrics.cashFlowBreakdown.outflows.bills },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="category" style={{ fontSize: '11px' }} />
+                        <YAxis 
+                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                          style={{ fontSize: '11px' }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [formatCurrency(value), '']}
+                          contentStyle={{ fontSize: '12px' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Bar dataKey="Payments" fill="#10b981" stackId="a" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="SalesReceipts" fill="#3b82f6" stackId="a" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="Expenses" fill="#f97316" stackId="a" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="Bills" fill="#ef4444" stackId="a" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top 10 Combined - Customers & Vendors */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top Customers by Total Revenue */}
+                <Card className="border-l-4 border-l-green-500">
+                  <CardHeader>
+                    <CardTitle>Top 10 Customers by Revenue</CardTitle>
+                    <CardDescription>Combined: Invoices + Sales Receipts - Credits</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart
+                        data={masterMetrics.top.customers.map(c => ({
+                          name: c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name,
+                          fullName: c.name,
+                          revenue: c.revenue,
+                        }))}
+                        layout="vertical"
+                        margin={{ left: 120, right: 10 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis type="number" style={{ fontSize: '11px' }} />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={110}
+                          style={{ fontSize: '11px' }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                          labelFormatter={(label: any, payload: any) => payload?.[0]?.payload?.fullName || label}
+                          contentStyle={{ fontSize: '12px' }}
+                        />
+                        <Bar dataKey="revenue" fill="#10b981" radius={[0, 8, 8, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Top Vendors by Total Spend */}
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardHeader>
+                    <CardTitle>Top 10 Vendors by Spend</CardTitle>
+                    <CardDescription>Combined: Expenses + Bills + POs</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart
+                        data={masterMetrics.top.vendors.map(v => ({
+                          name: v.name.length > 15 ? v.name.substring(0, 15) + '...' : v.name,
+                          fullName: v.name,
+                          spend: v.spend,
+                        }))}
+                        layout="vertical"
+                        margin={{ left: 120, right: 10 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis type="number" style={{ fontSize: '11px' }} />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          width={110}
+                          style={{ fontSize: '11px' }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [formatCurrency(value), 'Spend']}
+                          labelFormatter={(label: any, payload: any) => payload?.[0]?.payload?.fullName || label}
+                          contentStyle={{ fontSize: '12px' }}
+                        />
+                        <Bar dataKey="spend" fill="#f97316" radius={[0, 8, 8, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {!masterMetrics && (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-gray-600 text-center">Loading master financial dashboard...</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* AR Aging Tab */}
