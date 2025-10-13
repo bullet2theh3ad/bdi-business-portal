@@ -20,8 +20,26 @@ import {
   Filter,
   RefreshCw,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  PieChart as PieChartIcon
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface FinancialMetrics {
   totalRevenue: number;
@@ -291,12 +309,42 @@ export default function QuickBooksReportsPage() {
 
       {/* Tabbed Reports */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="ar">AR Aging</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-          <TabsTrigger value="vendors">Vendors</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 gap-2 h-auto p-2 bg-transparent">
+          <TabsTrigger 
+            value="overview" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-blue-200 data-[state=active]:border-blue-500"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger 
+            value="ar" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-green-200 data-[state=active]:border-green-500"
+          >
+            <TrendingUp className="h-4 w-4 mr-2" />
+            AR Aging
+          </TabsTrigger>
+          <TabsTrigger 
+            value="customers" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-purple-200 data-[state=active]:border-purple-500"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Customers
+          </TabsTrigger>
+          <TabsTrigger 
+            value="vendors" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-orange-200 data-[state=active]:border-orange-500"
+          >
+            <Building2 className="h-4 w-4 mr-2" />
+            Vendors
+          </TabsTrigger>
+          <TabsTrigger 
+            value="expenses" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-red-200 data-[state=active]:border-red-500"
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            Expenses
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -338,36 +386,131 @@ export default function QuickBooksReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Top Customers */}
-            <Card>
+            {/* Revenue vs Expenses Chart */}
+            <Card className="border-l-4 border-l-blue-500">
               <CardHeader>
-                <CardTitle>Top Customers by Balance</CardTitle>
-                <CardDescription>Customers with outstanding balances</CardDescription>
+                <CardTitle>Revenue vs Expenses</CardTitle>
+                <CardDescription>Financial performance comparison</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {customers
-                    .filter(c => c.balance > 0)
-                    .sort((a, b) => b.balance - a.balance)
-                    .slice(0, 5)
-                    .map((customer) => (
-                      <div key={customer.id} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
-                        <div>
-                          <p className="font-medium text-sm">{customer.displayName}</p>
-                          <p className="text-xs text-gray-500">{customer.totalInvoices} invoices</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-blue-600">{formatCurrency(customer.balance)}</p>
-                          {customer.overdueAmount > 0 && (
-                            <p className="text-xs text-red-600">Overdue: {formatCurrency(customer.overdueAmount)}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  {customers.filter(c => c.balance > 0).length === 0 && (
-                    <p className="text-center text-gray-500 py-4">No outstanding balances</p>
-                  )}
-                </div>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart
+                    data={[
+                      {
+                        name: 'Financial Overview',
+                        Revenue: metrics?.totalRevenue || 0,
+                        Expenses: metrics?.totalExpenses || 0,
+                        Outstanding: metrics?.totalAR || 0,
+                      }
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" style={{ fontSize: '11px' }} />
+                    <YAxis style={{ fontSize: '11px' }} />
+                    <Tooltip 
+                      formatter={(value: any) => formatCurrency(Number(value))}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    <Bar dataKey="Revenue" fill="#10b981" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="Expenses" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="Outstanding" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Customers Chart */}
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader>
+                <CardTitle>Top 10 Customers by Balance</CardTitle>
+                <CardDescription>Customers with highest outstanding balances</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart
+                    data={customers
+                      .filter(c => c.balance > 0)
+                      .sort((a, b) => b.balance - a.balance)
+                      .slice(0, 10)
+                      .map(c => ({
+                        name: c.displayName.length > 12 ? c.displayName.substring(0, 12) + '...' : c.displayName,
+                        fullName: c.displayName,
+                        balance: c.balance,
+                        overdue: c.overdueAmount,
+                      }))}
+                    layout="vertical"
+                    margin={{ left: 120, right: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" style={{ fontSize: '11px' }} />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={110} 
+                      style={{ fontSize: '11px' }}
+                      tick={{ fill: '#374151' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => formatCurrency(Number(value))}
+                      labelFormatter={(label: any, payload: any) => {
+                        return payload?.[0]?.payload?.fullName || label;
+                      }}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    <Bar dataKey="balance" fill="#8b5cf6" name="Total Balance" radius={[0, 8, 8, 0]} />
+                    <Bar dataKey="overdue" fill="#ef4444" name="Overdue" radius={[0, 8, 8, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Top Vendors by Spending Chart */}
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader>
+                <CardTitle>Top 10 Vendors by Spending</CardTitle>
+                <CardDescription>Highest vendor expenses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart
+                    data={vendors
+                      .sort((a, b) => b.totalSpent - a.totalSpent)
+                      .slice(0, 10)
+                      .map(v => ({
+                        name: v.displayName.length > 12 ? v.displayName.substring(0, 12) + '...' : v.displayName,
+                        fullName: v.displayName,
+                        spent: v.totalSpent,
+                        balance: v.balance,
+                      }))}
+                    layout="vertical"
+                    margin={{ left: 120, right: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" style={{ fontSize: '11px' }} />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={110} 
+                      style={{ fontSize: '11px' }}
+                      tick={{ fill: '#374151' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => formatCurrency(Number(value))}
+                      labelFormatter={(label: any, payload: any) => {
+                        return payload?.[0]?.payload?.fullName || label;
+                      }}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    <Bar dataKey="spent" fill="#f97316" name="Total Spent" radius={[0, 8, 8, 0]} />
+                    <Bar dataKey="balance" fill="#dc2626" name="Balance Due" radius={[0, 8, 8, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
@@ -423,24 +566,127 @@ export default function QuickBooksReportsPage() {
         </TabsContent>
 
         {/* AR Aging Tab */}
-        <TabsContent value="ar">
+        <TabsContent value="ar" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* AR Aging Pie Chart */}
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle>AR Aging Distribution</CardTitle>
+                <CardDescription>Outstanding invoices by age buckets</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie
+                      data={arAging.map((bucket, index) => ({
+                        name: bucket.label,
+                        value: bucket.amount,
+                        count: bucket.count,
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry: any) => `${entry.name}: ${formatCurrency(entry.value || 0)}`}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {arAging.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={
+                            index === 0 ? '#10b981' :
+                            index === 1 ? '#fbbf24' :
+                            index === 2 ? '#f97316' : '#ef4444'
+                          } 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: any) => formatCurrency(Number(value))}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* AR Aging Bar Chart */}
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle>AR Aging Details</CardTitle>
+                <CardDescription>Amount and count by bucket</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart
+                    data={arAging.map((bucket, index) => ({
+                      label: bucket.label,
+                      amount: bucket.amount,
+                      count: bucket.count,
+                    }))}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="label" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={100} 
+                      style={{ fontSize: '11px' }}
+                    />
+                    <YAxis yAxisId="left" orientation="left" stroke="#10b981" style={{ fontSize: '11px' }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" style={{ fontSize: '11px' }} />
+                    <Tooltip 
+                      formatter={(value: any, name: string) => {
+                        if (name === 'Amount') return formatCurrency(Number(value));
+                        return value;
+                      }}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    <Bar yAxisId="left" dataKey="amount" fill="#10b981" name="Amount" radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="count" fill="#3b82f6" name="Invoice Count" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AR Aging Details Cards */}
           <Card>
             <CardHeader>
-              <CardTitle>Accounts Receivable Aging Report</CardTitle>
-              <CardDescription>Outstanding invoices by age buckets</CardDescription>
+              <CardTitle>Aging Buckets Breakdown</CardTitle>
+              <CardDescription>Detailed view of each aging bucket</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {arAging.map((bucket, index) => (
-                  <div key={index} className="border rounded-lg p-4">
+                  <div 
+                    key={index} 
+                    className={`border-2 rounded-lg p-4 ${
+                      index === 0 ? 'border-green-300 bg-green-50' :
+                      index === 1 ? 'border-yellow-300 bg-yellow-50' :
+                      index === 2 ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50'
+                    }`}
+                  >
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-lg">{bucket.label}</h3>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-blue-600">{formatCurrency(bucket.amount)}</p>
-                        <p className="text-xs text-gray-500">{bucket.count} invoice{bucket.count !== 1 ? 's' : ''}</p>
-                      </div>
+                      <h3 className="font-semibold text-sm">{bucket.label}</h3>
+                      <div className={`w-3 h-3 rounded-full ${
+                        index === 0 ? 'bg-green-500' :
+                        index === 1 ? 'bg-yellow-500' :
+                        index === 2 ? 'bg-orange-500' : 'bg-red-500'
+                      }`} />
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <p className={`text-2xl font-bold mb-1 ${
+                      index === 0 ? 'text-green-700' :
+                      index === 1 ? 'text-yellow-700' :
+                      index === 2 ? 'text-orange-700' : 'text-red-700'
+                    }`}>
+                      {formatCurrency(bucket.amount)}
+                    </p>
+                    <p className="text-xs text-gray-600">{bucket.count} invoice{bucket.count !== 1 ? 's' : ''}</p>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                       <div
                         className={`h-2 rounded-full ${
                           index === 0 ? 'bg-green-500' :
@@ -459,7 +705,59 @@ export default function QuickBooksReportsPage() {
         </TabsContent>
 
         {/* Customers Tab */}
-        <TabsContent value="customers">
+        <TabsContent value="customers" className="space-y-6">
+          {/* Customer Balance Distribution */}
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader>
+              <CardTitle>Customer Balance Distribution</CardTitle>
+              <CardDescription>Top 15 customers by outstanding balance</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart
+                  data={customers
+                    .filter(c => c.balance > 0)
+                    .sort((a, b) => b.balance - a.balance)
+                    .slice(0, 15)
+                    .map(c => ({
+                      name: c.displayName.length > 20 ? c.displayName.substring(0, 20) + '...' : c.displayName,
+                      balance: c.balance,
+                      overdue: c.overdueAmount,
+                    }))}
+                >
+                  <defs>
+                    <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                    </linearGradient>
+                    <linearGradient id="colorOverdue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={120} 
+                    style={{ fontSize: '10px' }}
+                    interval={0}
+                  />
+                  <YAxis style={{ fontSize: '11px' }} />
+                  <Tooltip 
+                    formatter={(value: any) => formatCurrency(Number(value))}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Area type="monotone" dataKey="balance" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorBalance)" name="Total Balance" />
+                  <Area type="monotone" dataKey="overdue" stroke="#ef4444" fillOpacity={1} fill="url(#colorOverdue)" name="Overdue" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Customer Table */}
           <Card>
             <CardHeader>
               <CardTitle>Customer List</CardTitle>
@@ -505,7 +803,52 @@ export default function QuickBooksReportsPage() {
         </TabsContent>
 
         {/* Vendors Tab */}
-        <TabsContent value="vendors">
+        <TabsContent value="vendors" className="space-y-6">
+          {/* Vendor Spending Chart */}
+          <Card className="border-l-4 border-l-orange-500">
+            <CardHeader>
+              <CardTitle>Top Vendor Spending</CardTitle>
+              <CardDescription>Top 15 vendors by total spending</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart
+                  data={vendors
+                    .sort((a, b) => b.totalSpent - a.totalSpent)
+                    .slice(0, 15)
+                    .map(v => ({
+                      name: v.displayName.length > 20 ? v.displayName.substring(0, 20) + '...' : v.displayName,
+                      spent: v.totalSpent,
+                      balance: v.balance,
+                      count: v.expenseCount,
+                    }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={120} 
+                    style={{ fontSize: '10px' }}
+                    interval={0}
+                  />
+                  <YAxis style={{ fontSize: '11px' }} />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => {
+                      if (name === 'Expense Count') return value;
+                      return formatCurrency(Number(value));
+                    }}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Line type="monotone" dataKey="spent" stroke="#f97316" strokeWidth={3} dot={{ r: 6 }} name="Total Spent" />
+                  <Line type="monotone" dataKey="balance" stroke="#dc2626" strokeWidth={2} dot={{ r: 4 }} name="Balance Due" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Vendor Table */}
           <Card>
             <CardHeader>
               <CardTitle>Vendor List</CardTitle>
@@ -543,7 +886,115 @@ export default function QuickBooksReportsPage() {
         </TabsContent>
 
         {/* Expenses Tab */}
-        <TabsContent value="expenses">
+        <TabsContent value="expenses" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Expenses Over Time */}
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader>
+                <CardTitle>Expenses Over Time</CardTitle>
+                <CardDescription>Daily expense totals</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart
+                    data={expenses
+                      .reduce((acc: any[], expense) => {
+                        const date = new Date(expense.date).toLocaleDateString();
+                        const existing = acc.find(item => item.date === date);
+                        if (existing) {
+                          existing.amount += expense.amount;
+                          existing.count += 1;
+                        } else {
+                          acc.push({ date, amount: expense.amount, count: 1 });
+                        }
+                        return acc;
+                      }, [])
+                      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                      .slice(-30) // Last 30 days
+                    }
+                  >
+                    <defs>
+                      <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={80} 
+                      style={{ fontSize: '10px' }}
+                      interval={'preserveStartEnd'}
+                    />
+                    <YAxis style={{ fontSize: '11px' }} />
+                    <Tooltip 
+                      formatter={(value: any, name: string) => {
+                        if (name === 'Amount') return formatCurrency(Number(value));
+                        return value;
+                      }}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    <Area type="monotone" dataKey="amount" stroke="#ef4444" fillOpacity={1} fill="url(#colorExpense)" name="Amount" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Expenses by Vendor (Pie) */}
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader>
+                <CardTitle>Expenses by Top Vendors</CardTitle>
+                <CardDescription>Distribution of spending</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={(() => {
+                        const vendorTotals = expenses.reduce((acc: any, expense) => {
+                          const vendor = expense.vendorName || 'Unknown';
+                          if (!acc[vendor]) acc[vendor] = 0;
+                          acc[vendor] += expense.amount;
+                          return acc;
+                        }, {});
+                        
+                        return Object.entries(vendorTotals)
+                          .sort(([, a]: any, [, b]: any) => b - a)
+                          .slice(0, 8)
+                          .map(([name, value]) => ({ name, value }));
+                      })()}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={(entry: any) => entry.name.length > 12 ? entry.name.substring(0, 12) + '...' : entry.name}
+                      style={{ fontSize: '10px' }}
+                    >
+                      {expenses.map((_, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={[
+                            '#ef4444', '#f97316', '#f59e0b', '#eab308', 
+                            '#84cc16', '#22c55e', '#10b981', '#14b8a6'
+                          ][index % 8]} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: any) => formatCurrency(Number(value))}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Expense Table */}
           <Card>
             <CardHeader>
               <CardTitle>Expense List</CardTitle>
