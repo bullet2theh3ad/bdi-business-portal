@@ -374,6 +374,10 @@ export default function NREBudgetPage() {
       missingFields.push('SKU Code (select from dropdown or enter manually)');
     }
     
+    if (!quoteNumber.trim()) {
+      missingFields.push('Quote Number');
+    }
+    
     if (lineItems.length === 0) {
       missingFields.push('At least one Line Item');
     }
@@ -1182,11 +1186,11 @@ export default function NREBudgetPage() {
                 />
               </div>
               <div>
-                <Label>Quote Number</Label>
+                <Label>Quote Number *</Label>
                 <Input
                   value={quoteNumber}
                   onChange={(e) => setQuoteNumber(e.target.value)}
-                  placeholder="Optional"
+                  placeholder="Enter quote number"
                 />
               </div>
               <div>
