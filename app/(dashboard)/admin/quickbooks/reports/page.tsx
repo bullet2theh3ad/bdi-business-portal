@@ -185,56 +185,60 @@ export default function QuickBooksReportsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-[1800px]">
+    <div className="container mx-auto p-4 sm:p-6 max-w-[1800px]">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <FileText className="h-8 w-8 text-blue-600" />
-              QuickBooks Reports
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+              <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+              <span>QuickBooks Reports</span>
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
               Comprehensive financial insights and analytics
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={loadAllData} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button onClick={loadAllData} variant="outline" size="sm" className="flex-1 sm:flex-none">
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border">
+        <div className="bg-gray-50 p-4 rounded-lg border space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-gray-600 flex-shrink-0" />
+              <Label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Date Range:</Label>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {(['30', '60', '90', 'all'] as const).map((range) => (
+                <Button
+                  key={range}
+                  variant={dateRange === range ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDateRange(range)}
+                  className="text-xs sm:text-sm"
+                >
+                  {range === 'all' ? 'All Time' : `${range}d`}
+                  <span className="hidden sm:inline">{range === 'all' ? '' : 'ays'}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-gray-600" />
-            <Label className="text-sm font-semibold text-gray-700">Date Range:</Label>
-          </div>
-          <div className="flex gap-2">
-            {(['30', '60', '90', 'all'] as const).map((range) => (
-              <Button
-                key={range}
-                variant={dateRange === range ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setDateRange(range)}
-              >
-                {range === 'all' ? 'All Time' : `Last ${range} days`}
-              </Button>
-            ))}
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Filter className="h-5 w-5 text-gray-600" />
+            <Filter className="h-5 w-5 text-gray-600 flex-shrink-0" />
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
+              className="w-full sm:w-64"
             />
           </div>
         </div>
@@ -309,43 +313,47 @@ export default function QuickBooksReportsPage() {
 
       {/* Tabbed Reports */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 gap-2 h-auto p-2 bg-transparent">
-          <TabsTrigger 
-            value="overview" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-blue-200 data-[state=active]:border-blue-500"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger 
-            value="ar" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-green-200 data-[state=active]:border-green-500"
-          >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            AR Aging
-          </TabsTrigger>
-          <TabsTrigger 
-            value="customers" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-purple-200 data-[state=active]:border-purple-500"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Customers
-          </TabsTrigger>
-          <TabsTrigger 
-            value="vendors" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-orange-200 data-[state=active]:border-orange-500"
-          >
-            <Building2 className="h-4 w-4 mr-2" />
-            Vendors
-          </TabsTrigger>
-          <TabsTrigger 
-            value="expenses" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-red-200 data-[state=active]:border-red-500"
-          >
-            <Receipt className="h-4 w-4 mr-2" />
-            Expenses
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2">
+          <TabsList className="inline-flex w-full lg:grid lg:grid-cols-5 gap-2 h-auto p-2 bg-transparent min-w-max lg:min-w-0">
+            <TabsTrigger 
+              value="overview" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-blue-200 data-[state=active]:border-blue-500 whitespace-nowrap"
+            >
+              <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="hidden sm:inline">Overview</span>
+              <span className="sm:hidden">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="ar" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-green-200 data-[state=active]:border-green-500 whitespace-nowrap"
+            >
+              <TrendingUp className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="hidden sm:inline">AR Aging</span>
+              <span className="sm:hidden">AR</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="customers" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-purple-200 data-[state=active]:border-purple-500 whitespace-nowrap"
+            >
+              <Users className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Customers</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="vendors" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-orange-200 data-[state=active]:border-orange-500 whitespace-nowrap"
+            >
+              <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Vendors</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="expenses" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-red-200 data-[state=active]:border-red-500 whitespace-nowrap"
+            >
+              <Receipt className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Expenses</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
@@ -586,7 +594,7 @@ export default function QuickBooksReportsPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={(entry: any) => `${entry.name}: ${formatCurrency(entry.value || 0)}`}
+                      label={false}
                       outerRadius={120}
                       fill="#8884d8"
                       dataKey="value"
@@ -606,7 +614,13 @@ export default function QuickBooksReportsPage() {
                       formatter={(value: any) => formatCurrency(Number(value))}
                       contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
                     />
-                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                    <Legend 
+                      wrapperStyle={{ fontSize: '11px' }}
+                      formatter={(value, entry: any) => {
+                        const data = entry.payload;
+                        return `${value}: ${formatCurrency(data.value || 0)}`;
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -971,8 +985,7 @@ export default function QuickBooksReportsPage() {
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="value"
-                      label={(entry: any) => entry.name.length > 12 ? entry.name.substring(0, 12) + '...' : entry.name}
-                      style={{ fontSize: '10px' }}
+                      label={false}
                     >
                       {expenses.map((_, index) => (
                         <Cell 
@@ -987,6 +1000,14 @@ export default function QuickBooksReportsPage() {
                     <Tooltip 
                       formatter={(value: any) => formatCurrency(Number(value))}
                       contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ fontSize: '10px' }}
+                      formatter={(value, entry: any) => {
+                        const data = entry.payload;
+                        const shortName = value.length > 15 ? value.substring(0, 15) + '...' : value;
+                        return `${shortName}: ${formatCurrency(data.value || 0)}`;
+                      }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
