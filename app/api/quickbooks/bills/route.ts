@@ -29,13 +29,10 @@ export async function GET(request: NextRequest) {
 
     // Check feature flag access
     if (!canAccessQuickBooks(user.email)) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Use service role client to bypass RLS (we've already checked authorization)
+    // Use service role for data access
     const supabaseService = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -51,32 +48,24 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Get counts from each QuickBooks table
-    const [customersCount, invoicesCount, vendorsCount, expensesCount, itemsCount, paymentsCount, billsCount] = await Promise.all([
-      supabaseService.from('quickbooks_customers').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_invoices').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_vendors').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_expenses').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_items').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_payments').select('id', { count: 'exact', head: true }),
-      supabaseService.from('quickbooks_bills').select('id', { count: 'exact', head: true }),
-    ]);
+    // Fetch bills
+    const { data: bills, error: billsError } = await supabaseService
+      .from('quickbooks_bills')
+      .select('*')
+      .order('bill_date', { ascending: false });
+
+    if (billsError) {
+      console.error('Error fetching bills:', billsError);
+      throw billsError;
+    }
 
     return NextResponse.json({
-      stats: {
-        customers: customersCount.count || 0,
-        invoices: invoicesCount.count || 0,
-        vendors: vendorsCount.count || 0,
-        expenses: expensesCount.count || 0,
-        items: itemsCount.count || 0,
-        payments: paymentsCount.count || 0,
-        bills: billsCount.count || 0,
-      },
-      message: 'Stats retrieved successfully'
+      bills: bills || [],
+      message: 'Bills retrieved successfully'
     });
 
   } catch (error) {
-    console.error('Error in GET /api/quickbooks/stats:', error);
+    console.error('Error in GET /api/quickbooks/bills:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

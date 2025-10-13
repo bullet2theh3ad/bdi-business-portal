@@ -76,28 +76,51 @@ CREATE TABLE IF NOT EXISTS quickbooks_bills (
 );
 
 -- Indexes
-CREATE INDEX idx_qb_payments_connection ON quickbooks_payments(connection_id);
-CREATE INDEX idx_qb_payments_customer ON quickbooks_payments(qb_customer_id);
-CREATE INDEX idx_qb_payments_date ON quickbooks_payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_qb_payments_connection ON quickbooks_payments(connection_id);
+CREATE INDEX IF NOT EXISTS idx_qb_payments_customer ON quickbooks_payments(qb_customer_id);
+CREATE INDEX IF NOT EXISTS idx_qb_payments_date ON quickbooks_payments(payment_date);
 
-CREATE INDEX idx_qb_bills_connection ON quickbooks_bills(connection_id);
-CREATE INDEX idx_qb_bills_vendor ON quickbooks_bills(qb_vendor_id);
-CREATE INDEX idx_qb_bills_date ON quickbooks_bills(bill_date);
-CREATE INDEX idx_qb_bills_due_date ON quickbooks_bills(due_date);
-CREATE INDEX idx_qb_bills_status ON quickbooks_bills(payment_status);
+CREATE INDEX IF NOT EXISTS idx_qb_bills_connection ON quickbooks_bills(connection_id);
+CREATE INDEX IF NOT EXISTS idx_qb_bills_vendor ON quickbooks_bills(qb_vendor_id);
+CREATE INDEX IF NOT EXISTS idx_qb_bills_date ON quickbooks_bills(bill_date);
+CREATE INDEX IF NOT EXISTS idx_qb_bills_due_date ON quickbooks_bills(due_date);
+CREATE INDEX IF NOT EXISTS idx_qb_bills_status ON quickbooks_bills(payment_status);
 
 -- Enable RLS
 ALTER TABLE quickbooks_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quickbooks_bills ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "QuickBooks authorized users can view payments" ON quickbooks_payments;
 CREATE POLICY "QuickBooks authorized users can view payments"
   ON quickbooks_payments FOR SELECT
   USING (auth.uid() IN (SELECT auth_id FROM quickbooks_authorized_users));
 
+DROP POLICY IF EXISTS "QuickBooks authorized users can view bills" ON quickbooks_bills;
 CREATE POLICY "QuickBooks authorized users can view bills"
   ON quickbooks_bills FOR SELECT
   USING (auth.uid() IN (SELECT auth_id FROM quickbooks_authorized_users));
+
+-- INSERT/UPDATE policies for sync
+DROP POLICY IF EXISTS "Service role can insert payments" ON quickbooks_payments;
+CREATE POLICY "Service role can insert payments"
+  ON quickbooks_payments FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role can update payments" ON quickbooks_payments;
+CREATE POLICY "Service role can update payments"
+  ON quickbooks_payments FOR UPDATE
+  USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role can insert bills" ON quickbooks_bills;
+CREATE POLICY "Service role can insert bills"
+  ON quickbooks_bills FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role can update bills" ON quickbooks_bills;
+CREATE POLICY "Service role can update bills"
+  ON quickbooks_bills FOR UPDATE
+  USING (true) WITH CHECK (true);
 
 -- Comments
 COMMENT ON TABLE quickbooks_payments IS 'Customer payments received - cash flow tracking';

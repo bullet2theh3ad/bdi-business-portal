@@ -18,7 +18,8 @@ import {
   AlertCircle,
   ExternalLink,
   Loader2,
-  Package
+  Package,
+  CreditCard
 } from 'lucide-react';
 
 interface QuickBooksConnection {
@@ -39,6 +40,8 @@ interface SyncStats {
   vendors: number;
   expenses: number;
   items: number;
+  payments: number;
+  bills: number;
 }
 
 export default function QuickBooksIntegrationPage() {
@@ -161,7 +164,7 @@ export default function QuickBooksIntegrationPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}`);
+        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}\nPayments: ${data.details.payments.fetched}\nBills: ${data.details.bills.fetched}`);
         await loadConnection();
         await loadSyncStats();
       } else {
@@ -431,7 +434,7 @@ export default function QuickBooksIntegrationPage() {
 
       {/* Sync Statistics */}
       {syncStats && connection?.is_active && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -494,6 +497,32 @@ export default function QuickBooksIntegrationPage() {
             <CardContent>
               <div className="text-2xl font-bold">{syncStats.items.toLocaleString()}</div>
               <p className="text-xs text-gray-500 mt-1">Product catalog</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">Payments</CardTitle>
+                <CreditCard className="h-4 w-4 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{syncStats.payments.toLocaleString()}</div>
+              <p className="text-xs text-gray-500 mt-1">Customer payments</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">Bills</CardTitle>
+                <FileText className="h-4 w-4 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{syncStats.bills.toLocaleString()}</div>
+              <p className="text-xs text-gray-500 mt-1">Vendor bills</p>
             </CardContent>
           </Card>
         </div>

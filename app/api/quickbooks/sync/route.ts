@@ -115,6 +115,14 @@ export async function POST(request: NextRequest) {
     let itemsFetched = 0;
     let itemsCreated = 0;
     let itemsUpdated = 0;
+    let paymentCount = 0;
+    let paymentsFetched = 0;
+    let paymentsCreated = 0;
+    let paymentsUpdated = 0;
+    let billCount = 0;
+    let billsFetched = 0;
+    let billsCreated = 0;
+    let billsUpdated = 0;
 
     try {
       // Fetch Customers from QuickBooks (with pagination)
@@ -773,16 +781,247 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${itemCount} items (${itemsCreated} created, ${itemsUpdated} updated)`);
 
+      // ===============================================
+      // PHASE 7: SYNC PAYMENTS (with pagination)
+      // ===============================================
+      console.log('📥 Fetching payments from QuickBooks...');
+      let allPayments: any[] = [];
+      let paymentStartPosition = 1;
+      let hasMorePayments = true;
+      
+      while (hasMorePayments) {
+        const paymentsQuery = `SELECT * FROM Payment STARTPOSITION ${paymentStartPosition} MAXRESULTS 1000`;
+        console.log(`Payment Query (page ${Math.ceil(paymentStartPosition / 1000)}):`, paymentsQuery);
+        
+        const paymentsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(paymentsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!paymentsResponse.ok) {
+          const errorBody = await paymentsResponse.text();
+          console.error('QuickBooks Payments API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (payments, ${paymentsResponse.status}): ${paymentsResponse.statusText} - ${errorBody}`);
+        }
+
+        const paymentsData = await paymentsResponse.json();
+        const payments = paymentsData.QueryResponse?.Payment || [];
+        
+        if (payments.length > 0) {
+          allPayments = allPayments.concat(payments);
+          console.log(`✅ Fetched ${payments.length} payments (total so far: ${allPayments.length})`);
+          
+          if (payments.length < 1000) {
+            hasMorePayments = false;
+          } else {
+            paymentStartPosition += 1000;
+          }
+        } else {
+          hasMorePayments = false;
+        }
+      }
+      
+      const payments = allPayments;
+      paymentsFetched = payments.length;
+
+      console.log(`✅ Fetched ${paymentsFetched} total payments from QuickBooks`);
+
+      // Upsert payments to database
+      for (const payment of payments) {
+        let paymentData: any;
+        try {
+          paymentData = {
+            connection_id: connection.id,
+            qb_payment_id: payment.Id,
+            qb_sync_token: payment.SyncToken,
+            qb_customer_id: payment.CustomerRef?.value || null,
+            customer_name: payment.CustomerRef?.name || null,
+            payment_date: payment.TxnDate,
+            total_amount: payment.TotalAmt || 0,
+            unapplied_amount: payment.UnappliedAmt || 0,
+            payment_method: payment.PaymentMethodRef?.name || null,
+            reference_number: payment.PaymentRefNum || null,
+            deposit_to_account: payment.DepositToAccountRef?.value || null,
+            line_items: payment.Line || [],
+            qb_created_at: payment.MetaData?.CreateTime,
+            qb_updated_at: payment.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if payment exists
+          const { data: existing, error: existingError } = await supabaseService
+            .from('quickbooks_payments')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_payment_id', payment.Id)
+            .single();
+
+          if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+          }
+
+          if (existing) {
+            const { error: updateError } = await supabaseService
+              .from('quickbooks_payments')
+              .update(paymentData)
+              .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for payment ${payment.Id}:`, updateError);
+              throw updateError;
+            }
+            paymentsUpdated++;
+          } else {
+            const { error: insertError } = await supabaseService
+              .from('quickbooks_payments')
+              .insert(paymentData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for payment ${payment.Id}:`, insertError);
+              throw insertError;
+            }
+            paymentsCreated++;
+          }
+
+          paymentCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting payment ${payment.Id}:`, err);
+          console.error('Payment data:', JSON.stringify(paymentData, null, 2));
+        }
+      }
+
+      console.log(`✅ Synced ${paymentCount} payments (${paymentsCreated} created, ${paymentsUpdated} updated)`);
+
+      // ===============================================
+      // PHASE 8: SYNC BILLS (with pagination)
+      // ===============================================
+      console.log('📥 Fetching bills from QuickBooks...');
+      let allBills: any[] = [];
+      let billStartPosition = 1;
+      let hasMoreBills = true;
+      
+      while (hasMoreBills) {
+        const billsQuery = `SELECT * FROM Bill STARTPOSITION ${billStartPosition} MAXRESULTS 1000`;
+        console.log(`Bill Query (page ${Math.ceil(billStartPosition / 1000)}):`, billsQuery);
+        
+        const billsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(billsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!billsResponse.ok) {
+          const errorBody = await billsResponse.text();
+          console.error('QuickBooks Bills API Error Response:', errorBody);
+          throw new Error(`QuickBooks API error (bills, ${billsResponse.status}): ${billsResponse.statusText} - ${errorBody}`);
+        }
+
+        const billsData = await billsResponse.json();
+        const bills = billsData.QueryResponse?.Bill || [];
+        
+        if (bills.length > 0) {
+          allBills = allBills.concat(bills);
+          console.log(`✅ Fetched ${bills.length} bills (total so far: ${allBills.length})`);
+          
+          if (bills.length < 1000) {
+            hasMoreBills = false;
+          } else {
+            billStartPosition += 1000;
+          }
+        } else {
+          hasMoreBills = false;
+        }
+      }
+      
+      const bills = allBills;
+      billsFetched = bills.length;
+
+      console.log(`✅ Fetched ${billsFetched} total bills from QuickBooks`);
+
+      // Upsert bills to database
+      for (const bill of bills) {
+        let billData: any;
+        try {
+          billData = {
+            connection_id: connection.id,
+            qb_bill_id: bill.Id,
+            qb_sync_token: bill.SyncToken,
+            qb_vendor_id: bill.VendorRef?.value || null,
+            vendor_name: bill.VendorRef?.name || null,
+            bill_number: bill.DocNumber || null,
+            bill_date: bill.TxnDate,
+            due_date: bill.DueDate || null,
+            total_amount: bill.TotalAmt || 0,
+            balance: bill.Balance || 0,
+            payment_status: bill.Balance === 0 ? 'Paid' : bill.Balance < bill.TotalAmt ? 'Partial' : 'Unpaid',
+            line_items: bill.Line || [],
+            ap_account_ref: bill.APAccountRef?.value || null,
+            qb_created_at: bill.MetaData?.CreateTime,
+            qb_updated_at: bill.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if bill exists
+          const { data: existing, error: existingError } = await supabaseService
+            .from('quickbooks_bills')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_bill_id', bill.Id)
+            .single();
+
+          if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+          }
+
+          if (existing) {
+            const { error: updateError } = await supabaseService
+              .from('quickbooks_bills')
+              .update(billData)
+              .eq('id', existing.id);
+            
+            if (updateError) {
+              console.error(`❌ Update error for bill ${bill.Id}:`, updateError);
+              throw updateError;
+            }
+            billsUpdated++;
+          } else {
+            const { error: insertError } = await supabaseService
+              .from('quickbooks_bills')
+              .insert(billData);
+            
+            if (insertError) {
+              console.error(`❌ Insert error for bill ${bill.Id}:`, insertError);
+              throw insertError;
+            }
+            billsCreated++;
+          }
+
+          billCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting bill ${bill.Id}:`, err);
+          console.error('Bill data:', JSON.stringify(billData, null, 2));
+        }
+      }
+
+      console.log(`✅ Synced ${billCount} bills (${billsCreated} created, ${billsUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount + paymentCount + billCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched,
-            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated,
-            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated,
+            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched,
+            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated,
+            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -825,6 +1064,16 @@ export async function POST(request: NextRequest) {
             fetched: itemsFetched,
             created: itemsCreated,
             updated: itemsUpdated,
+          },
+          payments: {
+            fetched: paymentsFetched,
+            created: paymentsCreated,
+            updated: paymentsUpdated,
+          },
+          bills: {
+            fetched: billsFetched,
+            created: billsCreated,
+            updated: billsUpdated,
           },
         },
       });

@@ -195,6 +195,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/quickbooks/products',
             icon: 'inventory',
           },
+          {
+            title: 'Payments/Bills',
+            href: '/admin/quickbooks/payments-bills',
+            icon: 'finance',
+          },
         ],
       },
       {
