@@ -63,17 +63,32 @@ export async function GET(request: NextRequest) {
 
     if (expensesError) throw expensesError;
 
-    // Aggregate expense data per vendor
+    // Get all bills to calculate spending per vendor
+    const { data: bills, error: billsError } = await supabaseService
+      .from('quickbooks_bills')
+      .select('qb_vendor_id, total_amount');
+
+    if (billsError) throw billsError;
+
+    // Aggregate expense and bill data per vendor
     const vendorStats = (vendors || []).map((vendor) => {
       const vendorExpenses = (expenses || []).filter(
         (exp) => exp.qb_vendor_id === vendor.qb_vendor_id
       );
+      const vendorBills = (bills || []).filter(
+        (bill) => bill.qb_vendor_id === vendor.qb_vendor_id
+      );
 
-      const totalSpent = vendorExpenses.reduce(
+      const expenseTotal = vendorExpenses.reduce(
         (sum, exp) => sum + Number(exp.total_amount || 0),
         0
       );
-      const expenseCount = vendorExpenses.length;
+      const billTotal = vendorBills.reduce(
+        (sum, bill) => sum + Number(bill.total_amount || 0),
+        0
+      );
+      const totalSpent = expenseTotal + billTotal;
+      const expenseCount = vendorExpenses.length + vendorBills.length;
 
       return {
         id: vendor.id,
@@ -84,6 +99,9 @@ export async function GET(request: NextRequest) {
         expenseCount,
       };
     });
+
+    // Sort by balance (descending) to show vendors with highest AP first
+    vendorStats.sort((a, b) => b.balance - a.balance);
 
     return NextResponse.json(vendorStats);
 

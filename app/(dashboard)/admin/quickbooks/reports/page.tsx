@@ -954,17 +954,19 @@ export default function QuickBooksReportsPage() {
           {/* Vendor Spending Chart */}
           <Card className="border-l-4 border-l-orange-500">
             <CardHeader>
-              <CardTitle>Top Vendor Spending</CardTitle>
-              <CardDescription>Top 15 vendors by total spending</CardDescription>
+              <CardTitle>Top Vendors by Balance Due</CardTitle>
+              <CardDescription>Top 15 vendors by outstanding balance (AP)</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart
                   data={vendors
-                    .sort((a, b) => b.totalSpent - a.totalSpent)
+                    .filter(v => v.balance > 0 || v.totalSpent > 0)
+                    .sort((a, b) => b.balance - a.balance)
                     .slice(0, 15)
                     .map(v => ({
                       name: v.displayName.length > 20 ? v.displayName.substring(0, 20) + '...' : v.displayName,
+                      fullName: v.displayName,
                       spent: v.totalSpent,
                       balance: v.balance,
                       count: v.expenseCount,
@@ -981,6 +983,13 @@ export default function QuickBooksReportsPage() {
                   />
                   <YAxis style={{ fontSize: '11px' }} />
                   <Tooltip 
+                    labelFormatter={(label: string, payload: any) => {
+                      // Show full name in tooltip
+                      if (payload && payload[0]) {
+                        return payload[0].payload.fullName;
+                      }
+                      return label;
+                    }}
                     formatter={(value: any, name: string) => {
                       if (name === 'Expense Count') return value;
                       return formatCurrency(Number(value));
@@ -988,8 +997,8 @@ export default function QuickBooksReportsPage() {
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="spent" stroke="#f97316" strokeWidth={3} dot={{ r: 6 }} name="Total Spent" />
-                  <Line type="monotone" dataKey="balance" stroke="#dc2626" strokeWidth={2} dot={{ r: 4 }} name="Balance Due" />
+                  <Line type="monotone" dataKey="balance" stroke="#dc2626" strokeWidth={3} dot={{ r: 6 }} name="Balance Due" />
+                  <Line type="monotone" dataKey="spent" stroke="#f97316" strokeWidth={2} dot={{ r: 4 }} name="Total Spent" />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
