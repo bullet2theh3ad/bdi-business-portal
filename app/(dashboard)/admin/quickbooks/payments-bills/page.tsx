@@ -235,7 +235,8 @@ export default function PaymentsBillsPage() {
 
   // Top customers by payment amount
   const customerPayments = payments.reduce((acc, payment) => {
-    const customer = payment.customer_name || 'Unknown';
+    // Use customer_name if available, otherwise use 'Unknown Customer'
+    const customer = payment.customer_name || 'Unknown Customer';
     if (!acc[customer]) {
       acc[customer] = 0;
     }
@@ -247,6 +248,11 @@ export default function PaymentsBillsPage() {
     .map(([name, amount]) => ({ name, amount }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
+
+  // Debug logging
+  console.log('Payments data:', payments.slice(0, 3));
+  console.log('Customer payments:', customerPayments);
+  console.log('Top customers data:', topCustomersData);
 
   if (loading) {
     return (
