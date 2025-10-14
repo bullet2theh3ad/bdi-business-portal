@@ -16,7 +16,8 @@ import {
   FileText,
   TrendingDown,
   Calendar,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Receipt
 } from 'lucide-react';
 import {
   BarChart,
@@ -333,37 +334,75 @@ export default function CreditMemosPage() {
           </CardContent>
         </Card>
 
-        {/* Top Customers by Credits */}
+        {/* Credit Memos Analytics - Comprehensive View */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-red-600" />
-              Top Customers by Credits Issued
+              <Receipt className="h-5 w-5 text-red-600" />
+              Credit Memos Analytics Overview
             </CardTitle>
-            <CardDescription>Customers with highest credit amounts</CardDescription>
+            <CardDescription>Total credits breakdown: Issued vs Available vs Applied</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topCustomers} layout="horizontal">
+              <BarChart data={[
+                {
+                  category: 'Total Credits Issued',
+                  amount: totalCredits,
+                  color: '#ef4444'
+                },
+                {
+                  category: 'Available Credits',
+                  amount: totalRemainingCredit,
+                  color: '#f59e0b'
+                },
+                {
+                  category: 'Applied Credits',
+                  amount: totalCredits - totalRemainingCredit,
+                  color: '#10b981'
+                }
+              ]}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
-                  type="number" 
+                  dataKey="category" 
+                  style={{ fontSize: '11px' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis 
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                   style={{ fontSize: '11px' }}
                 />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  width={150}
-                  style={{ fontSize: '11px' }}
-                />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Credits']}
+                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
                   contentStyle={{ fontSize: '12px' }}
                 />
                 <Bar dataKey="amount" fill="#ef4444" />
               </BarChart>
             </ResponsiveContainer>
+            
+            {/* Summary Stats */}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="text-xs text-red-600 font-medium">Total Issued</div>
+                <div className="text-sm font-bold text-red-800">{formatCurrency(totalCredits)}</div>
+              </div>
+              <div className="bg-yellow-50 p-3 rounded-lg">
+                <div className="text-xs text-yellow-600 font-medium">Available</div>
+                <div className="text-sm font-bold text-yellow-800">{formatCurrency(totalRemainingCredit)}</div>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <div className="text-xs text-green-600 font-medium">Applied</div>
+                <div className="text-sm font-bold text-green-800">{formatCurrency(totalCredits - totalRemainingCredit)}</div>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="text-xs text-blue-600 font-medium">Usage Rate</div>
+                <div className="text-sm font-bold text-blue-800">
+                  {totalCredits > 0 ? `${(((totalCredits - totalRemainingCredit) / totalCredits) * 100).toFixed(1)}%` : '0%'}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

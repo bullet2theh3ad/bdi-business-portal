@@ -16,7 +16,8 @@ import {
   Package,
   TrendingUp,
   Calendar,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  FileText
 } from 'lucide-react';
 import {
   BarChart,
@@ -111,6 +112,7 @@ export default function PurchaseOrdersPage() {
   });
 
   const totalPOValue = orders.reduce((sum, o) => sum + o.total_amount, 0);
+  const openPOValue = orders.filter(o => o.po_status === 'Open').reduce((sum, o) => sum + o.total_amount, 0);
   const openOrders = orders.filter(o => o.po_status === 'Open').length;
   const closedOrders = orders.filter(o => o.po_status === 'Closed').length;
 
@@ -347,37 +349,75 @@ export default function PurchaseOrdersPage() {
           </CardContent>
         </Card>
 
-        {/* Top Vendors */}
+        {/* Purchase Orders Analytics - Comprehensive View */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-orange-600" />
-              Top Vendors by PO Value
+              <FileText className="h-5 w-5 text-orange-600" />
+              Purchase Orders Analytics Overview
             </CardTitle>
-            <CardDescription>Vendors with highest purchase order amounts</CardDescription>
+            <CardDescription>Total POs breakdown: Open vs Closed vs Total Value</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topVendors} layout="horizontal">
+              <BarChart data={[
+                {
+                  category: 'Total PO Value',
+                  amount: totalPOValue,
+                  color: '#f97316'
+                },
+                {
+                  category: 'Open PO Value',
+                  amount: openPOValue,
+                  color: '#ef4444'
+                },
+                {
+                  category: 'Closed PO Value',
+                  amount: totalPOValue - openPOValue,
+                  color: '#10b981'
+                }
+              ]}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
-                  type="number" 
+                  dataKey="category" 
+                  style={{ fontSize: '11px' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis 
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                   style={{ fontSize: '11px' }}
                 />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  width={150}
-                  style={{ fontSize: '11px' }}
-                />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'PO Value']}
+                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
                   contentStyle={{ fontSize: '12px' }}
                 />
                 <Bar dataKey="amount" fill="#f97316" />
               </BarChart>
             </ResponsiveContainer>
+            
+            {/* Summary Stats */}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div className="bg-orange-50 p-3 rounded-lg">
+                <div className="text-xs text-orange-600 font-medium">Total PO Value</div>
+                <div className="text-sm font-bold text-orange-800">{formatCurrency(totalPOValue)}</div>
+              </div>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="text-xs text-red-600 font-medium">Open POs</div>
+                <div className="text-sm font-bold text-red-800">{formatCurrency(openPOValue)}</div>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <div className="text-xs text-green-600 font-medium">Closed POs</div>
+                <div className="text-sm font-bold text-green-800">{formatCurrency(totalPOValue - openPOValue)}</div>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="text-xs text-blue-600 font-medium">Completion Rate</div>
+                <div className="text-sm font-bold text-blue-800">
+                  {totalPOValue > 0 ? `${(((totalPOValue - openPOValue) / totalPOValue) * 100).toFixed(1)}%` : '0%'}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
