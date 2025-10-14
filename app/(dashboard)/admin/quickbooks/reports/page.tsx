@@ -354,7 +354,7 @@ export default function QuickBooksReportsPage() {
       {/* Tabbed Reports */}
       <Tabs defaultValue="overview" className="space-y-6">
         <div className="overflow-x-auto pb-2">
-          <TabsList className="inline-flex w-full lg:grid lg:grid-cols-5 gap-2 h-auto p-2 bg-transparent min-w-max lg:min-w-0">
+          <TabsList className="inline-flex w-full lg:grid lg:grid-cols-6 gap-2 h-auto p-2 bg-transparent min-w-max lg:min-w-0">
             <TabsTrigger 
               value="overview" 
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-blue-200 data-[state=active]:border-blue-500 whitespace-nowrap"
@@ -370,6 +370,13 @@ export default function QuickBooksReportsPage() {
               <TrendingUp className="h-4 w-4 mr-2 flex-shrink-0" />
               <span className="hidden sm:inline">AR Aging</span>
               <span className="sm:hidden">AR</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="invoices" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg border border-indigo-200 data-[state=active]:border-indigo-500 whitespace-nowrap"
+            >
+              <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Invoices</span>
             </TabsTrigger>
             <TabsTrigger 
               value="customers" 
@@ -846,6 +853,146 @@ export default function QuickBooksReportsPage() {
                     <p className="text-xs text-gray-500 mt-1">{bucket.percentage.toFixed(1)}% of total AR</p>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Invoices Tab */}
+        <TabsContent value="invoices" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Revenue Timeline */}
+            <Card className="border-l-4 border-l-indigo-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-indigo-600" />
+                  Revenue Timeline
+                </CardTitle>
+                <CardDescription>Invoice revenue over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={[]}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      style={{ fontSize: '11px' }}
+                    />
+                    <YAxis 
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      style={{ fontSize: '11px' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                      contentStyle={{ fontSize: '12px' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#6366f1" 
+                      fill="#6366f1" 
+                      fillOpacity={0.3}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Invoice Status Breakdown */}
+            <Card className="border-l-4 border-l-indigo-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PieChartIcon className="h-5 w-5 text-indigo-600" />
+                  Invoice Status
+                </CardTitle>
+                <CardDescription>Paid vs Unpaid vs Overdue</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={[]}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {[].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#10b981', '#f59e0b', '#ef4444'][index % 3]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                      contentStyle={{ fontSize: '12px' }}
+                    />
+                    <Legend 
+                      formatter={(value, entry) => `${value}: ${formatCurrency(Number(entry.value) || 0)}`}
+                      wrapperStyle={{ fontSize: '12px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top Customers by Invoice Value */}
+          <Card className="border-l-4 border-l-indigo-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                Top Customers by Invoice Value
+              </CardTitle>
+              <CardDescription>Customers with highest invoice amounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={[]} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    type="number" 
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    style={{ fontSize: '11px' }}
+                  />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    width={120}
+                    style={{ fontSize: '11px' }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [formatCurrency(value), 'Invoice Value']}
+                    contentStyle={{ fontSize: '12px' }}
+                  />
+                  <Bar dataKey="amount" fill="#6366f1" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Invoices Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Invoices</CardTitle>
+              <CardDescription>Latest invoice transactions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Input
+                    placeholder="Search invoices..."
+                    value=""
+                    onChange={() => {}}
+                    className="max-w-sm"
+                  />
+                </div>
+                <div className="rounded-md border">
+                  <div className="p-4 text-center text-gray-500">
+                    No invoice data available. Run a QuickBooks sync to populate this data.
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
