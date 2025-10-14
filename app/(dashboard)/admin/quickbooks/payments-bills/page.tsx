@@ -249,11 +249,6 @@ export default function PaymentsBillsPage() {
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
 
-  // Debug logging
-  console.log('Payments data:', payments.slice(0, 3));
-  console.log('Customer payments:', customerPayments);
-  console.log('Top customers data:', topCustomersData);
-
   if (loading) {
     return (
       <div className="container mx-auto p-4 sm:p-6 flex items-center justify-center min-h-screen">
@@ -463,37 +458,75 @@ export default function PaymentsBillsPage() {
               </CardContent>
             </Card>
 
-            {/* Top Customers by Payment */}
+            {/* Bills Analytics - Comprehensive View */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  Top Customers by Payment
+                  <Receipt className="h-5 w-5 text-blue-600" />
+                  Bills Analytics Overview
                 </CardTitle>
-                <CardDescription>Highest paying customers</CardDescription>
+                <CardDescription>Total bills breakdown: Amount vs Balance vs Payment Status</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={topCustomersData} layout="horizontal">
+                  <BarChart data={[
+                    {
+                      category: 'Total Amount',
+                      amount: totalBillsAmount,
+                      color: '#3b82f6'
+                    },
+                    {
+                      category: 'Outstanding Balance',
+                      amount: totalBillsBalance,
+                      color: '#ef4444'
+                    },
+                    {
+                      category: 'Paid Amount',
+                      amount: totalBillsAmount - totalBillsBalance,
+                      color: '#10b981'
+                    }
+                  ]}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
-                      type="number" 
+                      dataKey="category" 
+                      style={{ fontSize: '11px' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
                       tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                       style={{ fontSize: '11px' }}
                     />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      width={150}
-                      style={{ fontSize: '11px' }}
-                    />
                     <Tooltip 
-                      formatter={(value: number) => [formatCurrency(value), 'Total Paid']}
+                      formatter={(value: number) => [formatCurrency(value), 'Amount']}
                       contentStyle={{ fontSize: '12px' }}
                     />
-                    <Bar dataKey="amount" fill="#10b981" />
+                    <Bar dataKey="amount" fill="#3b82f6" />
                   </BarChart>
                 </ResponsiveContainer>
+                
+                {/* Summary Stats */}
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <div className="text-xs text-blue-600 font-medium">Total Bills</div>
+                    <div className="text-sm font-bold text-blue-800">{formatCurrency(totalBillsAmount)}</div>
+                  </div>
+                  <div className="bg-red-50 p-3 rounded-lg">
+                    <div className="text-xs text-red-600 font-medium">Outstanding</div>
+                    <div className="text-sm font-bold text-red-800">{formatCurrency(totalBillsBalance)}</div>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <div className="text-xs text-green-600 font-medium">Paid</div>
+                    <div className="text-sm font-bold text-green-800">{formatCurrency(totalBillsAmount - totalBillsBalance)}</div>
+                  </div>
+                  <div className="bg-orange-50 p-3 rounded-lg">
+                    <div className="text-xs text-orange-600 font-medium">Payment Rate</div>
+                    <div className="text-sm font-bold text-orange-800">
+                      {totalBillsAmount > 0 ? `${(((totalBillsAmount - totalBillsBalance) / totalBillsAmount) * 100).toFixed(1)}%` : '0%'}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
