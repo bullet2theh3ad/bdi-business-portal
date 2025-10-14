@@ -156,6 +156,9 @@ export async function POST(request: NextRequest) {
     let posCreated = 0;
     let posUpdated = 0;
 
+    // Track intuit_tid from first API response (declare outside try-catch for error handling)
+    let intuitTid: string | null = null;
+
     try {
       // Create service role client (used throughout sync for bypassing RLS)
       const supabaseService = createServerClient(
@@ -198,6 +201,14 @@ export async function POST(request: NextRequest) {
           const errorBody = await customersResponse.text();
           console.error('QuickBooks API Error Response:', errorBody);
           throw new Error(`QuickBooks API error (${customersResponse.status}): ${customersResponse.statusText} - ${errorBody}`);
+        }
+
+        // Capture intuit_tid from first successful response
+        if (!intuitTid) {
+          intuitTid = customersResponse.headers.get('intuit_tid') || null;
+          if (intuitTid) {
+            console.log('📝 Captured intuit_tid:', intuitTid);
+          }
         }
 
         const customersData = await customersResponse.json();
@@ -1368,11 +1379,15 @@ export async function POST(request: NextRequest) {
             status: 'success',
             records_synced: totalRecords,
             completed_at: syncTimestamp,
+            intuit_tid: intuitTid,
           })
           .eq('id', syncLog.id);
       }
 
       console.log(`✅ Sync completed successfully! Records synced: ${totalRecords}`);
+      if (intuitTid) {
+        console.log(`📝 QuickBooks Transaction ID (intuit_tid): ${intuitTid}`);
+      }
       console.log(`📅 Next delta sync will fetch records modified after: ${syncTimestamp}`);
 
       return NextResponse.json({
@@ -1445,6 +1460,7 @@ export async function POST(request: NextRequest) {
             status: 'failed',
             error_message: syncError.message,
             completed_at: new Date().toISOString(),
+            intuit_tid: intuitTid,
           })
           .eq('id', syncLog.id);
       }
