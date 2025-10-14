@@ -35,7 +35,7 @@ interface SalesForecast {
   factorySignal: 'unknown' | 'reviewing' | 'confirmed' | 'rejected';
   shippingSignal: 'unknown' | 'submitted' | 'rejected' | 'confirmed'; // Legacy - keeping for compatibility
   transitSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'confirmed';
-  warehouseSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'confirmed';
+  warehouseSignal: 'unknown' | 'pending' | 'submitted' | 'rejected' | 'confirmed' | 'completed';
   shippingPreference: string;
   notes?: string;
   createdAt: string;
@@ -1156,8 +1156,8 @@ export default function ShipmentsPage() {
       if (completedMilestones >= 2) completedMilestones = 3; // Transport shows "awaiting"
     }
     
-    // Warehouse milestone: confirmed counts as completed (final milestone)
-    if (forecast.warehouseSignal === 'confirmed') completedMilestones = 4;
+    // Warehouse milestone: confirmed OR completed counts as completed (final milestone)
+    if (forecast.warehouseSignal === 'confirmed' || forecast.warehouseSignal === 'completed') completedMilestones = 4;
     
     return completedMilestones;
   };
@@ -1186,7 +1186,7 @@ export default function ShipmentsPage() {
         (forecast.transitSignal as string) === 'confirmed' && 
         (forecast.warehouseSignal as string) !== 'confirmed'
       )) ||
-      (statusFilter === 'completed' && (forecast.warehouseSignal as string) === 'confirmed');
+      (statusFilter === 'completed' && ((forecast.warehouseSignal as string) === 'confirmed' || (forecast.warehouseSignal as string) === 'completed'));
     
     const matchesMethod = methodFilter === 'all' || 
       forecast.shippingPreference.includes(methodFilter);
@@ -1282,8 +1282,8 @@ export default function ShipmentsPage() {
                   {shipmentForecasts.filter(f => 
                     // Delivered: Transit complete but warehouse not confirmed
                     ((f.transitSignal as string) === 'confirmed' && (f.warehouseSignal as string) !== 'confirmed') ||
-                    // Completed: Warehouse confirmed (fully done)
-                    (f.warehouseSignal as string) === 'confirmed'
+                    // Completed: Warehouse confirmed OR completed (fully done)
+                    ((f.warehouseSignal as string) === 'confirmed' || (f.warehouseSignal as string) === 'completed')
                   ).length}
                 </p>
               </div>
