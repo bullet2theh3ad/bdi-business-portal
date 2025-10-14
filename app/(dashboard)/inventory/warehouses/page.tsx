@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import WarehouseSummaryContent from '@/components/WarehouseSummaryContent';
 import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
@@ -90,6 +91,7 @@ export default function WarehousesPage() {
   const { data: catvInventoryData, mutate: mutateCatvInventory } = useSWR('/api/inventory/catv-reports', fetcher);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showWarehouseSummaryModal, setShowWarehouseSummaryModal] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -513,10 +515,16 @@ export default function WarehousesPage() {
               <p className="text-sm sm:text-base text-muted-foreground">{tc('warehousesDescription', 'Manage warehouse locations and inventory')}</p>
             </div>
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
-            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            {tc('addWarehouseButton', 'Add Warehouse')}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => setShowWarehouseSummaryModal(true)}>
+              <SemanticBDIIcon semantic="chart" size={16} className="mr-2 brightness-0 invert" />
+              {tc('warehouseSummaryButton', 'Warehouse Summary')}
+            </Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
+              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+              {tc('addWarehouseButton', 'Add Warehouse')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -2592,6 +2600,27 @@ export default function WarehousesPage() {
               </CardContent>
             </Card>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Warehouse Summary Modal */}
+      <Dialog open={showWarehouseSummaryModal} onOpenChange={setShowWarehouseSummaryModal}>
+        <DialogContent className="w-[98vw] h-[98vh] overflow-y-auto" style={{ maxWidth: 'none' }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <SemanticBDIIcon semantic="chart" size={20} className="mr-2" />
+              Warehouse Summary
+            </DialogTitle>
+            <DialogDescription>
+              Complete inventory overview across all warehouses
+            </DialogDescription>
+          </DialogHeader>
+          
+          <WarehouseSummaryContent 
+            emgData={emgInventoryData} 
+            catvData={catvInventoryData}
+            onClose={() => setShowWarehouseSummaryModal(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
