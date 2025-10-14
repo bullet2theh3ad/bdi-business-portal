@@ -17,7 +17,7 @@ import {
   BarChart3,
   PieChart
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface WarehouseSummaryData {
   emg: {
@@ -57,6 +57,14 @@ interface WarehouseSummaryData {
       totalUnits: number;
       byStage: Record<string, number>;
       bySku: Record<string, number>;
+      bySource: Record<string, number>;
+    };
+    metrics: {
+      totalIntake: number;
+      activeWip: number;
+      rma: number;
+      outflow: number;
+      avgAging: number;
     };
     topSkus: Array<{
       sku: string;
@@ -156,12 +164,8 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
     netStock: item.netStock
   }));
 
-  const catvChartData = Object.entries(summaryData.catv.wipTotals.byStage).map(([stage, count]) => ({
-    name: stage,
-    value: count
-  }));
-
-  const catvSkuChartData = summaryData.catv.topSkus.slice(0, 8).map(item => ({
+  // CATV Top SKUs Chart (replacing pie chart with bar chart)
+  const catvChartData = summaryData.catv.topSkus.slice(0, 8).map(item => ({
     name: item.sku,
     value: item.totalUnits
   }));
@@ -287,34 +291,37 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center">
-                      <p className="text-3xl font-bold text-green-600">{formatNumber(summaryData.catv.wipTotals.totalUnits)}</p>
-                      <p className="text-sm text-muted-foreground">WIP Units</p>
+                      <p className="text-3xl font-bold text-green-600">{formatNumber(summaryData.catv.metrics.totalIntake)}</p>
+                      <p className="text-sm text-muted-foreground">Total Intake</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-3xl font-bold text-green-600">{formatNumber(summaryData.catv.totals.totalWipInHouse)}</p>
-                      <p className="text-sm text-muted-foreground">In House</p>
+                      <p className="text-3xl font-bold text-blue-600">{formatNumber(summaryData.catv.metrics.activeWip)}</p>
+                      <p className="text-sm text-muted-foreground">Active WIP</p>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Received In</span>
-                      <span className="font-medium">{formatNumber(summaryData.catv.totals.totalReceivedIn)}</span>
+                      <span>WIP Completion</span>
+                      <span className="font-medium">{formatNumber(summaryData.catv.metrics.outflow)}/{formatNumber(summaryData.catv.metrics.totalIntake)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                        style={{ width: `${Math.min((summaryData.catv.totals.totalWipInHouse / summaryData.catv.totals.totalReceivedIn) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((summaryData.catv.metrics.outflow / summaryData.catv.metrics.totalIntake) * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      Jira Out: {formatNumber(summaryData.catv.totals.totalShippedJiraOut)}
-                    </Badge>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
                     <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                      EMG Out: {formatNumber(summaryData.catv.totals.totalShippedEmgOut)}
+                      WIP: {formatNumber(summaryData.catv.metrics.activeWip)}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                      RMA: {formatNumber(summaryData.catv.metrics.rma)}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      Out: {formatNumber(summaryData.catv.metrics.outflow)}
                     </Badge>
                   </div>
                 </div>
@@ -351,33 +358,29 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
               </CardContent>
             </Card>
 
-            {/* CATV WIP Stages Chart */}
+            {/* CATV Top SKUs Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <PieChart className="h-5 w-5 mr-2" />
-                  CATV WIP by Stage
+                  <BarChart3 className="h-5 w-5 mr-2" />
+                  CATV Top SKUs by Quantity
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <RechartsPieChart>
+                  <BarChart data={catvChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      fontSize={12}
+                    />
+                    <YAxis fontSize={12} />
                     <Tooltip formatter={(value) => formatNumber(Number(value))} />
-                    <Pie
-                      data={catvChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {catvChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS.chart[index % COLORS.chart.length]} />
-                      ))}
-                    </Pie>
-                  </RechartsPieChart>
+                    <Bar dataKey="value" fill={COLORS.catv.primary} />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -446,24 +449,45 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{formatNumber(summaryData.catv.wipTotals.totalUnits)}</p>
-                    <p className="text-sm text-muted-foreground">Total WIP Units</p>
+                    <p className="text-2xl font-bold text-green-600">{formatNumber(summaryData.catv.metrics.totalIntake)}</p>
+                    <p className="text-sm text-muted-foreground">Total Intake</p>
                   </div>
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{formatNumber(summaryData.catv.totals.totalReceivedIn)}</p>
-                    <p className="text-sm text-muted-foreground">Received In</p>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{formatNumber(summaryData.catv.totals.totalShippedJiraOut)}</p>
-                    <p className="text-sm text-muted-foreground">Jira Out</p>
+                    <p className="text-2xl font-bold text-blue-600">{formatNumber(summaryData.catv.metrics.activeWip)}</p>
+                    <p className="text-sm text-muted-foreground">Active WIP</p>
                   </div>
                   <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <p className="text-2xl font-bold text-orange-600">{formatNumber(summaryData.catv.totals.totalShippedEmgOut)}</p>
-                    <p className="text-sm text-muted-foreground">EMG Out</p>
+                    <p className="text-2xl font-bold text-orange-600">{formatNumber(summaryData.catv.metrics.rma)}</p>
+                    <p className="text-sm text-muted-foreground">RMA</p>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <p className="text-2xl font-bold text-purple-600">{formatNumber(summaryData.catv.metrics.outflow)}</p>
+                    <p className="text-sm text-muted-foreground">Outflow</p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-2xl font-bold text-gray-600">{Math.round(summaryData.catv.metrics.avgAging)}</p>
+                    <p className="text-sm text-muted-foreground">Avg. Aging (days)</p>
                   </div>
                 </div>
+
+                {/* WIP by Source */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">WIP by Source</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {Object.entries(summaryData.catv.wipTotals.bySource).map(([source, count]) => (
+                        <div key={source} className="text-center p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xl font-bold">{formatNumber(count)}</p>
+                          <p className="text-sm text-muted-foreground">{source}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -471,7 +495,9 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                       <tr className="border-b">
                         <th className="text-left p-2">SKU</th>
                         <th className="text-right p-2">Total Units</th>
-                        <th className="text-right p-2">Stages</th>
+                        <th className="text-right p-2">WIP</th>
+                        <th className="text-right p-2">RMA</th>
+                        <th className="text-right p-2">Outflow</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -479,15 +505,9 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                         <tr key={index} className="border-b hover:bg-gray-50">
                           <td className="p-2 font-medium">{item.sku}</td>
                           <td className="p-2 text-right">{formatNumber(item.totalUnits)}</td>
-                          <td className="p-2 text-right">
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              {Object.entries(item.stages).map(([stage, count]) => (
-                                <Badge key={stage} variant="secondary" className="text-xs">
-                                  {stage}: {count}
-                                </Badge>
-                              ))}
-                            </div>
-                          </td>
+                          <td className="p-2 text-right">{formatNumber(item.stages.WIP || 0)}</td>
+                          <td className="p-2 text-right">{formatNumber(item.stages.RMA || 0)}</td>
+                          <td className="p-2 text-right">{formatNumber(item.stages.Outflow || 0)}</td>
                         </tr>
                       ))}
                     </tbody>

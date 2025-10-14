@@ -59,7 +59,54 @@ export async function GET(request: NextRequest) {
       .from(catvInventoryTracking)
       .orderBy(desc(catvInventoryTracking.uploadDate));
 
-    // Note: WIP units table not available yet, using CATV tracking data only
+    // Get CATV WIP Units Summary (from WIP flow table)
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseService = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Get ALL WIP units for CATV data (using pagination to bypass 1000-row limit)
+    console.log('📦 Fetching all WIP units in batches...');
+    const BATCH_SIZE = 1000; // Supabase max rows per request
+    let allWipUnits: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch, error } = await supabaseService
+        .from('warehouse_wip_units')
+        .select('*')
+        .range(offset, offset + BATCH_SIZE - 1)
+        .order('received_date', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching WIP units batch:', error);
+        break;
+      }
+
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allWipUnits = allWipUnits.concat(batch);
+        console.log(`✅ Fetched WIP batch: ${batch.length} units (total so far: ${allWipUnits.length})`);
+        
+        if (batch.length < BATCH_SIZE) {
+          hasMore = false; // Last batch
+        } else {
+          offset += BATCH_SIZE;
+        }
+      }
+    }
+
+    const wipUnits = allWipUnits;
+    console.log(`✅ Total WIP units fetched: ${wipUnits.length}`);
 
     // Calculate EMG totals
     const emgTotals = {
@@ -79,11 +126,33 @@ export async function GET(request: NextRequest) {
       totalWipInHouse: catvInventory.reduce((sum, item) => sum + (item.wipInHouse || 0), 0),
     };
 
-    // Simplified CATV totals (no WIP units data yet)
+    // Calculate CATV WIP totals from actual WIP units data
     const catvWipTotals = {
-      totalUnits: 0, // Will be populated when WIP units table is available
-      byStage: {}, // Will be populated when WIP units table is available
-      bySku: {}, // Will be populated when WIP units table is available
+      totalUnits: wipUnits?.length || 0,
+      byStage: (wipUnits || []).reduce((acc: Record<string, number>, unit: any) => {
+        const stage = unit.stage || 'Unknown';
+        acc[stage] = (acc[stage] || 0) + 1;
+        return acc;
+      }, {}),
+      bySku: (wipUnits || []).reduce((acc: Record<string, number>, unit: any) => {
+        const sku = unit.model_number || 'Unknown';
+        acc[sku] = (acc[sku] || 0) + 1;
+        return acc;
+      }, {}),
+      bySource: (wipUnits || []).reduce((acc: Record<string, number>, unit: any) => {
+        const source = unit.source || 'Unknown';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {}),
+    };
+
+    // Calculate CATV metrics like the WIP dashboard
+    const catvMetrics = {
+      totalIntake: (wipUnits || []).length, // Total units received
+      activeWip: (wipUnits || []).filter((unit: any) => unit.stage === 'WIP').length,
+      rma: (wipUnits || []).filter((unit: any) => unit.stage === 'RMA').length,
+      outflow: (wipUnits || []).filter((unit: any) => unit.stage === 'Outflow').length,
+      avgAging: (wipUnits || []).reduce((sum: number, unit: any) => sum + (unit.aging_days || 0), 0) / (wipUnits?.length || 1),
     };
 
     // Top EMG SKUs by quantity
@@ -98,8 +167,21 @@ export async function GET(request: NextRequest) {
         netStock: item.netStock || 0,
       }));
 
-    // Top CATV SKUs (simplified for now)
-    const topCatvSkus: Array<{ sku: string; totalUnits: number; stages: Record<string, number> }> = [];
+    // Top CATV SKUs by WIP units
+    const topCatvSkus = Object.entries(catvWipTotals.bySku)
+      .sort(([, a], [, b]) => (b as number) - (a as number))
+      .slice(0, 10)
+      .map(([sku, count]) => ({
+        sku,
+        totalUnits: count,
+        stages: (wipUnits || [])
+          .filter((unit: any) => unit.model_number === sku)
+          .reduce((acc: Record<string, number>, unit: any) => {
+            const stage = unit.stage || 'Unknown';
+            acc[stage] = (acc[stage] || 0) + 1;
+            return acc;
+          }, {}),
+      }));
 
     return NextResponse.json({
       success: true,
@@ -113,15 +195,16 @@ export async function GET(request: NextRequest) {
         catv: {
           totals: catvTotals,
           wipTotals: catvWipTotals,
+          metrics: catvMetrics,
           inventory: catvInventory,
-          wipSummary: [], // Will be populated when WIP units table is available
+          wipSummary: wipUnits || [],
           topSkus: topCatvSkus,
           lastUpdated: catvInventory.length > 0 ? catvInventory[0].lastUpdated : null,
         },
         summary: {
           totalWarehouses: 2, // EMG and CATV
           totalSkus: emgTotals.totalSkus + Object.keys(catvWipTotals.bySku).length,
-          totalUnits: emgTotals.totalOnHand + catvWipTotals.totalUnits,
+          totalUnits: emgTotals.totalOnHand + catvMetrics.activeWip, // EMG On Hand + CATV Active WIP (not total intake)
           lastUpdated: Math.max(
             emgInventory.length > 0 ? new Date(emgInventory[0].lastUpdated || 0).getTime() : 0,
             catvInventory.length > 0 ? new Date(catvInventory[0].lastUpdated || 0).getTime() : 0
