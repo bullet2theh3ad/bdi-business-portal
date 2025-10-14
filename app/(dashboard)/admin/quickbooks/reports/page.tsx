@@ -295,7 +295,7 @@ export default function QuickBooksReportsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">{formatCurrency(metrics.totalRevenue)}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 break-words">{formatCurrency(metrics.totalRevenue)}</div>
               <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
                 Avg: {formatCurrency(metrics.avgInvoiceValue)}/invoice
@@ -311,7 +311,7 @@ export default function QuickBooksReportsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-600">{formatCurrency(metrics.totalAR)}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 break-words">{formatCurrency(metrics.totalAR)}</div>
               <p className="text-xs text-gray-500 mt-2">
                 {metrics.unpaidInvoices} unpaid invoice{metrics.unpaidInvoices !== 1 ? 's' : ''}
               </p>
@@ -326,7 +326,7 @@ export default function QuickBooksReportsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-orange-600">{formatCurrency(metrics.totalExpenses)}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 break-words">{formatCurrency(metrics.totalExpenses)}</div>
               <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                 <TrendingDown className="h-3 w-3" />
                 Burn: {formatCurrency(metrics.monthlyBurnRate)}/month
@@ -342,7 +342,7 @@ export default function QuickBooksReportsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-600">{metrics.overdueInvoices}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 break-words">{metrics.overdueInvoices}</div>
               <p className="text-xs text-gray-500 mt-2">
                 Requires immediate attention
               </p>
@@ -406,7 +406,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Net Revenue</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-lg font-bold text-green-600">{formatCurrency(masterMetrics.summary.netRevenue)}</div>
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-green-600 break-words">{formatCurrency(masterMetrics.summary.netRevenue)}</div>
                   </CardContent>
                 </Card>
 
@@ -415,7 +415,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Cash Flow</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-lg font-bold ${masterMetrics.summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    <div className={`text-sm sm:text-base lg:text-lg font-bold break-words ${masterMetrics.summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                       {formatCurrency(masterMetrics.summary.netCashFlow)}
                     </div>
                   </CardContent>
@@ -426,7 +426,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Net Position</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-lg font-bold ${masterMetrics.summary.netPosition >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                    <div className={`text-sm sm:text-base lg:text-lg font-bold break-words ${masterMetrics.summary.netPosition >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
                       {formatCurrency(masterMetrics.summary.netPosition)}
                     </div>
                   </CardContent>
@@ -437,7 +437,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Total AR</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-lg font-bold text-orange-600">{formatCurrency(masterMetrics.summary.totalAR)}</div>
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-orange-600 break-words">{formatCurrency(masterMetrics.summary.totalAR)}</div>
                   </CardContent>
                 </Card>
 
@@ -446,7 +446,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Total AP</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-lg font-bold text-red-600">{formatCurrency(masterMetrics.summary.totalAP)}</div>
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-red-600 break-words">{formatCurrency(masterMetrics.summary.totalAP)}</div>
                   </CardContent>
                 </Card>
 
@@ -455,7 +455,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Open POs</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-lg font-bold text-yellow-600">{formatCurrency(masterMetrics.summary.totalOpenPOValue)}</div>
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-yellow-600 break-words">{formatCurrency(masterMetrics.summary.totalOpenPOValue)}</div>
                     <p className="text-xs text-gray-500">{masterMetrics.summary.openPOsCount} orders</p>
                   </CardContent>
                 </Card>
@@ -465,7 +465,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Unpaid Bills</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-lg font-bold text-pink-600">{formatCurrency(masterMetrics.summary.totalUnpaidBills)}</div>
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-pink-600 break-words">{formatCurrency(masterMetrics.summary.totalUnpaidBills)}</div>
                     <p className="text-xs text-gray-500">{masterMetrics.summary.unpaidBillsCount} bills</p>
                   </CardContent>
                 </Card>
@@ -475,7 +475,7 @@ export default function QuickBooksReportsPage() {
                     <CardTitle className="text-xs font-medium text-gray-600">Credits Available</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-lg font-bold text-indigo-600">{formatCurrency(masterMetrics.summary.availableCredits)}</div>
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-indigo-600 break-words">{formatCurrency(masterMetrics.summary.availableCredits)}</div>
                   </CardContent>
                 </Card>
               </div>
