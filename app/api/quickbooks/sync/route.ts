@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get date range from request body (default to last 60 days)
+    // Get sync mode from request body (default to 'delta')
     const body = await request.json().catch(() => ({}));
-    const { startDate, endDate } = body;
+    const { syncMode = 'delta' } = body; // 'delta' or 'full'
     
-    console.log('📅 Sync date range:', { startDate, endDate });
+    console.log('🔄 Sync mode:', syncMode);
 
     // Get active QuickBooks connection
     const { data: connection, error: connError } = await supabase
@@ -72,12 +72,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine sync type: delta (incremental) or full
+    let actualSyncType = syncMode;
+    let deltaQuery = '';
+    
+    if (syncMode === 'delta' && connection.last_sync_at) {
+      // Delta sync: only fetch records modified after last sync
+      const lastSyncDate = new Date(connection.last_sync_at);
+      const formattedDate = lastSyncDate.toISOString().split('.')[0] + '-08:00'; // QuickBooks format
+      deltaQuery = `WHERE Metadata.LastUpdatedTime > '${formattedDate}'`;
+      console.log('📊 Delta sync enabled. Fetching records modified after:', formattedDate);
+    } else {
+      // First sync or forced full sync
+      actualSyncType = 'full';
+      deltaQuery = '';
+      console.log('📦 Full sync mode. Fetching all records.');
+    }
+
     // Create sync log entry
     const { data: syncLog, error: logError } = await supabase
       .from('quickbooks_sync_log')
       .insert({
         connection_id: connection.id,
-        sync_type: 'full',
+        sync_type: actualSyncType,
         status: 'started',
         triggered_by: user.id,
       })
@@ -88,7 +105,7 @@ export async function POST(request: NextRequest) {
       console.error('Error creating sync log:', logError);
     }
 
-    console.log('🔄 Starting QuickBooks full sync...');
+    console.log(`🔄 Starting QuickBooks ${actualSyncType} sync...`);
 
     // Determine API base URL
     const apiBaseUrl = process.env.QUICKBOOKS_ENVIRONMENT === 'production'
@@ -140,6 +157,22 @@ export async function POST(request: NextRequest) {
     let posUpdated = 0;
 
     try {
+      // Create service role client (used throughout sync for bypassing RLS)
+      const supabaseService = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          cookies: {
+            getAll: () => cookieStore.getAll(),
+            setAll: (cookiesArray) => {
+              cookiesArray.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            },
+          },
+        }
+      );
+
       // Fetch Customers from QuickBooks (with pagination)
       // Note: QB has a hard limit of 1000 records per query, so we need to paginate
       console.log('📥 Fetching customers from QuickBooks...');
@@ -148,7 +181,7 @@ export async function POST(request: NextRequest) {
       let hasMoreCustomers = true;
       
       while (hasMoreCustomers) {
-        const customersQuery = `SELECT * FROM Customer STARTPOSITION ${startPosition} MAXRESULTS 1000`;
+        const customersQuery = `SELECT * FROM Customer ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS 1000`;
         console.log(`Customer Query (page ${Math.ceil(startPosition / 1000)}):`, customersQuery);
         
         const customersResponse = await fetch(
@@ -189,22 +222,6 @@ export async function POST(request: NextRequest) {
       customersFetched = customers.length;
 
       console.log(`✅ Fetched ${customersFetched} total customers from QuickBooks`);
-
-      // Use service role for inserting (bypass RLS)
-      const supabaseService = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          cookies: {
-            getAll: () => cookieStore.getAll(),
-            setAll: (cookiesArray) => {
-              cookiesArray.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              });
-            },
-          },
-        }
-      );
 
       // Upsert customers to database
       for (const customer of customers) {
@@ -284,11 +301,7 @@ export async function POST(request: NextRequest) {
       let hasMoreInvoices = true;
       
       while (hasMoreInvoices) {
-        let invoicesQuery = 'SELECT * FROM Invoice';
-        if (startDate && endDate) {
-          invoicesQuery += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
-        }
-        invoicesQuery += ` STARTPOSITION ${invoiceStartPosition} MAXRESULTS 1000`;
+        const invoicesQuery = `SELECT * FROM Invoice ${deltaQuery} STARTPOSITION ${invoiceStartPosition} MAXRESULTS 1000`;
         console.log(`Invoice Query (page ${Math.ceil(invoiceStartPosition / 1000)}):`, invoicesQuery);
         
         const invoicesResponse = await fetch(
@@ -422,7 +435,7 @@ export async function POST(request: NextRequest) {
       let hasMoreVendors = true;
       
       while (hasMoreVendors) {
-        const vendorsQuery = `SELECT * FROM Vendor STARTPOSITION ${vendorStartPosition} MAXRESULTS 1000`;
+        const vendorsQuery = `SELECT * FROM Vendor ${deltaQuery} STARTPOSITION ${vendorStartPosition} MAXRESULTS 1000`;
         console.log(`Vendor Query (page ${Math.ceil(vendorStartPosition / 1000)}):`, vendorsQuery);
         
         const vendorsResponse = await fetch(
@@ -537,9 +550,12 @@ export async function POST(request: NextRequest) {
       let hasMoreExpenses = true;
       
       while (hasMoreExpenses) {
+        // Combine PaymentType filter with delta query
         let expensesQuery = 'SELECT * FROM Purchase WHERE PaymentType = \'Cash\'';
-        if (startDate && endDate) {
-          expensesQuery += ` AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
+        if (deltaQuery) {
+          // Replace 'WHERE' with 'AND' in deltaQuery since we already have a WHERE clause
+          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
+          expensesQuery += ` ${deltaCondition}`;
         }
         expensesQuery += ` STARTPOSITION ${expenseStartPosition} MAXRESULTS 1000`;
         console.log(`Expense Query (page ${Math.ceil(expenseStartPosition / 1000)}):`, expensesQuery);
@@ -670,7 +686,13 @@ export async function POST(request: NextRequest) {
       let hasMoreItems = true;
       
       while (hasMoreItems) {
-        const itemsQuery = `SELECT * FROM Item WHERE Active IN (true, false) STARTPOSITION ${itemStartPosition} MAXRESULTS 1000`;
+        // Combine Active filter with delta query
+        let itemsQuery = 'SELECT * FROM Item WHERE Active IN (true, false)';
+        if (deltaQuery) {
+          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
+          itemsQuery += ` ${deltaCondition}`;
+        }
+        itemsQuery += ` STARTPOSITION ${itemStartPosition} MAXRESULTS 1000`;
         console.log(`Item Query (page ${Math.ceil(itemStartPosition / 1000)}):`, itemsQuery);
         
         const itemsResponse = await fetch(
@@ -805,7 +827,7 @@ export async function POST(request: NextRequest) {
       let hasMorePayments = true;
       
       while (hasMorePayments) {
-        const paymentsQuery = `SELECT * FROM Payment STARTPOSITION ${paymentStartPosition} MAXRESULTS 1000`;
+        const paymentsQuery = `SELECT * FROM Payment ${deltaQuery} STARTPOSITION ${paymentStartPosition} MAXRESULTS 1000`;
         console.log(`Payment Query (page ${Math.ceil(paymentStartPosition / 1000)}):`, paymentsQuery);
         
         const paymentsResponse = await fetch(
@@ -920,7 +942,7 @@ export async function POST(request: NextRequest) {
       let hasMoreBills = true;
       
       while (hasMoreBills) {
-        const billsQuery = `SELECT * FROM Bill STARTPOSITION ${billStartPosition} MAXRESULTS 1000`;
+        const billsQuery = `SELECT * FROM Bill ${deltaQuery} STARTPOSITION ${billStartPosition} MAXRESULTS 1000`;
         console.log(`Bill Query (page ${Math.ceil(billStartPosition / 1000)}):`, billsQuery);
         
         const billsResponse = await fetch(
@@ -1036,7 +1058,7 @@ export async function POST(request: NextRequest) {
       const maxSalesReceiptsPerQuery = 1000;
 
       while (true) {
-        const salesReceiptsQuery = `SELECT * FROM SalesReceipt STARTPOSITION ${startPosition} MAXRESULTS ${maxSalesReceiptsPerQuery}`;
+        const salesReceiptsQuery = `SELECT * FROM SalesReceipt ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxSalesReceiptsPerQuery}`;
         
         const salesReceiptsResponse = await fetch(
           `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(salesReceiptsQuery)}`,
@@ -1127,7 +1149,7 @@ export async function POST(request: NextRequest) {
       const maxCreditMemosPerQuery = 1000;
 
       while (true) {
-        const creditMemosQuery = `SELECT * FROM CreditMemo STARTPOSITION ${startPosition} MAXRESULTS ${maxCreditMemosPerQuery}`;
+        const creditMemosQuery = `SELECT * FROM CreditMemo ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxCreditMemosPerQuery}`;
         
         const creditMemosResponse = await fetch(
           `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(creditMemosQuery)}`,
@@ -1218,7 +1240,7 @@ export async function POST(request: NextRequest) {
       const maxPOsPerQuery = 1000;
 
       while (true) {
-        const posQuery = `SELECT * FROM PurchaseOrder STARTPOSITION ${startPosition} MAXRESULTS ${maxPOsPerQuery}`;
+        const posQuery = `SELECT * FROM PurchaseOrder ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxPOsPerQuery}`;
         
         const posResponse = await fetch(
           `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(posQuery)}`,
@@ -1326,8 +1348,37 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', connection.id);
 
+      // Update connection with successful sync timestamp
+      const syncTimestamp = new Date().toISOString();
+      
+      await supabaseService
+        .from('quickbooks_connections')
+        .update({
+          last_sync_at: syncTimestamp,
+          last_sync_status: 'success',
+          last_sync_error: null,
+        })
+        .eq('id', connection.id);
+
+      // Update sync log
+      if (syncLog) {
+        await supabaseService
+          .from('quickbooks_sync_log')
+          .update({
+            status: 'success',
+            records_synced: totalRecords,
+            completed_at: syncTimestamp,
+          })
+          .eq('id', syncLog.id);
+      }
+
+      console.log(`✅ Sync completed successfully! Records synced: ${totalRecords}`);
+      console.log(`📅 Next delta sync will fetch records modified after: ${syncTimestamp}`);
+
       return NextResponse.json({
         message: 'QuickBooks sync completed successfully',
+        syncType: actualSyncType,
+        nextSyncWillBeDelta: true,
         totalRecords: totalRecords,
         details: {
           customers: {

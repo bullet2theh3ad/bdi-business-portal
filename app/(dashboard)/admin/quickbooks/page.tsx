@@ -127,32 +127,12 @@ export default function QuickBooksIntegrationPage() {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(mode: 'delta' | 'full' = 'delta') {
     try {
       setSyncing(true);
       setError(null);
       
-      // Calculate date range
-      let startDate = '';
-      let endDate = new Date().toISOString().split('T')[0]; // Today
-      
-      if (dateRange === '60') {
-        const date = new Date();
-        date.setDate(date.getDate() - 60);
-        startDate = date.toISOString().split('T')[0];
-      } else if (dateRange === '30') {
-        const date = new Date();
-        date.setDate(date.getDate() - 30);
-        startDate = date.toISOString().split('T')[0];
-      } else if (dateRange === 'custom') {
-        if (!customStartDate || !customEndDate) {
-          setError('Please select both start and end dates for custom range');
-          setSyncing(false);
-          return;
-        }
-        startDate = customStartDate;
-        endDate = customEndDate;
-      }
+      console.log(`Starting ${mode} sync...`);
       
       const response = await fetch('/api/quickbooks/sync', {
         method: 'POST',
@@ -160,14 +140,14 @@ export default function QuickBooksIntegrationPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          startDate,
-          endDate,
+          syncMode: mode,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Sync completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}\nPayments: ${data.details.payments.fetched}\nBills: ${data.details.bills.fetched}\nSales Receipts: ${data.details.salesReceipts.fetched}\nCredit Memos: ${data.details.creditMemos.fetched}\nPurchase Orders: ${data.details.purchaseOrders.fetched}`);
+        const syncTypeLabel = data.syncType === 'full' ? '🔄 FULL SYNC' : '⚡ DELTA SYNC';
+        alert(`${syncTypeLabel} completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}\nPayments: ${data.details.payments.fetched}\nBills: ${data.details.bills.fetched}\nSales Receipts: ${data.details.salesReceipts.fetched}\nCredit Memos: ${data.details.creditMemos.fetched}\nPurchase Orders: ${data.details.purchaseOrders.fetched}\n\n✅ Next sync will automatically use Delta Sync (only changed records)`);
         await loadConnection();
         await loadSyncStats();
       } else {
@@ -270,6 +250,18 @@ export default function QuickBooksIntegrationPage() {
                       {new Date(connection.connected_at).toLocaleDateString()}
                     </p>
                   </div>
+                  {connection.last_sync_at && (
+                    <div className="overflow-hidden col-span-2">
+                      <span className="text-gray-600">Last Synced:</span>
+                      <p className="font-medium">
+                        {new Date(connection.last_sync_at).toLocaleString()} 
+                        <span className="ml-2 text-xs text-green-600">✓ {connection.last_sync_status}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        ⚡ Next sync will use Delta mode (only changed records)
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -388,12 +380,12 @@ export default function QuickBooksIntegrationPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-wrap gap-3 pt-4">
                 <Button 
-                  onClick={handleSync} 
+                  onClick={() => handleSync('delta')} 
                   disabled={syncing || isTokenExpired}
                   className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={isTokenExpired ? "Token expired - please reconnect" : ""}
+                  title={isTokenExpired ? "Token expired - please reconnect" : "Smart sync - only fetches changed records"}
                 >
                   {syncing ? (
                     <>
@@ -403,7 +395,26 @@ export default function QuickBooksIntegrationPage() {
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Sync Now
+                      ⚡ Sync Now (Delta)
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={() => handleSync('full')}
+                  disabled={syncing || isTokenExpired}
+                  variant="outline"
+                  className="border-blue-300 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isTokenExpired ? "Token expired - please reconnect" : "Full sync - re-imports all data from day 1"}
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4 mr-2" />
+                      🔄 Full Sync (All Data)
                     </>
                   )}
                 </Button>
