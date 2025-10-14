@@ -84,6 +84,29 @@ export async function PUT(
 
     console.log('✅ Shipment status updated successfully:', updatedShipment);
 
+    // 🚀 AUTO-COMPLETE LOGIC: If warehouse is confirmed, automatically confirm transit
+    if (milestone === 'warehouse' && status === 'confirmed') {
+      console.log('🚀 Warehouse confirmed - auto-completing transit...');
+      
+      const transitUpdateData = {
+        transit_signal: 'confirmed',
+        updated_at: new Date().toISOString()
+      };
+      
+      const { error: transitError } = await supabase
+        .from('shipments')
+        .update(transitUpdateData)
+        .eq('id', id);
+      
+      if (transitError) {
+        console.error('⚠️ Failed to auto-complete transit:', transitError);
+      } else {
+        console.log('✅ Transit automatically completed');
+        // Update the returned shipment data to reflect the transit change
+        updatedShipment.transit_signal = 'confirmed';
+      }
+    }
+
     // 🔄 BI-DIRECTIONAL SYNC: Update linked forecast signals AND date changes
     console.log('🔄 Syncing forecast signals with shipment...');
     
@@ -92,6 +115,12 @@ export async function PUT(
         [signalColumn]: status,
         updated_at: new Date().toISOString()
       };
+
+      // If warehouse was confirmed, also update transit signal in forecast
+      if (milestone === 'warehouse' && status === 'confirmed') {
+        forecastUpdateData.transit_signal = 'confirmed';
+        console.log('🔄 Also updating forecast transit_signal to confirmed');
+      }
 
       // If there are date changes, sync them to the forecast as well
       if (dateChanges && Object.keys(dateChanges).length > 0) {
