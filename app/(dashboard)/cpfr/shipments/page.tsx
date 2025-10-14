@@ -1143,18 +1143,20 @@ export default function ShipmentsPage() {
     
     // Factory milestone: confirmed counts as completed (reviewing doesn't)
     if (forecast.factorySignal === 'confirmed') completedMilestones = 2;
-    if (forecast.factorySignal === 'confirmed' && now >= milestones.departureDate) completedMilestones = 3;
+    
+    // Transit milestone: confirmed counts as completed
+    if (forecast.transitSignal === 'confirmed') completedMilestones = 3;
     
     // Check if shipment has been created for this forecast (from database or local state)
     const hasShipmentInDB = actualShipmentsArray.some((shipment: any) => shipment.forecast_id === forecast.id);
     const hasShipmentLocal = createdShipments.has(forecast.id);
     
-    if (hasShipmentInDB || hasShipmentLocal) {
-      // Shipment created - show awaiting status for shipping milestone
+    // If shipment exists but transit not confirmed, show as awaiting transit
+    if ((hasShipmentInDB || hasShipmentLocal) && forecast.transitSignal !== 'confirmed') {
       if (completedMilestones >= 2) completedMilestones = 3; // Transport shows "awaiting"
     }
     
-    // Warehouse milestone: check warehouse_signal instead of shipping_signal
+    // Warehouse milestone: confirmed counts as completed (final milestone)
     if (forecast.warehouseSignal === 'confirmed') completedMilestones = 4;
     
     return completedMilestones;
