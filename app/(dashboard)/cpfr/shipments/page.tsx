@@ -1608,14 +1608,14 @@ export default function ShipmentsPage() {
                           <button
                             onClick={() => handleMilestoneClick('warehouse', forecast)}
                             className={`w-8 sm:w-12 h-8 sm:h-12 rounded-full flex items-center justify-center border-2 bg-white transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                              forecast.warehouseSignal === 'confirmed' ? 'border-green-500' :
+                              (forecast.warehouseSignal === 'confirmed' || forecast.warehouseSignal === 'completed') ? 'border-green-500' :
                               forecast.warehouseSignal === 'submitted' ? 'border-orange-500' :
                               'border-gray-300'
                             }`}
                             title="Click to change warehouse status"
                           >
                             <span className={`text-base sm:text-lg ${
-                              forecast.warehouseSignal === 'confirmed' ? 'text-green-600' :
+                              (forecast.warehouseSignal === 'confirmed' || forecast.warehouseSignal === 'completed') ? 'text-green-600' :
                               forecast.warehouseSignal === 'submitted' ? 'text-orange-600' :
                               'text-gray-600'
                             }`}>🏢</span>
@@ -1627,7 +1627,7 @@ export default function ShipmentsPage() {
                               {milestones.deliveryDate ? formatDateSafe(milestones.deliveryDate) : formatDateSafe(milestones.arrivalDate)}
                             </p>
                             <Badge className={
-                              forecast.warehouseSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              (forecast.warehouseSignal === 'confirmed' || forecast.warehouseSignal === 'completed') ? 'bg-green-100 text-green-800' :
                               forecast.warehouseSignal === 'submitted' ? 'bg-orange-100 text-orange-800' :
                               'bg-gray-100 text-gray-600'
                             }>
