@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, emgInventoryTracking, emgInventoryHistory } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { users, emgInventoryTracking, emgInventoryHistory, organizations, organizationMembers, productSkus } from '@/lib/db/schema';
+import { eq, desc, inArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,10 +30,86 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get current inventory (latest snapshot per SKU)
+    // Get user's organization for filtering
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!requestingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Get user's organization membership
+    const userOrgMembership = await db
+      .select({
+        organization: {
+          id: organizations.id,
+          code: organizations.code,
+          type: organizations.type,
+        }
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
+      .limit(1);
+
+    const isBDIUser = userOrgMembership.length > 0 && 
+      userOrgMembership[0].organization.code === 'BDI' && 
+      userOrgMembership[0].organization.type === 'internal';
+
+    // Get allowed SKU codes for this organization (partner orgs only see their SKUs)
+    let allowedSkuCodes: string[] = [];
+    
+    if (!isBDIUser && userOrgMembership.length > 0) {
+      const userOrganization = userOrgMembership[0].organization;
+      console.log(`🔒 Partner org ${userOrganization.code} - filtering EMG inventory by owned SKUs`);
+      
+      // Get SKUs that this organization OWNS (by manufacturer) - same logic as warehouse summary
+      const ownedSkus = await db
+        .select({
+          sku: productSkus.sku,
+          model: productSkus.model,
+        })
+        .from(productSkus)
+        .where(eq(productSkus.mfg, userOrganization.code!));
+      
+      allowedSkuCodes = ownedSkus.map(s => s.sku);
+      const allowedModels = ownedSkus.map(s => s.model).filter(m => m !== null);
+      
+      // Combine both SKU and model for matching (EMG uses "model" field)
+      allowedSkuCodes = [...new Set([...allowedSkuCodes, ...allowedModels])];
+      
+      console.log(`🔍 Partner ${userOrganization.code} allowed SKUs/Models:`, allowedSkuCodes);
+      
+      if (allowedSkuCodes.length === 0) {
+        console.log(`⚠️  No SKUs found for ${userOrganization.code} - returning empty inventory`);
+        return NextResponse.json({
+          success: true,
+          data: {
+            currentInventory: [],
+            history: [],
+            summary: {
+              totalSkus: 0,
+              totalOnHand: 0,
+              totalAllocated: 0,
+              totalBackorder: 0,
+            }
+          }
+        });
+      }
+    }
+
+    // Get current inventory (latest snapshot per SKU) with organization filtering
     const currentInventory = await db
       .select()
       .from(emgInventoryTracking)
+      .where(
+        isBDIUser || allowedSkuCodes.length === 0
+          ? undefined // BDI sees all
+          : inArray(emgInventoryTracking.model, allowedSkuCodes) // Partners see only their exact SKUs
+      )
       .orderBy(desc(emgInventoryTracking.uploadDate));
 
     // Get inventory history for charts (last 30 days)
@@ -43,6 +119,11 @@ export async function GET(request: NextRequest) {
     const inventoryHistory = await db
       .select()
       .from(emgInventoryHistory)
+      .where(
+        isBDIUser || allowedSkuCodes.length === 0
+          ? undefined // BDI sees all
+          : inArray(emgInventoryHistory.model, allowedSkuCodes) // Partners see only their exact SKUs
+      )
       .orderBy(desc(emgInventoryHistory.snapshotDate));
 
     return NextResponse.json({
