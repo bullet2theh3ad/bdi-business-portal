@@ -95,6 +95,7 @@ export default function AmazonFinancialDataPage() {
     if (isAuthenticated) {
       loadFinancialData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   function handlePasswordSubmit() {
@@ -361,34 +362,8 @@ export default function AmazonFinancialDataPage() {
   const feePercentage = financialData ? 
     ((financialData.totalFees / financialData.totalRevenue) * 100) : 0;
 
-  if (loading && !financialData) {
-    return (
-      <div className="container mx-auto p-4 sm:p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
-          <p className="text-gray-600">Loading Amazon financial data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !financialData) {
-    return (
-      <div className="container mx-auto p-4 sm:p-6">
-        <Card className="border-red-300 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 text-red-800">
-              <AlertCircle className="h-5 w-5" />
-              <p>{error}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Password protection modal
-  if (showPasswordModal && !isAuthenticated) {
+  // Password protection modal - CHECK THIS FIRST
+  if (!isAuthenticated) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
@@ -443,6 +418,34 @@ export default function AmazonFinancialDataPage() {
             </Button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Show loading state after authentication
+  if (loading && !financialData) {
+    return (
+      <div className="container mx-auto p-4 sm:p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
+          <p className="text-gray-600">Loading Amazon financial data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state after authentication
+  if (error && !financialData) {
+    return (
+      <div className="container mx-auto p-4 sm:p-6">
+        <Card className="border-red-300 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 text-red-800">
+              <AlertCircle className="h-5 w-5" />
+              <p>{error}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
