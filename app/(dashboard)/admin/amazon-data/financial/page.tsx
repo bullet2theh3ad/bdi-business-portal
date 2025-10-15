@@ -37,6 +37,14 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+interface SKUData {
+  sku: string;
+  units: number;
+  revenue: number;
+  fees: number;
+  net: number;
+}
+
 interface FinancialData {
   eventGroups: number;
   uniqueOrders: number;
@@ -44,13 +52,8 @@ interface FinancialData {
   totalFees: number;
   netRevenue: number;
   uniqueSKUs?: number;
-  topSKUs?: Array<{
-    sku: string;
-    units: number;
-    revenue: number;
-    fees: number;
-    net: number;
-  }>;
+  topSKUs?: SKUData[];
+  allSKUs?: SKUData[];
 }
 
 interface DateRange {
@@ -104,7 +107,8 @@ export default function AmazonFinancialDataPage() {
           totalFees: data.summary.totalFees,
           netRevenue: data.summary.netRevenue,
           uniqueSKUs: data.summary.uniqueSKUs,
-          topSKUs: data.topSKUs || []
+          topSKUs: data.topSKUs || [],
+          allSKUs: data.allSKUs || []
         });
         setLastRefresh(new Date());
       } else {
@@ -143,6 +147,49 @@ export default function AmazonFinancialDataPage() {
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
     });
+  }
+
+  function handleExport() {
+    if (!financialData || !financialData.allSKUs) {
+      alert('No data available to export');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['SKU', 'Units Sold', 'Revenue', 'Fees', 'Net Profit'];
+    const rows = financialData.allSKUs.map(sku => [
+      sku.sku,
+      sku.units.toString(),
+      `$${sku.revenue.toFixed(2)}`,
+      `$${sku.fees.toFixed(2)}`,
+      `$${sku.net.toFixed(2)}`
+    ]);
+
+    // Add summary rows
+    rows.push([]);
+    rows.push(['SUMMARY', '', '', '', '']);
+    rows.push(['Total Orders', financialData.uniqueOrders.toString(), '', '', '']);
+    rows.push(['Total SKUs', financialData.uniqueSKUs?.toString() || '0', '', '', '']);
+    rows.push(['Total Revenue', '', `$${financialData.totalRevenue.toFixed(2)}`, '', '']);
+    rows.push(['Total Fees', '', `$${financialData.totalFees.toFixed(2)}`, '', '']);
+    rows.push(['Net Revenue', '', '', '', `$${financialData.netRevenue.toFixed(2)}`]);
+    rows.push(['Date Range', `${dateRange.start} to ${dateRange.end}`, '', '', '']);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `amazon-financial-data-${dateRange.start}-to-${dateRange.end}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   const profitMargin = financialData ? 
@@ -201,9 +248,15 @@ export default function AmazonFinancialDataPage() {
               <RefreshCw className={`h-4 w-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 sm:flex-none"
+              onClick={handleExport}
+              disabled={!financialData || !financialData.allSKUs || financialData.allSKUs.length === 0}
+            >
               <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
           </div>
         </div>
@@ -416,52 +469,56 @@ export default function AmazonFinancialDataPage() {
         </div>
       )}
 
-      {/* Top SKUs Table */}
-      {financialData && financialData.topSKUs && financialData.topSKUs.length > 0 && (
+      {/* All SKUs Table */}
+      {financialData && financialData.allSKUs && financialData.allSKUs.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-purple-600" />
-              Top Performing SKUs
+              All SKU Performance
             </CardTitle>
             <CardDescription>
-              Best performing products by revenue
+              Complete product performance data ({financialData.allSKUs.length} SKUs) - Scroll to view all
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-gray-50">
-                  <tr>
-                    <th className="text-left p-3 font-semibold">SKU</th>
-                    <th className="text-right p-3 font-semibold">Units</th>
-                    <th className="text-right p-3 font-semibold">Revenue</th>
-                    <th className="text-right p-3 font-semibold">Fees</th>
-                    <th className="text-right p-3 font-semibold">Net</th>
-                    <th className="text-right p-3 font-semibold">Margin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {financialData.topSKUs.map((sku, index) => (
-                    <tr key={sku.sku} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="p-3 font-medium text-gray-900">{sku.sku}</td>
-                      <td className="p-3 text-right text-gray-600">{sku.units}</td>
-                      <td className="p-3 text-right font-semibold text-blue-600">
-                        {formatCurrency(sku.revenue)}
-                      </td>
-                      <td className="p-3 text-right text-red-600">
-                        {formatCurrency(sku.fees)}
-                      </td>
-                      <td className="p-3 text-right font-semibold text-green-600">
-                        {formatCurrency(sku.net)}
-                      </td>
-                      <td className="p-3 text-right text-gray-600">
-                        {((sku.net / sku.revenue) * 100).toFixed(1)}%
-                      </td>
+              <div className="max-h-[600px] overflow-y-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="text-left p-3 font-semibold bg-gray-50">#</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">SKU</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Units</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Revenue</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Fees</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Net Profit</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Margin</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {financialData.allSKUs.map((sku, index) => (
+                      <tr key={`${sku.sku}-${index}`} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="p-3 text-gray-500 text-xs">{index + 1}</td>
+                        <td className="p-3 font-medium text-gray-900">{sku.sku}</td>
+                        <td className="p-3 text-right text-gray-600">{sku.units}</td>
+                        <td className="p-3 text-right font-semibold text-blue-600">
+                          {formatCurrency(sku.revenue)}
+                        </td>
+                        <td className="p-3 text-right text-red-600">
+                          {formatCurrency(sku.fees)}
+                        </td>
+                        <td className="p-3 text-right font-semibold text-green-600">
+                          {formatCurrency(sku.net)}
+                        </td>
+                        <td className="p-3 text-right text-gray-600">
+                          {sku.revenue > 0 ? ((sku.net / sku.revenue) * 100).toFixed(1) : '0.0'}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </CardContent>
         </Card>

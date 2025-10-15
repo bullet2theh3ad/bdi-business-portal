@@ -85,10 +85,9 @@ export async function POST(request: NextRequest) {
     const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
     const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
 
-    // Get top 10 SKUs by revenue
-    const topSKUs = Array.from(skuSummary.entries())
+    // Get ALL SKUs by revenue (sorted)
+    const allSKUs = Array.from(skuSummary.entries())
       .sort((a, b) => b[1].revenue - a[1].revenue)
-      .slice(0, 10)
       .map(([sku, data]) => ({
         sku,
         units: data.units,
@@ -96,6 +95,9 @@ export async function POST(request: NextRequest) {
         fees: Number(data.fees.toFixed(2)),
         net: Number((data.revenue - data.fees).toFixed(2)),
       }));
+    
+    // Get top 10 for the chart
+    const topSKUs = allSKUs.slice(0, 10);
 
     // Calculate additional metrics
     const netRevenue = totalRevenue - totalFees;
@@ -119,7 +121,8 @@ export async function POST(request: NextRequest) {
         profitMargin: Number(profitMargin.toFixed(2)),
         feePercentage: Number(feePercentage.toFixed(2)),
       },
-      topSKUs,
+      topSKUs, // Top 10 for the chart
+      allSKUs, // ALL SKUs for the table and export
       metadata: {
         fetchedAt: new Date().toISOString(),
         dateRangeDays: daysDiff,
