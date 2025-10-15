@@ -138,6 +138,13 @@ export default function AmazonFinancialDataPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
+  // Debug tax refunded value
+  useEffect(() => {
+    if (financialData?.totalTaxRefunded !== undefined) {
+      console.log('Frontend Tax Refunded Debug:', financialData.totalTaxRefunded);
+    }
+  }, [financialData?.totalTaxRefunded]);
+
   function handlePasswordSubmit() {
     if (password === 'BDI1') {
       setIsAuthenticated(true);
