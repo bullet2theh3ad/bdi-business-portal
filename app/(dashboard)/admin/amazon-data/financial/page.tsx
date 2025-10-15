@@ -391,7 +391,7 @@ export default function AmazonFinancialDataPage() {
       const refundLineItems: any[] = [
         ['Refund/Return Line Items (All Returns)'],
         [''],
-        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity Returned', 'Refund Amount', 'Fees Refunded', 'Net Refund', 'Return Reason']
+        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity Returned', 'Refund Amount', 'Fees Refunded', 'Fee Types Refunded', 'Net Refund to Customer']
       ];
 
       // Extract all refund line items from transactions
@@ -405,18 +405,22 @@ export default function AmazonFinancialDataPage() {
             const asin = item.ASIN || 'N/A';
             const quantity = Math.abs(item.QuantityShipped || 0);
 
-            // Calculate refund amount
+            // Calculate refund amount (money back to customer)
             let refundAmount = 0;
             item.ItemChargeAdjustmentList?.forEach((charge: any) => {
               const amount = charge.ChargeAmount?.CurrencyAmount || 0;
               refundAmount += Math.abs(amount);
             });
 
-            // Calculate fees refunded
+            // Calculate fees refunded (Amazon credits back to you)
             let feesRefunded = 0;
+            const feeTypesRefunded: string[] = [];
             item.ItemFeeAdjustmentList?.forEach((fee: any) => {
               const feeAmount = fee.FeeAmount?.CurrencyAmount || 0;
               feesRefunded += Math.abs(feeAmount);
+              if (fee.FeeType) {
+                feeTypesRefunded.push(`${fee.FeeType}: $${Math.abs(feeAmount).toFixed(2)}`);
+              }
             });
 
             const netRefund = refundAmount - feesRefunded;
@@ -429,8 +433,8 @@ export default function AmazonFinancialDataPage() {
               quantity,
               refundAmount,
               feesRefunded,
-              netRefund,
-              'Customer Return' // Amazon doesn't provide detailed return reasons in API
+              feeTypesRefunded.join(', ') || 'No fees refunded',
+              netRefund
             ]);
           });
         });
