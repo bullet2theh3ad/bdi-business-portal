@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import * as XLSX from 'xlsx';
 import { 
   DollarSign, 
   RefreshCw,
@@ -166,52 +167,66 @@ export default function AmazonFinancialDataPage() {
       return;
     }
 
-    // Create comprehensive CSV content with line items
-    const sections: string[] = [];
-    
-    // Section 1: Summary
-    sections.push('SUMMARY');
-    sections.push(`Date Range,${dateRange.start} to ${dateRange.end}`);
-    sections.push(`Total Orders,${financialData.uniqueOrders}`);
-    sections.push(`Total SKUs,${financialData.uniqueSKUs || 0}`);
-    sections.push(`Total Revenue,$${financialData.totalRevenue.toFixed(2)}`);
-    sections.push(`Total Fees,$${financialData.totalFees.toFixed(2)}`);
-    sections.push(`Net Revenue,$${financialData.netRevenue.toFixed(2)}`);
-    sections.push(`Profit Margin,${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`);
-    sections.push('');
+    // Create a new workbook
+    const workbook = XLSX.utils.book_new();
 
-    // Section 2: Fee Breakdown
+    // TAB 1: Summary
+    const summaryData = [
+      ['Amazon Financial Data - Summary Report'],
+      [''],
+      ['Date Range', `${dateRange.start} to ${dateRange.end}`],
+      ['Generated', new Date().toLocaleString()],
+      [''],
+      ['Metric', 'Value'],
+      ['Total Orders', financialData.uniqueOrders],
+      ['Total SKUs', financialData.uniqueSKUs || 0],
+      ['Total Revenue', financialData.totalRevenue],
+      ['Total Fees', financialData.totalFees],
+      ['Net Revenue', financialData.netRevenue],
+      ['Profit Margin', `${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`],
+      ['Fee Percentage', `${((financialData.totalFees / financialData.totalRevenue) * 100).toFixed(2)}%`],
+    ];
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+    // TAB 2: Fee Breakdown
     if (financialData.feeBreakdown && financialData.feeBreakdown.length > 0) {
-      sections.push('FEE BREAKDOWN');
-      sections.push('Fee Type,Amount,Percentage of Total Fees');
-      financialData.feeBreakdown.forEach(fee => {
-        sections.push(`${fee.feeType},$${fee.amount.toFixed(2)},${fee.percentage.toFixed(2)}%`);
-      });
-      sections.push('');
+      const feeData = [
+        ['Fee Breakdown by Type'],
+        [''],
+        ['Fee Type', 'Amount', 'Percentage of Total Fees'],
+        ...financialData.feeBreakdown.map(fee => [
+          fee.feeType,
+          fee.amount,
+          `${fee.percentage.toFixed(2)}%`
+        ]),
+        [''],
+        ['Total', financialData.totalFees, '100.00%']
+      ];
+      const feeSheet = XLSX.utils.aoa_to_sheet(feeData);
+      XLSX.utils.book_append_sheet(workbook, feeSheet, 'Fee Breakdown');
     }
 
-    // Section 3: SKU Line Items (All SKUs)
-    sections.push('SKU LINE ITEMS');
-    sections.push('Rank,SKU,Units Sold,Revenue,Fees,Net Profit,Profit Margin %');
-    financialData.allSKUs.forEach((sku, index) => {
-      const margin = sku.revenue > 0 ? ((sku.net / sku.revenue) * 100).toFixed(2) : '0.00';
-      sections.push(
-        `${index + 1},${sku.sku},${sku.units},$${sku.revenue.toFixed(2)},$${sku.fees.toFixed(2)},$${sku.net.toFixed(2)},${margin}%`
-      );
-    });
+    // TAB 3: All SKU Line Items
+    const skuData = [
+      ['All SKU Performance - Line Items'],
+      [''],
+      ['Rank', 'SKU', 'Units Sold', 'Revenue', 'Fees', 'Net Profit', 'Profit Margin %'],
+      ...financialData.allSKUs.map((sku, index) => [
+        index + 1,
+        sku.sku,
+        sku.units,
+        sku.revenue,
+        sku.fees,
+        sku.net,
+        sku.revenue > 0 ? `${((sku.net / sku.revenue) * 100).toFixed(2)}%` : '0.00%'
+      ])
+    ];
+    const skuSheet = XLSX.utils.aoa_to_sheet(skuData);
+    XLSX.utils.book_append_sheet(workbook, skuSheet, 'SKU Line Items');
 
-    const csvContent = sections.join('\n');
-
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `amazon-financial-data-${dateRange.start}-to-${dateRange.end}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Generate Excel file and download
+    XLSX.writeFile(workbook, `amazon-financial-data-${dateRange.start}-to-${dateRange.end}.xlsx`);
   }
 
   const profitMargin = financialData ? 
@@ -278,7 +293,7 @@ export default function AmazonFinancialDataPage() {
               disabled={!financialData || !financialData.allSKUs || financialData.allSKUs.length === 0}
             >
               <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <span className="hidden sm:inline">Export Excel</span>
             </Button>
           </div>
         </div>
