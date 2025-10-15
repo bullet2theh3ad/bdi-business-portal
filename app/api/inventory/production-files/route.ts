@@ -263,8 +263,9 @@ export async function GET(request: NextRequest) {
         .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
         .orderBy(productionFiles.createdAt);
     } else if (connectedOrganizationIds.length > 0) {
-      // Users with file access connections can see their own files + connected org files
-      console.log(`📂 Fetching files for ${userData.organizationCode} + connected orgs: [${connectedOrganizationIds.join(', ')}]`);
+      // For now, ignore connections and only show own organization's files
+      // This prevents MTN from seeing BDI files even if they have connections
+      console.log(`📂 Ignoring connections - only showing own files for ${userData.organizationCode}`);
       files = await db
         .select({
           id: productionFiles.id,
@@ -292,10 +293,7 @@ export async function GET(request: NextRequest) {
         .from(productionFiles)
         .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
         .where(
-          or(
-            eq(productionFiles.organizationId, userData.organizationId!), // Own files
-            inArray(productionFiles.organizationId, connectedOrganizationIds) // Connected org files only
-          )
+          eq(productionFiles.organizationId, userData.organizationId!) // Only own files
         )
         .orderBy(productionFiles.createdAt);
     } else {

@@ -68,18 +68,16 @@ export async function GET(request: NextRequest) {
     let allowedSkuCodes: string[] = [];
     
     if (!isBDIUser) {
-      // Partner organizations can only see SKUs they have in invoices
-      console.log(`🔒 Partner org ${userOrganization.code} - filtering by invoice SKUs`);
+      // Partner organizations can only see SKUs they OWN (by manufacturer) - same logic as forecasts/invoices
+      console.log(`🔒 Partner org ${userOrganization.code} - filtering by owned SKUs`);
       
       const partnerSkus = await db
         .select({
           sku: productSkus.sku,
           model: productSkus.model,
         })
-        .from(invoiceLineItems)
-        .innerJoin(invoices, eq(invoices.id, invoiceLineItems.invoiceId))
-        .innerJoin(productSkus, eq(productSkus.id, invoiceLineItems.skuId))
-        .where(eq(invoices.customerName, userOrganization.code!));
+        .from(productSkus)
+        .where(eq(productSkus.mfg, userOrganization.code!));
       
       allowedSkuCodes = partnerSkus.map(s => s.sku);
       const allowedModels = partnerSkus.map(s => s.model).filter(m => m !== null);
@@ -87,18 +85,8 @@ export async function GET(request: NextRequest) {
       // Combine both SKU and model for matching (EMG uses "model", WIP uses "model_number")
       allowedSkuCodes = [...new Set([...allowedSkuCodes, ...allowedModels])];
       
-      // Add fuzzy matching for SKU variations (e.g., MNQ1525-30W-U matches MNQ1525-M30W-E)
-      const fuzzySkus: string[] = [];
-      allowedSkuCodes.forEach(sku => {
-        // Extract base SKU pattern (e.g., "MNQ1525" from "MNQ1525-30W-U")
-        const basePattern = sku.split('-')[0]; // Get first part before first dash
-        if (basePattern) {
-          fuzzySkus.push(basePattern);
-        }
-      });
-      
-      // Add fuzzy patterns to allowed SKUs
-      allowedSkuCodes = [...new Set([...allowedSkuCodes, ...fuzzySkus])];
+      // Use exact matching only - no fuzzy matching to prevent showing other manufacturers' SKUs
+      // This ensures MTN only sees their exact SKUs, not similar ones from other manufacturers
       
       console.log(`🔍 Partner ${userOrganization.code} allowed SKUs/Models:`, allowedSkuCodes);
       
@@ -151,7 +139,7 @@ export async function GET(request: NextRequest) {
       .where(
         isBDIUser || allowedSkuCodes.length === 0
           ? sql`1=1` // BDI sees all
-          : sql`${emgInventoryTracking.model} = ANY(${allowedSkuCodes}) OR ${emgInventoryTracking.model} LIKE ANY(${allowedSkuCodes.map(sku => `%${sku}%`)})` // Partners see their SKUs with fuzzy matching
+          : inArray(emgInventoryTracking.model, allowedSkuCodes) // Partners see only their exact SKUs
       )
       .orderBy(desc(emgInventoryTracking.uploadDate));
 
@@ -221,10 +209,8 @@ export async function GET(request: NextRequest) {
     if (!isBDIUser && allowedSkuCodes.length > 0) {
       wipUnits = allWipUnits.filter((unit: any) => {
         const modelNumber = unit.model_number;
-        // Exact match
-        if (allowedSkuCodes.includes(modelNumber)) return true;
-        // Fuzzy match - check if any allowed SKU pattern is contained in the model number
-        return allowedSkuCodes.some(allowedSku => modelNumber && modelNumber.includes(allowedSku));
+        // Exact match only - no fuzzy matching to prevent showing other manufacturers' SKUs
+        return allowedSkuCodes.includes(modelNumber);
       });
       console.log(`🔒 Filtered WIP units for ${userOrganization.code}: ${wipUnits.length} of ${allWipUnits.length} units`);
     }
