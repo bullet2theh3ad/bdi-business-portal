@@ -760,16 +760,6 @@ export default function AmazonFinancialDataPage() {
                 </p>
               </CardContent>
             </Card>
-
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Net Revenue</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(financialData.netRevenue)}</div>
-                <p className="text-xs text-gray-500 mt-1">{profitMargin.toFixed(1)}% margin</p>
-              </CardContent>
-            </Card>
           </div>
         )}
       </div>
