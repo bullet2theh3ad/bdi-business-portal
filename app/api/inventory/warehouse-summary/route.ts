@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, emgInventoryTracking, catvInventoryTracking } from '@/lib/db/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { users, emgInventoryTracking, catvInventoryTracking, organizations, organizationMembers, invoices, invoiceLineItems, productSkus } from '@/lib/db/schema';
+import { eq, desc, sql, inArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +30,112 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get EMG Inventory Summary
+    // Get the requesting user and their organization
+    const [requestingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authId, authUser.id))
+      .limit(1);
+
+    if (!requestingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Get user's organization membership
+    const userOrgMembership = await db
+      .select({
+        organization: {
+          id: organizations.id,
+          code: organizations.code,
+          type: organizations.type,
+        },
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationUuid))
+      .where(eq(organizationMembers.userAuthId, requestingUser.authId))
+      .limit(1);
+
+    if (userOrgMembership.length === 0) {
+      return NextResponse.json({ error: 'User not associated with any organization' }, { status: 403 });
+    }
+
+    const userOrganization = userOrgMembership[0].organization;
+    const isBDIUser = userOrganization.code === 'BDI' && userOrganization.type === 'internal';
+
+    console.log(`📊 Warehouse Summary - User org: ${userOrganization.code} (${userOrganization.type}), isBDI: ${isBDIUser}`);
+
+    // Get allowed SKU codes for this organization (partner orgs only see their SKUs)
+    let allowedSkuCodes: string[] = [];
+    
+    if (!isBDIUser) {
+      // Partner organizations can only see SKUs they have in invoices
+      console.log(`🔒 Partner org ${userOrganization.code} - filtering by invoice SKUs`);
+      
+      const partnerSkus = await db
+        .select({
+          sku: productSkus.sku,
+          model: productSkus.model,
+        })
+        .from(invoiceLineItems)
+        .innerJoin(invoices, eq(invoices.id, invoiceLineItems.invoiceId))
+        .innerJoin(productSkus, eq(productSkus.id, invoiceLineItems.skuId))
+        .where(eq(invoices.customerName, userOrganization.code!));
+      
+      allowedSkuCodes = partnerSkus.map(s => s.sku);
+      const allowedModels = partnerSkus.map(s => s.model).filter(m => m !== null);
+      
+      // Combine both SKU and model for matching (EMG uses "model", WIP uses "model_number")
+      allowedSkuCodes = [...new Set([...allowedSkuCodes, ...allowedModels])];
+      
+      // Add fuzzy matching for SKU variations (e.g., MNQ1525-30W-U matches MNQ1525-M30W-E)
+      const fuzzySkus: string[] = [];
+      allowedSkuCodes.forEach(sku => {
+        // Extract base SKU pattern (e.g., "MNQ1525" from "MNQ1525-30W-U")
+        const basePattern = sku.split('-')[0]; // Get first part before first dash
+        if (basePattern) {
+          fuzzySkus.push(basePattern);
+        }
+      });
+      
+      // Add fuzzy patterns to allowed SKUs
+      allowedSkuCodes = [...new Set([...allowedSkuCodes, ...fuzzySkus])];
+      
+      console.log(`🔍 Partner ${userOrganization.code} allowed SKUs/Models:`, allowedSkuCodes);
+      
+      if (allowedSkuCodes.length === 0) {
+        console.log(`⚠️  No SKUs found for ${userOrganization.code} - returning empty data`);
+        return NextResponse.json({
+          success: true,
+          data: {
+            emg: {
+              totals: { totalSkus: 0, totalOnHand: 0, totalAllocated: 0, totalBackorder: 0 },
+              inventory: [],
+              topSkus: [],
+              lastUpdated: null,
+            },
+            catv: {
+              totals: { totalWeeks: 0, totalReceivedIn: 0, totalShippedJiraOut: 0, totalShippedEmgOut: 0, totalWipInHouse: 0 },
+              wipTotals: { totalUnits: 0, byStage: {}, bySku: {}, bySource: {} },
+              metrics: { totalIntake: 0, activeWip: 0, rma: 0, outflow: 0, avgAging: 0 },
+              inventory: [],
+              wipSummary: [],
+              topSkus: [],
+              lastUpdated: null,
+            },
+            summary: {
+              totalWarehouses: 2,
+              totalSkus: 0,
+              totalUnits: 0,
+              lastUpdated: Date.now(),
+            },
+          },
+        });
+      }
+    } else {
+      console.log(`🔓 BDI user - can see all SKUs`);
+    }
+
+    // Get EMG Inventory Summary (filtered by SKU if partner org)
     const emgInventory = await db
       .select({
         model: emgInventoryTracking.model,
@@ -43,6 +148,11 @@ export async function GET(request: NextRequest) {
         lastUpdated: emgInventoryTracking.lastUpdated,
       })
       .from(emgInventoryTracking)
+      .where(
+        isBDIUser || allowedSkuCodes.length === 0
+          ? sql`1=1` // BDI sees all
+          : sql`${emgInventoryTracking.model} = ANY(${allowedSkuCodes}) OR ${emgInventoryTracking.model} LIKE ANY(${allowedSkuCodes.map(sku => `%${sku}%`)})` // Partners see their SKUs with fuzzy matching
+      )
       .orderBy(desc(emgInventoryTracking.uploadDate));
 
     // Get CATV Inventory Summary (from CATV tracking table)
@@ -105,8 +215,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const wipUnits = allWipUnits;
-    console.log(`✅ Total WIP units fetched: ${wipUnits.length}`);
+    // Filter WIP units by allowed SKUs for partner organizations
+    let wipUnits = allWipUnits;
+    
+    if (!isBDIUser && allowedSkuCodes.length > 0) {
+      wipUnits = allWipUnits.filter((unit: any) => {
+        const modelNumber = unit.model_number;
+        // Exact match
+        if (allowedSkuCodes.includes(modelNumber)) return true;
+        // Fuzzy match - check if any allowed SKU pattern is contained in the model number
+        return allowedSkuCodes.some(allowedSku => modelNumber && modelNumber.includes(allowedSku));
+      });
+      console.log(`🔒 Filtered WIP units for ${userOrganization.code}: ${wipUnits.length} of ${allWipUnits.length} units`);
+    }
+    
+    console.log(`✅ Total WIP units (after filtering): ${wipUnits.length}`);
 
     // Calculate EMG totals
     const emgTotals = {

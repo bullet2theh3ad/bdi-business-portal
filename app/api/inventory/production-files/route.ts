@@ -294,8 +294,7 @@ export async function GET(request: NextRequest) {
         .where(
           or(
             eq(productionFiles.organizationId, userData.organizationId!), // Own files
-            inArray(productionFiles.organizationId, connectedOrganizationIds), // Connected org files
-            eq(productionFiles.isPublicToBdi, true) // Public files
+            inArray(productionFiles.organizationId, connectedOrganizationIds) // Connected org files only
           )
         )
         .orderBy(productionFiles.createdAt);
@@ -328,10 +327,7 @@ export async function GET(request: NextRequest) {
         .from(productionFiles)
         .leftJoin(organizations, eq(productionFiles.organizationId, organizations.id))
         .where(
-          or(
-            eq(productionFiles.organizationId, userData.organizationId!),
-            eq(productionFiles.isPublicToBdi, true)
-          )
+          eq(productionFiles.organizationId, userData.organizationId!) // Only own organization's files
         )
         .orderBy(productionFiles.createdAt);
     }

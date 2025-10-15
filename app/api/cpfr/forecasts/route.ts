@@ -266,35 +266,36 @@ export async function GET(request: NextRequest) {
       } else if (isPartnerUser && userOrgCode) {
         console.log(`🔍 Filtering forecasts for partner organization: ${userOrgCode}`);
         
-        // For partner organizations (TC1, etc.), show forecasts where:
-        // Invoice.customerName matches their Organization.code
-        const partnerSkuIds = await db
+        // For partner organizations, show forecasts for SKUs they OWN (by manufacturer)
+        // Get all SKUs where this organization is the manufacturer
+        const ownedSkus = await db
           .select({
-            skuId: invoiceLineItems.skuId
+            skuId: productSkus.id
           })
-          .from(invoiceLineItems)
-          .innerJoin(invoices, eq(invoices.id, invoiceLineItems.invoiceId))
-          .where(eq(invoices.customerName, userOrgCode));
+          .from(productSkus)
+          .where(eq(productSkus.mfg, userOrgCode));
         
-        const allowedSkuIds = partnerSkuIds.map(item => item.skuId);
+        const ownedSkuIds = ownedSkus.map(item => item.skuId);
         
-        console.log(`🔍 Found ${allowedSkuIds.length} SKU IDs for ${userOrgCode}:`, allowedSkuIds);
+        console.log(`🔍 Found ${ownedSkuIds.length} SKUs owned by ${userOrgCode}:`, ownedSkuIds);
         console.log(`📊 All forecasts count: ${allForecasts.length}`);
         console.log(`📊 All forecasts SKU IDs:`, allForecasts.map(f => f.skuId));
         
-        // Filter forecasts to only show those for partner's SKUs
+        // Filter forecasts to only show those for SKUs owned by this organization
         filteredForecasts = allForecasts.filter(forecast => 
-          allowedSkuIds.includes(forecast.skuId)
+          ownedSkuIds.includes(forecast.skuId)
         );
+        
+        console.log(`🔍 Found ${filteredForecasts.length} forecasts for ${userOrgCode} owned SKUs`);
         
         console.log(`🔒 Partner ${userOrgCode} can see ${filteredForecasts.length} of ${allForecasts.length} forecasts`);
         
         // Enhanced debug info
         if (filteredForecasts.length === 0) {
           console.log(`⚠️ DEBUG INFO for ${userOrgCode}:`);
-          console.log(`   - Allowed SKU IDs: ${allowedSkuIds.join(', ')}`);
+          console.log(`   - Owned SKU IDs: ${ownedSkuIds.join(', ')}`);
           console.log(`   - Forecast SKU IDs: ${allForecasts.map(f => f.skuId).join(', ')}`);
-          console.log(`   - Invoices with customerName = '${userOrgCode}': ${allowedSkuIds.length > 0 ? 'YES' : 'NO'}`);
+          console.log(`   - SKUs owned by '${userOrgCode}': ${ownedSkuIds.length > 0 ? 'YES' : 'NO'}`);
         }
       } else {
         console.log(`🔓 BDI user can see all ${allForecasts.length} forecasts`);

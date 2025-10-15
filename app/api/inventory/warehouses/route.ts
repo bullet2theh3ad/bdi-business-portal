@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, warehouses, organizations, organizationMembers } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -101,7 +101,9 @@ export async function GET(request: NextRequest) {
             .orderBy(desc(warehouses.createdAt)),
           db.select()
             .from(warehouses)
-            .where(eq(warehouses.organizationId, bdiOrgId))
+            .where(
+              sql`${warehouses.organizationId} = ${bdiOrgId} AND (${warehouses.warehouseCode} = 'EMG' OR ${warehouses.warehouseCode} = 'CAT')`
+            )
             .orderBy(desc(warehouses.createdAt))
         ]);
         
