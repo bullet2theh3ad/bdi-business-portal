@@ -96,7 +96,16 @@ export default function AmazonFinancialDataPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setFinancialData(data);
+        // The API returns data in a 'summary' object, extract it
+        setFinancialData({
+          eventGroups: data.summary.eventGroups,
+          uniqueOrders: data.summary.uniqueOrders,
+          totalRevenue: data.summary.totalRevenue,
+          totalFees: data.summary.totalFees,
+          netRevenue: data.summary.netRevenue,
+          uniqueSKUs: data.summary.uniqueSKUs,
+          topSKUs: data.topSKUs || []
+        });
         setLastRefresh(new Date());
       } else {
         const errorData = await response.json();
