@@ -520,10 +520,13 @@ export default function WarehousesPage() {
               <SemanticBDIIcon semantic="chart" size={16} className="mr-2 brightness-0 invert" />
               {tc('warehouseSummaryButton', 'Warehouse Summary')}
             </Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
-              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-              {tc('addWarehouseButton', 'Add Warehouse')}
-            </Button>
+            {/* Only BDI users can add warehouses */}
+            {user?.organization?.code === 'BDI' && user?.organization?.type === 'internal' && (
+              <Button className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
+                <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+                {tc('addWarehouseButton', 'Add Warehouse')}
+              </Button>
+            )}
           </div>
         </div>
       </div>

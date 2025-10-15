@@ -102,29 +102,54 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current inventory (latest snapshot per SKU) with organization filtering
-    const currentInventory = await db
+    let currentInventory = await db
       .select()
       .from(emgInventoryTracking)
-      .where(
-        isBDIUser || allowedSkuCodes.length === 0
-          ? undefined // BDI sees all
-          : inArray(emgInventoryTracking.model, allowedSkuCodes) // Partners see only their exact SKUs
-      )
       .orderBy(desc(emgInventoryTracking.uploadDate));
 
     // Get inventory history for charts (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const inventoryHistory = await db
+    let inventoryHistory = await db
       .select()
       .from(emgInventoryHistory)
-      .where(
-        isBDIUser || allowedSkuCodes.length === 0
-          ? undefined // BDI sees all
-          : inArray(emgInventoryHistory.model, allowedSkuCodes) // Partners see only their exact SKUs
-      )
       .orderBy(desc(emgInventoryHistory.snapshotDate));
+
+    // Apply fuzzy matching filter for partner organizations
+    if (!isBDIUser && allowedSkuCodes.length > 0) {
+      console.log(`🔍 Applying fuzzy matching for EMG inventory...`);
+      
+      // Extract base SKU prefixes for fuzzy matching (e.g., "MNQ1525" from "MNQ1525-30W-U")
+      const skuPrefixes = allowedSkuCodes.map(sku => {
+        // Extract the main part before the first dash or full string if no dash
+        const match = sku.match(/^([A-Z]+\d+)/i);
+        return match ? match[1] : sku;
+      });
+      
+      const uniquePrefixes = [...new Set(skuPrefixes)];
+      console.log(`🔍 SKU prefixes for fuzzy matching:`, uniquePrefixes);
+      
+      // Filter current inventory using fuzzy matching
+      currentInventory = currentInventory.filter((item: any) => {
+        if (!item.model) return false;
+        const itemModel = item.model.toUpperCase();
+        
+        // Check if the EMG model starts with any of our SKU prefixes
+        return uniquePrefixes.some(prefix => itemModel.startsWith(prefix.toUpperCase()));
+      });
+      
+      // Filter inventory history using fuzzy matching
+      inventoryHistory = inventoryHistory.filter((item: any) => {
+        if (!item.model) return false;
+        const itemModel = item.model.toUpperCase();
+        
+        // Check if the EMG model starts with any of our SKU prefixes
+        return uniquePrefixes.some(prefix => itemModel.startsWith(prefix.toUpperCase()));
+      });
+      
+      console.log(`🔍 After fuzzy matching: ${currentInventory.length} current items, ${inventoryHistory.length} history items`);
+    }
 
     return NextResponse.json({
       success: true,

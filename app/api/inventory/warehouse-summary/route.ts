@@ -85,9 +85,6 @@ export async function GET(request: NextRequest) {
       // Combine both SKU and model for matching (EMG uses "model", WIP uses "model_number")
       allowedSkuCodes = [...new Set([...allowedSkuCodes, ...allowedModels])];
       
-      // Use exact matching only - no fuzzy matching to prevent showing other manufacturers' SKUs
-      // This ensures MTN only sees their exact SKUs, not similar ones from other manufacturers
-      
       console.log(`🔍 Partner ${userOrganization.code} allowed SKUs/Models:`, allowedSkuCodes);
       
       if (allowedSkuCodes.length === 0) {
@@ -123,8 +120,20 @@ export async function GET(request: NextRequest) {
       console.log(`🔓 BDI user - can see all SKUs`);
     }
 
+    // Extract SKU prefixes for fuzzy matching (e.g., "MNQ1525" from "MNQ1525-30W-U")
+    let skuPrefixes: string[] = [];
+    if (!isBDIUser && allowedSkuCodes.length > 0) {
+      skuPrefixes = allowedSkuCodes.map(sku => {
+        const match = sku.match(/^([A-Z]+\d+)/i);
+        return match ? match[1] : sku;
+      });
+      skuPrefixes = [...new Set(skuPrefixes)];
+      console.log(`🔍 Warehouse Summary SKU prefixes for fuzzy matching:`, skuPrefixes);
+    }
+
     // Get EMG Inventory Summary (filtered by SKU if partner org)
-    const emgInventory = await db
+    // For partner orgs, we fetch all and then apply fuzzy matching
+    let emgInventory = await db
       .select({
         model: emgInventoryTracking.model,
         description: emgInventoryTracking.description,
@@ -136,12 +145,17 @@ export async function GET(request: NextRequest) {
         lastUpdated: emgInventoryTracking.lastUpdated,
       })
       .from(emgInventoryTracking)
-      .where(
-        isBDIUser || allowedSkuCodes.length === 0
-          ? sql`1=1` // BDI sees all
-          : inArray(emgInventoryTracking.model, allowedSkuCodes) // Partners see only their exact SKUs
-      )
       .orderBy(desc(emgInventoryTracking.uploadDate));
+
+    // Apply fuzzy matching filter for partner organizations
+    if (!isBDIUser && skuPrefixes.length > 0) {
+      emgInventory = emgInventory.filter((item: any) => {
+        if (!item.model) return false;
+        const itemModel = item.model.toUpperCase();
+        return skuPrefixes.some(prefix => itemModel.startsWith(prefix.toUpperCase()));
+      });
+      console.log(`🔍 EMG fuzzy filter: ${emgInventory.length} items matched`);
+    }
 
     // Get CATV Inventory Summary (from CATV tracking table)
     const catvInventory = await db
@@ -203,16 +217,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filter WIP units by allowed SKUs for partner organizations
+    // Filter WIP units by allowed SKUs for partner organizations using fuzzy matching
     let wipUnits = allWipUnits;
     
-    if (!isBDIUser && allowedSkuCodes.length > 0) {
+    if (!isBDIUser && skuPrefixes.length > 0) {
       wipUnits = allWipUnits.filter((unit: any) => {
-        const modelNumber = unit.model_number;
-        // Exact match only - no fuzzy matching to prevent showing other manufacturers' SKUs
-        return allowedSkuCodes.includes(modelNumber);
+        if (!unit.model_number) return false;
+        const itemModel = unit.model_number.toUpperCase();
+        // Use fuzzy matching to handle EMG naming variations
+        return skuPrefixes.some(prefix => itemModel.startsWith(prefix.toUpperCase()));
       });
-      console.log(`🔒 Filtered WIP units for ${userOrganization.code}: ${wipUnits.length} of ${allWipUnits.length} units`);
+      console.log(`🔍 WIP fuzzy filter for ${userOrganization.code}: ${wipUnits.length} of ${allWipUnits.length} units`);
     }
     
     console.log(`✅ Total WIP units (after filtering): ${wipUnits.length}`);
