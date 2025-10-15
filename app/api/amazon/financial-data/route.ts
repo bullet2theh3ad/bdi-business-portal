@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
     const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions);
     const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
     const totalRefunds = FinancialEventsParser.calculateTotalRefunds(transactions);
+    const totalAdSpend = FinancialEventsParser.calculateTotalAdSpend(transactions);
+    const totalChargebacks = FinancialEventsParser.calculateTotalChargebacks(transactions);
+    const adjustments = FinancialEventsParser.calculateTotalAdjustments(transactions);
+    const totalCoupons = FinancialEventsParser.calculateTotalCoupons(transactions);
     const feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
     const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
     const refundSummary = FinancialEventsParser.getRefundSummary(transactions);
@@ -112,6 +116,13 @@ export async function POST(request: NextRequest) {
     const netRevenue = totalRevenue - totalFees;
     const profitMargin = totalRevenue > 0 ? ((netRevenue / totalRevenue) * 100) : 0;
     const feePercentage = totalRevenue > 0 ? ((totalFees / totalRevenue) * 100) : 0;
+    
+    // Calculate TRUE net profit (after all costs)
+    const trueNetProfit = totalRevenue - totalFees - totalRefunds - totalAdSpend - totalCoupons - totalChargebacks + adjustments.net;
+    const trueNetMargin = totalRevenue > 0 ? ((trueNetProfit / totalRevenue) * 100) : 0;
+    
+    // Calculate marketing ROI
+    const marketingROI = totalAdSpend > 0 ? ((totalRevenue / totalAdSpend) * 100) : 0;
 
     // Format fee breakdown for response
     const feeBreakdownFormatted = Object.entries(feeBreakdown)
@@ -135,11 +146,20 @@ export async function POST(request: NextRequest) {
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalFees: Number(totalFees.toFixed(2)),
         totalRefunds: Number(totalRefunds.toFixed(2)),
+        totalAdSpend: Number(totalAdSpend.toFixed(2)),
+        totalChargebacks: Number(totalChargebacks.toFixed(2)),
+        totalCoupons: Number(totalCoupons.toFixed(2)),
+        adjustmentCredits: Number(adjustments.credits.toFixed(2)),
+        adjustmentDebits: Number(adjustments.debits.toFixed(2)),
+        adjustmentNet: Number(adjustments.net.toFixed(2)),
         netRevenue: Number(netRevenue.toFixed(2)),
+        trueNetProfit: Number(trueNetProfit.toFixed(2)),
         uniqueSKUs: skuSummary.size,
         profitMargin: Number(profitMargin.toFixed(2)),
+        trueNetMargin: Number(trueNetMargin.toFixed(2)),
         feePercentage: Number(feePercentage.toFixed(2)),
         refundRate: orderIds.length > 0 ? Number(((refundSummary.size / orderIds.length) * 100).toFixed(2)) : 0,
+        marketingROI: Number(marketingROI.toFixed(2)),
       },
       feeBreakdown: feeBreakdownFormatted, // Detailed fee breakdown by type
       topSKUs, // Top 10 for the chart
@@ -156,7 +176,7 @@ export async function POST(request: NextRequest) {
       response.transactions = transactions;
     }
 
-    console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalFees.toFixed(2)} fees, $${totalRefunds.toFixed(2)} refunds`);
+    console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalFees.toFixed(2)} fees, $${totalRefunds.toFixed(2)} refunds, $${totalAdSpend.toFixed(2)} ads, $${totalCoupons.toFixed(2)} coupons, $${totalChargebacks.toFixed(2)} chargebacks`);
 
     return NextResponse.json(response);
 

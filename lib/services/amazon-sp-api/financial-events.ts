@@ -453,6 +453,105 @@ export class FinancialEventsParser {
   }
 
   /**
+   * Calculate total advertising spend from Product Ads events
+   */
+  static calculateTotalAdSpend(events: FinancialEventGroup[]): number {
+    let total = 0;
+    
+    events.forEach(group => {
+      group.ProductAdsPaymentEventList?.forEach(event => {
+        if (event.transactionValue?.CurrencyAmount) {
+          total += Math.abs(event.transactionValue.CurrencyAmount);
+        }
+      });
+    });
+    
+    return total;
+  }
+
+  /**
+   * Calculate total chargebacks
+   */
+  static calculateTotalChargebacks(events: FinancialEventGroup[]): number {
+    let total = 0;
+    
+    events.forEach(group => {
+      group.ChargebackEventList?.forEach(event => {
+        event.ShipmentItemList?.forEach(item => {
+          item.ItemChargeList?.forEach(charge => {
+            if (charge.ChargeAmount?.CurrencyAmount) {
+              total += Math.abs(charge.ChargeAmount.CurrencyAmount);
+            }
+          });
+        });
+      });
+    });
+    
+    return total;
+  }
+
+  /**
+   * Calculate total adjustments (credits/debits from Amazon)
+   */
+  static calculateTotalAdjustments(events: FinancialEventGroup[]): {
+    credits: number;
+    debits: number;
+    net: number;
+  } {
+    let credits = 0;
+    let debits = 0;
+    
+    events.forEach(group => {
+      group.AdjustmentEventList?.forEach(event => {
+        // Check adjustment amount at event level
+        if (event.AdjustmentAmount?.CurrencyAmount) {
+          const value = event.AdjustmentAmount.CurrencyAmount;
+          if (value > 0) {
+            credits += value;
+          } else {
+            debits += Math.abs(value);
+          }
+        }
+        
+        // Also check item-level amounts
+        event.AdjustmentItemList?.forEach(item => {
+          if (item.TotalAmount?.CurrencyAmount) {
+            const value = item.TotalAmount.CurrencyAmount;
+            if (value > 0) {
+              credits += value;
+            } else {
+              debits += Math.abs(value);
+            }
+          }
+        });
+      });
+    });
+    
+    return {
+      credits,
+      debits,
+      net: credits - debits
+    };
+  }
+
+  /**
+   * Calculate total coupon costs
+   */
+  static calculateTotalCoupons(events: FinancialEventGroup[]): number {
+    let total = 0;
+    
+    events.forEach(group => {
+      group.CouponPaymentEventList?.forEach(event => {
+        if (event.TotalAmount?.CurrencyAmount) {
+          total += Math.abs(event.TotalAmount.CurrencyAmount);
+        }
+      });
+    });
+    
+    return total;
+  }
+
+  /**
    * Get SKU-level summary from financial events
    */
   static getSKUSummary(events: FinancialEventGroup[]): Map<string, {

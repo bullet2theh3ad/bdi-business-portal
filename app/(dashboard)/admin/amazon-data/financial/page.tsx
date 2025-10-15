@@ -63,9 +63,18 @@ interface FinancialData {
   totalRevenue: number;
   totalFees: number;
   totalRefunds?: number;
+  totalAdSpend?: number;
+  totalChargebacks?: number;
+  totalCoupons?: number;
+  adjustmentCredits?: number;
+  adjustmentDebits?: number;
+  adjustmentNet?: number;
   netRevenue: number;
+  trueNetProfit?: number;
   uniqueSKUs?: number;
   refundRate?: number;
+  trueNetMargin?: number;
+  marketingROI?: number;
   topSKUs?: SKUData[];
   allSKUs?: SKUData[];
   feeBreakdown?: FeeBreakdown[];
@@ -92,6 +101,7 @@ export default function AmazonFinancialDataPage() {
   });
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showFeeModal, setShowFeeModal] = useState(false);
+  const [showPLModal, setShowPLModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -154,9 +164,18 @@ export default function AmazonFinancialDataPage() {
           totalRevenue: data.summary.totalRevenue,
           totalFees: data.summary.totalFees,
           totalRefunds: data.summary.totalRefunds || 0,
+          totalAdSpend: data.summary.totalAdSpend || 0,
+          totalChargebacks: data.summary.totalChargebacks || 0,
+          totalCoupons: data.summary.totalCoupons || 0,
+          adjustmentCredits: data.summary.adjustmentCredits || 0,
+          adjustmentDebits: data.summary.adjustmentDebits || 0,
+          adjustmentNet: data.summary.adjustmentNet || 0,
           netRevenue: data.summary.netRevenue,
+          trueNetProfit: data.summary.trueNetProfit || 0,
           uniqueSKUs: data.summary.uniqueSKUs,
           refundRate: data.summary.refundRate || 0,
+          trueNetMargin: data.summary.trueNetMargin || 0,
+          marketingROI: data.summary.marketingROI || 0,
           topSKUs: data.topSKUs || [],
           allSKUs: data.allSKUs || [],
           feeBreakdown: data.feeBreakdown || []
@@ -536,10 +555,19 @@ export default function AmazonFinancialDataPage() {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <Button onClick={loadFinancialData} disabled={loading} className="flex-1 sm:flex-none">
               <RefreshCw className={`h-4 w-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1 sm:flex-none bg-gradient-to-r from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100"
+              onClick={() => setShowPLModal(true)}
+              disabled={!financialData}
+            >
+              <BarChart3 className="h-4 w-4 sm:mr-2 text-green-600" />
+              <span className="hidden sm:inline">P&L Statement</span>
             </Button>
             <Button 
               variant="outline" 
@@ -861,6 +889,220 @@ export default function AmazonFinancialDataPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* P&L Statement Modal */}
+      {showPLModal && financialData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 via-blue-50 to-purple-50">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="h-7 w-7 text-green-600" />
+                  Complete Profit & Loss Statement
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Comprehensive financial analysis including all costs and adjustments
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPLModal(false)}
+                className="hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Income Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2 border-b pb-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  Revenue & Income
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <span className="font-semibold text-gray-700">Total Revenue (Sales)</span>
+                    <span className="font-bold text-blue-600 text-lg">{formatCurrency(financialData.totalRevenue)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 pl-8">
+                    <span className="text-sm text-gray-600">from {financialData.uniqueOrders} orders</span>
+                    <span className="text-sm text-gray-500">{financialData.uniqueSKUs} SKUs</span>
+                  </div>
+                  {(financialData.adjustmentCredits || 0) > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <span className="font-medium text-gray-700">+ Amazon Credits/Adjustments</span>
+                      <span className="font-semibold text-green-600">{formatCurrency(financialData.adjustmentCredits || 0)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Expenses Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2 border-b pb-2">
+                  <TrendingDown className="h-5 w-5 text-red-600" />
+                  Costs & Expenses
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                    <span className="font-semibold text-gray-700">Amazon Fees</span>
+                    <span className="font-bold text-red-600">{formatCurrency(financialData.totalFees)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 pl-8">
+                    <span className="text-sm text-gray-600">{feePercentage.toFixed(2)}% of revenue</span>
+                    <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => { setShowPLModal(false); setShowFeeModal(true); }}>
+                      View breakdown →
+                    </Button>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                    <span className="font-semibold text-gray-700">Refunds & Returns</span>
+                    <span className="font-bold text-orange-600">{formatCurrency(financialData.totalRefunds || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 pl-8">
+                    <span className="text-sm text-gray-600">{financialData.refundRate?.toFixed(2)}% refund rate</span>
+                  </div>
+
+                  {(financialData.totalAdSpend || 0) > 0 && (
+                    <>
+                      <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                        <span className="font-semibold text-gray-700">Product Advertising</span>
+                        <span className="font-bold text-purple-600">{formatCurrency(financialData.totalAdSpend || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 pl-8">
+                        <span className="text-sm text-gray-600">ROI: {financialData.marketingROI?.toFixed(0)}%</span>
+                      </div>
+                    </>
+                  )}
+
+                  {(financialData.totalCoupons || 0) > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+                      <span className="font-semibold text-gray-700">Coupons & Promotions</span>
+                      <span className="font-bold text-yellow-600">{formatCurrency(financialData.totalCoupons || 0)}</span>
+                    </div>
+                  )}
+
+                  {(financialData.totalChargebacks || 0) > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg">
+                      <span className="font-semibold text-gray-700">Chargebacks (Disputes)</span>
+                      <span className="font-bold text-red-700">{formatCurrency(financialData.totalChargebacks || 0)}</span>
+                    </div>
+                  )}
+
+                  {(financialData.adjustmentDebits || 0) > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
+                      <span className="font-semibold text-gray-700">Amazon Debits</span>
+                      <span className="font-bold text-gray-700">{formatCurrency(financialData.adjustmentDebits || 0)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Net Profit Summary */}
+              <div className="border-t-4 border-gray-300 pt-6">
+                <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-lg p-6 shadow-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <p className="text-sm opacity-90 mb-1">TRUE NET PROFIT</p>
+                      <p className="text-4xl font-bold">{formatCurrency(financialData.trueNetProfit || 0)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm opacity-90 mb-1">Net Margin</p>
+                      <p className="text-3xl font-bold">{financialData.trueNetMargin?.toFixed(2)}%</p>
+                    </div>
+                  </div>
+                  <p className="text-xs opacity-80">
+                    Revenue - Fees - Refunds - Ads - Coupons - Chargebacks + Adjustments
+                  </p>
+                </div>
+              </div>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-xs text-blue-800 mb-1">Marketing ROI</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {financialData.marketingROI?.toFixed(0) || '0'}%
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1">Revenue per ad dollar</p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-xs text-green-800 mb-1">Gross Margin</p>
+                  <p className="text-2xl font-bold text-green-600">{profitMargin.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-600 mt-1">Before marketing costs</p>
+                </div>
+              </div>
+
+              {/* Detailed Breakdown */}
+              <div className="mt-6 bg-gray-50 border rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Calculation Breakdown</h4>
+                <div className="space-y-1 text-sm font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-green-600">Revenue:</span>
+                    <span className="text-green-600">+{formatCurrency(financialData.totalRevenue)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-red-600">Amazon Fees:</span>
+                    <span className="text-red-600">-{formatCurrency(financialData.totalFees)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-orange-600">Refunds:</span>
+                    <span className="text-orange-600">-{formatCurrency(financialData.totalRefunds || 0)}</span>
+                  </div>
+                  {(financialData.totalAdSpend || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-purple-600">Ad Spend:</span>
+                      <span className="text-purple-600">-{formatCurrency(financialData.totalAdSpend || 0)}</span>
+                    </div>
+                  )}
+                  {(financialData.totalCoupons || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-yellow-600">Coupons:</span>
+                      <span className="text-yellow-600">-{formatCurrency(financialData.totalCoupons || 0)}</span>
+                    </div>
+                  )}
+                  {(financialData.totalChargebacks || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-red-700">Chargebacks:</span>
+                      <span className="text-red-700">-{formatCurrency(financialData.totalChargebacks || 0)}</span>
+                    </div>
+                  )}
+                  {(financialData.adjustmentNet || 0) !== 0 && (
+                    <div className="flex justify-between">
+                      <span className={financialData.adjustmentNet! > 0 ? "text-green-600" : "text-red-600"}>
+                        Adjustments:
+                      </span>
+                      <span className={financialData.adjustmentNet! > 0 ? "text-green-600" : "text-red-600"}>
+                        {financialData.adjustmentNet! > 0 ? '+' : ''}{formatCurrency(financialData.adjustmentNet || 0)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t-2 border-gray-400 mt-2 pt-2 flex justify-between font-bold text-base">
+                    <span className="text-gray-900">True Net Profit:</span>
+                    <span className={financialData.trueNetProfit! >= 0 ? "text-green-600" : "text-red-600"}>
+                      {formatCurrency(financialData.trueNetProfit || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowPLModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Fee Breakdown Modal */}
