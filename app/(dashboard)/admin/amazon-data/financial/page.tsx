@@ -41,7 +41,7 @@ import {
 } from 'recharts';
 
 interface SKUData {
-  sku: string;
+  sku: string; // Amazon seller SKU or ASIN
   units: number;
   revenue: number;
   fees: number;
@@ -49,6 +49,8 @@ interface SKUData {
   refundedUnits?: number;
   refundAmount?: number;
   netUnits?: number;
+  bdiSku?: string; // Mapped internal SKU
+  mappingStatus?: 'mapped' | 'no_mapping' | 'no_sku';
 }
 
 interface FeeBreakdown {
@@ -296,14 +298,16 @@ export default function AmazonFinancialDataPage() {
         XLSX.utils.book_append_sheet(workbook, feeSheet, 'Fee Breakdown');
       }
 
-      // TAB 3: All SKU Line Items (Aggregated with Refunds)
+      // TAB 3: All SKU Line Items (Aggregated with Refunds and BDI SKU Mapping)
       const skuData = [
         ['All SKU Performance - Aggregated with Returns'],
         [''],
-        ['Rank', 'SKU', 'Units Sold', 'Returns', 'Net Units', 'Revenue', 'Refunded $', 'Fees', 'Net Profit', 'Profit Margin %'],
+        ['Rank', 'Amazon SKU/ASIN', 'BDI SKU', 'Mapping Status', 'Units Sold', 'Returns', 'Net Units', 'Revenue', 'Refunded $', 'Fees', 'Net Profit', 'Profit Margin %'],
         ...financialData.allSKUs.map((sku, index) => [
           index + 1,
           sku.sku,
+          sku.bdiSku || '',
+          sku.bdiSku ? 'Mapped' : (sku.mappingStatus === 'no_mapping' ? 'No Mappings' : 'No SKU in DB'),
           sku.units,
           sku.refundedUnits || 0,
           sku.netUnits || sku.units,
@@ -675,7 +679,7 @@ export default function AmazonFinancialDataPage() {
 
         {/* Stats Cards */}
         {financialData && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
@@ -740,6 +744,30 @@ export default function AmazonFinancialDataPage() {
                 <p className="text-xs text-gray-500 mt-1">
                   {financialData.refundRate?.toFixed(1)}% refund rate
                 </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Ad Spend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {formatCurrency(financialData.totalAdSpend || 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {financialData.marketingROI?.toFixed(0)}% ROI
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Net Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(financialData.netRevenue)}</div>
+                <p className="text-xs text-gray-500 mt-1">{profitMargin.toFixed(1)}% margin</p>
               </CardContent>
             </Card>
           </div>
@@ -850,10 +878,11 @@ export default function AmazonFinancialDataPage() {
                   <thead className="border-b bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th className="text-left p-3 font-semibold bg-gray-50">#</th>
-                      <th className="text-left p-3 font-semibold bg-gray-50">SKU</th>
-                      <th className="text-right p-3 font-semibold bg-gray-50">Units Sold</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Amazon SKU/ASIN</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">BDI SKU</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Units</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Returns</th>
-                      <th className="text-right p-3 font-semibold bg-gray-50">Net Units</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Net</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Revenue</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Refunded</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Fees</th>
@@ -865,7 +894,16 @@ export default function AmazonFinancialDataPage() {
                     {financialData.allSKUs.map((sku, index) => (
                       <tr key={`${sku.sku}-${index}`} className="border-b hover:bg-gray-50 transition-colors">
                         <td className="p-3 text-gray-500 text-xs">{index + 1}</td>
-                        <td className="p-3 font-medium text-gray-900">{sku.sku}</td>
+                        <td className="p-3 font-mono text-xs text-gray-700 break-all">{sku.sku}</td>
+                        <td className="p-3">
+                          {sku.bdiSku ? (
+                            <span className="font-semibold text-green-700">{sku.bdiSku}</span>
+                          ) : sku.mappingStatus === 'no_mapping' ? (
+                            <span className="text-xs text-gray-400 italic">no mappings</span>
+                          ) : (
+                            <span className="text-xs text-orange-500 italic">no SKU in DB</span>
+                          )}
+                        </td>
                         <td className="p-3 text-right text-gray-600">{sku.units}</td>
                         <td className="p-3 text-right text-orange-600">
                           {sku.refundedUnits || 0}

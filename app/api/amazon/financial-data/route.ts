@@ -12,6 +12,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AmazonSPAPIService } from '@/lib/services/amazon-sp-api';
 import { getAmazonCredentials, getConfigStatus } from '@/lib/services/amazon-sp-api/config';
 import { FinancialEventsParser } from '@/lib/services/amazon-sp-api';
+import { db } from '@/lib/db/drizzle';
+import { skuMappings, productSkus } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,11 +96,36 @@ export async function POST(request: NextRequest) {
     const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
     const refundSummary = FinancialEventsParser.getRefundSummary(transactions);
 
-    // Get ALL SKUs by revenue (sorted) with refund data
+    // Fetch all SKU mappings from database for lookup
+    const allMappings = await db
+      .select({
+        externalIdentifier: skuMappings.externalIdentifier,
+        channel: skuMappings.channel,
+        internalSku: productSkus.sku,
+      })
+      .from(skuMappings)
+      .leftJoin(productSkus, eq(skuMappings.internalSkuId, productSkus.id));
+
+    // Create lookup map (external SKU -> internal SKU)
+    const skuLookup = new Map<string, string>();
+    allMappings.forEach(mapping => {
+      if (mapping.externalIdentifier && mapping.internalSku) {
+        // Try both with and without channel prefix for flexibility
+        skuLookup.set(mapping.externalIdentifier.toLowerCase(), mapping.internalSku);
+      }
+    });
+
+    // Get ALL SKUs by revenue (sorted) with refund data and BDI SKU mapping
     const allSKUs = Array.from(skuSummary.entries())
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .map(([sku, data]) => {
         const refundData = refundSummary.get(sku) || { units: 0, refundAmount: 0 };
+        
+        // Try to find BDI SKU mapping
+        const bdiSku = skuLookup.get(sku.toLowerCase());
+        const mappingStatus = bdiSku ? 'mapped' : 
+                             (skuLookup.size === 0 ? 'no_mapping' : 'no_sku');
+        
         return {
           sku,
           units: data.units,
@@ -107,6 +135,8 @@ export async function POST(request: NextRequest) {
           refundedUnits: refundData.units,
           refundAmount: Number(refundData.refundAmount.toFixed(2)),
           netUnits: data.units - refundData.units, // Units after returns
+          bdiSku: bdiSku || undefined,
+          mappingStatus: mappingStatus as 'mapped' | 'no_mapping' | 'no_sku',
         };
       });
     
