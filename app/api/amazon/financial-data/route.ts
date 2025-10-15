@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { startDate, endDate } = body;
+    const { startDate, endDate, includeTransactions } = body;
 
     if (!startDate || !endDate) {
       return NextResponse.json({
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         percentage: totalFees > 0 ? Number(((amount / totalFees) * 100).toFixed(2)) : 0
       }));
 
-    const response = {
+    const response: any = {
       success: true,
       dateRange: { start: startDate, end: endDate },
       performance: {
@@ -140,6 +140,11 @@ export async function POST(request: NextRequest) {
         apiVersion: '2024-06-19',
       },
     };
+
+    // Include raw transaction data if requested (for detailed exports)
+    if (includeTransactions) {
+      response.transactions = transactions;
+    }
 
     console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalFees.toFixed(2)} fees`);
 

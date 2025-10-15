@@ -170,72 +170,168 @@ export default function AmazonFinancialDataPage() {
     });
   }
 
-  function handleExport() {
+  async function handleExport() {
     if (!financialData || !financialData.allSKUs) {
       alert('No data available to export');
       return;
     }
 
-    // Create a new workbook
-    const workbook = XLSX.utils.book_new();
+    // Fetch detailed transaction data for line items
+    setLoading(true);
+    try {
+      const response = await fetch('/api/amazon/financial-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: dateRange.start,
+          endDate: dateRange.end,
+          includeTransactions: true, // Request full transaction details
+        }),
+      });
 
-    // TAB 1: Summary
-    const summaryData = [
-      ['Amazon Financial Data - Summary Report'],
-      [''],
-      ['Date Range', `${dateRange.start} to ${dateRange.end}`],
-      ['Generated', new Date().toLocaleString()],
-      [''],
-      ['Metric', 'Value'],
-      ['Total Orders', financialData.uniqueOrders],
-      ['Total SKUs', financialData.uniqueSKUs || 0],
-      ['Total Revenue', financialData.totalRevenue],
-      ['Total Fees', financialData.totalFees],
-      ['Net Revenue', financialData.netRevenue],
-      ['Profit Margin', `${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`],
-      ['Fee Percentage', `${((financialData.totalFees / financialData.totalRevenue) * 100).toFixed(2)}%`],
-    ];
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+      const data = await response.json();
+      const transactions = data.transactions || [];
 
-    // TAB 2: Fee Breakdown
-    if (financialData.feeBreakdown && financialData.feeBreakdown.length > 0) {
-      const feeData = [
-        ['Fee Breakdown by Type'],
+      // Create a new workbook
+      const workbook = XLSX.utils.book_new();
+
+      // TAB 1: Summary
+      const summaryData = [
+        ['Amazon Financial Data - Summary Report'],
         [''],
-        ['Fee Type', 'Amount', 'Percentage of Total Fees'],
-        ...financialData.feeBreakdown.map(fee => [
-          fee.feeType,
-          fee.amount,
-          `${fee.percentage.toFixed(2)}%`
-        ]),
+        ['Date Range', `${dateRange.start} to ${dateRange.end}`],
+        ['Generated', new Date().toLocaleString()],
         [''],
-        ['Total', financialData.totalFees, '100.00%']
+        ['Metric', 'Value'],
+        ['Total Orders', financialData.uniqueOrders],
+        ['Total SKUs', financialData.uniqueSKUs || 0],
+        ['Total Revenue', financialData.totalRevenue],
+        ['Total Fees', financialData.totalFees],
+        ['Net Revenue', financialData.netRevenue],
+        ['Profit Margin', `${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`],
+        ['Fee Percentage', `${((financialData.totalFees / financialData.totalRevenue) * 100).toFixed(2)}%`],
       ];
-      const feeSheet = XLSX.utils.aoa_to_sheet(feeData);
-      XLSX.utils.book_append_sheet(workbook, feeSheet, 'Fee Breakdown');
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+      // TAB 2: Fee Breakdown
+      if (financialData.feeBreakdown && financialData.feeBreakdown.length > 0) {
+        const feeData = [
+          ['Fee Breakdown by Type'],
+          [''],
+          ['Fee Type', 'Amount', 'Percentage of Total Fees'],
+          ...financialData.feeBreakdown.map(fee => [
+            fee.feeType,
+            fee.amount,
+            `${fee.percentage.toFixed(2)}%`
+          ]),
+          [''],
+          ['Total', financialData.totalFees, '100.00%']
+        ];
+        const feeSheet = XLSX.utils.aoa_to_sheet(feeData);
+        XLSX.utils.book_append_sheet(workbook, feeSheet, 'Fee Breakdown');
+      }
+
+      // TAB 3: All SKU Line Items (Aggregated)
+      const skuData = [
+        ['All SKU Performance - Aggregated'],
+        [''],
+        ['Rank', 'SKU', 'Units Sold', 'Revenue', 'Fees', 'Net Profit', 'Profit Margin %'],
+        ...financialData.allSKUs.map((sku, index) => [
+          index + 1,
+          sku.sku,
+          sku.units,
+          sku.revenue,
+          sku.fees,
+          sku.net,
+          sku.revenue > 0 ? `${((sku.net / sku.revenue) * 100).toFixed(2)}%` : '0.00%'
+        ])
+      ];
+      const skuSheet = XLSX.utils.aoa_to_sheet(skuData);
+      XLSX.utils.book_append_sheet(workbook, skuSheet, 'SKU Summary');
+
+      // TAB 4: Transaction Line Items (Detailed)
+      const transactionLineItems: any[] = [
+        ['Transaction-Level Line Items (All Orders)'],
+        [''],
+        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity', 'Item Price', 'Item Tax', 'Shipping', 'Gift Wrap', 'Promotion', 'Total Charges', 'Fees', 'Net Amount', 'Fee Types']
+      ];
+
+      // Extract all line items from transactions
+      transactions.forEach((eventGroup: any) => {
+        eventGroup.ShipmentEventList?.forEach((shipment: any) => {
+          const orderId = shipment.AmazonOrderId || 'N/A';
+          const postedDate = shipment.PostedDate || 'N/A';
+
+          shipment.ShipmentItemList?.forEach((item: any) => {
+            const sku = item.SellerSKU || 'N/A';
+            const asin = item.ASIN || 'N/A';
+            const quantity = item.QuantityShipped || 0;
+
+            // Calculate charges
+            let itemPrice = 0;
+            let itemTax = 0;
+            let shipping = 0;
+            let giftWrap = 0;
+            let promotion = 0;
+
+            item.ItemChargeList?.forEach((charge: any) => {
+              const amount = charge.ChargeAmount?.CurrencyAmount || 0;
+              const type = charge.ChargeType;
+              if (type === 'Principal') itemPrice += amount;
+              if (type === 'Tax') itemTax += amount;
+              if (type === 'Shipping') shipping += amount;
+              if (type === 'ShippingTax') shipping += amount;
+              if (type === 'GiftWrap') giftWrap += amount;
+              if (type === 'GiftWrapTax') giftWrap += amount;
+              if (type === 'Promotion') promotion += amount;
+            });
+
+            // Calculate fees
+            let totalFees = 0;
+            const feeTypes: string[] = [];
+            item.ItemFeeList?.forEach((fee: any) => {
+              const feeAmount = Math.abs(fee.FeeAmount?.CurrencyAmount || 0);
+              totalFees += feeAmount;
+              if (fee.FeeType) feeTypes.push(fee.FeeType);
+            });
+
+            const totalCharges = itemPrice + itemTax + shipping + giftWrap + promotion;
+            const netAmount = totalCharges - totalFees;
+
+            transactionLineItems.push([
+              orderId,
+              postedDate,
+              sku,
+              asin,
+              quantity,
+              itemPrice,
+              itemTax,
+              shipping,
+              giftWrap,
+              promotion,
+              totalCharges,
+              totalFees,
+              netAmount,
+              feeTypes.join(', ')
+            ]);
+          });
+        });
+      });
+
+      const transactionSheet = XLSX.utils.aoa_to_sheet(transactionLineItems);
+      XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transaction Details');
+
+      // Generate Excel file and download
+      XLSX.writeFile(workbook, `amazon-financial-data-${dateRange.start}-to-${dateRange.end}.xlsx`);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // TAB 3: All SKU Line Items
-    const skuData = [
-      ['All SKU Performance - Line Items'],
-      [''],
-      ['Rank', 'SKU', 'Units Sold', 'Revenue', 'Fees', 'Net Profit', 'Profit Margin %'],
-      ...financialData.allSKUs.map((sku, index) => [
-        index + 1,
-        sku.sku,
-        sku.units,
-        sku.revenue,
-        sku.fees,
-        sku.net,
-        sku.revenue > 0 ? `${((sku.net / sku.revenue) * 100).toFixed(2)}%` : '0.00%'
-      ])
-    ];
-    const skuSheet = XLSX.utils.aoa_to_sheet(skuData);
-    XLSX.utils.book_append_sheet(workbook, skuSheet, 'SKU Line Items');
-
-    // Generate Excel file and download
-    XLSX.writeFile(workbook, `amazon-financial-data-${dateRange.start}-to-${dateRange.end}.xlsx`);
   }
 
   const profitMargin = financialData ? 
