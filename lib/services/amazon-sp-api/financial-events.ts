@@ -601,6 +601,47 @@ export class FinancialEventsParser {
   }
 
   /**
+   * Get adjustment breakdown by type
+   */
+  static getAdjustmentBreakdown(events: FinancialEventGroup[]): {
+    credits: { [adjustmentType: string]: number };
+    debits: { [adjustmentType: string]: number };
+  } {
+    const creditBreakdown: { [adjustmentType: string]: number } = {};
+    const debitBreakdown: { [adjustmentType: string]: number } = {};
+    
+    events.forEach(group => {
+      group.AdjustmentEventList?.forEach(event => {
+        const adjustmentType = event.AdjustmentType || 'Unknown';
+        
+        // Check adjustment amount at event level
+        if (event.AdjustmentAmount?.CurrencyAmount) {
+          const value = event.AdjustmentAmount.CurrencyAmount;
+          if (value > 0) {
+            creditBreakdown[adjustmentType] = (creditBreakdown[adjustmentType] || 0) + value;
+          } else {
+            debitBreakdown[adjustmentType] = (debitBreakdown[adjustmentType] || 0) + Math.abs(value);
+          }
+        }
+        
+        // Also check item-level amounts
+        event.AdjustmentItemList?.forEach(item => {
+          if (item.TotalAmount?.CurrencyAmount) {
+            const value = item.TotalAmount.CurrencyAmount;
+            if (value > 0) {
+              creditBreakdown[adjustmentType] = (creditBreakdown[adjustmentType] || 0) + value;
+            } else {
+              debitBreakdown[adjustmentType] = (debitBreakdown[adjustmentType] || 0) + Math.abs(value);
+            }
+          }
+        });
+      });
+    });
+    
+    return { credits: creditBreakdown, debits: debitBreakdown };
+  }
+
+  /**
    * Calculate total coupon costs
    */
   static calculateTotalCoupons(events: FinancialEventGroup[]): number {

@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
     const adSpendBreakdown = FinancialEventsParser.getAdSpendBreakdown(transactions);
     const totalChargebacks = FinancialEventsParser.calculateTotalChargebacks(transactions);
     const adjustments = FinancialEventsParser.calculateTotalAdjustments(transactions);
+    const adjustmentBreakdown = FinancialEventsParser.getAdjustmentBreakdown(transactions);
     const totalCoupons = FinancialEventsParser.calculateTotalCoupons(transactions);
     const totalTaxRefunded = FinancialEventsParser.calculateTotalTaxRefunded(transactions);
     const feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
@@ -207,6 +208,22 @@ export async function POST(request: NextRequest) {
       },
       feeBreakdown: feeBreakdownFormatted, // Detailed fee breakdown by type
       adSpendBreakdown: adSpendBreakdownFormatted, // Detailed ad spend breakdown by transaction type
+      adjustmentBreakdown: {
+        credits: Object.entries(adjustmentBreakdown.credits)
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, amount]) => ({
+            adjustmentType: type,
+            amount: Number(amount.toFixed(2)),
+            percentage: adjustments.credits > 0 ? Number(((amount / adjustments.credits) * 100).toFixed(2)) : 0
+          })),
+        debits: Object.entries(adjustmentBreakdown.debits)
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, amount]) => ({
+            adjustmentType: type,
+            amount: Number(amount.toFixed(2)),
+            percentage: adjustments.debits > 0 ? Number(((amount / adjustments.debits) * 100).toFixed(2)) : 0
+          }))
+      }, // Detailed adjustment breakdown by type
       topSKUs, // Top 10 for the chart
       allSKUs, // ALL SKUs for the table and export
       metadata: {

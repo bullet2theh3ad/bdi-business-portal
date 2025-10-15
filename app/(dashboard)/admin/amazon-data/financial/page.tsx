@@ -65,6 +65,12 @@ interface AdSpendBreakdown {
   percentage: number;
 }
 
+interface AdjustmentBreakdown {
+  adjustmentType: string;
+  amount: number;
+  percentage: number;
+}
+
 interface FinancialData {
   eventGroups: number;
   uniqueOrders: number;
@@ -89,6 +95,10 @@ interface FinancialData {
   allSKUs?: SKUData[];
   feeBreakdown?: FeeBreakdown[];
   adSpendBreakdown?: AdSpendBreakdown[];
+  adjustmentBreakdown?: {
+    credits: AdjustmentBreakdown[];
+    debits: AdjustmentBreakdown[];
+  };
 }
 
 interface DateRange {
@@ -113,6 +123,8 @@ export default function AmazonFinancialDataPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [showAdSpendModal, setShowAdSpendModal] = useState(false);
+  const [showAdjustmentCreditsModal, setShowAdjustmentCreditsModal] = useState(false);
+  const [showAdjustmentDebitsModal, setShowAdjustmentDebitsModal] = useState(false);
   const [showPLModal, setShowPLModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -796,6 +808,56 @@ export default function AmazonFinancialDataPage() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Tax returned to customers
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Amazon Credits</CardTitle>
+                  <button
+                    onClick={() => setShowAdjustmentCreditsModal(true)}
+                    className="text-green-500 hover:text-green-700 transition-colors"
+                    title="View Amazon Credits Breakdown"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatCurrency(financialData.adjustmentCredits || 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Amazon owes you
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Amazon Debits</CardTitle>
+                  <button
+                    onClick={() => setShowAdjustmentDebitsModal(true)}
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                    title="View Amazon Debits Breakdown"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(financialData.adjustmentDebits || 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  You owe Amazon
                 </p>
               </CardContent>
             </Card>
