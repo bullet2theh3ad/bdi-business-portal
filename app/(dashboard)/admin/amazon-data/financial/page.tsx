@@ -19,7 +19,9 @@ import {
   PieChart as PieChartIcon,
   Receipt,
   CreditCard,
-  Package
+  Package,
+  Info,
+  X
 } from 'lucide-react';
 import {
   BarChart,
@@ -45,6 +47,12 @@ interface SKUData {
   net: number;
 }
 
+interface FeeBreakdown {
+  feeType: string;
+  amount: number;
+  percentage: number;
+}
+
 interface FinancialData {
   eventGroups: number;
   uniqueOrders: number;
@@ -54,6 +62,7 @@ interface FinancialData {
   uniqueSKUs?: number;
   topSKUs?: SKUData[];
   allSKUs?: SKUData[];
+  feeBreakdown?: FeeBreakdown[];
 }
 
 interface DateRange {
@@ -76,6 +85,7 @@ export default function AmazonFinancialDataPage() {
     end: new Date().toISOString().split('T')[0] // today
   });
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [showFeeModal, setShowFeeModal] = useState(false);
 
   useEffect(() => {
     loadFinancialData();
@@ -108,7 +118,8 @@ export default function AmazonFinancialDataPage() {
           netRevenue: data.summary.netRevenue,
           uniqueSKUs: data.summary.uniqueSKUs,
           topSKUs: data.topSKUs || [],
-          allSKUs: data.allSKUs || []
+          allSKUs: data.allSKUs || [],
+          feeBreakdown: data.feeBreakdown || []
         });
         setLastRefresh(new Date());
       } else {
@@ -155,30 +166,41 @@ export default function AmazonFinancialDataPage() {
       return;
     }
 
-    // Create CSV content
-    const headers = ['SKU', 'Units Sold', 'Revenue', 'Fees', 'Net Profit'];
-    const rows = financialData.allSKUs.map(sku => [
-      sku.sku,
-      sku.units.toString(),
-      `$${sku.revenue.toFixed(2)}`,
-      `$${sku.fees.toFixed(2)}`,
-      `$${sku.net.toFixed(2)}`
-    ]);
+    // Create comprehensive CSV content with line items
+    const sections: string[] = [];
+    
+    // Section 1: Summary
+    sections.push('SUMMARY');
+    sections.push(`Date Range,${dateRange.start} to ${dateRange.end}`);
+    sections.push(`Total Orders,${financialData.uniqueOrders}`);
+    sections.push(`Total SKUs,${financialData.uniqueSKUs || 0}`);
+    sections.push(`Total Revenue,$${financialData.totalRevenue.toFixed(2)}`);
+    sections.push(`Total Fees,$${financialData.totalFees.toFixed(2)}`);
+    sections.push(`Net Revenue,$${financialData.netRevenue.toFixed(2)}`);
+    sections.push(`Profit Margin,${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`);
+    sections.push('');
 
-    // Add summary rows
-    rows.push([]);
-    rows.push(['SUMMARY', '', '', '', '']);
-    rows.push(['Total Orders', financialData.uniqueOrders.toString(), '', '', '']);
-    rows.push(['Total SKUs', financialData.uniqueSKUs?.toString() || '0', '', '', '']);
-    rows.push(['Total Revenue', '', `$${financialData.totalRevenue.toFixed(2)}`, '', '']);
-    rows.push(['Total Fees', '', `$${financialData.totalFees.toFixed(2)}`, '', '']);
-    rows.push(['Net Revenue', '', '', '', `$${financialData.netRevenue.toFixed(2)}`]);
-    rows.push(['Date Range', `${dateRange.start} to ${dateRange.end}`, '', '', '']);
+    // Section 2: Fee Breakdown
+    if (financialData.feeBreakdown && financialData.feeBreakdown.length > 0) {
+      sections.push('FEE BREAKDOWN');
+      sections.push('Fee Type,Amount,Percentage of Total Fees');
+      financialData.feeBreakdown.forEach(fee => {
+        sections.push(`${fee.feeType},$${fee.amount.toFixed(2)},${fee.percentage.toFixed(2)}%`);
+      });
+      sections.push('');
+    }
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+    // Section 3: SKU Line Items (All SKUs)
+    sections.push('SKU LINE ITEMS');
+    sections.push('Rank,SKU,Units Sold,Revenue,Fees,Net Profit,Profit Margin %');
+    financialData.allSKUs.forEach((sku, index) => {
+      const margin = sku.revenue > 0 ? ((sku.net / sku.revenue) * 100).toFixed(2) : '0.00';
+      sections.push(
+        `${index + 1},${sku.sku},${sku.units},$${sku.revenue.toFixed(2)},$${sku.fees.toFixed(2)},$${sku.net.toFixed(2)},${margin}%`
+      );
+    });
+
+    const csvContent = sections.join('\n');
 
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -353,7 +375,18 @@ export default function AmazonFinancialDataPage() {
 
             <Card className="border-l-4 border-l-red-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Fees</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600 flex items-center justify-between">
+                  <span>Total Fees</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-red-50"
+                    onClick={() => setShowFeeModal(true)}
+                    title="View fee breakdown"
+                  >
+                    <Info className="h-4 w-4 text-red-500" />
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">{formatCurrency(financialData.totalFees)}</div>
@@ -541,6 +574,109 @@ export default function AmazonFinancialDataPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Fee Breakdown Modal */}
+      {showFeeModal && financialData && financialData.feeBreakdown && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-red-50 to-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <CreditCard className="h-6 w-6 text-red-600" />
+                  Fee Breakdown
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Detailed breakdown of all Amazon fees
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFeeModal(false)}
+                className="hover:bg-red-100"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Total Summary */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Fees</p>
+                    <p className="text-3xl font-bold text-red-600">{formatCurrency(financialData.totalFees)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">% of Revenue</p>
+                    <p className="text-2xl font-semibold text-gray-700">{feePercentage.toFixed(2)}%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fee Types Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left p-3 font-semibold text-gray-700">Fee Type</th>
+                      <th className="text-right p-3 font-semibold text-gray-700">Amount</th>
+                      <th className="text-right p-3 font-semibold text-gray-700">% of Total Fees</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {financialData.feeBreakdown.map((fee, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="p-3 font-medium text-gray-900">{fee.feeType}</td>
+                        <td className="p-3 text-right font-semibold text-red-600">
+                          {formatCurrency(fee.amount)}
+                        </td>
+                        <td className="p-3 text-right text-gray-600">
+                          {fee.percentage.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t-2">
+                    <tr>
+                      <td className="p-3 font-bold text-gray-900">Total</td>
+                      <td className="p-3 text-right font-bold text-red-600">
+                        {formatCurrency(financialData.totalFees)}
+                      </td>
+                      <td className="p-3 text-right font-bold text-gray-600">100.00%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Fee Analysis */}
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Fee Analysis
+                </h3>
+                <div className="space-y-1 text-sm text-blue-800">
+                  <p>• Total fees represent <strong>{feePercentage.toFixed(2)}%</strong> of your total revenue</p>
+                  <p>• Net profit margin after fees: <strong>{profitMargin.toFixed(2)}%</strong></p>
+                  <p>• Date range: {formatDate(dateRange.start)} to {formatDate(dateRange.end)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowFeeModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

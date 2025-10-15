@@ -355,6 +355,47 @@ export class FinancialEventsParser {
   }
 
   /**
+   * Get fee breakdown by type
+   */
+  static getFeeBreakdown(events: FinancialEventGroup[]): {
+    [feeType: string]: number;
+  } {
+    const feeBreakdown: { [feeType: string]: number } = {};
+    
+    events.forEach(group => {
+      group.ShipmentEventList?.forEach(event => {
+        // Shipment fees
+        event.ShipmentFeeList?.forEach(fee => {
+          if (fee.FeeType && fee.FeeAmount?.CurrencyAmount) {
+            const feeType = fee.FeeType;
+            feeBreakdown[feeType] = (feeBreakdown[feeType] || 0) + Math.abs(fee.FeeAmount.CurrencyAmount);
+          }
+        });
+        
+        // Order fees
+        event.OrderFeeList?.forEach(fee => {
+          if (fee.FeeType && fee.FeeAmount?.CurrencyAmount) {
+            const feeType = fee.FeeType;
+            feeBreakdown[feeType] = (feeBreakdown[feeType] || 0) + Math.abs(fee.FeeAmount.CurrencyAmount);
+          }
+        });
+        
+        // Item fees
+        event.ShipmentItemList?.forEach(item => {
+          item.ItemFeeList?.forEach(fee => {
+            if (fee.FeeType && fee.FeeAmount?.CurrencyAmount) {
+              const feeType = fee.FeeType;
+              feeBreakdown[feeType] = (feeBreakdown[feeType] || 0) + Math.abs(fee.FeeAmount.CurrencyAmount);
+            }
+          });
+        });
+      });
+    });
+    
+    return feeBreakdown;
+  }
+
+  /**
    * Get SKU-level summary from financial events
    */
   static getSKUSummary(events: FinancialEventGroup[]): Map<string, {

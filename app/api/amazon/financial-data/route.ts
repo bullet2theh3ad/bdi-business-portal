@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
     const orderIds = FinancialEventsParser.extractOrderIds(transactions);
     const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions);
     const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
+    const feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
     const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
 
     // Get ALL SKUs by revenue (sorted)
@@ -104,6 +105,15 @@ export async function POST(request: NextRequest) {
     const profitMargin = totalRevenue > 0 ? ((netRevenue / totalRevenue) * 100) : 0;
     const feePercentage = totalRevenue > 0 ? ((totalFees / totalRevenue) * 100) : 0;
 
+    // Format fee breakdown for response
+    const feeBreakdownFormatted = Object.entries(feeBreakdown)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, amount]) => ({
+        feeType: type,
+        amount: Number(amount.toFixed(2)),
+        percentage: totalFees > 0 ? Number(((amount / totalFees) * 100).toFixed(2)) : 0
+      }));
+
     const response = {
       success: true,
       dateRange: { start: startDate, end: endDate },
@@ -121,6 +131,7 @@ export async function POST(request: NextRequest) {
         profitMargin: Number(profitMargin.toFixed(2)),
         feePercentage: Number(feePercentage.toFixed(2)),
       },
+      feeBreakdown: feeBreakdownFormatted, // Detailed fee breakdown by type
       topSKUs, // Top 10 for the chart
       allSKUs, // ALL SKUs for the table and export
       metadata: {
