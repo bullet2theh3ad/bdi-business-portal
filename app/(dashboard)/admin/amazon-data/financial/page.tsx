@@ -230,6 +230,7 @@ export default function AmazonFinancialDataPage() {
           uniqueOrders: data.summary.uniqueOrders,
           totalRevenue: data.summary.totalRevenue, // Excludes tax
           totalTax: data.summary.totalTax || 0, // Tax collected
+          totalTaxRefunded: data.summary.totalTaxRefunded || 0, // Tax refunded
           totalFees: data.summary.totalFees,
           totalRefunds: data.summary.totalRefunds || 0,
           totalAdSpend: data.summary.totalAdSpend || 0,
@@ -1474,7 +1475,7 @@ export default function AmazonFinancialDataPage() {
       )}
 
       {/* Amazon Credits Breakdown Modal */}
-      {showAdjustmentCreditsModal && financialData && financialData.adjustmentBreakdown && (
+      {showAdjustmentCreditsModal && financialData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
@@ -1510,7 +1511,7 @@ export default function AmazonFinancialDataPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {financialData.adjustmentBreakdown.credits && financialData.adjustmentBreakdown.credits.length > 0 ? (
+                    {financialData.adjustmentBreakdown?.credits && financialData.adjustmentBreakdown.credits.length > 0 ? (
                       financialData.adjustmentBreakdown.credits.map((credit, index) => (
                         <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="p-3 font-medium text-gray-900">{credit.adjustmentType}</td>
@@ -1535,7 +1536,7 @@ export default function AmazonFinancialDataPage() {
                       </tr>
                     )}
                   </tbody>
-                  {financialData.adjustmentBreakdown.credits && financialData.adjustmentBreakdown.credits.length > 0 && (
+                  {financialData.adjustmentBreakdown?.credits && financialData.adjustmentBreakdown.credits.length > 0 && (
                     <tfoot className="bg-gray-50 border-t-2">
                       <tr>
                         <td className="p-3 font-bold text-gray-900">Total</td>
@@ -1564,7 +1565,7 @@ export default function AmazonFinancialDataPage() {
       )}
 
       {/* Amazon Debits Breakdown Modal */}
-      {showAdjustmentDebitsModal && financialData && financialData.adjustmentBreakdown && (
+      {showAdjustmentDebitsModal && financialData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
@@ -1600,7 +1601,7 @@ export default function AmazonFinancialDataPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {financialData.adjustmentBreakdown.debits && financialData.adjustmentBreakdown.debits.length > 0 ? (
+                    {financialData.adjustmentBreakdown?.debits && financialData.adjustmentBreakdown.debits.length > 0 ? (
                       financialData.adjustmentBreakdown.debits.map((debit, index) => (
                         <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="p-3 font-medium text-gray-900">{debit.adjustmentType}</td>
@@ -1625,7 +1626,7 @@ export default function AmazonFinancialDataPage() {
                       </tr>
                     )}
                   </tbody>
-                  {financialData.adjustmentBreakdown.debits && financialData.adjustmentBreakdown.debits.length > 0 && (
+                  {financialData.adjustmentBreakdown?.debits && financialData.adjustmentBreakdown.debits.length > 0 && (
                     <tfoot className="bg-gray-50 border-t-2">
                       <tr>
                         <td className="p-3 font-bold text-gray-900">Total</td>
