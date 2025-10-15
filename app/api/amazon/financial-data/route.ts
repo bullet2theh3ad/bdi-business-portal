@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           units: data.units,
           revenue: Number(data.revenue.toFixed(2)),
           fees: Number(data.fees.toFixed(2)),
-          net: Number((data.revenue - data.fees).toFixed(2)),
+          net: Number((data.revenue - data.fees - (refundData.refundAmount || 0)).toFixed(2)),
           refundedUnits: refundData.units,
           refundAmount: Number(refundData.refundAmount.toFixed(2)),
           netUnits: data.units - refundData.units, // Units after returns
