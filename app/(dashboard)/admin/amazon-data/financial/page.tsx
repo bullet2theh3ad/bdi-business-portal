@@ -70,8 +70,9 @@ interface FinancialData {
   uniqueOrders: number;
   totalRevenue: number; // Excludes tax
   totalTax?: number; // Tax collected
+  totalTaxRefunded?: number; // Tax refunded
   totalFees: number;
-  totalRefunds?: number;
+  totalRefunds?: number; // Product refunds only (no tax)
   totalAdSpend?: number;
   totalChargebacks?: number;
   totalCoupons?: number;
@@ -781,6 +782,20 @@ export default function AmazonFinancialDataPage() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {financialData.marketingROI?.toFixed(0)}% ROI
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-teal-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Tax Refunded</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-teal-600">
+                  {formatCurrency(financialData.totalTaxRefunded || 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Tax returned to customers
                 </p>
               </CardContent>
             </Card>

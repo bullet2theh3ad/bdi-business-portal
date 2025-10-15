@@ -378,7 +378,7 @@ export class FinancialEventsParser {
   }
 
   /**
-   * Calculate total refunds from financial events
+   * Calculate total refunds from financial events (excluding tax to match Total Revenue calculation)
    */
   static calculateTotalRefunds(events: FinancialEventGroup[]): number {
     let total = 0;
@@ -387,8 +387,31 @@ export class FinancialEventsParser {
       group.RefundEventList?.forEach(event => {
         event.ShipmentItemAdjustmentList?.forEach(item => {
           // Refund amounts are negative in the API, so we take absolute value
+          // Exclude tax from refunds to match revenue calculation (tax-free)
           item.ItemChargeAdjustmentList?.forEach(charge => {
-            if (charge.ChargeAmount?.CurrencyAmount) {
+            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType !== 'Tax') {
+              total += Math.abs(charge.ChargeAmount.CurrencyAmount);
+            }
+          });
+        });
+      });
+    });
+    
+    return total;
+  }
+
+  /**
+   * Calculate total tax refunded (separate from product refunds)
+   */
+  static calculateTotalTaxRefunded(events: FinancialEventGroup[]): number {
+    let total = 0;
+    
+    events.forEach(group => {
+      group.RefundEventList?.forEach(event => {
+        event.ShipmentItemAdjustmentList?.forEach(item => {
+          // Only include tax charges in refunds
+          item.ItemChargeAdjustmentList?.forEach(charge => {
+            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType === 'Tax') {
               total += Math.abs(charge.ChargeAmount.CurrencyAmount);
             }
           });
@@ -419,9 +442,9 @@ export class FinancialEventsParser {
           // Add refunded quantity
           existing.units += Math.abs(item.QuantityShipped || 0);
           
-          // Add refund amount
+          // Add refund amount (excluding tax to match revenue calculation)
           item.ItemChargeAdjustmentList?.forEach(charge => {
-            if (charge.ChargeAmount?.CurrencyAmount) {
+            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType !== 'Tax') {
               existing.refundAmount += Math.abs(charge.ChargeAmount.CurrencyAmount);
             }
           });
@@ -615,9 +638,9 @@ export class FinancialEventsParser {
           // Add units
           existing.units += item.QuantityShipped || 0;
           
-          // Add revenue
+          // Add revenue (excluding tax to match Total Revenue calculation)
           item.ItemChargeList?.forEach(charge => {
-            if (charge.ChargeAmount?.CurrencyAmount) {
+            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType !== 'Tax') {
               existing.revenue += charge.ChargeAmount.CurrencyAmount;
             }
           });

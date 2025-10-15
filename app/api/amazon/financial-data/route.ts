@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
     const totalChargebacks = FinancialEventsParser.calculateTotalChargebacks(transactions);
     const adjustments = FinancialEventsParser.calculateTotalAdjustments(transactions);
     const totalCoupons = FinancialEventsParser.calculateTotalCoupons(transactions);
+    const totalTaxRefunded = FinancialEventsParser.calculateTotalTaxRefunded(transactions);
     const feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
     const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
     const refundSummary = FinancialEventsParser.getRefundSummary(transactions);
@@ -186,8 +187,9 @@ export async function POST(request: NextRequest) {
         uniqueOrders: orderIds.length,
         totalRevenue: Number(totalRevenue.toFixed(2)), // Excludes tax
         totalTax: Number(totalTax.toFixed(2)), // Tax collected separately
+        totalTaxRefunded: Number(totalTaxRefunded.toFixed(2)), // Tax refunded separately
         totalFees: Number(totalFees.toFixed(2)),
-        totalRefunds: Number(totalRefunds.toFixed(2)),
+        totalRefunds: Number(totalRefunds.toFixed(2)), // Product refunds only (no tax)
         totalAdSpend: Number(totalAdSpend.toFixed(2)),
         totalChargebacks: Number(totalChargebacks.toFixed(2)),
         totalCoupons: Number(totalCoupons.toFixed(2)),
