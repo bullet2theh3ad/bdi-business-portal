@@ -108,8 +108,18 @@ export default function AmazonFinancialDataPage() {
         }),
       });
       
-      if (response.ok) {
-        const data = await response.json();
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        setError(`Server error: ${text.substring(0, 100)}...`);
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         // The API returns data in a 'summary' object, extract it
         setFinancialData({
           eventGroups: data.summary.eventGroups,
@@ -124,12 +134,11 @@ export default function AmazonFinancialDataPage() {
         });
         setLastRefresh(new Date());
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to load financial data');
+        setError(data.error || 'Failed to load financial data');
       }
     } catch (err) {
       console.error('Error loading financial data:', err);
-      setError('Failed to load financial data');
+      setError(err instanceof Error ? err.message : 'Failed to load financial data');
     } finally {
       setLoading(false);
     }
