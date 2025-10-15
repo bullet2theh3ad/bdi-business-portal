@@ -87,10 +87,31 @@ export default function AmazonFinancialDataPage() {
   });
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showFeeModal, setShowFeeModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
-    loadFinancialData();
-  }, []);
+    if (isAuthenticated) {
+      loadFinancialData();
+    }
+  }, [isAuthenticated]);
+
+  function handlePasswordSubmit() {
+    if (password === 'BDI1') {
+      setIsAuthenticated(true);
+      setShowPasswordModal(false);
+      setPassword('');
+    } else {
+      alert('Incorrect password. Please try again.');
+      setPassword('');
+    }
+  }
+
+  function handlePasswordCancel() {
+    // Redirect back to main Amazon Data page
+    window.location.href = '/admin/amazon-data';
+  }
 
   async function loadFinancialData() {
     try {
@@ -362,6 +383,66 @@ export default function AmazonFinancialDataPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Password protection modal
+  if (showPasswordModal && !isAuthenticated) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
+          {/* Modal Header */}
+          <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <DollarSign className="h-7 w-7 text-blue-600" />
+              Amazon Financial Data Access
+            </h2>
+            <p className="text-sm text-gray-600 mt-2">
+              This page makes API calls to Amazon. Please enter the password to continue.
+            </p>
+          </div>
+
+          {/* Modal Content */}
+          <div className="p-6">
+            <Label htmlFor="password" className="text-sm font-semibold text-gray-700 mb-2 block">
+              Enter Password
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handlePasswordSubmit();
+                }
+              }}
+              placeholder="Enter password"
+              className="w-full"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              This protects against accidental API abuse and excessive usage.
+            </p>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={handlePasswordCancel}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasswordSubmit}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Submit
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
