@@ -31,7 +31,7 @@ export class AmazonFinancialEventsClient {
   private rateLimiter: AmazonRateLimiter;
   
   private readonly SP_API_URL = 'https://sellingpartnerapi-na.amazon.com';
-  private readonly FINANCES_VERSION = '2024-06-19';
+  private readonly FINANCES_VERSION = 'v0';
   
   // API requires at least 2 minutes before current time
   private readonly TIME_BUFFER_MINUTES = 2;
@@ -112,18 +112,16 @@ export class AmazonFinancialEventsClient {
     request: FinancialEventsRequest
   ): Promise<FinancialEventsResponse> {
     return await this.rateLimiter.executeWithRetry(async () => {
-      const path = `/finances/${this.FINANCES_VERSION}/transactions`;
+      const path = `/finances/${this.FINANCES_VERSION}/financialEvents`;
       
       // Build query parameters
       const queryParams: Record<string, string> = {
-        postedAfter: request.postedAfter,
-        postedBefore: request.postedBefore,
-        marketplaceId: request.marketplaceId,
-        maxResultsPerPage: request.maxResultsPerPage?.toString() || '500',
+        PostedAfter: request.postedAfter,
+        PostedBefore: request.postedBefore,
       };
 
       if (request.nextToken) {
-        queryParams.nextToken = request.nextToken;
+        queryParams.NextToken = request.nextToken;
       }
 
       const headers = await this.auth.getSignedHeaders(

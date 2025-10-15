@@ -154,10 +154,21 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
       },
       {
         title: tn('amazonData', 'Amazon Data'), // 🌍 TRANSLATED
-        href: '/admin/amazon-data',
         icon: 'analytics',
         requiresRole: ['super_admin', 'admin_cfo'], // Super Admin and CFO only
         requiresBDI: true, // BDI-only feature
+        children: [
+          {
+            title: 'Reports',
+            href: '/admin/amazon-data',
+            icon: 'reports',
+          },
+          {
+            title: 'Financial Data',
+            href: '/admin/amazon-data/financial',
+            icon: 'finance',
+          },
+        ],
       },
       {
         title: 'NRE Spend',
