@@ -234,9 +234,9 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             icon: 'dashboard',
           },
           {
-            title: '🔄 RMA Analytics',
+            title: '📊 RMA Analytics',
             href: '/admin/warehouse-wip/rma',
-            icon: 'sync_alt',
+            icon: 'dashboard',
           },
         ],
       },
