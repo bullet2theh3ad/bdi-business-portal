@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { productSkus, users } from '@/lib/db/schema';
+import { productSkus, users, skuMappings } from '@/lib/db/schema';
 import { eq, and, isNull, ilike, or } from 'drizzle-orm';
 import { z } from 'zod';
 

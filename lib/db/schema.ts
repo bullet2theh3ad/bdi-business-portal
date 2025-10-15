@@ -557,6 +557,28 @@ export const productSkus = pgTable('product_skus', {
   createdBy: uuid('created_by').notNull().references(() => users.authId),
 });
 
+// SKU Mappings - Maps external channel identifiers to internal SKUs
+export const skuMappings = pgTable('sku_mappings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Foreign key to product_skus
+  internalSkuId: uuid('internal_sku_id').notNull().references(() => productSkus.id, { onDelete: 'cascade' }),
+  
+  // External identifier (Amazon ASIN, Seller SKU, UPC, EAN, etc.)
+  externalIdentifier: text('external_identifier').notNull(),
+  
+  // Channel/source
+  channel: text('channel').notNull(), // 'amazon_asin', 'amazon_seller_sku', 'walmart', 'ebay', 'upc', 'ean', etc.
+  
+  // Optional notes
+  notes: text('notes'),
+  
+  // Metadata
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdBy: uuid('created_by').references(() => users.authId, { onDelete: 'set null' }),
+});
+
 // API Keys for developer users
 export const apiKeys = pgTable('api_keys', {
   id: uuid('id').primaryKey().defaultRandom(),

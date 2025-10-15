@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import { SKUMappingsSection } from '@/components/SKUMappingsSection';
 import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
@@ -62,6 +63,9 @@ export default function SKUsPage() {
   const [variantParentSku, setVariantParentSku] = useState<ProductSku | null>(null);
   const [variantExtension, setVariantExtension] = useState<string>('');
   const [isCreatingVariant, setIsCreatingVariant] = useState(false);
+  
+  // SKU Mappings State
+  const [skuMappings, setSkuMappings] = useState<any[]>([]);
 
   // Access control - only BDI Super Admins and Admins can manage SKUs
   if (!user || !['super_admin', 'admin'].includes(user.role) || (user as any).organization?.code !== 'BDI') {
@@ -271,6 +275,26 @@ export default function SKUsPage() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const newSkuId = result.sku?.id;
+        
+        // Save mappings if any were defined
+        if (newSkuId && skuMappings.length > 0) {
+          const validMappings = skuMappings.filter(m => m.externalIdentifier && m.externalIdentifier.trim() !== '');
+          if (validMappings.length > 0) {
+            try {
+              await fetch(`/api/admin/skus/${newSkuId}/mappings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mappings: validMappings }),
+              });
+            } catch (mappingError) {
+              console.error('Failed to save mappings:', mappingError);
+              // Don't fail the whole operation if mappings fail
+            }
+          }
+        }
+        
         mutateSkus(); // Refresh the SKU list
         setShowCreateModal(false);
         // Reset form
@@ -289,6 +313,7 @@ export default function SKUsPage() {
         });
         setCustomSubSku(false);
         setCustomSubSkuCode('');
+        setSkuMappings([]); // Reset mappings
       } else {
         const errorData = await response.json();
         alert(`Failed to create SKU: ${errorData.error || 'Unknown error'}`);
@@ -1477,6 +1502,12 @@ export default function SKUsPage() {
                 </div>
               </div>
 
+              {/* SKU Mappings Section */}
+              <SKUMappingsSection 
+                mode="create"
+                onMappingsChange={setSkuMappings}
+              />
+
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
                   type="button"
@@ -1909,6 +1940,14 @@ export default function SKUsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* SKU Mappings Section */}
+              {selectedSku && (
+                <SKUMappingsSection 
+                  mode="edit"
+                  skuId={selectedSku.id}
+                />
+              )}
 
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
