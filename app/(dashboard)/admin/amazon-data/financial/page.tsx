@@ -60,7 +60,8 @@ interface FeeBreakdown {
 interface FinancialData {
   eventGroups: number;
   uniqueOrders: number;
-  totalRevenue: number;
+  totalRevenue: number; // Excludes tax
+  totalTax?: number; // Tax collected
   totalFees: number;
   totalRefunds?: number;
   totalAdSpend?: number;
@@ -196,7 +197,8 @@ export default function AmazonFinancialDataPage() {
         setFinancialData({
           eventGroups: data.summary.eventGroups,
           uniqueOrders: data.summary.uniqueOrders,
-          totalRevenue: data.summary.totalRevenue,
+          totalRevenue: data.summary.totalRevenue, // Excludes tax
+          totalTax: data.summary.totalTax || 0, // Tax collected
           totalFees: data.summary.totalFees,
           totalRefunds: data.summary.totalRefunds || 0,
           totalAdSpend: data.summary.totalAdSpend || 0,
@@ -261,16 +263,17 @@ export default function AmazonFinancialDataPage() {
         ['Date Range', `${dateRange.start} to ${dateRange.end}`],
         ['Generated', new Date().toLocaleString()],
         [''],
-        ['Metric', 'Value'],
-        ['Total Orders', financialData.uniqueOrders],
-        ['Total SKUs', financialData.uniqueSKUs || 0],
-        ['Total Revenue', financialData.totalRevenue],
-        ['Total Fees', financialData.totalFees],
-        ['Total Refunds', financialData.totalRefunds || 0],
-        ['Net Revenue', financialData.netRevenue],
-        ['Profit Margin', `${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`],
-        ['Fee Percentage', `${((financialData.totalFees / financialData.totalRevenue) * 100).toFixed(2)}%`],
-        ['Refund Rate', `${(financialData.refundRate || 0).toFixed(2)}%`],
+        ['Metric', 'Value', 'Notes'],
+        ['Total Orders', financialData.uniqueOrders, ''],
+        ['Total SKUs', financialData.uniqueSKUs || 0, ''],
+        ['Total Revenue', financialData.totalRevenue, 'Excludes tax'],
+        ['Total Tax Collected', financialData.totalTax || 0, 'Sales tax from customers'],
+        ['Total Fees', financialData.totalFees, 'Amazon fees'],
+        ['Total Refunds', financialData.totalRefunds || 0, 'Money refunded'],
+        ['Net Revenue', financialData.netRevenue, 'Revenue - Fees'],
+        ['Profit Margin', `${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`, 'Before other costs'],
+        ['Fee Percentage', `${((financialData.totalFees / financialData.totalRevenue) * 100).toFixed(2)}%`, 'Fees / Revenue'],
+        ['Refund Rate', `${(financialData.refundRate || 0).toFixed(2)}%`, 'Orders with returns'],
       ];
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
@@ -314,11 +317,11 @@ export default function AmazonFinancialDataPage() {
       const skuSheet = XLSX.utils.aoa_to_sheet(skuData);
       XLSX.utils.book_append_sheet(workbook, skuSheet, 'SKU Summary');
 
-      // TAB 4: Transaction Line Items (Detailed)
+      // TAB 4: Transaction Line Items (Detailed - Tax Excluded)
       const transactionLineItems: any[] = [
         ['Transaction-Level Line Items (All Orders)'],
         [''],
-        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity', 'Item Price', 'Item Tax', 'Shipping', 'Gift Wrap', 'Promotion', 'Total Charges', 'Fees', 'Net Amount', 'Fee Types']
+        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity', 'Item Price', 'Shipping', 'Gift Wrap', 'Promotion', 'Total (excl. tax)', 'Fees', 'Net Amount', 'Fee Types']
       ];
 
       // Extract all line items from transactions
@@ -332,9 +335,8 @@ export default function AmazonFinancialDataPage() {
             const asin = item.ASIN || 'N/A';
             const quantity = item.QuantityShipped || 0;
 
-            // Calculate charges
+            // Calculate charges (excluding tax)
             let itemPrice = 0;
-            let itemTax = 0;
             let shipping = 0;
             let giftWrap = 0;
             let promotion = 0;
@@ -343,11 +345,11 @@ export default function AmazonFinancialDataPage() {
               const amount = charge.ChargeAmount?.CurrencyAmount || 0;
               const type = charge.ChargeType;
               if (type === 'Principal') itemPrice += amount;
-              if (type === 'Tax') itemTax += amount;
+              // Tax excluded
               if (type === 'Shipping') shipping += amount;
-              if (type === 'ShippingTax') shipping += amount;
+              // ShippingTax excluded
               if (type === 'GiftWrap') giftWrap += amount;
-              if (type === 'GiftWrapTax') giftWrap += amount;
+              // GiftWrapTax excluded
               if (type === 'Promotion') promotion += amount;
             });
 
@@ -360,7 +362,7 @@ export default function AmazonFinancialDataPage() {
               if (fee.FeeType) feeTypes.push(fee.FeeType);
             });
 
-            const totalCharges = itemPrice + itemTax + shipping + giftWrap + promotion;
+            const totalCharges = itemPrice + shipping + giftWrap + promotion; // No tax
             const netAmount = totalCharges - totalFees;
 
             transactionLineItems.push([
@@ -370,7 +372,6 @@ export default function AmazonFinancialDataPage() {
               asin,
               quantity,
               itemPrice,
-              itemTax,
               shipping,
               giftWrap,
               promotion,
@@ -670,14 +671,26 @@ export default function AmazonFinancialDataPage() {
 
         {/* Stats Cards */}
         {financialData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">{formatCurrency(financialData.totalRevenue)}</div>
-                <p className="text-xs text-gray-500 mt-1">{financialData.uniqueOrders} orders</p>
+                <p className="text-xs text-gray-500 mt-1">{financialData.uniqueOrders} orders (excl. tax)</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-indigo-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Tax</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-indigo-600">
+                  {formatCurrency(financialData.totalTax || 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Tax collected</p>
               </CardContent>
             </Card>
 

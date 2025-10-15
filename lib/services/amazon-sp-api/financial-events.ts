@@ -298,7 +298,7 @@ export class FinancialEventsParser {
   }
 
   /**
-   * Calculate total revenue from financial events
+   * Calculate total revenue from financial events (EXCLUDING tax)
    */
   static calculateTotalRevenue(events: FinancialEventGroup[]): number {
     let total = 0;
@@ -307,7 +307,30 @@ export class FinancialEventsParser {
       group.ShipmentEventList?.forEach(event => {
         event.ShipmentItemList?.forEach(item => {
           item.ItemChargeList?.forEach(charge => {
-            if (charge.ChargeAmount?.CurrencyAmount) {
+            // Exclude tax from revenue calculation
+            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType !== 'Tax') {
+              total += charge.ChargeAmount.CurrencyAmount;
+            }
+          });
+        });
+      });
+    });
+    
+    return total;
+  }
+
+  /**
+   * Calculate total tax collected from financial events
+   */
+  static calculateTotalTax(events: FinancialEventGroup[]): number {
+    let total = 0;
+    
+    events.forEach(group => {
+      group.ShipmentEventList?.forEach(event => {
+        event.ShipmentItemList?.forEach(item => {
+          item.ItemChargeList?.forEach(charge => {
+            // Only include tax charges
+            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType === 'Tax') {
               total += charge.ChargeAmount.CurrencyAmount;
             }
           });

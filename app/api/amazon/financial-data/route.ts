@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
 
     // Parse and analyze the data
     const orderIds = FinancialEventsParser.extractOrderIds(transactions);
-    const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions);
+    const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions); // Excludes tax
+    const totalTax = FinancialEventsParser.calculateTotalTax(transactions); // Tax only
     const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
     const totalRefunds = FinancialEventsParser.calculateTotalRefunds(transactions);
     const totalAdSpend = FinancialEventsParser.calculateTotalAdSpend(transactions);
@@ -143,7 +144,8 @@ export async function POST(request: NextRequest) {
       summary: {
         eventGroups: transactions.length,
         uniqueOrders: orderIds.length,
-        totalRevenue: Number(totalRevenue.toFixed(2)),
+        totalRevenue: Number(totalRevenue.toFixed(2)), // Excludes tax
+        totalTax: Number(totalTax.toFixed(2)), // Tax collected separately
         totalFees: Number(totalFees.toFixed(2)),
         totalRefunds: Number(totalRefunds.toFixed(2)),
         totalAdSpend: Number(totalAdSpend.toFixed(2)),
@@ -176,7 +178,7 @@ export async function POST(request: NextRequest) {
       response.transactions = transactions;
     }
 
-    console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalFees.toFixed(2)} fees, $${totalRefunds.toFixed(2)} refunds, $${totalAdSpend.toFixed(2)} ads, $${totalCoupons.toFixed(2)} coupons, $${totalChargebacks.toFixed(2)} chargebacks`);
+    console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue (excl. tax), $${totalTax.toFixed(2)} tax, $${totalFees.toFixed(2)} fees, $${totalRefunds.toFixed(2)} refunds, $${totalAdSpend.toFixed(2)} ads, $${totalCoupons.toFixed(2)} coupons, $${totalChargebacks.toFixed(2)} chargebacks`);
 
     return NextResponse.json(response);
 
