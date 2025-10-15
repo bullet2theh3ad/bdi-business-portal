@@ -57,18 +57,52 @@ export async function GET() {
 
     if (!dbUser) {
       // Create new user with proper auth_id
+      // Security: Only allow super_admin for BDI users, default to 'member'
+      const requestedRole = authUser.user_metadata?.role;
+      const isBDIEmail = authUser.email?.endsWith('@bdibusinessportal.com') || 
+                        authUser.email?.endsWith('@boundlessdevices.com') ||
+                        authUser.email === 'steve.cistulli@gmail.com'; // Your admin email
+      
+      let userRole = 'member'; // Safe default
+      
+      // Only allow super_admin for BDI emails
+      if (requestedRole === 'super_admin' && isBDIEmail) {
+        userRole = 'super_admin';
+      } else if (requestedRole && ['admin', 'member', 'operations'].includes(requestedRole)) {
+        userRole = requestedRole;
+      }
+      
+      console.log(`🔒 User creation security check: email=${authUser.email}, requestedRole=${requestedRole}, isBDI=${isBDIEmail}, finalRole=${userRole}`);
+
       [dbUser] = await db
         .insert(users)
         .values({
           authId: authUser.id,
           email: authUser.email!,
           name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
-          role: authUser.user_metadata?.role || 'super_admin',
+          role: userRole,
           passwordHash: 'supabase_managed', // Placeholder since Supabase manages auth
         })
         .returning();
     } else {
       console.log('Found user by email:', dbUser.email);
+      
+      // Security check: Downgrade non-BDI super_admins to admin
+      const isBDIEmail = dbUser.email?.endsWith('@bdibusinessportal.com') || 
+                        dbUser.email?.endsWith('@boundlessdevices.com') ||
+                        dbUser.email === 'steve.cistulli@gmail.com'; // Your admin email
+      
+      if (dbUser.role === 'super_admin' && !isBDIEmail) {
+        console.log(`🔒 SECURITY: Downgrading non-BDI super_admin ${dbUser.email} to admin`);
+        await db
+          .update(users)
+          .set({ 
+            role: 'admin',
+            updatedAt: new Date()
+          })
+          .where(eq(users.authId, authUser.id));
+        dbUser.role = 'admin'; // Update local object
+      }
       
       // Update last login time from Supabase Auth
       if (authUser.last_sign_in_at) {
@@ -105,7 +139,12 @@ export async function GET() {
       .where(eq(organizationMembers.userAuthId, dbUser.authId));
 
     // For Super Admin, provide BDI organization if they don't have memberships
-    if (dbUser.role === 'super_admin' && userOrganizations.length === 0) {
+    // SECURITY: Only BDI super_admins get automatic BDI access
+    const isBDIEmail = dbUser.email?.endsWith('@bdibusinessportal.com') || 
+                      dbUser.email?.endsWith('@boundlessdevices.com') ||
+                      dbUser.email === 'steve.cistulli@gmail.com'; // Your admin email
+                      
+    if (dbUser.role === 'super_admin' && userOrganizations.length === 0 && isBDIEmail) {
       // Get the actual BDI organization from database
       const [bdiOrg] = await db
         .select()
