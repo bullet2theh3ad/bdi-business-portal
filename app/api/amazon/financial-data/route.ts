@@ -83,19 +83,27 @@ export async function POST(request: NextRequest) {
     const orderIds = FinancialEventsParser.extractOrderIds(transactions);
     const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions);
     const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
+    const totalRefunds = FinancialEventsParser.calculateTotalRefunds(transactions);
     const feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
     const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
+    const refundSummary = FinancialEventsParser.getRefundSummary(transactions);
 
-    // Get ALL SKUs by revenue (sorted)
+    // Get ALL SKUs by revenue (sorted) with refund data
     const allSKUs = Array.from(skuSummary.entries())
       .sort((a, b) => b[1].revenue - a[1].revenue)
-      .map(([sku, data]) => ({
-        sku,
-        units: data.units,
-        revenue: Number(data.revenue.toFixed(2)),
-        fees: Number(data.fees.toFixed(2)),
-        net: Number((data.revenue - data.fees).toFixed(2)),
-      }));
+      .map(([sku, data]) => {
+        const refundData = refundSummary.get(sku) || { units: 0, refundAmount: 0 };
+        return {
+          sku,
+          units: data.units,
+          revenue: Number(data.revenue.toFixed(2)),
+          fees: Number(data.fees.toFixed(2)),
+          net: Number((data.revenue - data.fees).toFixed(2)),
+          refundedUnits: refundData.units,
+          refundAmount: Number(refundData.refundAmount.toFixed(2)),
+          netUnits: data.units - refundData.units, // Units after returns
+        };
+      });
     
     // Get top 10 for the chart
     const topSKUs = allSKUs.slice(0, 10);
@@ -126,10 +134,12 @@ export async function POST(request: NextRequest) {
         uniqueOrders: orderIds.length,
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalFees: Number(totalFees.toFixed(2)),
+        totalRefunds: Number(totalRefunds.toFixed(2)),
         netRevenue: Number(netRevenue.toFixed(2)),
         uniqueSKUs: skuSummary.size,
         profitMargin: Number(profitMargin.toFixed(2)),
         feePercentage: Number(feePercentage.toFixed(2)),
+        refundRate: orderIds.length > 0 ? Number(((refundSummary.size / orderIds.length) * 100).toFixed(2)) : 0,
       },
       feeBreakdown: feeBreakdownFormatted, // Detailed fee breakdown by type
       topSKUs, // Top 10 for the chart
@@ -146,7 +156,7 @@ export async function POST(request: NextRequest) {
       response.transactions = transactions;
     }
 
-    console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalFees.toFixed(2)} fees`);
+    console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalFees.toFixed(2)} fees, $${totalRefunds.toFixed(2)} refunds`);
 
     return NextResponse.json(response);
 

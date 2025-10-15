@@ -46,6 +46,9 @@ interface SKUData {
   revenue: number;
   fees: number;
   net: number;
+  refundedUnits?: number;
+  refundAmount?: number;
+  netUnits?: number;
 }
 
 interface FeeBreakdown {
@@ -59,8 +62,10 @@ interface FinancialData {
   uniqueOrders: number;
   totalRevenue: number;
   totalFees: number;
+  totalRefunds?: number;
   netRevenue: number;
   uniqueSKUs?: number;
+  refundRate?: number;
   topSKUs?: SKUData[];
   allSKUs?: SKUData[];
   feeBreakdown?: FeeBreakdown[];
@@ -148,8 +153,10 @@ export default function AmazonFinancialDataPage() {
           uniqueOrders: data.summary.uniqueOrders,
           totalRevenue: data.summary.totalRevenue,
           totalFees: data.summary.totalFees,
+          totalRefunds: data.summary.totalRefunds || 0,
           netRevenue: data.summary.netRevenue,
           uniqueSKUs: data.summary.uniqueSKUs,
+          refundRate: data.summary.refundRate || 0,
           topSKUs: data.topSKUs || [],
           allSKUs: data.allSKUs || [],
           feeBreakdown: data.feeBreakdown || []
@@ -231,9 +238,11 @@ export default function AmazonFinancialDataPage() {
         ['Total SKUs', financialData.uniqueSKUs || 0],
         ['Total Revenue', financialData.totalRevenue],
         ['Total Fees', financialData.totalFees],
+        ['Total Refunds', financialData.totalRefunds || 0],
         ['Net Revenue', financialData.netRevenue],
         ['Profit Margin', `${((financialData.netRevenue / financialData.totalRevenue) * 100).toFixed(2)}%`],
         ['Fee Percentage', `${((financialData.totalFees / financialData.totalRevenue) * 100).toFixed(2)}%`],
+        ['Refund Rate', `${(financialData.refundRate || 0).toFixed(2)}%`],
       ];
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
@@ -256,16 +265,19 @@ export default function AmazonFinancialDataPage() {
         XLSX.utils.book_append_sheet(workbook, feeSheet, 'Fee Breakdown');
       }
 
-      // TAB 3: All SKU Line Items (Aggregated)
+      // TAB 3: All SKU Line Items (Aggregated with Refunds)
       const skuData = [
-        ['All SKU Performance - Aggregated'],
+        ['All SKU Performance - Aggregated with Returns'],
         [''],
-        ['Rank', 'SKU', 'Units Sold', 'Revenue', 'Fees', 'Net Profit', 'Profit Margin %'],
+        ['Rank', 'SKU', 'Units Sold', 'Returns', 'Net Units', 'Revenue', 'Refunded $', 'Fees', 'Net Profit', 'Profit Margin %'],
         ...financialData.allSKUs.map((sku, index) => [
           index + 1,
           sku.sku,
           sku.units,
+          sku.refundedUnits || 0,
+          sku.netUnits || sku.units,
           sku.revenue,
+          sku.refundAmount || 0,
           sku.fees,
           sku.net,
           sku.revenue > 0 ? `${((sku.net / sku.revenue) * 100).toFixed(2)}%` : '0.00%'
@@ -345,6 +357,61 @@ export default function AmazonFinancialDataPage() {
 
       const transactionSheet = XLSX.utils.aoa_to_sheet(transactionLineItems);
       XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transaction Details');
+
+      // TAB 5: Refund/Return Line Items (Detailed)
+      const refundLineItems: any[] = [
+        ['Refund/Return Line Items (All Returns)'],
+        [''],
+        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity Returned', 'Refund Amount', 'Fees Refunded', 'Net Refund', 'Return Reason']
+      ];
+
+      // Extract all refund line items from transactions
+      transactions.forEach((eventGroup: any) => {
+        eventGroup.RefundEventList?.forEach((refund: any) => {
+          const orderId = refund.AmazonOrderId || 'N/A';
+          const postedDate = refund.PostedDate || 'N/A';
+
+          refund.ShipmentItemAdjustmentList?.forEach((item: any) => {
+            const sku = item.SellerSKU || 'N/A';
+            const asin = item.ASIN || 'N/A';
+            const quantity = Math.abs(item.QuantityShipped || 0);
+
+            // Calculate refund amount
+            let refundAmount = 0;
+            item.ItemChargeAdjustmentList?.forEach((charge: any) => {
+              const amount = charge.ChargeAmount?.CurrencyAmount || 0;
+              refundAmount += Math.abs(amount);
+            });
+
+            // Calculate fees refunded
+            let feesRefunded = 0;
+            item.ItemFeeAdjustmentList?.forEach((fee: any) => {
+              const feeAmount = fee.FeeAmount?.CurrencyAmount || 0;
+              feesRefunded += Math.abs(feeAmount);
+            });
+
+            const netRefund = refundAmount - feesRefunded;
+
+            refundLineItems.push([
+              orderId,
+              postedDate,
+              sku,
+              asin,
+              quantity,
+              refundAmount,
+              feesRefunded,
+              netRefund,
+              'Customer Return' // Amazon doesn't provide detailed return reasons in API
+            ]);
+          });
+        });
+      });
+
+      // Only add refunds tab if there are refunds
+      if (refundLineItems.length > 3) {
+        const refundSheet = XLSX.utils.aoa_to_sheet(refundLineItems);
+        XLSX.utils.book_append_sheet(workbook, refundSheet, 'Refund Details');
+      }
 
       // Generate Excel file and download
       XLSX.writeFile(workbook, `amazon-financial-data-${dateRange.start}-to-${dateRange.end}.xlsx`);
@@ -608,13 +675,17 @@ export default function AmazonFinancialDataPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-purple-500">
+            <Card className="border-l-4 border-l-orange-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Event Groups</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600">Total Refunds</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-600">{financialData.eventGroups}</div>
-                <p className="text-xs text-gray-500 mt-1">Transaction groups</p>
+                <div className="text-2xl font-bold text-orange-600">
+                  {formatCurrency(financialData.totalRefunds || 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {financialData.refundRate?.toFixed(1)}% refund rate
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -726,8 +797,11 @@ export default function AmazonFinancialDataPage() {
                     <tr>
                       <th className="text-left p-3 font-semibold bg-gray-50">#</th>
                       <th className="text-left p-3 font-semibold bg-gray-50">SKU</th>
-                      <th className="text-right p-3 font-semibold bg-gray-50">Units</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Units Sold</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Returns</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Net Units</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Revenue</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Refunded</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Fees</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Net Profit</th>
                       <th className="text-right p-3 font-semibold bg-gray-50">Margin</th>
@@ -739,8 +813,17 @@ export default function AmazonFinancialDataPage() {
                         <td className="p-3 text-gray-500 text-xs">{index + 1}</td>
                         <td className="p-3 font-medium text-gray-900">{sku.sku}</td>
                         <td className="p-3 text-right text-gray-600">{sku.units}</td>
+                        <td className="p-3 text-right text-orange-600">
+                          {sku.refundedUnits || 0}
+                        </td>
+                        <td className="p-3 text-right font-semibold text-gray-700">
+                          {sku.netUnits || sku.units}
+                        </td>
                         <td className="p-3 text-right font-semibold text-blue-600">
                           {formatCurrency(sku.revenue)}
+                        </td>
+                        <td className="p-3 text-right text-orange-600">
+                          {formatCurrency(sku.refundAmount || 0)}
                         </td>
                         <td className="p-3 text-right text-red-600">
                           {formatCurrency(sku.fees)}

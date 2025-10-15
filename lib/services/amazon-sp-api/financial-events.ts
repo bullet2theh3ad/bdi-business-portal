@@ -355,6 +355,63 @@ export class FinancialEventsParser {
   }
 
   /**
+   * Calculate total refunds from financial events
+   */
+  static calculateTotalRefunds(events: FinancialEventGroup[]): number {
+    let total = 0;
+    
+    events.forEach(group => {
+      group.RefundEventList?.forEach(event => {
+        event.ShipmentItemAdjustmentList?.forEach(item => {
+          // Refund amounts are negative in the API, so we take absolute value
+          item.ItemChargeAdjustmentList?.forEach(charge => {
+            if (charge.ChargeAmount?.CurrencyAmount) {
+              total += Math.abs(charge.ChargeAmount.CurrencyAmount);
+            }
+          });
+        });
+      });
+    });
+    
+    return total;
+  }
+
+  /**
+   * Get refund summary by SKU
+   */
+  static getRefundSummary(events: FinancialEventGroup[]): Map<string, {
+    units: number;
+    refundAmount: number;
+  }> {
+    const refundMap = new Map<string, { units: number; refundAmount: number }>();
+    
+    events.forEach(group => {
+      group.RefundEventList?.forEach(event => {
+        event.ShipmentItemAdjustmentList?.forEach(item => {
+          if (!item.SellerSKU) return;
+          
+          const sku = item.SellerSKU;
+          const existing = refundMap.get(sku) || { units: 0, refundAmount: 0 };
+          
+          // Add refunded quantity
+          existing.units += Math.abs(item.QuantityShipped || 0);
+          
+          // Add refund amount
+          item.ItemChargeAdjustmentList?.forEach(charge => {
+            if (charge.ChargeAmount?.CurrencyAmount) {
+              existing.refundAmount += Math.abs(charge.ChargeAmount.CurrencyAmount);
+            }
+          });
+          
+          refundMap.set(sku, existing);
+        });
+      });
+    });
+    
+    return refundMap;
+  }
+
+  /**
    * Get fee breakdown by type
    */
   static getFeeBreakdown(events: FinancialEventGroup[]): {
