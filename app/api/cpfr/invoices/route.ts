@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, invoices, invoiceLineItems, invoicePaymentLineItems, organizations, organizationMembers } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, invoices, invoiceLineItems, invoicePaymentLineItems, organizations, organizationMembers, productSkus } from '@/lib/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 import { Resend } from 'resend';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -152,10 +152,46 @@ export async function GET(request: NextRequest) {
         .from(invoices)
         .orderBy(invoices.createdAt);
     } else {
-      // Partner organizations only see invoices where they are the customer
+      // Partner organizations see invoices for SKUs they OWN (by manufacturer) - same logic as forecasts
       const orgCode = userOrgMembership[0]?.organization.code;
       if (!orgCode) {
         return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      }
+
+      console.log(`🔍 Filtering invoices for partner organization: ${orgCode}`);
+      
+      // Get all SKUs where this organization is the manufacturer
+      const ownedSkus = await db
+        .select({
+          skuId: productSkus.id
+        })
+        .from(productSkus)
+        .where(eq(productSkus.mfg, orgCode));
+      
+      const ownedSkuIds = ownedSkus.map(item => item.skuId);
+      
+      console.log(`🔍 Found ${ownedSkuIds.length} SKUs owned by ${orgCode}:`, ownedSkuIds);
+      
+      if (ownedSkuIds.length === 0) {
+        console.log(`⚠️ No SKUs found for ${orgCode} - returning empty invoice list`);
+        return NextResponse.json([]);
+      }
+
+      // Get invoices that have line items with owned SKUs
+      const invoicesWithOwnedSkus = await db
+        .select({
+          invoiceId: invoiceLineItems.invoiceId
+        })
+        .from(invoiceLineItems)
+        .where(inArray(invoiceLineItems.skuId, ownedSkuIds));
+
+      const ownedInvoiceIds = [...new Set(invoicesWithOwnedSkus.map(item => item.invoiceId))];
+      
+      console.log(`🔍 Found ${ownedInvoiceIds.length} invoices with owned SKUs`);
+
+      if (ownedInvoiceIds.length === 0) {
+        console.log(`⚠️ No invoices found with owned SKUs for ${orgCode}`);
+        return NextResponse.json([]);
       }
       
       invoicesList = await db
@@ -188,7 +224,7 @@ export async function GET(request: NextRequest) {
           bankCurrency: invoices.bankCurrency,
         })
         .from(invoices)
-        .where(eq(invoices.customerName, orgCode))
+        .where(inArray(invoices.id, ownedInvoiceIds))
         .orderBy(invoices.createdAt);
     }
 
