@@ -215,6 +215,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/quickbooks/purchase-orders',
             icon: 'shipping',
           },
+          {
+            title: 'Data Viewer',
+            href: '/admin/quickbooks/data-viewer',
+            icon: 'list',
+          },
         ],
       },
       {
