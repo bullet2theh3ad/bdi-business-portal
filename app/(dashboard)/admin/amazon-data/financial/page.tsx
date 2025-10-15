@@ -760,7 +760,12 @@ export default function AmazonFinancialDataPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-gray-600">Ad Spend</CardTitle>
                   <button
-                    onClick={() => setShowAdSpendModal(true)}
+                    onClick={() => {
+                      console.log('Ad Spend button clicked');
+                      console.log('financialData:', financialData);
+                      console.log('adSpendBreakdown:', financialData?.adSpendBreakdown);
+                      setShowAdSpendModal(true);
+                    }}
                     className="text-purple-500 hover:text-purple-700 transition-colors"
                     title="View Ad Spend Breakdown"
                   >
@@ -1282,7 +1287,7 @@ export default function AmazonFinancialDataPage() {
       )}
 
       {/* Ad Spend Breakdown Modal */}
-      {showAdSpendModal && financialData && financialData.adSpendBreakdown && (
+      {showAdSpendModal && financialData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
@@ -1318,17 +1323,31 @@ export default function AmazonFinancialDataPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {financialData.adSpendBreakdown.map((ad, index) => (
-                      <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="p-3 font-medium text-gray-900">{ad.transactionType}</td>
-                        <td className="p-3 text-right font-semibold text-purple-600">
-                          {formatCurrency(ad.amount)}
-                        </td>
-                        <td className="p-3 text-right text-gray-600">
-                          {ad.percentage.toFixed(2)}%
+                    {financialData.adSpendBreakdown && financialData.adSpendBreakdown.length > 0 ? (
+                      financialData.adSpendBreakdown.map((ad, index) => (
+                        <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="p-3 font-medium text-gray-900">{ad.transactionType}</td>
+                          <td className="p-3 text-right font-semibold text-purple-600">
+                            {formatCurrency(ad.amount)}
+                          </td>
+                          <td className="p-3 text-right text-gray-600">
+                            {ad.percentage.toFixed(2)}%
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="p-8 text-center text-gray-500">
+                          <div className="flex flex-col items-center gap-2">
+                            <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span className="text-sm">No ad spend breakdown data available</span>
+                            <span className="text-xs text-gray-400">Check console for debugging info</span>
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                   <tfoot className="bg-gray-50 border-t-2">
                     <tr>
@@ -1351,7 +1370,7 @@ export default function AmazonFinancialDataPage() {
                 <div className="space-y-1 text-sm text-purple-800">
                   <p>• Ad spend represents <strong>{((financialData.totalAdSpend || 0) / financialData.totalRevenue * 100).toFixed(2)}%</strong> of your total revenue</p>
                   <p>• Marketing ROI: <strong>{financialData.marketingROI?.toFixed(0)}%</strong> (Revenue generated per $1 spent on ads)</p>
-                  <p>• <strong>{financialData.adSpendBreakdown.length}</strong> different ad transaction types detected</p>
+                  <p>• <strong>{financialData.adSpendBreakdown?.length || 0}</strong> different ad transaction types detected</p>
                 </div>
               </div>
             </div>
