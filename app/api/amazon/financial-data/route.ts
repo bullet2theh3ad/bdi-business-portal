@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
     const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
     const totalRefunds = FinancialEventsParser.calculateTotalRefunds(transactions);
     const totalAdSpend = FinancialEventsParser.calculateTotalAdSpend(transactions);
+    const adSpendBreakdown = FinancialEventsParser.getAdSpendBreakdown(transactions);
     const totalChargebacks = FinancialEventsParser.calculateTotalChargebacks(transactions);
     const adjustments = FinancialEventsParser.calculateTotalAdjustments(transactions);
     const totalCoupons = FinancialEventsParser.calculateTotalCoupons(transactions);
@@ -164,6 +165,15 @@ export async function POST(request: NextRequest) {
         percentage: totalFees > 0 ? Number(((amount / totalFees) * 100).toFixed(2)) : 0
       }));
 
+    // Format ad spend breakdown for response
+    const adSpendBreakdownFormatted = Object.entries(adSpendBreakdown)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, amount]) => ({
+        transactionType: type,
+        amount: Number(amount.toFixed(2)),
+        percentage: totalAdSpend > 0 ? Number(((amount / totalAdSpend) * 100).toFixed(2)) : 0
+      }));
+
     const response: any = {
       success: true,
       dateRange: { start: startDate, end: endDate },
@@ -194,6 +204,7 @@ export async function POST(request: NextRequest) {
         marketingROI: Number(marketingROI.toFixed(2)),
       },
       feeBreakdown: feeBreakdownFormatted, // Detailed fee breakdown by type
+      adSpendBreakdown: adSpendBreakdownFormatted, // Detailed ad spend breakdown by transaction type
       topSKUs, // Top 10 for the chart
       allSKUs, // ALL SKUs for the table and export
       metadata: {

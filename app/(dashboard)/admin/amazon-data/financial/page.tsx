@@ -59,6 +59,12 @@ interface FeeBreakdown {
   percentage: number;
 }
 
+interface AdSpendBreakdown {
+  transactionType: string;
+  amount: number;
+  percentage: number;
+}
+
 interface FinancialData {
   eventGroups: number;
   uniqueOrders: number;
@@ -81,6 +87,7 @@ interface FinancialData {
   topSKUs?: SKUData[];
   allSKUs?: SKUData[];
   feeBreakdown?: FeeBreakdown[];
+  adSpendBreakdown?: AdSpendBreakdown[];
 }
 
 interface DateRange {
@@ -104,6 +111,7 @@ export default function AmazonFinancialDataPage() {
   });
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showFeeModal, setShowFeeModal] = useState(false);
+  const [showAdSpendModal, setShowAdSpendModal] = useState(false);
   const [showPLModal, setShowPLModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -749,7 +757,18 @@ export default function AmazonFinancialDataPage() {
 
             <Card className="border-l-4 border-l-purple-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Ad Spend</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Ad Spend</CardTitle>
+                  <button
+                    onClick={() => setShowAdSpendModal(true)}
+                    className="text-purple-500 hover:text-purple-700 transition-colors"
+                    title="View Ad Spend Breakdown"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-purple-600">
@@ -1254,6 +1273,94 @@ export default function AmazonFinancialDataPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowFeeModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ad Spend Breakdown Modal */}
+      {showAdSpendModal && financialData && financialData.adSpendBreakdown && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-purple-50 to-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="h-6 w-6 text-purple-600" />
+                  Ad Spend Breakdown
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Detailed breakdown of advertising spend by transaction type
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdSpendModal(false)}
+                className="hover:bg-purple-100"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Transaction Type</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Amount</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Percentage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {financialData.adSpendBreakdown.map((ad, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="p-3 font-medium text-gray-900">{ad.transactionType}</td>
+                        <td className="p-3 text-right font-semibold text-purple-600">
+                          {formatCurrency(ad.amount)}
+                        </td>
+                        <td className="p-3 text-right text-gray-600">
+                          {ad.percentage.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t-2">
+                    <tr>
+                      <td className="p-3 font-bold text-gray-900">Total</td>
+                      <td className="p-3 text-right font-bold text-purple-600">
+                        {formatCurrency(financialData.totalAdSpend || 0)}
+                      </td>
+                      <td className="p-3 text-right font-bold text-gray-600">100.00%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Ad Spend Analysis */}
+              <div className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h3 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Ad Spend Analysis
+                </h3>
+                <div className="space-y-1 text-sm text-purple-800">
+                  <p>• Ad spend represents <strong>{((financialData.totalAdSpend || 0) / financialData.totalRevenue * 100).toFixed(2)}%</strong> of your total revenue</p>
+                  <p>• Marketing ROI: <strong>{financialData.marketingROI?.toFixed(0)}%</strong> (Revenue generated per $1 spent on ads)</p>
+                  <p>• <strong>{financialData.adSpendBreakdown.length}</strong> different ad transaction types detected</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowAdSpendModal(false)}
               >
                 Close
               </Button>

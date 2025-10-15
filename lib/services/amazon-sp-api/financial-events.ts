@@ -493,6 +493,26 @@ export class FinancialEventsParser {
   }
 
   /**
+   * Get advertising spend breakdown by transaction type
+   */
+  static getAdSpendBreakdown(events: FinancialEventGroup[]): {
+    [transactionType: string]: number;
+  } {
+    const adBreakdown: { [transactionType: string]: number } = {};
+    
+    events.forEach(group => {
+      group.ProductAdsPaymentEventList?.forEach(event => {
+        if (event.transactionType && event.transactionValue?.CurrencyAmount) {
+          const transactionType = event.transactionType;
+          adBreakdown[transactionType] = (adBreakdown[transactionType] || 0) + Math.abs(event.transactionValue.CurrencyAmount);
+        }
+      });
+    });
+    
+    return adBreakdown;
+  }
+
+  /**
    * Calculate total chargebacks
    */
   static calculateTotalChargebacks(events: FinancialEventGroup[]): number {
