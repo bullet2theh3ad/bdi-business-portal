@@ -130,6 +130,41 @@ export default function AmazonFinancialDataPage() {
   }
 
   async function loadFinancialData() {
+    await loadFinancialDataWithRange(dateRange.start, dateRange.end);
+  }
+
+  function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  }
+
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+
+  function getQuickDateRange(days: number) {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - days);
+    
+    const newRange = {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+    
+    setDateRange(newRange);
+    
+    // Auto-reload data with new date range
+    loadFinancialDataWithRange(newRange.start, newRange.end);
+  }
+
+  async function loadFinancialDataWithRange(start: string, end: string) {
     try {
       setLoading(true);
       setError(null);
@@ -140,8 +175,8 @@ export default function AmazonFinancialDataPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          startDate: dateRange.start,
-          endDate: dateRange.end,
+          startDate: start,
+          endDate: end,
         }),
       });
       
@@ -190,32 +225,6 @@ export default function AmazonFinancialDataPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  }
-
-  function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  }
-
-  function getQuickDateRange(days: number) {
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(start.getDate() - days);
-    
-    setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
-    });
   }
 
   async function handleExport() {
