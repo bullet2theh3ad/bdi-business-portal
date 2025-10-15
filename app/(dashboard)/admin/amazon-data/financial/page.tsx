@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import * as XLSX from 'xlsx';
 import { 
+  AlertTriangle,
   DollarSign, 
   RefreshCw,
   Download,
@@ -1457,6 +1458,186 @@ export default function AmazonFinancialDataPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowAdSpendModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Amazon Credits Breakdown Modal */}
+      {showAdjustmentCreditsModal && financialData && financialData.adjustmentBreakdown && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                  Amazon Credits Breakdown
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Detailed breakdown of Amazon credits by adjustment type
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdjustmentCreditsModal(false)}
+                className="hover:bg-green-100"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Adjustment Type</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Amount</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Percentage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {financialData.adjustmentBreakdown.credits && financialData.adjustmentBreakdown.credits.length > 0 ? (
+                      financialData.adjustmentBreakdown.credits.map((credit, index) => (
+                        <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="p-3 font-medium text-gray-900">{credit.adjustmentType}</td>
+                          <td className="p-3 text-right font-semibold text-green-600">
+                            {formatCurrency(credit.amount)}
+                          </td>
+                          <td className="p-3 text-right text-gray-600">
+                            {credit.percentage.toFixed(2)}%
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="p-8 text-center text-gray-500">
+                          <div className="flex flex-col items-center gap-2">
+                            <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                            <span className="text-sm">No Amazon credits available</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  {financialData.adjustmentBreakdown.credits && financialData.adjustmentBreakdown.credits.length > 0 && (
+                    <tfoot className="bg-gray-50 border-t-2">
+                      <tr>
+                        <td className="p-3 font-bold text-gray-900">Total</td>
+                        <td className="p-3 text-right font-bold text-green-600">
+                          {formatCurrency(financialData.adjustmentCredits || 0)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-gray-600">100.00%</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowAdjustmentCreditsModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Amazon Debits Breakdown Modal */}
+      {showAdjustmentDebitsModal && financialData && financialData.adjustmentBreakdown && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-red-50 to-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                  Amazon Debits Breakdown
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Detailed breakdown of Amazon debits by adjustment type
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdjustmentDebitsModal(false)}
+                className="hover:bg-red-100"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Adjustment Type</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Amount</th>
+                      <th className="text-right p-3 font-semibold bg-gray-50">Percentage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {financialData.adjustmentBreakdown.debits && financialData.adjustmentBreakdown.debits.length > 0 ? (
+                      financialData.adjustmentBreakdown.debits.map((debit, index) => (
+                        <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="p-3 font-medium text-gray-900">{debit.adjustmentType}</td>
+                          <td className="p-3 text-right font-semibold text-red-600">
+                            {formatCurrency(debit.amount)}
+                          </td>
+                          <td className="p-3 text-right text-gray-600">
+                            {debit.percentage.toFixed(2)}%
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="p-8 text-center text-gray-500">
+                          <div className="flex flex-col items-center gap-2">
+                            <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <span className="text-sm">No Amazon debits available</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  {financialData.adjustmentBreakdown.debits && financialData.adjustmentBreakdown.debits.length > 0 && (
+                    <tfoot className="bg-gray-50 border-t-2">
+                      <tr>
+                        <td className="p-3 font-bold text-gray-900">Total</td>
+                        <td className="p-3 text-right font-bold text-red-600">
+                          {formatCurrency(financialData.adjustmentDebits || 0)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-gray-600">100.00%</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowAdjustmentDebitsModal(false)}
               >
                 Close
               </Button>

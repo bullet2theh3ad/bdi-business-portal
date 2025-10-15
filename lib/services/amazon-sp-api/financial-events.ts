@@ -405,19 +405,27 @@ export class FinancialEventsParser {
    */
   static calculateTotalTaxRefunded(events: FinancialEventGroup[]): number {
     let total = 0;
+    let taxFound = 0;
+    let nonTaxFound = 0;
     
     events.forEach(group => {
       group.RefundEventList?.forEach(event => {
         event.ShipmentItemAdjustmentList?.forEach(item => {
-          // Only include tax charges in refunds
           item.ItemChargeAdjustmentList?.forEach(charge => {
-            if (charge.ChargeAmount?.CurrencyAmount && charge.ChargeType === 'Tax') {
-              total += Math.abs(charge.ChargeAmount.CurrencyAmount);
+            if (charge.ChargeAmount?.CurrencyAmount) {
+              if (charge.ChargeType === 'Tax') {
+                total += Math.abs(charge.ChargeAmount.CurrencyAmount);
+                taxFound += Math.abs(charge.ChargeAmount.CurrencyAmount);
+              } else {
+                nonTaxFound += Math.abs(charge.ChargeAmount.CurrencyAmount);
+              }
             }
           });
         });
       });
     });
+    
+    console.log(`[Tax Refunded Debug] Tax refunds: $${taxFound.toFixed(2)}, Non-tax refunds: $${nonTaxFound.toFixed(2)}, Total tax refunded: $${total.toFixed(2)}`);
     
     return total;
   }
