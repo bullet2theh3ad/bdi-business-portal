@@ -421,11 +421,11 @@ export default function AmazonFinancialDataPage() {
       const transactionSheet = XLSX.utils.aoa_to_sheet(transactionLineItems);
       XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transaction Details');
 
-      // TAB 5: Refund/Return Line Items (Detailed)
+      // TAB 5: Refund/Return Line Items (Detailed - Tax Excluded)
       const refundLineItems: any[] = [
-        ['Refund/Return Line Items (All Returns)'],
+        ['Refund/Return Line Items (All Returns - Tax Excluded)'],
         [''],
-        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity Returned', 'Refund Amount', 'Fees Refunded', 'Fee Types Refunded', 'Net Refund to Customer']
+        ['Order ID', 'Posted Date', 'SKU', 'ASIN', 'Quantity Returned', 'Refund Amount (excl. tax)', 'Fees Refunded', 'Fee Types Refunded', 'Net Refund to Customer']
       ];
 
       // Extract all refund line items from transactions
@@ -439,11 +439,15 @@ export default function AmazonFinancialDataPage() {
             const asin = item.ASIN || 'N/A';
             const quantity = Math.abs(item.QuantityShipped || 0);
 
-            // Calculate refund amount (money back to customer)
+            // Calculate refund amount (money back to customer, excluding tax)
             let refundAmount = 0;
             item.ItemChargeAdjustmentList?.forEach((charge: any) => {
               const amount = charge.ChargeAmount?.CurrencyAmount || 0;
-              refundAmount += Math.abs(amount);
+              const chargeType = charge.ChargeType;
+              // Exclude tax from refund amount for consistency
+              if (chargeType !== 'Tax' && chargeType !== 'ShippingTax' && chargeType !== 'GiftWrapTax') {
+                refundAmount += Math.abs(amount);
+              }
             });
 
             // Calculate fees refunded (Amazon credits back to you)
