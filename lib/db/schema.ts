@@ -1482,3 +1482,58 @@ export type BudgetTarget = typeof budgetTargets.$inferSelect;
 export type NewBudgetTarget = typeof budgetTargets.$inferInsert;
 export type BudgetTargetPayment = typeof budgetTargetPayments.$inferSelect;
 export type NewBudgetTargetPayment = typeof budgetTargetPayments.$inferInsert;
+
+// ===== SKU FINANCIAL SCENARIOS =====
+
+export const skuFinancialScenarios = pgTable('sku_financial_scenarios', {
+  // Primary Key
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Scenario Metadata
+  scenarioName: varchar('scenario_name', { length: 255 }).notNull(),
+  description: text('description'),
+  
+  // SKU & Market Selection
+  skuName: varchar('sku_name', { length: 255 }).notNull(),
+  channel: varchar('channel', { length: 255 }).notNull(),
+  countryCode: varchar('country_code', { length: 3 }).notNull().default('US'),
+  
+  // Section 1: Pricing & Deductions (Input)
+  asp: numeric('asp', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  resellerMarginPercent: numeric('reseller_margin_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  marketingReservePercent: numeric('marketing_reserve_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  fulfillmentCosts: numeric('fulfillment_costs', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  
+  // Section 4: Product Costs (Input)
+  productCostFob: numeric('product_cost_fob', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  swLicenseFee: numeric('sw_license_fee', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  otherProductCosts: jsonb('other_product_costs').default([]), // Array of {label: string, value: number}
+  
+  // Section 6: Cost of Goods Sold (Input)
+  returnsFreight: numeric('returns_freight', { precision: 12, scale: 2 }).notNull().default('13.00'),
+  returnsHandling: numeric('returns_handling', { precision: 12, scale: 2 }).notNull().default('0.45'),
+  doaChannelCredit: numeric('doa_channel_credit', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  financingCost: numeric('financing_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  ppsHandlingFee: numeric('pps_handling_fee', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  inboundShippingCost: numeric('inbound_shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  outboundShippingCost: numeric('outbound_shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  greenfileMarketing: numeric('greenfile_marketing', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  otherCogs: jsonb('other_cogs').default([]), // Array of {label: string, value: number}
+  
+  // Audit & Access Control
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  
+  // Soft Delete & Status
+  isActive: boolean('is_active').notNull().default(true),
+  isTemplate: boolean('is_template').notNull().default(false),
+  
+  // Version Control
+  version: integer('version').notNull().default(1),
+  parentScenarioId: uuid('parent_scenario_id').references((): any => skuFinancialScenarios.id, { onDelete: 'set null' }),
+});
+
+export type SkuFinancialScenario = typeof skuFinancialScenarios.$inferSelect;
+export type NewSkuFinancialScenario = typeof skuFinancialScenarios.$inferInsert;
