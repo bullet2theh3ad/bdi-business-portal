@@ -49,6 +49,8 @@ export default function BusinessAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showSKUWorksheet, setShowSKUWorksheet] = useState(false);
+  const [availableSKUs, setAvailableSKUs] = useState<string[]>([]);
+  const [isCustomSKU, setIsCustomSKU] = useState(false);
   
   // SKU Worksheet State
   const [worksheetData, setWorksheetData] = useState<SKUWorksheetData>({
@@ -123,6 +125,39 @@ export default function BusinessAnalysisPage() {
       }
     }
     fetchUser();
+  }, []);
+
+  // Fetch available SKUs
+  useEffect(() => {
+    async function fetchSKUs() {
+      try {
+        const response = await fetch('/api/admin/skus');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('SKU API Response:', data);
+          
+          // Handle different response formats
+          let skuList = [];
+          if (Array.isArray(data)) {
+            skuList = data;
+          } else if (data.skus && Array.isArray(data.skus)) {
+            skuList = data.skus;
+          } else if (data.data && Array.isArray(data.data)) {
+            skuList = data.data;
+          }
+          
+          const skuNames = skuList
+            .map((sku: any) => sku.skuCode || sku.sku_code || sku.name || sku.sku_name)
+            .filter(Boolean);
+          
+          console.log('Extracted SKU names:', skuNames);
+          setAvailableSKUs(skuNames);
+        }
+      } catch (error) {
+        console.error('Error fetching SKUs:', error);
+      }
+    }
+    fetchSKUs();
   }, []);
 
   if (loading) {
@@ -590,13 +625,50 @@ export default function BusinessAnalysisPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           SKU Name
                         </label>
-                        <input
-                          type="text"
-                          value={worksheetData.skuName}
-                          onChange={(e) => setWorksheetData({...worksheetData, skuName: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Enter SKU or select from dropdown"
-                        />
+                        {!isCustomSKU ? (
+                          <div className="flex gap-2">
+                            <select
+                              value={worksheetData.skuName}
+                              onChange={(e) => {
+                                if (e.target.value === '__CUSTOM__') {
+                                  setIsCustomSKU(true);
+                                  setWorksheetData({...worksheetData, skuName: ''});
+                                } else {
+                                  setWorksheetData({...worksheetData, skuName: e.target.value});
+                                }
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">Select a SKU...</option>
+                              {availableSKUs.map((sku) => (
+                                <option key={sku} value={sku}>{sku}</option>
+                              ))}
+                              <option value="__CUSTOM__">── Custom Entry ──</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={worksheetData.skuName}
+                              onChange={(e) => setWorksheetData({...worksheetData, skuName: e.target.value})}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter custom SKU name"
+                              autoFocus
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIsCustomSKU(false);
+                                setWorksheetData({...worksheetData, skuName: ''});
+                              }}
+                              className="text-xs"
+                            >
+                              Back to List
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -609,6 +681,7 @@ export default function BusinessAnalysisPage() {
                             step="0.01"
                             value={worksheetData.asp}
                             onChange={(e) => setWorksheetData({...worksheetData, asp: parseFloat(e.target.value) || 0})}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -623,6 +696,7 @@ export default function BusinessAnalysisPage() {
                             step="0.01"
                             value={worksheetData.resellerMargin}
                             onChange={(e) => setWorksheetData({...worksheetData, resellerMargin: parseFloat(e.target.value) || 0})}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pr-7 pl-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                           <span className="absolute right-3 top-2 text-gray-500">%</span>
@@ -638,6 +712,7 @@ export default function BusinessAnalysisPage() {
                             step="0.01"
                             value={worksheetData.marketingReserve}
                             onChange={(e) => setWorksheetData({...worksheetData, marketingReserve: parseFloat(e.target.value) || 0})}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pr-7 pl-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                           <span className="absolute right-3 top-2 text-gray-500">%</span>
@@ -654,6 +729,7 @@ export default function BusinessAnalysisPage() {
                             step="0.01"
                             value={worksheetData.fulfillmentCosts}
                             onChange={(e) => setWorksheetData({...worksheetData, fulfillmentCosts: parseFloat(e.target.value) || 0})}
+                            onFocus={(e) => e.target.select()}
                             className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -717,7 +793,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.productCostFOB}
                               onChange={(e) => setWorksheetData({...worksheetData, productCostFOB: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -732,7 +809,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.swLicenseFee}
                               onChange={(e) => setWorksheetData({...worksheetData, swLicenseFee: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -781,6 +859,7 @@ export default function BusinessAnalysisPage() {
                                   updated[index].value = parseFloat(e.target.value) || 0;
                                   setWorksheetData({...worksheetData, otherProductCosts: updated});
                                 }}
+                                onFocus={(e) => e.target.select()}
                                 className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                               />
                             </div>
@@ -847,7 +926,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.returnsFreight}
                               onChange={(e) => setWorksheetData({...worksheetData, returnsFreight: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -862,7 +942,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.returnsHandling}
                               onChange={(e) => setWorksheetData({...worksheetData, returnsHandling: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -877,7 +958,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.doaChannelCredit}
                               onChange={(e) => setWorksheetData({...worksheetData, doaChannelCredit: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -892,7 +974,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.financingCost}
                               onChange={(e) => setWorksheetData({...worksheetData, financingCost: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -907,7 +990,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.ppsHandlingFee}
                               onChange={(e) => setWorksheetData({...worksheetData, ppsHandlingFee: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -922,7 +1006,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.inboundShippingCost}
                               onChange={(e) => setWorksheetData({...worksheetData, inboundShippingCost: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -937,7 +1022,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.outboundShippingCost}
                               onChange={(e) => setWorksheetData({...worksheetData, outboundShippingCost: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -952,7 +1038,8 @@ export default function BusinessAnalysisPage() {
                               step="0.01"
                               value={worksheetData.greenfileMarketing}
                               onChange={(e) => setWorksheetData({...worksheetData, greenfileMarketing: parseFloat(e.target.value) || 0})}
-                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              onFocus={(e) => e.target.select()}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
                         </div>
@@ -1001,6 +1088,7 @@ export default function BusinessAnalysisPage() {
                                   updated[index].value = parseFloat(e.target.value) || 0;
                                   setWorksheetData({...worksheetData, otherCoGS: updated});
                                 }}
+                                onFocus={(e) => e.target.select()}
                                 className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
                               />
                             </div>
