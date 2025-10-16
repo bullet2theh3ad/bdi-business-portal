@@ -22,6 +22,8 @@ import {
 interface SKUWorksheetData {
   // Section 1: SKU Selection & Pricing
   skuName: string;
+  channel: string; // D2C or B2B specific channel
+  country: string;
   asp: number;
   resellerMargin: number; // percentage
   marketingReserve: number; // percentage
@@ -44,6 +46,34 @@ interface SKUWorksheetData {
   otherCoGS: { label: string; value: number }[];
 }
 
+// Channel structure
+const CHANNELS = {
+  D2C: [
+    'Amazon (FBA)',
+    'Shopify',
+    'Custom D2C Channel'
+  ],
+  B2B: [
+    'Best Buy (Direct)',
+    'Costco (Direct)',
+    'Walmart (Direct)',
+    'Tekpoint (Distributor)',
+    'EMG (Distributor)',
+    'Custom B2B Channel'
+  ]
+};
+
+// Countries
+const COUNTRIES = [
+  'United States',
+  'Canada',
+  'Mexico',
+  'United Kingdom',
+  'Germany',
+  'France',
+  'Other'
+];
+
 export default function BusinessAnalysisPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +85,8 @@ export default function BusinessAnalysisPage() {
   // SKU Worksheet State
   const [worksheetData, setWorksheetData] = useState<SKUWorksheetData>({
     skuName: '',
+    channel: '',
+    country: 'United States',
     asp: 0,
     resellerMargin: 0,
     marketingReserve: 0,
@@ -72,6 +104,9 @@ export default function BusinessAnalysisPage() {
     greenfileMarketing: 0,
     otherCoGS: [],
   });
+
+  const [isCustomChannel, setIsCustomChannel] = useState(false);
+  const [customChannelName, setCustomChannelName] = useState('');
 
   // Calculated Values
   const calculateAllDeductions = () => {
@@ -671,6 +706,87 @@ export default function BusinessAnalysisPage() {
                           </div>
                         )}
                       </div>
+
+                      {/* Channel Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Sales Channel
+                        </label>
+                        {!isCustomChannel ? (
+                          <select
+                            value={worksheetData.channel}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === '__CUSTOM_D2C__' || value === '__CUSTOM_B2B__') {
+                                setIsCustomChannel(true);
+                                setWorksheetData({...worksheetData, channel: ''});
+                              } else {
+                                setWorksheetData({...worksheetData, channel: value});
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Select a channel...</option>
+                            <optgroup label="D2C (Direct to Consumer)">
+                              {CHANNELS.D2C.filter(ch => ch !== 'Custom D2C Channel').map((ch) => (
+                                <option key={ch} value={ch}>{ch}</option>
+                              ))}
+                              <option value="__CUSTOM_D2C__">── Custom D2C Channel ──</option>
+                            </optgroup>
+                            <optgroup label="B2B (Business to Business)">
+                              {CHANNELS.B2B.filter(ch => ch !== 'Custom B2B Channel').map((ch) => (
+                                <option key={ch} value={ch}>{ch}</option>
+                              ))}
+                              <option value="__CUSTOM_B2B__">── Custom B2B Channel ──</option>
+                            </optgroup>
+                          </select>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={customChannelName}
+                              onChange={(e) => setCustomChannelName(e.target.value)}
+                              onBlur={() => {
+                                if (customChannelName.trim()) {
+                                  setWorksheetData({...worksheetData, channel: customChannelName});
+                                }
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter custom channel name"
+                              autoFocus
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIsCustomChannel(false);
+                                setCustomChannelName('');
+                                setWorksheetData({...worksheetData, channel: ''});
+                              }}
+                              className="text-xs"
+                            >
+                              Back
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Country Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Country
+                        </label>
+                        <select
+                          value={worksheetData.country}
+                          onChange={(e) => setWorksheetData({...worksheetData, country: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          {COUNTRIES.map((country) => (
+                            <option key={country} value={country}>{country}</option>
+                          ))}
+                        </select>
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           ASP (Average Selling Price)
