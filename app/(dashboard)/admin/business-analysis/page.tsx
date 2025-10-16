@@ -146,12 +146,13 @@ export default function BusinessAnalysisPage() {
             skuList = data.data;
           }
           
-          const skuNames = skuList
-            .map((sku: any) => sku.skuCode || sku.sku_code || sku.name || sku.sku_name)
+          // Extract SKU NUMBER (skuCode) which is unique, not the name
+          const skuNumbers = skuList
+            .map((sku: any) => sku.skuCode || sku.sku_code)
             .filter(Boolean);
           
-          console.log('Extracted SKU names:', skuNames);
-          setAvailableSKUs(skuNames);
+          console.log('Extracted SKU numbers:', skuNumbers);
+          setAvailableSKUs(skuNumbers);
         }
       } catch (error) {
         console.error('Error fetching SKUs:', error);
@@ -623,7 +624,7 @@ export default function BusinessAnalysisPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          SKU Name
+                          SKU Number
                         </label>
                         {!isCustomSKU ? (
                           <div className="flex gap-2">
@@ -640,8 +641,8 @@ export default function BusinessAnalysisPage() {
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                               <option value="">Select a SKU...</option>
-                              {availableSKUs.map((sku, index) => (
-                                <option key={`${sku}-${index}`} value={sku}>{sku}</option>
+                              {availableSKUs.map((sku) => (
+                                <option key={sku} value={sku}>{sku}</option>
                               ))}
                               <option value="__CUSTOM__">── Custom Entry ──</option>
                             </select>
@@ -653,7 +654,7 @@ export default function BusinessAnalysisPage() {
                               value={worksheetData.skuName}
                               onChange={(e) => setWorksheetData({...worksheetData, skuName: e.target.value})}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="Enter custom SKU name"
+                              placeholder="Enter custom SKU number"
                               autoFocus
                             />
                             <Button
