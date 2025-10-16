@@ -18,6 +18,7 @@ export function canAccessQuickBooks(userEmail: string | null | undefined): boole
 // Business Analysis Feature Flag
 export const BUSINESS_ANALYSIS_WHITELIST = [
   'scistulli@boundlessdevices.com',
+  'dzand@boundlessdevices.com',
   // Add more emails here as you expand access
 ];
 
