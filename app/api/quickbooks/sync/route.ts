@@ -555,20 +555,14 @@ export async function POST(request: NextRequest) {
       // ===============================================
       // PHASE 5: SYNC EXPENSES (with pagination)
       // ===============================================
-      console.log('📥 Fetching expenses from QuickBooks...');
+      console.log('📥 Fetching ALL expenses from QuickBooks (all payment types)...');
       let allExpenses: any[] = [];
       let expenseStartPosition = 1;
       let hasMoreExpenses = true;
       
       while (hasMoreExpenses) {
-        // Combine PaymentType filter with delta query
-        let expensesQuery = 'SELECT * FROM Purchase WHERE PaymentType = \'Cash\'';
-        if (deltaQuery) {
-          // Replace 'WHERE' with 'AND' in deltaQuery since we already have a WHERE clause
-          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
-          expensesQuery += ` ${deltaCondition}`;
-        }
-        expensesQuery += ` STARTPOSITION ${expenseStartPosition} MAXRESULTS 1000`;
+        // Get ALL Purchase transactions (not just Cash)
+        let expensesQuery = `SELECT * FROM Purchase ${deltaQuery} STARTPOSITION ${expenseStartPosition} MAXRESULTS 1000`;
         console.log(`Expense Query (page ${Math.ceil(expenseStartPosition / 1000)}):`, expensesQuery);
         
         const expensesResponse = await fetch(
@@ -686,7 +680,133 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(`✅ Synced ${expenseCount} expenses (${expensesCreated} created, ${expensesUpdated} updated)`);
+      console.log(`✅ Synced ${expenseCount} Purchase expenses (${expensesCreated} created, ${expensesUpdated} updated)`);
+
+      // ===============================================
+      // PHASE 5b: SYNC EXPENSE ENTITY (different from Purchase)
+      // ===============================================
+      console.log('📥 Fetching Expense entities from QuickBooks...');
+      let allExpenseEntities: any[] = [];
+      let expenseEntityStartPosition = 1;
+      let hasMoreExpenseEntities = true;
+      let expenseEntitiesFetched = 0;
+      let expenseEntityCount = 0;
+      let expenseEntitiesCreated = 0;
+      let expenseEntitiesUpdated = 0;
+      
+      while (hasMoreExpenseEntities) {
+        // Get ALL Expense transactions
+        let expenseEntityQuery = `SELECT * FROM Expense ${deltaQuery} STARTPOSITION ${expenseEntityStartPosition} MAXRESULTS 1000`;
+        console.log(`Expense Entity Query (page ${Math.ceil(expenseEntityStartPosition / 1000)}):`, expenseEntityQuery);
+        
+        const expenseEntityResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(expenseEntityQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!expenseEntityResponse.ok) {
+          const errorBody = await expenseEntityResponse.text();
+          console.error('QuickBooks Expense Entity API Error Response:', errorBody);
+          console.log('⚠️  Continuing without Expense entities...');
+          break;
+        }
+
+        const expenseEntityData = await expenseEntityResponse.json();
+        const expenseEntities = expenseEntityData.QueryResponse?.Expense || [];
+        
+        if (expenseEntities.length > 0) {
+          allExpenseEntities = allExpenseEntities.concat(expenseEntities);
+          console.log(`✅ Fetched ${expenseEntities.length} Expense entities (total so far: ${allExpenseEntities.length})`);
+          
+          if (expenseEntities.length < 1000) {
+            hasMoreExpenseEntities = false;
+          } else {
+            expenseEntityStartPosition += 1000;
+          }
+        } else {
+          hasMoreExpenseEntities = false;
+        }
+      }
+      
+      expenseEntitiesFetched = allExpenseEntities.length;
+      console.log(`✅ Fetched ${expenseEntitiesFetched} total Expense entities from QuickBooks`);
+
+      // Upsert Expense entities to database (reuse same table as Purchase)
+      for (const expenseEntity of allExpenseEntities) {
+        let expenseEntityData: any;
+        try {
+          expenseEntityData = {
+            connection_id: connection.id,
+            qb_expense_id: expenseEntity.Id,
+            qb_sync_token: expenseEntity.SyncToken,
+            
+            // Transaction details
+            expense_date: expenseEntity.TxnDate,
+            payment_type: expenseEntity.PaymentType || 'Other',
+            
+            // Vendor/Entity reference
+            qb_vendor_id: expenseEntity.EntityRef?.value,
+            vendor_name: expenseEntity.EntityRef?.name,
+            
+            // Financial
+            total_amount: expenseEntity.TotalAmt || 0,
+            currency_code: expenseEntity.CurrencyRef?.value || 'USD',
+            
+            // Account reference
+            account_ref: expenseEntity.AccountRef?.value,
+            
+            // Memo/Description
+            memo: expenseEntity.PrivateNote,
+            
+            // Line Items (stored as JSON)
+            line_items: expenseEntity.Line ? JSON.stringify(expenseEntity.Line) : null,
+            
+            // Metadata
+            qb_created_at: expenseEntity.MetaData?.CreateTime,
+            qb_updated_at: expenseEntity.MetaData?.LastUpdatedTime,
+          };
+
+          // Check if expense exists
+          const { data: existing, error: existingError } = await supabaseService
+            .from('quickbooks_expenses')
+            .select('id')
+            .eq('connection_id', connection.id)
+            .eq('qb_expense_id', expenseEntity.Id)
+            .single();
+
+          if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+          }
+
+          if (existing) {
+            const { error: updateError } = await supabaseService
+              .from('quickbooks_expenses')
+              .update(expenseEntityData)
+              .eq('id', existing.id);
+
+            if (updateError) throw updateError;
+            expenseEntitiesUpdated++;
+          } else {
+            const { error: insertError } = await supabaseService
+              .from('quickbooks_expenses')
+              .insert(expenseEntityData);
+
+            if (insertError) throw insertError;
+            expenseEntitiesCreated++;
+          }
+
+          expenseEntityCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting Expense entity ${expenseEntity.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${expenseEntityCount} Expense entities (${expenseEntitiesCreated} created, ${expenseEntitiesUpdated} updated)`);
 
       // ===============================================
       // PHASE 6: SYNC ITEMS/PRODUCTS (with pagination)
@@ -1532,7 +1652,7 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Synced ${billPaymentCount} bill payments (${billPaymentsCreated} created, ${billPaymentsUpdated} updated)`);
 
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + expenseEntityCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
