@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { X, Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 
 // SKU Worksheet Data Structure
@@ -102,8 +103,11 @@ const COUNTRIES = [
   { code: 'UA', name: 'Ukraine' },
 ];
 
-export default function SKUWorksheetPage() {
+function SKUWorksheetPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const scenarioId = searchParams.get('id'); // For editing existing scenarios
+  
   const [worksheetData, setWorksheetData] = useState<SKUWorksheetData>({
     skuName: '',
     channel: '',
@@ -130,6 +134,13 @@ export default function SKUWorksheetPage() {
   const [isCustomSKU, setIsCustomSKU] = useState(false);
   const [isCustomChannel, setIsCustomChannel] = useState(false);
   const [customChannelName, setCustomChannelName] = useState('');
+  
+  // Save dialog state
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
+  const [scenarioDescription, setScenarioDescription] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load available SKUs
   useEffect(() => {
@@ -150,6 +161,58 @@ export default function SKUWorksheetPage() {
     }
     loadSKUs();
   }, []);
+
+  // Load existing scenario if editing
+  useEffect(() => {
+    if (scenarioId) {
+      loadScenario(scenarioId);
+    }
+  }, [scenarioId]);
+
+  async function loadScenario(id: string) {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/business-analysis/sku-scenarios/${id}`);
+      if (response.ok) {
+        const { scenario } = await response.json();
+        console.log('Loaded scenario:', scenario);
+        
+        // Map API response to worksheet data
+        setWorksheetData({
+          skuName: scenario.skuName || '',
+          channel: scenario.channel || '',
+          country: scenario.countryCode || 'US',
+          asp: parseFloat(scenario.asp) || 0,
+          resellerMargin: parseFloat(scenario.resellerMarginPercent) || 0,
+          marketingReserve: parseFloat(scenario.marketingReservePercent) || 0,
+          fulfillmentCosts: parseFloat(scenario.fulfillmentCosts) || 0,
+          productCostFOB: parseFloat(scenario.productCostFob) || 0,
+          swLicenseFee: parseFloat(scenario.swLicenseFee) || 0,
+          otherProductCosts: scenario.otherProductCosts || [],
+          returnsFreight: parseFloat(scenario.returnsFreight) || 13.00,
+          returnsHandling: parseFloat(scenario.returnsHandling) || 0.45,
+          doaChannelCredit: parseFloat(scenario.doaChannelCredit) || 0,
+          financingCost: parseFloat(scenario.financingCost) || 0,
+          ppsHandlingFee: parseFloat(scenario.ppsHandlingFee) || 0,
+          inboundShippingCost: parseFloat(scenario.inboundShippingCost) || 0,
+          outboundShippingCost: parseFloat(scenario.outboundShippingCost) || 0,
+          greenfileMarketing: parseFloat(scenario.greenfileMarketing) || 0,
+          otherCoGS: scenario.otherCogs || [],
+        });
+        
+        setScenarioName(scenario.scenarioName || '');
+        setScenarioDescription(scenario.description || '');
+      } else {
+        alert('Failed to load scenario');
+        router.push('/admin/business-analysis/sku-financial-entry');
+      }
+    } catch (error) {
+      console.error('Error loading scenario:', error);
+      alert('Error loading scenario');
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   // Calculation functions
   const calculateAllDeductions = () => {
@@ -189,8 +252,85 @@ export default function SKUWorksheetPage() {
   };
 
   const handleSave = () => {
-    // TODO: Implement save functionality
-    alert('SKU Financial Entry saved successfully!');
+    // Validate required fields
+    if (!worksheetData.skuName) {
+      alert('Please select or enter a SKU name');
+      return;
+    }
+    if (!worksheetData.channel) {
+      alert('Please select a sales channel');
+      return;
+    }
+    
+    // Open save dialog
+    setShowSaveDialog(true);
+  };
+
+  const handleSaveConfirm = async () => {
+    if (!scenarioName.trim()) {
+      alert('Please enter a scenario name');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        scenarioName: scenarioName.trim(),
+        description: scenarioDescription.trim() || null,
+        skuName: worksheetData.skuName,
+        channel: worksheetData.channel,
+        countryCode: worksheetData.country,
+        asp: worksheetData.asp,
+        resellerMarginPercent: worksheetData.resellerMargin,
+        marketingReservePercent: worksheetData.marketingReserve,
+        fulfillmentCosts: worksheetData.fulfillmentCosts,
+        productCostFob: worksheetData.productCostFOB,
+        swLicenseFee: worksheetData.swLicenseFee,
+        otherProductCosts: worksheetData.otherProductCosts,
+        returnsFreight: worksheetData.returnsFreight,
+        returnsHandling: worksheetData.returnsHandling,
+        doaChannelCredit: worksheetData.doaChannelCredit,
+        financingCost: worksheetData.financingCost,
+        ppsHandlingFee: worksheetData.ppsHandlingFee,
+        inboundShippingCost: worksheetData.inboundShippingCost,
+        outboundShippingCost: worksheetData.outboundShippingCost,
+        greenfileMarketing: worksheetData.greenfileMarketing,
+        otherCogs: worksheetData.otherCoGS,
+      };
+
+      let response;
+      if (scenarioId) {
+        // Update existing scenario
+        response = await fetch(`/api/business-analysis/sku-scenarios/${scenarioId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Create new scenario
+        response = await fetch('/api/business-analysis/sku-scenarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Saved scenario:', data);
+        alert(scenarioId ? 'Scenario updated successfully!' : 'Scenario saved successfully!');
+        setShowSaveDialog(false);
+        router.push('/admin/business-analysis/sku-financial-entry');
+      } else {
+        const error = await response.json();
+        alert(`Failed to save scenario: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error saving scenario:', error);
+      alert('Error saving scenario');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleBack = () => {
@@ -786,13 +926,79 @@ export default function SKUWorksheetPage() {
           <Button
             onClick={handleSave}
             className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-initial"
+            disabled={isLoading}
           >
             <Save className="w-4 h-4 mr-2" />
-            Save Scenario
+            {scenarioId ? 'Update Scenario' : 'Save Scenario'}
           </Button>
         </div>
       </div>
+
+      {/* Save Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{scenarioId ? 'Update Scenario' : 'Save Scenario'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="scenario-name">Scenario Name *</Label>
+              <Input
+                id="scenario-name"
+                placeholder="e.g., MNQ15 Amazon FBA US - Q1 2025"
+                value={scenarioName}
+                onChange={(e) => setScenarioName(e.target.value)}
+                onFocus={(e) => e.target.select()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="scenario-description">Description (Optional)</Label>
+              <Input
+                id="scenario-description"
+                placeholder="Add notes about this scenario..."
+                value={scenarioDescription}
+                onChange={(e) => setScenarioDescription(e.target.value)}
+                onFocus={(e) => e.target.select()}
+              />
+            </div>
+            <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
+              <p><strong>SKU:</strong> {worksheetData.skuName || 'Not selected'}</p>
+              <p><strong>Channel:</strong> {worksheetData.channel || 'Not selected'}</p>
+              <p><strong>Country:</strong> {COUNTRIES.find(c => c.code === worksheetData.country)?.name || worksheetData.country}</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setShowSaveDialog(false)}
+              variant="outline"
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveConfirm}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : (scenarioId ? 'Update' : 'Save')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Wrapper component with Suspense boundary
+export default function SKUWorksheetPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-6 text-center">
+        <p className="text-gray-500">Loading worksheet...</p>
+      </div>
+    }>
+      <SKUWorksheetPageContent />
+    </Suspense>
   );
 }
 
