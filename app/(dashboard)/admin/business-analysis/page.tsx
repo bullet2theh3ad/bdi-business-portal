@@ -13,14 +13,102 @@ import {
   Database,
   Zap,
   Target,
-  Activity
+  Activity,
+  Plus,
+  Trash2
 } from 'lucide-react';
+
+// SKU Worksheet Data Structure
+interface SKUWorksheetData {
+  // Section 1: SKU Selection & Pricing
+  skuName: string;
+  asp: number;
+  resellerMargin: number; // percentage
+  marketingReserve: number; // percentage
+  fulfillmentCosts: number;
+  
+  // Section 4: Product Costs
+  productCostFOB: number;
+  swLicenseFee: number;
+  otherProductCosts: { label: string; value: number }[];
+  
+  // Section 6: All CoGS Breakdown
+  returnsFreight: number;
+  returnsHandling: number;
+  doaChannelCredit: number;
+  financingCost: number;
+  ppsHandlingFee: number;
+  inboundShippingCost: number;
+  outboundShippingCost: number;
+  greenfileMarketing: number;
+  otherCoGS: { label: string; value: number }[];
+}
 
 export default function BusinessAnalysisPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showSKUWorksheet, setShowSKUWorksheet] = useState(false);
+  
+  // SKU Worksheet State
+  const [worksheetData, setWorksheetData] = useState<SKUWorksheetData>({
+    skuName: '',
+    asp: 0,
+    resellerMargin: 0,
+    marketingReserve: 0,
+    fulfillmentCosts: 0,
+    productCostFOB: 0,
+    swLicenseFee: 0,
+    otherProductCosts: [],
+    returnsFreight: 13.00,
+    returnsHandling: 0.45,
+    doaChannelCredit: 0,
+    financingCost: 0,
+    ppsHandlingFee: 0,
+    inboundShippingCost: 0,
+    outboundShippingCost: 0,
+    greenfileMarketing: 0,
+    otherCoGS: [],
+  });
+
+  // Calculated Values
+  const calculateAllDeductions = () => {
+    return (worksheetData.asp * worksheetData.resellerMargin / 100) + 
+           (worksheetData.asp * worksheetData.marketingReserve / 100) + 
+           worksheetData.fulfillmentCosts;
+  };
+
+  const calculateNetReceipts = () => {
+    return worksheetData.asp - calculateAllDeductions();
+  };
+
+  const calculateTotalProductCosts = () => {
+    const otherCosts = worksheetData.otherProductCosts.reduce((sum, item) => sum + item.value, 0);
+    return worksheetData.productCostFOB + worksheetData.swLicenseFee + otherCosts;
+  };
+
+  const calculateRoyalty = () => {
+    return calculateNetReceipts() * 0.05; // 5% of Net Receipts
+  };
+
+  const calculateTotalCoGS = () => {
+    const baseCoGS = worksheetData.returnsFreight + worksheetData.returnsHandling + 
+                     worksheetData.doaChannelCredit + worksheetData.financingCost + 
+                     worksheetData.ppsHandlingFee + worksheetData.inboundShippingCost + 
+                     worksheetData.outboundShippingCost + worksheetData.greenfileMarketing;
+    const otherCoGS = worksheetData.otherCoGS.reduce((sum, item) => sum + item.value, 0);
+    return baseCoGS + otherCoGS;
+  };
+
+  const calculateGrossProfit = () => {
+    return calculateNetReceipts() - calculateTotalProductCosts() - calculateRoyalty() - calculateTotalCoGS();
+  };
+
+  const calculateGrossMargin = () => {
+    const netReceipts = calculateNetReceipts();
+    if (netReceipts === 0) return 0;
+    return (calculateGrossProfit() / netReceipts) * 100;
+  };
 
   useEffect(() => {
     async function fetchUser() {
@@ -462,10 +550,10 @@ export default function BusinessAnalysisPage() {
         </div>
       )}
 
-      {/* SKU Worksheet Modal (Placeholder) */}
+      {/* SKU Worksheet Modal (Full Screen) */}
       {showSKUWorksheet && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg shadow-xl w-full h-full max-h-[95vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-white">
               <div>
@@ -489,51 +577,499 @@ export default function BusinessAnalysisPage() {
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="bg-gradient-to-br from-green-50 to-white rounded-lg border-2 border-green-200 p-8">
-                <div className="text-center">
-                  <DollarSign className="h-16 w-16 text-green-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">
-                    Comprehensive SKU Worksheet (Coming Next)
-                  </h4>
-                  <p className="text-sm text-gray-600 max-w-2xl mx-auto mb-4">
-                    This will include detailed cost breakdown sections:
-                  </p>
-                  <div className="text-left max-w-2xl mx-auto space-y-3 text-sm text-gray-700">
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">1. SKU Selection & Pricing</p>
-                      <p className="text-xs text-gray-600">SKU Name, ASP, Reseller Margin, Marketing Reserve, Fulfillment Costs</p>
+              <div className="max-w-6xl mx-auto space-y-6">
+                
+                {/* Section 1: SKU Selection & Pricing */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+                    <CardTitle className="text-lg">1. SKU Selection & Pricing</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          SKU Name
+                        </label>
+                        <input
+                          type="text"
+                          value={worksheetData.skuName}
+                          onChange={(e) => setWorksheetData({...worksheetData, skuName: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter SKU or select from dropdown"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          ASP (Average Selling Price)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={worksheetData.asp}
+                            onChange={(e) => setWorksheetData({...worksheetData, asp: parseFloat(e.target.value) || 0})}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Reseller Margin (%)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={worksheetData.resellerMargin}
+                            onChange={(e) => setWorksheetData({...worksheetData, resellerMargin: parseFloat(e.target.value) || 0})}
+                            className="w-full pr-7 pl-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <span className="absolute right-3 top-2 text-gray-500">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Marketing Reserve (%)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={worksheetData.marketingReserve}
+                            onChange={(e) => setWorksheetData({...worksheetData, marketingReserve: parseFloat(e.target.value) || 0})}
+                            className="w-full pr-7 pl-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <span className="absolute right-3 top-2 text-gray-500">%</span>
+                        </div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Fulfillment Costs
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={worksheetData.fulfillmentCosts}
+                            onChange={(e) => setWorksheetData({...worksheetData, fulfillmentCosts: parseFloat(e.target.value) || 0})}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">2. All Deductions</p>
-                      <p className="text-xs text-gray-600">(ASP × Reseller Margin) + (ASP × Marketing) + Fulfillment</p>
+                  </CardContent>
+                </Card>
+
+                {/* Section 2: All Deductions (Calculated) */}
+                <Card className="border-l-4 border-l-purple-500 bg-purple-50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>2. All Deductions</span>
+                      <span className="text-2xl font-bold text-purple-600">
+                        ${calculateAllDeductions().toFixed(2)}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <p>• Reseller Margin: ${(worksheetData.asp * worksheetData.resellerMargin / 100).toFixed(2)}</p>
+                      <p>• Marketing Reserve: ${(worksheetData.asp * worksheetData.marketingReserve / 100).toFixed(2)}</p>
+                      <p>• Fulfillment Costs: ${worksheetData.fulfillmentCosts.toFixed(2)}</p>
                     </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">3. Net Receipts</p>
-                      <p className="text-xs text-gray-600">ASP - All Deductions</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">4. Product Costs</p>
-                      <p className="text-xs text-gray-600">Product Cost (FOB), SW License Fee, Other Product Costs</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">5. Royalty (5% of Net Receipts)</p>
-                      <p className="text-xs text-gray-600">Calculated as 5% × Net Receipts</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">6. All CoGS Breakdown</p>
-                      <p className="text-xs text-gray-600">Returns, DOA, Financing, PPS, Shipping, Greenfile, etc.</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="font-semibold">7. Gross Profit & Margin</p>
-                      <p className="text-xs text-gray-600">Net Receipts - Product Costs - Royalties - All CoGS</p>
-                    </div>
-                  </div>
-                  <div className="mt-6 p-4 bg-white rounded border border-green-300">
-                    <p className="text-xs text-gray-500">
-                      💡 <strong>Next Implementation Step:</strong> Build comprehensive CoGS calculator form
+                  </CardContent>
+                </Card>
+
+                {/* Section 3: Net Receipts (Calculated) */}
+                <Card className="border-l-4 border-l-green-500 bg-green-50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>3. Net Receipts</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        ${calculateNetReceipts().toFixed(2)}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-700">
+                      ASP (${worksheetData.asp.toFixed(2)}) - All Deductions (${calculateAllDeductions().toFixed(2)})
                     </p>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section 4: Product Costs */}
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardHeader className="bg-gradient-to-r from-orange-50 to-white">
+                    <CardTitle className="text-lg">4. Product Costs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Product Cost (FOB)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.productCostFOB}
+                              onChange={(e) => setWorksheetData({...worksheetData, productCostFOB: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            SW License Fee
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.swLicenseFee}
+                              onChange={(e) => setWorksheetData({...worksheetData, swLicenseFee: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Other Product Costs (Dynamic) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Other Product Costs
+                          </label>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setWorksheetData({
+                              ...worksheetData,
+                              otherProductCosts: [...worksheetData.otherProductCosts, { label: '', value: 0 }]
+                            })}
+                            className="text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Line Item
+                          </Button>
+                        </div>
+                        {worksheetData.otherProductCosts.map((item, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <input
+                              type="text"
+                              placeholder="Description"
+                              value={item.label}
+                              onChange={(e) => {
+                                const updated = [...worksheetData.otherProductCosts];
+                                updated[index].label = e.target.value;
+                                setWorksheetData({...worksheetData, otherProductCosts: updated});
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                            <div className="relative w-32">
+                              <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.value}
+                                onChange={(e) => {
+                                  const updated = [...worksheetData.otherProductCosts];
+                                  updated[index].value = parseFloat(e.target.value) || 0;
+                                  setWorksheetData({...worksheetData, otherProductCosts: updated});
+                                }}
+                                className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const updated = worksheetData.otherProductCosts.filter((_, i) => i !== index);
+                                setWorksheetData({...worksheetData, otherProductCosts: updated});
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-4 border-t">
+                        <p className="text-sm font-semibold text-gray-900">
+                          Total Product Costs: <span className="text-orange-600">${calculateTotalProductCosts().toFixed(2)}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section 5: Royalty (Calculated) */}
+                <Card className="border-l-4 border-l-indigo-500 bg-indigo-50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>5. Royalty (5% of Net Receipts)</span>
+                      <span className="text-2xl font-bold text-indigo-600">
+                        ${calculateRoyalty().toFixed(2)}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-700">
+                      5% × Net Receipts (${calculateNetReceipts().toFixed(2)})
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Note: Royalty is calculated on Net Receipts, not ASP
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Section 6: All CoGS Breakdown */}
+                <Card className="border-l-4 border-l-red-500">
+                  <CardHeader className="bg-gradient-to-r from-red-50 to-white">
+                    <CardTitle className="text-lg">6. All CoGS Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Returns - Freight
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.returnsFreight}
+                              onChange={(e) => setWorksheetData({...worksheetData, returnsFreight: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Returns - Handling
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.returnsHandling}
+                              onChange={(e) => setWorksheetData({...worksheetData, returnsHandling: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            DOA Channel Credit
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.doaChannelCredit}
+                              onChange={(e) => setWorksheetData({...worksheetData, doaChannelCredit: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Financing Cost
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.financingCost}
+                              onChange={(e) => setWorksheetData({...worksheetData, financingCost: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            PPS Handling Fee
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.ppsHandlingFee}
+                              onChange={(e) => setWorksheetData({...worksheetData, ppsHandlingFee: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Inbound Shipping Cost
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.inboundShippingCost}
+                              onChange={(e) => setWorksheetData({...worksheetData, inboundShippingCost: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Outbound Shipping Cost
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.outboundShippingCost}
+                              onChange={(e) => setWorksheetData({...worksheetData, outboundShippingCost: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Greenfile Marketing
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={worksheetData.greenfileMarketing}
+                              onChange={(e) => setWorksheetData({...worksheetData, greenfileMarketing: parseFloat(e.target.value) || 0})}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Other CoGS (Dynamic) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Other CoGS Items
+                          </label>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setWorksheetData({
+                              ...worksheetData,
+                              otherCoGS: [...worksheetData.otherCoGS, { label: '', value: 0 }]
+                            })}
+                            className="text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Line Item
+                          </Button>
+                        </div>
+                        {worksheetData.otherCoGS.map((item, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <input
+                              type="text"
+                              placeholder="Description"
+                              value={item.label}
+                              onChange={(e) => {
+                                const updated = [...worksheetData.otherCoGS];
+                                updated[index].label = e.target.value;
+                                setWorksheetData({...worksheetData, otherCoGS: updated});
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                            <div className="relative w-32">
+                              <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.value}
+                                onChange={(e) => {
+                                  const updated = [...worksheetData.otherCoGS];
+                                  updated[index].value = parseFloat(e.target.value) || 0;
+                                  setWorksheetData({...worksheetData, otherCoGS: updated});
+                                }}
+                                className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const updated = worksheetData.otherCoGS.filter((_, i) => i !== index);
+                                setWorksheetData({...worksheetData, otherCoGS: updated});
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-4 border-t">
+                        <p className="text-sm font-semibold text-gray-900">
+                          Total CoGS: <span className="text-red-600">${calculateTotalCoGS().toFixed(2)}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section 7: Gross Profit & Margin (Calculated) */}
+                <Card className="border-l-4 border-l-green-600 bg-gradient-to-r from-green-100 to-white">
+                  <CardHeader>
+                    <CardTitle className="text-xl">7. Gross Profit & Gross Margin</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-4 bg-white rounded-lg border-2 border-green-300">
+                          <p className="text-sm text-gray-600 mb-1">Gross Profit</p>
+                          <p className="text-3xl font-bold text-green-600">
+                            ${calculateGrossProfit().toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-white rounded-lg border-2 border-green-300">
+                          <p className="text-sm text-gray-600 mb-1">Gross Margin (%)</p>
+                          <p className="text-3xl font-bold text-green-600">
+                            {calculateGrossMargin().toFixed(2)}%
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            As % of Net Receipts
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-lg border border-gray-200">
+                        <p className="text-sm font-semibold text-gray-900 mb-2">Calculation:</p>
+                        <div className="text-sm text-gray-700 space-y-1">
+                          <p>Net Receipts: <span className="font-semibold">${calculateNetReceipts().toFixed(2)}</span></p>
+                          <p className="text-red-600">- Product Costs: ${calculateTotalProductCosts().toFixed(2)}</p>
+                          <p className="text-red-600">- Royalties: ${calculateRoyalty().toFixed(2)}</p>
+                          <p className="text-red-600">- All CoGS: ${calculateTotalCoGS().toFixed(2)}</p>
+                          <div className="pt-2 mt-2 border-t border-gray-300">
+                            <p className="font-bold text-green-600">= Gross Profit: ${calculateGrossProfit().toFixed(2)}</p>
+                            <p className="font-bold text-green-600">= Gross Margin: {calculateGrossMargin().toFixed(2)}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
               </div>
             </div>
           </div>
