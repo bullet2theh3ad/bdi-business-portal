@@ -126,7 +126,7 @@ export default function SKUWorksheetPage() {
     otherCoGS: [],
   });
 
-  const [availableSKUs, setAvailableSKUs] = useState<{ id: string; skuCode: string; name: string }[]>([]);
+  const [availableSKUs, setAvailableSKUs] = useState<{ id: string; sku: string; name: string }[]>([]);
   const [isCustomSKU, setIsCustomSKU] = useState(false);
   const [isCustomChannel, setIsCustomChannel] = useState(false);
   const [customChannelName, setCustomChannelName] = useState('');
@@ -138,7 +138,11 @@ export default function SKUWorksheetPage() {
         const response = await fetch('/api/admin/skus');
         if (response.ok) {
           const data = await response.json();
-          setAvailableSKUs(data.skus || []);
+          console.log('Loaded SKUs:', data); // Debug log
+          // API returns array directly, not wrapped
+          setAvailableSKUs(Array.isArray(data) ? data : []);
+        } else {
+          console.error('Failed to load SKUs:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Error loading SKUs:', error);
@@ -248,9 +252,9 @@ export default function SKUWorksheetPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="custom">── Custom Entry ──</SelectItem>
-                      {availableSKUs.map((sku) => (
-                        <SelectItem key={sku.id} value={sku.skuCode}>
-                          {sku.skuCode} - {sku.name}
+                      {availableSKUs.map((skuItem) => (
+                        <SelectItem key={skuItem.id} value={skuItem.sku}>
+                          {skuItem.sku} - {skuItem.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
