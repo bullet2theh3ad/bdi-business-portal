@@ -32,12 +32,12 @@ interface SKUWorksheetData {
   otherCoGS: { label: string; value: number }[];
 }
 
-// Channel and Country Constants
+// Channel Constants
 const CHANNELS = {
   'D2C (Direct to Consumer)': [
     { value: 'amazon_fba', label: 'Amazon (FBA)' },
     { value: 'shopify', label: 'Shopify' },
-    { value: 'custom_d2c', label: 'Custom D2C Channel' }
+    { value: 'custom_d2c', label: '➕ Add Custom D2C Channel' }
   ],
   'B2B (Business to Business)': [
     { value: 'best_buy_direct', label: 'Best Buy (Direct)' },
@@ -45,18 +45,61 @@ const CHANNELS = {
     { value: 'walmart_direct', label: 'Walmart (Direct)' },
     { value: 'tekpoint', label: 'Tekpoint (Distributor)' },
     { value: 'emg', label: 'EMG (Distributor)' },
-    { value: 'custom_b2b', label: 'Custom B2B Channel' }
+    { value: 'custom_b2b', label: '➕ Add Custom B2B Channel' }
   ]
 };
 
+// ISO Country Codes (Common Trading Partners + Major Markets)
 const COUNTRIES = [
-  'United States',
-  'Canada',
-  'Mexico',
-  'United Kingdom',
-  'Germany',
-  'France',
-  'Other'
+  { code: 'US', name: 'United States' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'TW', name: 'Taiwan' },
+  { code: 'HK', name: 'Hong Kong' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'ID', name: 'Indonesia' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'IN', name: 'India' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'PE', name: 'Peru' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'UA', name: 'Ukraine' },
 ];
 
 export default function SKUWorksheetPage() {
@@ -64,7 +107,7 @@ export default function SKUWorksheetPage() {
   const [worksheetData, setWorksheetData] = useState<SKUWorksheetData>({
     skuName: '',
     channel: '',
-    country: 'United States',
+    country: 'US', // Default to United States
     asp: 0,
     resellerMargin: 0,
     marketingReserve: 0,
@@ -239,9 +282,10 @@ export default function SKUWorksheetPage() {
                   <Select
                     value={worksheetData.channel}
                     onValueChange={(value) => {
-                      if (value === 'custom_d2c' || value === 'custom_b2b') {
+                      if (value === 'custom_d2c' || value === 'custom_b2c') {
                         setIsCustomChannel(true);
-                        setWorksheetData(prev => ({ ...prev, channel: value }));
+                        setCustomChannelName('');
+                        setWorksheetData(prev => ({ ...prev, channel: '' }));
                       } else {
                         setWorksheetData(prev => ({ ...prev, channel: value }));
                       }
@@ -267,28 +311,35 @@ export default function SKUWorksheetPage() {
                   </Select>
                 ) : (
                   <div className="space-y-2">
-                    <Input
-                      placeholder="Enter custom channel name..."
-                      value={customChannelName}
-                      onChange={(e) => setCustomChannelName(e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      onBlur={() => {
-                        if (customChannelName.trim()) {
-                          setWorksheetData(prev => ({ ...prev, channel: customChannelName.trim() }));
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <Button
-                      onClick={() => {
-                        setIsCustomChannel(false);
-                        setCustomChannelName('');
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Back to List
-                    </Button>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter custom channel name..."
+                        value={customChannelName}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setCustomChannelName(value);
+                          setWorksheetData(prev => ({ ...prev, channel: value }));
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        autoFocus
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => {
+                          setIsCustomChannel(false);
+                          if (!customChannelName.trim()) {
+                            setWorksheetData(prev => ({ ...prev, channel: '' }));
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Done
+                      </Button>
+                    </div>
+                    {customChannelName && (
+                      <p className="text-sm text-green-600">✓ Custom channel: {customChannelName}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -301,12 +352,12 @@ export default function SKUWorksheetPage() {
                   onValueChange={(value) => setWorksheetData(prev => ({ ...prev, country: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select country..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px]">
                     {COUNTRIES.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
+                      <SelectItem key={country.code} value={country.code}>
+                        {country.name} ({country.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
