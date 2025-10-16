@@ -640,8 +640,8 @@ export default function BusinessAnalysisPage() {
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                               <option value="">Select a SKU...</option>
-                              {availableSKUs.map((sku) => (
-                                <option key={sku} value={sku}>{sku}</option>
+                              {availableSKUs.map((sku, index) => (
+                                <option key={`${sku}-${index}`} value={sku}>{sku}</option>
                               ))}
                               <option value="__CUSTOM__">── Custom Entry ──</option>
                             </select>
