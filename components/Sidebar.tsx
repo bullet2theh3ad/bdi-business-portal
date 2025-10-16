@@ -12,7 +12,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { User as UserType } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
-import { canAccessQuickBooks } from '@/lib/feature-flags';
+import { canAccessQuickBooks, canAccessBusinessAnalysis } from '@/lib/feature-flags';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -230,6 +230,20 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             title: 'Data Viewer',
             href: '/admin/quickbooks/data-viewer',
             icon: 'list',
+          },
+        ],
+      },
+      {
+        title: '📊 Business Analysis',
+        icon: 'analytics',
+        requiresRole: ['super_admin'], // Super Admin only
+        requiresBDI: true, // BDI-only feature
+        requiresFeatureFlag: canAccessBusinessAnalysis, // Email-based whitelist
+        children: [
+          {
+            title: 'Dashboard',
+            href: '/admin/business-analysis',
+            icon: 'dashboard',
           },
         ],
       },
