@@ -1335,8 +1335,204 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${poCount} purchase orders (${posCreated} created, ${posUpdated} updated)`);
 
+      // =============================================
+      // Phase 12: Deposits Sync
+      // =============================================
+      console.log('📥 Fetching deposits from QuickBooks...');
+      let allDeposits: any[] = [];
+      startPosition = 1;
+      const maxDepositsPerQuery = 1000;
+      let depositsFetched = 0;
+      let depositCount = 0;
+      let depositsCreated = 0;
+      let depositsUpdated = 0;
+
+      while (true) {
+        const depositsQuery = `SELECT * FROM Deposit ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxDepositsPerQuery}`;
+        
+        const depositsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(depositsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!depositsResponse.ok) {
+          console.error('QuickBooks API Error fetching deposits');
+          break;
+        }
+
+        const depositsData = await depositsResponse.json();
+        const depositsBatch = depositsData?.QueryResponse?.Deposit || [];
+        
+        if (depositsBatch.length === 0) break;
+        
+        allDeposits = allDeposits.concat(depositsBatch);
+        depositsFetched += depositsBatch.length;
+        
+        if (depositsBatch.length < maxDepositsPerQuery) break;
+        startPosition += maxDepositsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${depositsFetched} deposits from QuickBooks`);
+
+      for (const deposit of allDeposits) {
+        try {
+          const depositData = {
+            connection_id: connection.id,
+            qb_deposit_id: deposit.Id,
+            qb_sync_token: deposit.SyncToken,
+            txn_date: deposit.TxnDate || null,
+            doc_number: deposit.DocNumber || null,
+            total_amount: deposit.TotalAmt || 0,
+            deposit_to_account_ref: deposit.DepositToAccountRef?.value || null,
+            deposit_to_account_name: deposit.DepositToAccountRef?.name || null,
+            deposit_to_account_value: deposit.DepositToAccountRef?.value || null,
+            currency_code: deposit.CurrencyRef?.value || 'USD',
+            exchange_rate: deposit.ExchangeRate || null,
+            line_items: deposit.Line || [],
+            line_count: deposit.Line?.length || 0,
+            private_note: deposit.PrivateNote || null,
+            customer_memo: deposit.CustomerMemo?.value || null,
+            qb_created_at: deposit.MetaData?.CreateTime || null,
+            qb_updated_at: deposit.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_deposits')
+            .upsert(depositData, {
+              onConflict: 'connection_id,qb_deposit_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting deposit ${deposit.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            depositsCreated++;
+          } else {
+            depositsUpdated++;
+          }
+
+          depositCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting deposit ${deposit.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${depositCount} deposits (${depositsCreated} created, ${depositsUpdated} updated)`);
+
+      // =============================================
+      // Phase 13: Bill Payments Sync
+      // =============================================
+      console.log('📥 Fetching bill payments from QuickBooks...');
+      let allBillPayments: any[] = [];
+      startPosition = 1;
+      const maxBillPaymentsPerQuery = 1000;
+      let billPaymentsFetched = 0;
+      let billPaymentCount = 0;
+      let billPaymentsCreated = 0;
+      let billPaymentsUpdated = 0;
+
+      while (true) {
+        const billPaymentsQuery = `SELECT * FROM BillPayment ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxBillPaymentsPerQuery}`;
+        
+        const billPaymentsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(billPaymentsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!billPaymentsResponse.ok) {
+          console.error('QuickBooks API Error fetching bill payments');
+          break;
+        }
+
+        const billPaymentsData = await billPaymentsResponse.json();
+        const billPaymentsBatch = billPaymentsData?.QueryResponse?.BillPayment || [];
+        
+        if (billPaymentsBatch.length === 0) break;
+        
+        allBillPayments = allBillPayments.concat(billPaymentsBatch);
+        billPaymentsFetched += billPaymentsBatch.length;
+        
+        if (billPaymentsBatch.length < maxBillPaymentsPerQuery) break;
+        startPosition += maxBillPaymentsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${billPaymentsFetched} bill payments from QuickBooks`);
+
+      for (const billPayment of allBillPayments) {
+        try {
+          const billPaymentData = {
+            connection_id: connection.id,
+            qb_payment_id: billPayment.Id,
+            qb_sync_token: billPayment.SyncToken,
+            txn_date: billPayment.TxnDate || null,
+            doc_number: billPayment.DocNumber || null,
+            total_amount: billPayment.TotalAmt || 0,
+            vendor_ref: billPayment.VendorRef?.value || null,
+            vendor_name: billPayment.VendorRef?.name || null,
+            vendor_value: billPayment.VendorRef?.value || null,
+            payment_type: billPayment.PayType || null,
+            payment_method_ref: billPayment.PaymentMethodRef?.value || null,
+            payment_method_name: billPayment.PaymentMethodRef?.name || null,
+            payment_account_ref: billPayment.APAccountRef?.value || null,
+            payment_account_name: billPayment.APAccountRef?.name || null,
+            payment_account_value: billPayment.APAccountRef?.value || null,
+            check_num: billPayment.CheckNum || null,
+            print_status: billPayment.PrintStatus || null,
+            currency_code: billPayment.CurrencyRef?.value || 'USD',
+            exchange_rate: billPayment.ExchangeRate || null,
+            line_items: billPayment.Line || [],
+            line_count: billPayment.Line?.length || 0,
+            private_note: billPayment.PrivateNote || null,
+            credit_card_txn_info: billPayment.CreditCardPayment || null,
+            qb_created_at: billPayment.MetaData?.CreateTime || null,
+            qb_updated_at: billPayment.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_bill_payments')
+            .upsert(billPaymentData, {
+              onConflict: 'connection_id,qb_payment_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting bill payment ${billPayment.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            billPaymentsCreated++;
+          } else {
+            billPaymentsUpdated++;
+          }
+
+          billPaymentCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting bill payment ${billPayment.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${billPaymentCount} bill payments (${billPaymentsCreated} created, ${billPaymentsUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')

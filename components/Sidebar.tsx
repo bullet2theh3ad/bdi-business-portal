@@ -227,6 +227,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             icon: 'shipping',
           },
           {
+            title: 'Bank Deposits',
+            href: '/admin/quickbooks/bank-deposits',
+            icon: 'finance',
+          },
+          {
             title: 'Data Viewer',
             href: '/admin/quickbooks/data-viewer',
             icon: 'list',

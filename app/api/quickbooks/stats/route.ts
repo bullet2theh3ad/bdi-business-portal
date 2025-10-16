@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Get counts from each QuickBooks table
-    const [customersCount, invoicesCount, vendorsCount, expensesCount, itemsCount, paymentsCount, billsCount, salesReceiptsCount, creditMemosCount, posCount] = await Promise.all([
+    const [customersCount, invoicesCount, vendorsCount, expensesCount, itemsCount, paymentsCount, billsCount, salesReceiptsCount, creditMemosCount, posCount, depositsCount, billPaymentsCount] = await Promise.all([
       supabaseService.from('quickbooks_customers').select('id', { count: 'exact', head: true }),
       supabaseService.from('quickbooks_invoices').select('id', { count: 'exact', head: true }),
       supabaseService.from('quickbooks_vendors').select('id', { count: 'exact', head: true }),
@@ -63,6 +63,8 @@ export async function GET(request: NextRequest) {
       supabaseService.from('quickbooks_sales_receipts').select('id', { count: 'exact', head: true }),
       supabaseService.from('quickbooks_credit_memos').select('id', { count: 'exact', head: true }),
       supabaseService.from('quickbooks_purchase_orders_qb').select('id', { count: 'exact', head: true }),
+      supabaseService.from('quickbooks_deposits').select('id', { count: 'exact', head: true }),
+      supabaseService.from('quickbooks_bill_payments').select('id', { count: 'exact', head: true }),
     ]);
 
     return NextResponse.json({
@@ -77,6 +79,8 @@ export async function GET(request: NextRequest) {
         salesReceipts: salesReceiptsCount.count || 0,
         creditMemos: creditMemosCount.count || 0,
         purchaseOrders: posCount.count || 0,
+        deposits: depositsCount.count || 0,
+        billPayments: billPaymentsCount.count || 0,
       },
       message: 'Stats retrieved successfully'
     });

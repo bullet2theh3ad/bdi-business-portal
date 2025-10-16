@@ -16,7 +16,9 @@ import {
   ShoppingCart,
   FileX,
   Truck,
-  Eye
+  Eye,
+  Landmark,
+  Wallet
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -101,6 +103,20 @@ const dataCategories: DataCategory[] = [
     color: 'cyan',
     description: 'View all QuickBooks purchase orders'
   },
+  {
+    title: 'Deposits',
+    icon: <Landmark className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/deposits',
+    color: 'emerald',
+    description: 'View all QuickBooks bank deposits'
+  },
+  {
+    title: 'Bill Payments',
+    icon: <Wallet className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/bill-payments',
+    color: 'slate',
+    description: 'View all QuickBooks bill payments'
+  },
 ];
 
 const colorClasses: Record<string, { bg: string; text: string; hover: string; border: string }> = {
@@ -114,6 +130,8 @@ const colorClasses: Record<string, { bg: string; text: string; hover: string; bo
   pink: { bg: 'bg-pink-50', text: 'text-pink-700', hover: 'hover:bg-pink-100', border: 'border-pink-200' },
   yellow: { bg: 'bg-yellow-50', text: 'text-yellow-700', hover: 'hover:bg-yellow-100', border: 'border-yellow-200' },
   cyan: { bg: 'bg-cyan-50', text: 'text-cyan-700', hover: 'hover:bg-cyan-100', border: 'border-cyan-200' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', hover: 'hover:bg-emerald-100', border: 'border-emerald-200' },
+  slate: { bg: 'bg-slate-50', text: 'text-slate-700', hover: 'hover:bg-slate-100', border: 'border-slate-200' },
 };
 
 export default function QuickBooksDataViewer() {
@@ -153,6 +171,8 @@ export default function QuickBooksDataViewer() {
     if (response.salesReceipts && Array.isArray(response.salesReceipts)) return response.salesReceipts;
     if (response.creditMemos && Array.isArray(response.creditMemos)) return response.creditMemos;
     if (response.purchaseOrders && Array.isArray(response.purchaseOrders)) return response.purchaseOrders;
+    if (response.deposits && Array.isArray(response.deposits)) return response.deposits;
+    if (response.billPayments && Array.isArray(response.billPayments)) return response.billPayments;
     
     return [];
   };
