@@ -245,6 +245,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/business-analysis',
             icon: 'dashboard',
           },
+          {
+            title: 'SKU Financial Entry',
+            href: '/admin/business-analysis/sku-financial-entry',
+            icon: 'calculator',
+          },
         ],
       },
       {
