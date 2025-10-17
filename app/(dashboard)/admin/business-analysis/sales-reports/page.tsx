@@ -160,12 +160,12 @@ export default function SalesReportsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden flex">
+      <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">
         {/* Sidebar - Report Selection */}
         {!isFullscreen && (
-          <div className="w-80 bg-white border-r overflow-y-auto flex-shrink-0">
-            <div className="p-4 space-y-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          <div className="w-full sm:w-80 bg-white border-r border-b sm:border-b-0 overflow-y-auto flex-shrink-0 max-h-48 sm:max-h-none">
+            <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+              <h2 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2 sm:mb-4">
                 Available Reports
               </h2>
               {reports.map((report) => {
@@ -177,19 +177,19 @@ export default function SalesReportsPage() {
                     key={report.id}
                     onClick={() => handleSelectReport(report)}
                     className={`
-                      p-4 rounded-lg border-2 cursor-pointer transition-all
+                      p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all
                       ${isActive 
                         ? `${colors.bg} ${colors.border} ring-2 ring-offset-2 ring-${report.color}-500` 
                         : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'}
                     `}
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">{report.icon}</span>
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <span className="text-xl sm:text-2xl flex-shrink-0">{report.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <h3 className={`font-semibold text-sm ${isActive ? colors.text : 'text-gray-900'}`}>
+                        <h3 className={`font-semibold text-xs sm:text-sm ${isActive ? colors.text : 'text-gray-900'}`}>
                           {report.name}
                         </h3>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2 hidden sm:block">
                           {report.description}
                         </p>
                       </div>
@@ -247,138 +247,170 @@ export default function SalesReportsPage() {
         </div>
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Full Screen */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Sales Reports</DialogTitle>
-            <DialogDescription>
-              Add, edit, or remove external sales reporting dashboards
-            </DialogDescription>
+        <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 rounded-none flex flex-col">
+          <DialogHeader className="flex-shrink-0 px-6 py-4 border-b bg-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl sm:text-2xl">Manage Sales Reports</DialogTitle>
+                <DialogDescription className="text-sm sm:text-base mt-1">
+                  Add, edit, or remove external sales reporting dashboards
+                </DialogDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSettings(false)}
+                className="ml-4"
+              >
+                Close
+              </Button>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
-            {/* Report List */}
-            <div className="space-y-3">
-              {reports.map((report) => (
-                <Card key={report.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
-                        <span className="text-2xl">{report.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm">{report.name}</h4>
-                          <p className="text-xs text-gray-500 mt-1">{report.description}</p>
-                          <p className="text-xs text-blue-600 mt-2 truncate">{report.url}</p>
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50">
+            <div className="max-w-4xl mx-auto space-y-4">
+              {/* Report List */}
+              <div className="space-y-3">
+                {reports.map((report) => (
+                  <Card key={report.id}>
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <span className="text-2xl flex-shrink-0">{report.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm sm:text-base">{report.name}</h4>
+                            <p className="text-xs sm:text-sm text-gray-500 mt-1">{report.description}</p>
+                            <p className="text-xs text-blue-600 mt-2 break-all">{report.url}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 sm:ml-4 self-end sm:self-start">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditReport(report)}
+                          >
+                            <Edit2 className="w-3 h-3 sm:mr-2" />
+                            <span className="hidden sm:inline">Edit</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteReport(report.id)}
+                          >
+                            <Trash2 className="w-3 h-3 text-red-600 sm:mr-2" />
+                            <span className="hidden sm:inline">Delete</span>
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditReport(report)}
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteReport(report.id)}
-                        >
-                          <Trash2 className="w-3 h-3 text-red-600" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-            {/* Add New Button */}
-            <Button
-              onClick={handleAddNew}
-              className="w-full"
-              variant="outline"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Report
-            </Button>
+              {/* Add New Button */}
+              <Button
+                onClick={handleAddNew}
+                className="w-full"
+                variant="outline"
+                size="lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add New Report
+              </Button>
 
-            {/* Edit/Add Form */}
-            {(editingReport || isAddingNew) && (
-              <Card className="border-2 border-blue-500">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {editingReport ? 'Edit Report' : 'Add New Report'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Report Name</label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="e.g., Harpia Sales Dashboard"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Report URL</label>
-                    <Input
-                      value={formData.url}
-                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                      placeholder="https://reports.example.com/..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Description</label>
-                    <Input
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Brief description of this report"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+              {/* Edit/Add Form */}
+              {(editingReport || isAddingNew) && (
+                <Card className="border-2 border-blue-500">
+                  <CardHeader>
+                    <CardTitle className="text-base sm:text-lg">
+                      {editingReport ? 'Edit Report' : 'Add New Report'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Icon (Emoji)</label>
+                      <label className="block text-sm font-medium mb-2">Report Name *</label>
                       <Input
-                        value={formData.icon}
-                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                        placeholder="📊"
-                        maxLength={2}
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g., Harpia Sales Dashboard"
+                        className="text-base"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">Color</label>
-                      <select
-                        value={formData.color}
-                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                        className="w-full h-10 px-3 border rounded-md"
-                      >
-                        <option value="blue">Blue</option>
-                        <option value="green">Green</option>
-                        <option value="purple">Purple</option>
-                        <option value="red">Red</option>
-                        <option value="orange">Orange</option>
-                      </select>
+                      <label className="block text-sm font-medium mb-2">Report URL *</label>
+                      <Input
+                        value={formData.url}
+                        onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                        placeholder="https://reports.example.com/..."
+                        className="text-base"
+                        type="url"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Full URL to the external reporting dashboard
+                      </p>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleSaveReport} className="flex-1">
-                      Save Report
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEditingReport(null);
-                        setIsAddingNew(false);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Description</label>
+                      <Input
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Brief description of this report"
+                        className="text-base"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Icon (Emoji)</label>
+                        <Input
+                          value={formData.icon}
+                          onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                          placeholder="📊"
+                          maxLength={2}
+                          className="text-2xl text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Color</label>
+                        <select
+                          value={formData.color}
+                          onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                          className="w-full h-10 px-3 border rounded-md text-base"
+                        >
+                          <option value="blue">Blue</option>
+                          <option value="green">Green</option>
+                          <option value="purple">Purple</option>
+                          <option value="red">Red</option>
+                          <option value="orange">Orange</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      <Button 
+                        onClick={handleSaveReport} 
+                        className="flex-1"
+                        size="lg"
+                        disabled={!formData.name || !formData.url}
+                      >
+                        Save Report
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditingReport(null);
+                          setIsAddingNew(false);
+                        }}
+                        size="lg"
+                        className="flex-1 sm:flex-none"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
