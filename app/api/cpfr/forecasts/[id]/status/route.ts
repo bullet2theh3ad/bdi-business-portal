@@ -31,24 +31,56 @@ async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, 
       sku: skuData
     };
 
-    // Define email lists
-    const bdiCpfrEmails = [
-      'scistulli@boundlessdevices.com', // CEO
-      'dzand@boundlessdevices.com'      // Primary business contact
-    ];
+    // Get BDI CPFR contacts (from cpfr_contacts field)
+    let bdiCpfrEmails: string[] = [];
+    const { data: bdiOrg } = await supabase
+      .from('organizations')
+      .select('cpfr_contacts')
+      .eq('code', 'BDI')
+      .single();
 
-    const factoryEmails = [
-      'factory@example.com' // TODO: Get from organization CPFR contacts
-    ];
+    if (bdiOrg?.cpfr_contacts) {
+      const cpfrData = bdiOrg.cpfr_contacts as any;
+      const primaryContacts = cpfrData.primary_contacts || [];
+      const escalationContacts = cpfrData.escalation_contacts || [];
+      
+      bdiCpfrEmails = [...primaryContacts, ...escalationContacts]
+        .filter((contact: any) => contact.active !== false && contact.email)
+        .map((contact: any) => contact.email);
+      
+      console.log(`📧 Added ${bdiCpfrEmails.length} BDI CPFR contacts`);
+    }
 
-    const transitEmails = [
-      'logistics@ol-usa.com', // OLM logistics
-      'airimport.ORD2@ol-usa.com' // OL import team
-    ];
+    // Get SKU owner organization CPFR contacts
+    let skuOwnerEmails: string[] = [];
+    if (skuData) {
+      const { data: skuDetails } = await supabase
+        .from('product_skus')
+        .select('mfg')
+        .eq('id', currentForecast.sku_id)
+        .single();
 
-    const warehouseEmails = [
-      'warehouse@example.com' // TODO: Get from warehouse contacts
-    ];
+      if (skuDetails?.mfg) {
+        // Get organization CPFR contacts by code
+        const { data: ownerOrg } = await supabase
+          .from('organizations')
+          .select('code, cpfr_contacts')
+          .eq('code', skuDetails.mfg)
+          .single();
+
+        if (ownerOrg?.cpfr_contacts) {
+          const cpfrData = ownerOrg.cpfr_contacts as any;
+          const primaryContacts = cpfrData.primary_contacts || [];
+          const escalationContacts = cpfrData.escalation_contacts || [];
+          
+          skuOwnerEmails = [...primaryContacts, ...escalationContacts]
+            .filter((contact: any) => contact.active !== false && contact.email)
+            .map((contact: any) => contact.email);
+          
+          console.log(`📧 Added ${skuOwnerEmails.length} ${ownerOrg.code} CPFR contacts`);
+        }
+      }
+    }
 
     // Determine recipients based on who changed what
     let recipients: string[] = [];
@@ -58,20 +90,19 @@ async function sendCPFRChangeNotifications(milestone: string, changeEntry: any, 
     // BDI CPFR always gets notified
     recipients.push(...bdiCpfrEmails);
 
+    // SKU owner organization always gets notified
+    recipients.push(...skuOwnerEmails);
+
     if (milestone === 'sales') {
-      recipients.push(...factoryEmails, ...transitEmails, ...warehouseEmails);
       emailSubject = `📊 Sales Updated Delivery Commitments`;
       changeDescription = 'Sales team has updated delivery dates and customer commitments';
     } else if (milestone === 'factory') {
-      recipients.push(...transitEmails); // Factory → In Transit
       emailSubject = `🏭 Factory Updated Production Timeline`;
       changeDescription = 'Factory has updated EXW (Ex-Works) production dates';
     } else if (milestone === 'transit') {
-      recipients.push(...factoryEmails, ...warehouseEmails); // In Transit → Factory & Warehouse
       emailSubject = `🚛 Transit Updated Shipping Timeline`;
       changeDescription = 'Transit/Logistics team has updated shipping timeline';
     } else if (milestone === 'warehouse') {
-      // Warehouse only notifies BDI (no upstream notification)
       emailSubject = `📦 Warehouse Updated Final Delivery`;
       changeDescription = 'Warehouse has updated final customer delivery commitment';
     }
