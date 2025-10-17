@@ -37,6 +37,7 @@ export default function SalesReportsPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [editingReport, setEditingReport] = useState<ReportSource | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
 
   // Form state for editing/adding reports
   const [formData, setFormData] = useState({
@@ -50,6 +51,7 @@ export default function SalesReportsPage() {
   const handleSelectReport = (report: ReportSource) => {
     setSelectedReport(report);
     setIsFullscreen(false);
+    setIframeError(false); // Reset error state
   };
 
   const handleOpenSettings = () => {
@@ -120,20 +122,24 @@ export default function SalesReportsPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Sales Reports</h1>
-            <p className="text-sm text-gray-600 mt-1">External sales reporting and analytics dashboards</p>
+      <div className="bg-white border-b px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Sales Reports</h1>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 hidden sm:block">
+              External sales reporting and analytics dashboards
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
               onClick={handleOpenSettings}
+              className="flex-1 sm:flex-none"
             >
-              <Settings className="w-4 h-4 mr-2" />
-              Manage Reports
+              <Settings className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Manage Reports</span>
+              <span className="sm:hidden">Manage</span>
             </Button>
             {selectedReport && (
               <>
@@ -141,17 +147,21 @@ export default function SalesReportsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="flex-1 sm:flex-none"
                 >
-                  <Maximize2 className="w-4 h-4 mr-2" />
-                  {isFullscreen ? 'Exit' : 'Fullscreen'}
+                  <Maximize2 className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+                  <span className="sm:hidden">{isFullscreen ? 'Exit' : 'Full'}</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => window.open(selectedReport.url, '_blank')}
+                  className="flex-1 sm:flex-none"
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Open in New Tab
+                  <ExternalLink className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Open in New Tab</span>
+                  <span className="sm:hidden">Open</span>
                 </Button>
               </>
             )}
@@ -219,20 +229,50 @@ export default function SalesReportsPage() {
         {/* Report Viewer */}
         <div className="flex-1 overflow-hidden relative bg-white">
           {selectedReport ? (
-            <iframe
-              src={selectedReport.url}
-              className="w-full h-full border-0"
-              title={selectedReport.name}
-              allow="fullscreen"
-            />
+            <>
+              {iframeError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+                  <div className="text-center max-w-md px-6">
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                      Report Failed to Load
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600 mb-4">
+                      The report URL may be incorrect, expired, or the report may have been deleted.
+                    </p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-gray-500 mb-1">Current URL:</p>
+                      <p className="text-xs font-mono text-gray-700 break-all">{selectedReport.url}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      <Button onClick={() => setIframeError(false)} variant="outline" size="sm">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Retry
+                      </Button>
+                      <Button onClick={handleOpenSettings} size="sm">
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Update URL
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <iframe
+                src={selectedReport.url}
+                className="w-full h-full border-0"
+                title={selectedReport.name}
+                allow="fullscreen"
+                onError={() => setIframeError(true)}
+              />
+            </>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md px-6">
-                <div className="text-6xl mb-4">📊</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="text-center max-w-md px-4 sm:px-6">
+                <div className="text-4xl sm:text-6xl mb-4">📊</div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                   Select a Report
                 </h2>
-                <p className="text-gray-600 mb-6">
+                <p className="text-sm sm:text-base text-gray-600 mb-6">
                   Choose a sales report from the sidebar to view embedded analytics and dashboards
                 </p>
                 {reports.length === 0 && (
