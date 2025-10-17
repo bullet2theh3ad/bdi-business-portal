@@ -42,7 +42,7 @@ const updateOrganizationSchema = z.object({
   dunsNumber: z.string().max(20).optional(),
   taxId: z.string().max(30).optional(),
   industryCode: z.string().max(10).optional(),
-  companySize: z.enum(['1-10', '11-50', '51-200', '201-1000', '1000+']).optional(),
+  companySize: z.enum(['1-10', '11-50', '51-200', '201-1000', '1000+']).or(z.literal('')).optional(),
   businessAddress: z.string().optional(),
   billingAddress: z.string().optional(),
 });
@@ -121,7 +121,7 @@ export async function updateOrganizationProfile(organizationId: string, data: z.
     if (validatedData.industryCode !== undefined) {
       updateData.industryCode = validatedData.industryCode;
     }
-    if (validatedData.companySize !== undefined) {
+    if (validatedData.companySize !== undefined && validatedData.companySize !== '') {
       updateData.companySize = validatedData.companySize;
     }
     if (validatedData.businessAddress !== undefined) {
