@@ -434,11 +434,11 @@ export default function WarehouseWIPDashboard() {
       </Card>
 
       {/* Story Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex flex-col space-y-1">
-              <CardTitle className="text-sm font-medium">Total Intake</CardTitle>
+              <CardTitle className="text-sm font-medium">Unique Units</CardTitle>
               {filterLabel && (
                 <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
                   {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
@@ -449,7 +449,7 @@ export default function WarehouseWIPDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.totalIntake?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Units received</p>
+            <p className="text-xs text-muted-foreground mt-1">Distinct serial numbers</p>
           </CardContent>
         </Card>
 
@@ -504,24 +504,6 @@ export default function WarehouseWIPDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.outflow?.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Shipped</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex flex-col space-y-1">
-              <CardTitle className="text-sm font-medium">Avg. Aging</CardTitle>
-              {filterLabel && (
-                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
-                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
-                </span>
-              )}
-            </div>
-            <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metricsData?.avgAgingDays || 0} days</div>
-            <p className="text-xs text-muted-foreground mt-1">WIP average</p>
           </CardContent>
         </Card>
       </div>

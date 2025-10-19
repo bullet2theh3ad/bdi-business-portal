@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     // Get query params for filtering
     const { searchParams } = new URL(request.url);
-    const importBatchId = searchParams.get('importBatchId');
+    let importBatchId = searchParams.get('importBatchId');
     const sku = searchParams.get('sku');
     const source = searchParams.get('source');
 
@@ -94,6 +94,22 @@ export async function GET(request: NextRequest) {
         }
       }
     );
+    
+    // If no importBatchId specified, use the most recent completed import
+    if (!importBatchId) {
+      const { data: latestImport } = await supabaseService
+        .from('warehouse_wip_imports')
+        .select('id')
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (latestImport) {
+        importBatchId = latestImport.id;
+        console.log(`📦 WIP Aging: Using most recent import batch: ${importBatchId}`);
+      }
+    }
 
     // Build base query for active WIP units (not outflow)
     let baseQuery = supabaseService

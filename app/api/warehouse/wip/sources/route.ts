@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     // Get query params for filtering
     const { searchParams } = new URL(request.url);
-    const importBatchId = searchParams.get('importBatchId');
+    let importBatchId = searchParams.get('importBatchId');
 
     // Use direct Supabase client
     const { createClient } = require('@supabase/supabase-js');
@@ -41,6 +41,22 @@ export async function GET(request: NextRequest) {
         }
       }
     );
+    
+    // If no importBatchId specified, use the most recent completed import
+    if (!importBatchId) {
+      const { data: latestImport } = await supabaseService
+        .from('warehouse_wip_imports')
+        .select('id')
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (latestImport) {
+        importBatchId = latestImport.id;
+        console.log(`📦 WIP Sources: Using most recent import batch: ${importBatchId}`);
+      }
+    }
 
     // Use database function to get distinct sources efficiently
     // This returns only unique sources (5 rows) instead of all 12k+ unit rows

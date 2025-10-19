@@ -251,8 +251,11 @@ export async function GET(request: NextRequest) {
     };
 
     // Calculate CATV WIP totals from actual WIP units data
+    // Count UNIQUE serial numbers, not total rows
+    const uniqueSerials = new Set((wipUnits || []).map((u: any) => u.serial_number).filter(Boolean));
+    
     const catvWipTotals = {
-      totalUnits: wipUnits?.length || 0,
+      totalUnits: uniqueSerials.size,
       byStage: (wipUnits || []).reduce((acc: Record<string, number>, unit: any) => {
         const stage = unit.stage || 'Unknown';
         acc[stage] = (acc[stage] || 0) + 1;
@@ -270,12 +273,16 @@ export async function GET(request: NextRequest) {
       }, {}),
     };
 
-    // Calculate CATV metrics like the WIP dashboard
+    // Calculate CATV metrics like the WIP dashboard - using UNIQUE serial numbers
+    const wipSerials = new Set((wipUnits || []).filter((u: any) => u.stage === 'WIP').map((u: any) => u.serial_number).filter(Boolean));
+    const rmaSerials = new Set((wipUnits || []).filter((u: any) => u.stage === 'RMA').map((u: any) => u.serial_number).filter(Boolean));
+    const outflowSerials = new Set((wipUnits || []).filter((u: any) => u.stage === 'Outflow').map((u: any) => u.serial_number).filter(Boolean));
+    
     const catvMetrics = {
-      totalIntake: (wipUnits || []).length, // Total units received
-      activeWip: (wipUnits || []).filter((unit: any) => unit.stage === 'WIP').length,
-      rma: (wipUnits || []).filter((unit: any) => unit.stage === 'RMA').length,
-      outflow: (wipUnits || []).filter((unit: any) => unit.stage === 'Outflow').length,
+      totalIntake: uniqueSerials.size, // Unique serial numbers
+      activeWip: wipSerials.size,
+      rma: rmaSerials.size,
+      outflow: outflowSerials.size,
       avgAging: (wipUnits || []).reduce((sum: number, unit: any) => sum + (unit.aging_days || 0), 0) / (wipUnits?.length || 1),
     };
 
