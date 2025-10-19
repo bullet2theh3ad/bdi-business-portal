@@ -15,22 +15,35 @@ interface SKUWorksheetData {
   skuName: string;
   channel: string;
   country: string;
+  
+  // Top Section
   asp: number;
-  resellerMargin: number;
-  marketingReserve: number;
-  fulfillmentCosts: number;
-  productCostFOB: number;
-  swLicenseFee: number;
-  otherProductCosts: { label: string; value: number }[];
-  returnsFreight: number;
-  returnsHandling: number;
-  doaChannelCredit: number;
-  financingCost: number;
-  ppsHandlingFee: number;
-  inboundShippingCost: number;
-  outboundShippingCost: number;
-  greenfileMarketing: number;
-  otherCoGS: { label: string; value: number }[];
+  fbaFeePercent: number;
+  fbaFeeAmount: number;
+  amazonReferralFeePercent: number;
+  amazonReferralFeeAmount: number;
+  acosPercent: number;
+  acosAmount: number;
+  
+  // Less Frontend Section
+  motorolaRoyaltiesPercent: number;
+  motorolaRoyaltiesAmount: number;
+  rtvFreightAssumptions: number;
+  rtvRepairCosts: number;
+  doaCredits: number;
+  invoiceFactoringNet: number;
+  salesCommissionsPercent: number;
+  salesCommissionsAmount: number;
+  totalBackendCosts: number;
+  otherFrontendCosts: { label: string; value: number }[];
+  
+  // Landed DDP Calculations Section
+  importDutiesPercent: number;
+  importDutiesAmount: number;
+  exWorksStandard: number;
+  importShippingSea: number;
+  gryphonSoftware: number;
+  otherLandedCosts: { label: string; value: number }[];
 }
 
 // Channel Constants
@@ -112,22 +125,35 @@ function SKUWorksheetPageContent() {
     skuName: '',
     channel: '',
     country: 'US', // Default to United States
+    
+    // Top Section
     asp: 0,
-    resellerMargin: 0,
-    marketingReserve: 0,
-    fulfillmentCosts: 0,
-    productCostFOB: 0,
-    swLicenseFee: 0,
-    otherProductCosts: [],
-    returnsFreight: 13.00,
-    returnsHandling: 0.45,
-    doaChannelCredit: 0,
-    financingCost: 0,
-    ppsHandlingFee: 0,
-    inboundShippingCost: 0,
-    outboundShippingCost: 0,
-    greenfileMarketing: 0,
-    otherCoGS: [],
+    fbaFeePercent: 8,
+    fbaFeeAmount: 0,
+    amazonReferralFeePercent: 8,
+    amazonReferralFeeAmount: 0,
+    acosPercent: 8,
+    acosAmount: 0,
+    
+    // Less Frontend Section
+    motorolaRoyaltiesPercent: 5,
+    motorolaRoyaltiesAmount: 0,
+    rtvFreightAssumptions: 0.80,
+    rtvRepairCosts: 2.93,
+    doaCredits: 0,
+    invoiceFactoringNet: 0,
+    salesCommissionsPercent: 0,
+    salesCommissionsAmount: 0,
+    totalBackendCosts: 0,
+    otherFrontendCosts: [],
+    
+    // Landed DDP Calculations Section
+    importDutiesPercent: 0,
+    importDutiesAmount: 0,
+    exWorksStandard: 0,
+    importShippingSea: 0,
+    gryphonSoftware: 2.50,
+    otherLandedCosts: [],
   });
 
   const [availableSKUs, setAvailableSKUs] = useState<{ id: string; sku: string; name: string }[]>([]);
@@ -214,41 +240,133 @@ function SKUWorksheetPageContent() {
     }
   }
 
-  // Calculation functions
-  const calculateAllDeductions = () => {
-    const { asp, resellerMargin, marketingReserve, fulfillmentCosts } = worksheetData;
-    const resellerDeduction = (asp * resellerMargin) / 100;
-    const marketingDeduction = (asp * marketingReserve) / 100;
-    return resellerDeduction + marketingDeduction + fulfillmentCosts;
+  // Calculation functions based on Excel structure
+  
+  // Auto-calculate amounts from percentages or vice versa
+  const syncFbaFee = (percent?: number, amount?: number) => {
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        fbaFeePercent: percent,
+        fbaFeeAmount: (prev.asp * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        fbaFeeAmount: amount,
+        fbaFeePercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
+      }));
+    }
   };
 
-  const calculateNetReceipts = () => {
-    return worksheetData.asp - calculateAllDeductions();
+  const syncAmazonReferralFee = (percent?: number, amount?: number) => {
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        amazonReferralFeePercent: percent,
+        amazonReferralFeeAmount: (prev.asp * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        amazonReferralFeeAmount: amount,
+        amazonReferralFeePercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
+      }));
+    }
   };
 
-  const calculateTotalProductCosts = () => {
-    const { productCostFOB, swLicenseFee, otherProductCosts } = worksheetData;
-    const otherCostsTotal = otherProductCosts.reduce((sum, item) => sum + item.value, 0);
-    return productCostFOB + swLicenseFee + otherCostsTotal;
+  const syncAcos = (percent?: number, amount?: number) => {
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        acosPercent: percent,
+        acosAmount: (prev.asp * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        acosAmount: amount,
+        acosPercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
+      }));
+    }
   };
 
-  const calculateRoyalty = () => {
-    return calculateNetReceipts() * 0.05; // 5% of Net Receipts
+  const syncMotorolaRoyalties = (percent?: number, amount?: number) => {
+    const netSales = calculateNetSales();
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        motorolaRoyaltiesPercent: percent,
+        motorolaRoyaltiesAmount: (netSales * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        motorolaRoyaltiesAmount: amount,
+        motorolaRoyaltiesPercent: netSales > 0 ? (amount / netSales) * 100 : 0
+      }));
+    }
   };
 
-  const calculateTotalCoGS = () => {
-    const { returnsFreight, returnsHandling, doaChannelCredit, financingCost, ppsHandlingFee, inboundShippingCost, outboundShippingCost, greenfileMarketing, otherCoGS } = worksheetData;
-    const otherCoGSTotal = otherCoGS.reduce((sum, item) => sum + item.value, 0);
-    return returnsFreight + returnsHandling + doaChannelCredit + financingCost + ppsHandlingFee + inboundShippingCost + outboundShippingCost + greenfileMarketing + otherCoGSTotal;
+  const syncSalesCommissions = (percent?: number, amount?: number) => {
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        salesCommissionsPercent: percent,
+        salesCommissionsAmount: (prev.asp * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        salesCommissionsAmount: amount,
+        salesCommissionsPercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
+      }));
+    }
   };
 
+  const syncImportDuties = (percent?: number, amount?: number) => {
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        importDutiesPercent: percent,
+        importDutiesAmount: (prev.exWorksStandard * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        importDutiesAmount: amount,
+        importDutiesPercent: prev.exWorksStandard > 0 ? (amount / prev.exWorksStandard) * 100 : 0
+      }));
+    }
+  };
+
+  // Net Sales = ASP - FBA Fee - Amazon Referral Fee - ACOS
+  const calculateNetSales = () => {
+    return worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
+  };
+
+  // Total Frontend Costs
+  const calculateTotalFrontendCosts = () => {
+    const { motorolaRoyaltiesAmount, rtvFreightAssumptions, rtvRepairCosts, doaCredits, invoiceFactoringNet, salesCommissionsAmount, totalBackendCosts, otherFrontendCosts } = worksheetData;
+    const otherTotal = otherFrontendCosts.reduce((sum, item) => sum + item.value, 0);
+    return motorolaRoyaltiesAmount + rtvFreightAssumptions + rtvRepairCosts + doaCredits + invoiceFactoringNet + salesCommissionsAmount + totalBackendCosts + otherTotal;
+  };
+
+  // Landed DDP = ExWorks + Import Duties + Import Shipping + Gryphon Software + Other
+  const calculateLandedDDP = () => {
+    const { exWorksStandard, importDutiesAmount, importShippingSea, gryphonSoftware, otherLandedCosts } = worksheetData;
+    const otherTotal = otherLandedCosts.reduce((sum, item) => sum + item.value, 0);
+    return exWorksStandard + importDutiesAmount + importShippingSea + gryphonSoftware + otherTotal;
+  };
+
+  // Gross Profit = Net Sales - Total Frontend Costs - Landed DDP
   const calculateGrossProfit = () => {
-    return calculateNetReceipts() - calculateRoyalty() - calculateTotalCoGS();
+    return calculateNetSales() - calculateTotalFrontendCosts() - calculateLandedDDP();
   };
 
+  // Gross Margin % = (Gross Profit / ASP) * 100
   const calculateGrossMargin = () => {
-    const netReceipts = calculateNetReceipts();
-    return netReceipts > 0 ? (calculateGrossProfit() / netReceipts) * 100 : 0;
+    return worksheetData.asp > 0 ? (calculateGrossProfit() / worksheetData.asp) * 100 : 0;
   };
 
   const handleSave = () => {
@@ -280,22 +398,35 @@ function SKUWorksheetPageContent() {
         skuName: worksheetData.skuName,
         channel: worksheetData.channel,
         countryCode: worksheetData.country,
+        
+        // Top Section
         asp: worksheetData.asp,
-        resellerMarginPercent: worksheetData.resellerMargin,
-        marketingReservePercent: worksheetData.marketingReserve,
-        fulfillmentCosts: worksheetData.fulfillmentCosts,
-        productCostFob: worksheetData.productCostFOB,
-        swLicenseFee: worksheetData.swLicenseFee,
-        otherProductCosts: worksheetData.otherProductCosts,
-        returnsFreight: worksheetData.returnsFreight,
-        returnsHandling: worksheetData.returnsHandling,
-        doaChannelCredit: worksheetData.doaChannelCredit,
-        financingCost: worksheetData.financingCost,
-        ppsHandlingFee: worksheetData.ppsHandlingFee,
-        inboundShippingCost: worksheetData.inboundShippingCost,
-        outboundShippingCost: worksheetData.outboundShippingCost,
-        greenfileMarketing: worksheetData.greenfileMarketing,
-        otherCogs: worksheetData.otherCoGS,
+        fbaFeePercent: worksheetData.fbaFeePercent,
+        fbaFeeAmount: worksheetData.fbaFeeAmount,
+        amazonReferralFeePercent: worksheetData.amazonReferralFeePercent,
+        amazonReferralFeeAmount: worksheetData.amazonReferralFeeAmount,
+        acosPercent: worksheetData.acosPercent,
+        acosAmount: worksheetData.acosAmount,
+        
+        // Less Frontend Section
+        motorolaRoyaltiesPercent: worksheetData.motorolaRoyaltiesPercent,
+        motorolaRoyaltiesAmount: worksheetData.motorolaRoyaltiesAmount,
+        rtvFreightAssumptions: worksheetData.rtvFreightAssumptions,
+        rtvRepairCosts: worksheetData.rtvRepairCosts,
+        doaCredits: worksheetData.doaCredits,
+        invoiceFactoringNet: worksheetData.invoiceFactoringNet,
+        salesCommissionsPercent: worksheetData.salesCommissionsPercent,
+        salesCommissionsAmount: worksheetData.salesCommissionsAmount,
+        totalBackendCosts: worksheetData.totalBackendCosts,
+        otherFrontendCosts: worksheetData.otherFrontendCosts,
+        
+        // Landed DDP Calculations Section
+        importDutiesPercent: worksheetData.importDutiesPercent,
+        importDutiesAmount: worksheetData.importDutiesAmount,
+        exWorksStandard: worksheetData.exWorksStandard,
+        importShippingSea: worksheetData.importShippingSea,
+        gryphonSoftware: worksheetData.gryphonSoftware,
+        otherLandedCosts: worksheetData.otherLandedCosts,
       };
 
       let response;
@@ -511,405 +642,611 @@ function SKUWorksheetPageContent() {
               {/* ASP */}
               <div className="space-y-2">
                 <Label htmlFor="asp">ASP (Average Selling Price) *</Label>
-                <Input
-                  id="asp"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.asp || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, asp: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-
-              {/* Reseller Margin */}
-              <div className="space-y-2">
-                <Label htmlFor="reseller-margin">Reseller Margin (%) *</Label>
-                <Input
-                  id="reseller-margin"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.resellerMargin || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, resellerMargin: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-
-              {/* Marketing Reserve */}
-              <div className="space-y-2">
-                <Label htmlFor="marketing-reserve">Marketing Reserve (%) *</Label>
-                <Input
-                  id="marketing-reserve"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.marketingReserve || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, marketingReserve: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-
-              {/* Fulfillment Costs */}
-              <div className="space-y-2">
-                <Label htmlFor="fulfillment-costs">Fulfillment Costs *</Label>
-                <Input
-                  id="fulfillment-costs"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.fulfillmentCosts || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, fulfillmentCosts: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 2: All Deductions (Calculated) */}
-        <Card className="border-2 border-red-200">
-          <CardHeader className="bg-red-50">
-            <CardTitle className="text-lg sm:text-xl">2. All Deductions (Calculated)</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Reseller Deduction</Label>
-                <p className="text-lg font-semibold">${((worksheetData.asp * worksheetData.resellerMargin) / 100).toFixed(2)}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Marketing Deduction</Label>
-                <p className="text-lg font-semibold">${((worksheetData.asp * worksheetData.marketingReserve) / 100).toFixed(2)}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Fulfillment Costs</Label>
-                <p className="text-lg font-semibold">${worksheetData.fulfillmentCosts.toFixed(2)}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Total Deductions</Label>
-                <p className="text-xl font-bold text-red-600">${calculateAllDeductions().toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 3: Net Receipts (Calculated) */}
-        <Card className="border-2 border-green-200">
-          <CardHeader className="bg-green-50">
-            <CardTitle className="text-lg sm:text-xl">3. Net Receipts (Calculated)</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Label className="text-sm font-medium text-gray-600">Net Receipts</Label>
-              <p className="text-3xl sm:text-4xl font-bold text-green-600">${calculateNetReceipts().toFixed(2)}</p>
-              <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                ASP (${worksheetData.asp.toFixed(2)}) - Total Deductions (${calculateAllDeductions().toFixed(2)})
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 4: Product Costs */}
-        <Card className="border-2 border-purple-200">
-          <CardHeader className="bg-purple-50">
-            <CardTitle className="text-lg sm:text-xl">4. Product Costs</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-cost-fob">Product Cost (FOB) *</Label>
-                <Input
-                  id="product-cost-fob"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.productCostFOB || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, productCostFOB: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sw-license-fee">SW License Fee *</Label>
-                <Input
-                  id="sw-license-fee"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.swLicenseFee || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, swLicenseFee: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-            </div>
-
-            {/* Other Product Costs */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm font-medium">Other Product Costs</Label>
-                <Button
-                  onClick={() => setWorksheetData(prev => ({
-                    ...prev,
-                    otherProductCosts: [...prev.otherProductCosts, { label: '', value: 0 }]
-                  }))}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Line Item
-                </Button>
-              </div>
-              {worksheetData.otherProductCosts.map((item, index) => (
-                <div key={index} className="flex gap-2 mb-2">
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
                   <Input
-                    placeholder="Description"
-                    value={item.label}
-                    onChange={(e) => {
-                      const newCosts = [...worksheetData.otherProductCosts];
-                      newCosts[index].label = e.target.value;
-                      setWorksheetData(prev => ({ ...prev, otherProductCosts: newCosts }));
-                    }}
-                    className="flex-1"
-                  />
-                  <Input
+                    id="asp"
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    value={item.value || ''}
+                    className="pl-7"
+                    value={worksheetData.asp || ''}
                     onChange={(e) => {
-                      const newCosts = [...worksheetData.otherProductCosts];
-                      newCosts[index].value = parseFloat(e.target.value) || 0;
-                      setWorksheetData(prev => ({ ...prev, otherProductCosts: newCosts }));
+                      const newAsp = parseFloat(e.target.value) || 0;
+                      setWorksheetData(prev => ({ ...prev, asp: newAsp }));
+                      // Recalculate all percentage-based amounts
+                      syncFbaFee(worksheetData.fbaFeePercent);
+                      syncAmazonReferralFee(worksheetData.amazonReferralFeePercent);
+                      syncAcos(worksheetData.acosPercent);
                     }}
                     onFocus={(e) => e.target.select()}
-                    className="w-32"
                   />
-                  <Button
-                    onClick={() => setWorksheetData(prev => ({
-                      ...prev,
-                      otherProductCosts: prev.otherProductCosts.filter((_, i) => i !== index)
-                    }))}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
                 </div>
-              ))}
-              <div className="mt-4 p-3 bg-purple-50 rounded border border-purple-200">
-                <Label className="text-sm font-medium text-gray-600">Total Product Costs</Label>
-                <p className="text-2xl font-bold text-purple-700">${calculateTotalProductCosts().toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Section 5: Royalty (Calculated) */}
-        <Card className="border-2 border-blue-200">
-          <CardHeader className="bg-blue-50">
-            <CardTitle className="text-lg sm:text-xl">5. Royalty (Calculated)</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Label className="text-sm font-medium text-gray-600">Royalty (5% of Net Receipts)</Label>
-              <p className="text-3xl sm:text-4xl font-bold text-blue-600">${calculateRoyalty().toFixed(2)}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 6: All CoGS Breakdown */}
+        {/* Section 2: Amazon Fees & ACOS */}
         <Card className="border-2 border-orange-200">
           <CardHeader className="bg-orange-50">
-            <CardTitle className="text-lg sm:text-xl">6. All CoGS Breakdown</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">2. Amazon Fees & Advertising</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="returns-freight">Returns Freight *</Label>
-                <Input
-                  id="returns-freight"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.returnsFreight || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, returnsFreight: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="returns-handling">Returns Handling *</Label>
-                <Input
-                  id="returns-handling"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.returnsHandling || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, returnsHandling: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="doa-channel-credit">DOA Channel Credit *</Label>
-                <Input
-                  id="doa-channel-credit"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.doaChannelCredit || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, doaChannelCredit: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="financing-cost">Financing Cost *</Label>
-                <Input
-                  id="financing-cost"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.financingCost || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, financingCost: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pps-handling-fee">PPS Handling Fee *</Label>
-                <Input
-                  id="pps-handling-fee"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.ppsHandlingFee || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, ppsHandlingFee: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="inbound-shipping">Inbound Shipping Cost *</Label>
-                <Input
-                  id="inbound-shipping"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.inboundShippingCost || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, inboundShippingCost: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="outbound-shipping">Outbound Shipping Cost *</Label>
-                <Input
-                  id="outbound-shipping"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.outboundShippingCost || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, outboundShippingCost: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="greenfile-marketing">Greenfield Marketing *</Label>
-                <Input
-                  id="greenfile-marketing"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={worksheetData.greenfileMarketing || ''}
-                  onChange={(e) => setWorksheetData(prev => ({ ...prev, greenfileMarketing: parseFloat(e.target.value) || 0 }))}
-                  onFocus={(e) => e.target.select()}
-                />
-              </div>
-            </div>
-
-            {/* Other CoGS Items */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm font-medium">Other CoGS Items</Label>
-                <Button
-                  onClick={() => setWorksheetData(prev => ({
-                    ...prev,
-                    otherCoGS: [...prev.otherCoGS, { label: '', value: 0 }]
-                  }))}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Line Item
-                </Button>
-              </div>
-              {worksheetData.otherCoGS.map((item, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <Input
-                    placeholder="Description"
-                    value={item.label}
-                    onChange={(e) => {
-                      const newCoGS = [...worksheetData.otherCoGS];
-                      newCoGS[index].label = e.target.value;
-                      setWorksheetData(prev => ({ ...prev, otherCoGS: newCoGS }));
-                    }}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={item.value || ''}
-                    onChange={(e) => {
-                      const newCoGS = [...worksheetData.otherCoGS];
-                      newCoGS[index].value = parseFloat(e.target.value) || 0;
-                      setWorksheetData(prev => ({ ...prev, otherCoGS: newCoGS }));
-                    }}
-                    onFocus={(e) => e.target.select()}
-                    className="w-32"
-                  />
-                  <Button
-                    onClick={() => setWorksheetData(prev => ({
-                      ...prev,
-                      otherCoGS: prev.otherCoGS.filter((_, i) => i !== index)
-                    }))}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+            <div className="space-y-4">
+              {/* FBA Fee */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="fba-fee-percent">FBA Fee (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="fba-fee-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="8"
+                      className="pr-7"
+                      value={worksheetData.fbaFeePercent || ''}
+                      onChange={(e) => syncFbaFee(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
                 </div>
-              ))}
-              <div className="mt-4 p-3 bg-orange-50 rounded border border-orange-200">
-                <Label className="text-sm font-medium text-gray-600">Total CoGS</Label>
-                <p className="text-2xl font-bold text-orange-700">${calculateTotalCoGS().toFixed(2)}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="fba-fee-amount">FBA Fee ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="fba-fee-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.fbaFeeAmount || ''}
+                      onChange={(e) => syncFbaFee(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  Enter either % or $ - the other will auto-calculate
+                </div>
+              </div>
+
+              {/* Amazon Referral Fee */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="amazon-referral-percent">Amazon Referral Fee (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="amazon-referral-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="8"
+                      className="pr-7"
+                      value={worksheetData.amazonReferralFeePercent || ''}
+                      onChange={(e) => syncAmazonReferralFee(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="amazon-referral-amount">Amazon Referral Fee ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="amazon-referral-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.amazonReferralFeeAmount || ''}
+                      onChange={(e) => syncAmazonReferralFee(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  Enter either % or $ - the other will auto-calculate
+                </div>
+              </div>
+
+              {/* ACOS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="acos-percent">ACOS (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="acos-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="8"
+                      className="pr-7"
+                      value={worksheetData.acosPercent || ''}
+                      onChange={(e) => syncAcos(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acos-amount">ACOS ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="acos-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.acosAmount || ''}
+                      onChange={(e) => syncAcos(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  Advertising Cost of Sale
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Section 7: Gross Profit & Gross Margin (Calculated) */}
+        {/* Section 3: Net Sales (Calculated) */}
         <Card className="border-2 border-green-200">
           <CardHeader className="bg-green-50">
-            <CardTitle className="text-lg sm:text-xl">7. Gross Profit & Gross Margin (Calculated)</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">3. Net Sales (Calculated)</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
-              <div className="text-center p-4 bg-white rounded border border-green-300">
+            <div className="text-center">
+              <Label className="text-sm font-medium text-gray-600">Net Sales</Label>
+              <p className="text-3xl font-bold text-green-600">${calculateNetSales().toFixed(2)}</p>
+              <p className="text-sm text-gray-500 mt-2">ASP - FBA Fee - Amazon Referral Fee - ACOS</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 4: Less Frontend Costs */}
+        <Card className="border-2 border-purple-200">
+          <CardHeader className="bg-purple-50">
+            <CardTitle className="text-lg sm:text-xl">4. Less Frontend Costs</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {/* Motorola Royalties */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="motorola-royalties-percent">Motorola Royalties (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="motorola-royalties-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="5"
+                      className="pr-7"
+                      value={worksheetData.motorolaRoyaltiesPercent || ''}
+                      onChange={(e) => syncMotorolaRoyalties(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="motorola-royalties-amount">Motorola Royalties ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="motorola-royalties-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.motorolaRoyaltiesAmount || ''}
+                      onChange={(e) => syncMotorolaRoyalties(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  % of Net Sales
+                </div>
+              </div>
+
+              {/* RTV Freight Assumptions */}
+              <div className="space-y-2">
+                <Label htmlFor="rtv-freight">RTV Freight Assumptions</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="rtv-freight"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.80"
+                    className="pl-7"
+                    value={worksheetData.rtvFreightAssumptions || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, rtvFreightAssumptions: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* RTV Repair Costs */}
+              <div className="space-y-2">
+                <Label htmlFor="rtv-repair">RTV Repair Costs</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="rtv-repair"
+                    type="number"
+                    step="0.01"
+                    placeholder="2.93"
+                    className="pl-7"
+                    value={worksheetData.rtvRepairCosts || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, rtvRepairCosts: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* DOA Credits */}
+              <div className="space-y-2">
+                <Label htmlFor="doa-credits">DOA Credits</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="doa-credits"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-7"
+                    value={worksheetData.doaCredits || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, doaCredits: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* Invoice Factoring Net */}
+              <div className="space-y-2">
+                <Label htmlFor="invoice-factoring">Invoice Factoring (Net)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="invoice-factoring"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-7"
+                    value={worksheetData.invoiceFactoringNet || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, invoiceFactoringNet: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* Sales Commissions */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="sales-commissions-percent">Sales Commissions (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="sales-commissions-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="0"
+                      className="pr-7"
+                      value={worksheetData.salesCommissionsPercent || ''}
+                      onChange={(e) => syncSalesCommissions(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sales-commissions-amount">Sales Commissions ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="sales-commissions-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.salesCommissionsAmount || ''}
+                      onChange={(e) => syncSalesCommissions(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  % of ASP
+                </div>
+              </div>
+
+              {/* Total Backend Costs */}
+              <div className="space-y-2">
+                <Label htmlFor="total-backend">Total Backend Costs</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="total-backend"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-7"
+                    value={worksheetData.totalBackendCosts || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, totalBackendCosts: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* Other Frontend Costs (Dynamic) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Other Frontend Costs</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWorksheetData(prev => ({
+                      ...prev,
+                      otherFrontendCosts: [...prev.otherFrontendCosts, { label: '', value: 0 }]
+                    }))}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Line
+                  </Button>
+                </div>
+                {worksheetData.otherFrontendCosts.map((item, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      placeholder="Cost name..."
+                      value={item.label}
+                      onChange={(e) => {
+                        const newItems = [...worksheetData.otherFrontendCosts];
+                        newItems[index].label = e.target.value;
+                        setWorksheetData(prev => ({ ...prev, otherFrontendCosts: newItems }));
+                      }}
+                      className="flex-1"
+                    />
+                    <div className="relative w-32">
+                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="pl-7"
+                        value={item.value || ''}
+                        onChange={(e) => {
+                          const newItems = [...worksheetData.otherFrontendCosts];
+                          newItems[index].value = parseFloat(e.target.value) || 0;
+                          setWorksheetData(prev => ({ ...prev, otherFrontendCosts: newItems }));
+                        }}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newItems = worksheetData.otherFrontendCosts.filter((_, i) => i !== index);
+                        setWorksheetData(prev => ({ ...prev, otherFrontendCosts: newItems }));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Frontend Costs (Calculated) */}
+              <div className="pt-4 border-t">
+                <Label className="text-sm font-medium text-gray-600">Total Frontend Costs</Label>
+                <p className="text-2xl font-bold text-purple-600">${calculateTotalFrontendCosts().toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 5: Landed DDP Calculations */}
+        <Card className="border-2 border-blue-200">
+          <CardHeader className="bg-blue-50">
+            <CardTitle className="text-lg sm:text-xl">5. Landed DDP Calculations</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {/* Import Duties */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="import-duties-percent">Import Duties (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="import-duties-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="0"
+                      className="pr-7"
+                      value={worksheetData.importDutiesPercent || ''}
+                      onChange={(e) => syncImportDuties(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="import-duties-amount">Import Duties ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="import-duties-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.importDutiesAmount || ''}
+                      onChange={(e) => syncImportDuties(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  % of ExWorks Standard
+                </div>
+              </div>
+
+              {/* ExWorks Standard */}
+              <div className="space-y-2">
+                <Label htmlFor="exworks">ExWorks Standard</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="exworks"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-7"
+                    value={worksheetData.exWorksStandard || ''}
+                    onChange={(e) => {
+                      const newValue = parseFloat(e.target.value) || 0;
+                      setWorksheetData(prev => ({ ...prev, exWorksStandard: newValue }));
+                      // Recalculate import duties if percentage is set
+                      if (worksheetData.importDutiesPercent > 0) {
+                        syncImportDuties(worksheetData.importDutiesPercent);
+                      }
+                    }}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* Import Shipping - Sea */}
+              <div className="space-y-2">
+                <Label htmlFor="import-shipping">Import Shipping - Sea</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="import-shipping"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-7"
+                    value={worksheetData.importShippingSea || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, importShippingSea: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* Gryphon Software */}
+              <div className="space-y-2">
+                <Label htmlFor="gryphon">Gryphon Software</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <Input
+                    id="gryphon"
+                    type="number"
+                    step="0.01"
+                    placeholder="2.50"
+                    className="pl-7"
+                    value={worksheetData.gryphonSoftware || ''}
+                    onChange={(e) => setWorksheetData(prev => ({ ...prev, gryphonSoftware: parseFloat(e.target.value) || 0 }))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              {/* Other Landed Costs (Dynamic) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Other Landed Costs</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWorksheetData(prev => ({
+                      ...prev,
+                      otherLandedCosts: [...prev.otherLandedCosts, { label: '', value: 0 }]
+                    }))}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Line
+                  </Button>
+                </div>
+                {worksheetData.otherLandedCosts.map((item, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      placeholder="Cost name..."
+                      value={item.label}
+                      onChange={(e) => {
+                        const newItems = [...worksheetData.otherLandedCosts];
+                        newItems[index].label = e.target.value;
+                        setWorksheetData(prev => ({ ...prev, otherLandedCosts: newItems }));
+                      }}
+                      className="flex-1"
+                    />
+                    <div className="relative w-32">
+                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="pl-7"
+                        value={item.value || ''}
+                        onChange={(e) => {
+                          const newItems = [...worksheetData.otherLandedCosts];
+                          newItems[index].value = parseFloat(e.target.value) || 0;
+                          setWorksheetData(prev => ({ ...prev, otherLandedCosts: newItems }));
+                        }}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newItems = worksheetData.otherLandedCosts.filter((_, i) => i !== index);
+                        setWorksheetData(prev => ({ ...prev, otherLandedCosts: newItems }));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Landed DDP Total (Calculated) */}
+              <div className="pt-4 border-t">
+                <Label className="text-sm font-medium text-gray-600">Landed DDP</Label>
+                <p className="text-2xl font-bold text-blue-600">${calculateLandedDDP().toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 6: Gross Profit & Margin (Calculated) */}
+        <Card className="border-2 border-green-200">
+          <CardHeader className="bg-green-50">
+            <CardTitle className="text-lg sm:text-xl">6. Gross Profit & Margin</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="text-center">
                 <Label className="text-sm font-medium text-gray-600">Gross Profit</Label>
-                <p className="text-3xl sm:text-4xl font-bold text-green-600">${calculateGrossProfit().toFixed(2)}</p>
+                <p className="text-3xl font-bold text-green-600">${calculateGrossProfit().toFixed(2)}</p>
               </div>
-              <div className="text-center p-4 bg-white rounded border border-green-300">
+              <div className="text-center">
                 <Label className="text-sm font-medium text-gray-600">Gross Margin</Label>
-                <p className="text-3xl sm:text-4xl font-bold text-green-600">{calculateGrossMargin().toFixed(2)}%</p>
+                <p className="text-3xl font-bold text-green-600">{calculateGrossMargin().toFixed(0)}%</p>
               </div>
             </div>
-            <div className="p-4 bg-white rounded border border-gray-200">
-              <h4 className="font-semibold mb-2 text-sm sm:text-base">Calculation Breakdown:</h4>
-              <div className="text-sm space-y-1">
-                <p>• Net Receipts: <strong>${calculateNetReceipts().toFixed(2)}</strong></p>
-                <p>• Less Royalty (5%): <strong>-${calculateRoyalty().toFixed(2)}</strong></p>
-                <p>• Less Total CoGS: <strong>-${calculateTotalCoGS().toFixed(2)}</strong></p>
-                <hr className="my-2" />
-                <p>• Gross Profit: <strong className="text-green-600">${calculateGrossProfit().toFixed(2)}</strong></p>
-                <p>• Gross Margin: <strong className="text-green-600">{calculateGrossMargin().toFixed(2)}%</strong></p>
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 mt-4 text-center">
+              Gross Profit = Net Sales - Total Frontend Costs - Landed DDP
+            </p>
           </CardContent>
         </Card>
 
