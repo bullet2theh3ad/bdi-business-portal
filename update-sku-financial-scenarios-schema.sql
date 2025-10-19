@@ -165,7 +165,7 @@ SELECT
     WHEN s.asp > 0 THEN 
       (((s.asp - s.fba_fee_amount - s.amazon_referral_fee_amount - s.acos_amount) - 
         (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-         s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) - 
+         s.doa_credits_amount + s.invoice_factoring_net + s.sales_commissions_amount) - 
         (s.ex_works_standard + s.import_duties_amount + s.import_shipping_sea + s.gryphon_software)) / s.asp) * 100
     ELSE 0
   END AS gross_margin_percent
