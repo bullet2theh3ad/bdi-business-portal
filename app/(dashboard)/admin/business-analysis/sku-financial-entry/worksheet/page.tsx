@@ -435,9 +435,10 @@ function SKUWorksheetPageContent() {
     return calculateNetSales() - calculateTotalFrontendCosts() - calculateLandedDDP();
   };
 
-  // Gross Margin % = (Gross Profit / ASP) * 100
+  // Gross Margin % = (Gross Profit / Net Sales) * 100
   const calculateGrossMargin = () => {
-    return worksheetData.asp > 0 ? (calculateGrossProfit() / worksheetData.asp) * 100 : 0;
+    const netSales = calculateNetSales();
+    return netSales > 0 ? (calculateGrossProfit() / netSales) * 100 : 0;
   };
 
   const handleSave = () => {
@@ -1204,9 +1205,9 @@ function SKUWorksheetPageContent() {
                 </div>
               </div>
 
-              {/* Import Shipping - Sea */}
+              {/* Import Shipping */}
               <div className="space-y-2">
-                <Label htmlFor="import-shipping">Import Shipping - Sea</Label>
+                <Label htmlFor="import-shipping">Import Shipping</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-gray-500">$</span>
                   <Input
