@@ -168,6 +168,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/amazon-data/financial',
             icon: 'finance',
           },
+          {
+            title: 'Campaign Analytics',
+            href: '/admin/amazon-data/campaigns',
+            icon: 'analytics',
+          },
         ],
       },
       {

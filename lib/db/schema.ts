@@ -1566,3 +1566,101 @@ export const salesReports = pgTable('sales_reports', {
 
 export type SalesReport = typeof salesReports.$inferSelect;
 export type NewSalesReport = typeof salesReports.$inferInsert;
+
+// ===== AMAZON ADVERTISING CAMPAIGNS =====
+
+export const amazonCampaignUploads = pgTable('amazon_campaign_uploads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  fileName: text('file_name').notNull(),
+  uploadDate: timestamp('upload_date').defaultNow(),
+  uploadedBy: uuid('uploaded_by'), // References auth.users(id)
+  rowCount: integer('row_count').default(0),
+  dateRangeStart: date('date_range_start'),
+  dateRangeEnd: date('date_range_end'),
+  status: text('status').default('completed'), // 'processing', 'completed', 'failed'
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const amazonCampaignData = pgTable('amazon_campaign_data', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  uploadId: uuid('upload_id').references(() => amazonCampaignUploads.id, { onDelete: 'cascade' }),
+  
+  // Campaign Identification
+  campaignName: text('campaign_name').notNull(),
+  extractedSku: text('extracted_sku'), // Parsed from campaign name
+  country: text('country'),
+  state: text('state'), // 'ENABLED', 'PAUSED'
+  status: text('status'),
+  campaignType: text('campaign_type'), // 'SP'
+  targeting: text('targeting'), // 'MANUAL', 'AUTOMATIC'
+  
+  // Campaign Settings
+  biddingStrategy: text('bidding_strategy'),
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  avgTimeInBudget: numeric('avg_time_in_budget', { precision: 10, scale: 2 }),
+  budgetConverted: numeric('budget_converted', { precision: 10, scale: 2 }),
+  budgetOriginal: text('budget_original'),
+  costType: text('cost_type'),
+  
+  // Performance Metrics
+  impressions: integer('impressions').default(0),
+  topOfSearchImpressionShare: text('top_of_search_impression_share'),
+  topOfSearchBidAdjustment: numeric('top_of_search_bid_adjustment', { precision: 10, scale: 2 }),
+  clicks: integer('clicks').default(0),
+  ctr: numeric('ctr', { precision: 10, scale: 6 }),
+  
+  // Spend Metrics
+  spendConverted: numeric('spend_converted', { precision: 10, scale: 2 }),
+  spendOriginal: text('spend_original'),
+  cpcConverted: numeric('cpc_converted', { precision: 10, scale: 2 }),
+  cpcOriginal: text('cpc_original'),
+  
+  // Conversion Metrics
+  detailPageViews: integer('detail_page_views').default(0),
+  orders: integer('orders').default(0),
+  salesConverted: numeric('sales_converted', { precision: 10, scale: 2 }),
+  salesOriginal: text('sales_original'),
+  
+  // Efficiency Metrics
+  acos: numeric('acos', { precision: 10, scale: 4 }),
+  roas: numeric('roas', { precision: 10, scale: 4 }),
+  
+  // New-to-Brand Metrics
+  ntbOrders: integer('ntb_orders').default(0),
+  percentOrdersNtb: numeric('percent_orders_ntb', { precision: 10, scale: 2 }),
+  ntbSalesConverted: numeric('ntb_sales_converted', { precision: 10, scale: 2 }),
+  ntbSalesOriginal: text('ntb_sales_original'),
+  percentSalesNtb: numeric('percent_sales_ntb', { precision: 10, scale: 2 }),
+  
+  // Long-term Metrics
+  longTermSalesConverted: numeric('long_term_sales_converted', { precision: 10, scale: 2 }),
+  longTermSalesOriginal: text('long_term_sales_original'),
+  longTermRoas: numeric('long_term_roas', { precision: 10, scale: 4 }),
+  
+  // Video Metrics
+  cumulativeReach: integer('cumulative_reach').default(0),
+  householdReach: integer('household_reach').default(0),
+  viewableImpressions: integer('viewable_impressions').default(0),
+  cpmConverted: numeric('cpm_converted', { precision: 10, scale: 2 }),
+  cpmOriginal: text('cpm_original'),
+  vcpmConverted: numeric('vcpm_converted', { precision: 10, scale: 2 }),
+  vcpmOriginal: text('vcpm_original'),
+  videoFirstQuartile: integer('video_first_quartile').default(0),
+  videoMidpoint: integer('video_midpoint').default(0),
+  videoThirdQuartile: integer('video_third_quartile').default(0),
+  videoComplete: integer('video_complete').default(0),
+  videoUnmute: integer('video_unmute').default(0),
+  vtr: numeric('vtr', { precision: 10, scale: 6 }),
+  vctr: numeric('vctr', { precision: 10, scale: 6 }),
+  
+  // Metadata
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type AmazonCampaignUpload = typeof amazonCampaignUploads.$inferSelect;
+export type NewAmazonCampaignUpload = typeof amazonCampaignUploads.$inferInsert;
+export type AmazonCampaignData = typeof amazonCampaignData.$inferSelect;
+export type NewAmazonCampaignData = typeof amazonCampaignData.$inferInsert;
