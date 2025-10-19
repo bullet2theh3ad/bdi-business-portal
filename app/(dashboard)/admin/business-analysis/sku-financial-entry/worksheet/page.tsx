@@ -220,22 +220,34 @@ function SKUWorksheetPageContent() {
           skuName: scenario.skuName || '',
           channel: scenario.channel || '',
           country: scenario.countryCode || 'US',
+          
+          // Top Section
           asp: parseFloat(scenario.asp) || 0,
-          resellerMargin: parseFloat(scenario.resellerMarginPercent) || 0,
-          marketingReserve: parseFloat(scenario.marketingReservePercent) || 0,
-          fulfillmentCosts: parseFloat(scenario.fulfillmentCosts) || 0,
-          productCostFOB: parseFloat(scenario.productCostFob) || 0,
-          swLicenseFee: parseFloat(scenario.swLicenseFee) || 0,
-          otherProductCosts: scenario.otherProductCosts || [],
-          returnsFreight: parseFloat(scenario.returnsFreight) || 13.00,
-          returnsHandling: parseFloat(scenario.returnsHandling) || 0.45,
-          doaChannelCredit: parseFloat(scenario.doaChannelCredit) || 0,
-          financingCost: parseFloat(scenario.financingCost) || 0,
-          ppsHandlingFee: parseFloat(scenario.ppsHandlingFee) || 0,
-          inboundShippingCost: parseFloat(scenario.inboundShippingCost) || 0,
-          outboundShippingCost: parseFloat(scenario.outboundShippingCost) || 0,
-          greenfileMarketing: parseFloat(scenario.greenfileMarketing) || 0,
-          otherCoGS: scenario.otherCogs || [],
+          fbaFeePercent: parseFloat(scenario.fbaFeePercent) || 8,
+          fbaFeeAmount: parseFloat(scenario.fbaFeeAmount) || 0,
+          amazonReferralFeePercent: parseFloat(scenario.amazonReferralFeePercent) || 8,
+          amazonReferralFeeAmount: parseFloat(scenario.amazonReferralFeeAmount) || 0,
+          acosPercent: parseFloat(scenario.acosPercent) || 8,
+          acosAmount: parseFloat(scenario.acosAmount) || 0,
+          
+          // Less Frontend Section
+          motorolaRoyaltiesPercent: parseFloat(scenario.motorolaRoyaltiesPercent) || 5,
+          motorolaRoyaltiesAmount: parseFloat(scenario.motorolaRoyaltiesAmount) || 0,
+          rtvFreightAssumptions: parseFloat(scenario.rtvFreightAssumptions) || 0.80,
+          rtvRepairCosts: parseFloat(scenario.rtvRepairCosts) || 2.93,
+          doaCredits: parseFloat(scenario.doaCredits) || 0,
+          invoiceFactoringNet: parseFloat(scenario.invoiceFactoringNet) || 0,
+          salesCommissionsPercent: parseFloat(scenario.salesCommissionsPercent) || 0,
+          salesCommissionsAmount: parseFloat(scenario.salesCommissionsAmount) || 0,
+          otherFrontendCosts: scenario.otherFrontendCosts || [],
+          
+          // Landed DDP Calculations Section
+          importDutiesPercent: parseFloat(scenario.importDutiesPercent) || 0,
+          importDutiesAmount: parseFloat(scenario.importDutiesAmount) || 0,
+          exWorksStandard: parseFloat(scenario.exWorksStandard) || 0,
+          importShippingSea: parseFloat(scenario.importShippingSea) || 0,
+          gryphonSoftware: parseFloat(scenario.gryphonSoftware) || 2.50,
+          otherLandedCosts: scenario.otherLandedCosts || [],
         });
         
         setScenarioName(scenario.scenarioName || '');
