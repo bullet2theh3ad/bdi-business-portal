@@ -34,7 +34,6 @@ interface SKUWorksheetData {
   invoiceFactoringNet: number;
   salesCommissionsPercent: number;
   salesCommissionsAmount: number;
-  totalBackendCosts: number;
   otherFrontendCosts: { label: string; value: number }[];
   
   // Landed DDP Calculations Section
@@ -144,7 +143,6 @@ function SKUWorksheetPageContent() {
     invoiceFactoringNet: 0,
     salesCommissionsPercent: 0,
     salesCommissionsAmount: 0,
-    totalBackendCosts: 0,
     otherFrontendCosts: [],
     
     // Landed DDP Calculations Section
@@ -187,6 +185,20 @@ function SKUWorksheetPageContent() {
     }
     loadSKUs();
   }, []);
+
+  // Recalculate Motorola Royalties when Net Sales changes
+  useEffect(() => {
+    if (worksheetData.motorolaRoyaltiesPercent > 0) {
+      const netSales = worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
+      const newAmount = (netSales * worksheetData.motorolaRoyaltiesPercent) / 100;
+      if (Math.abs(newAmount - worksheetData.motorolaRoyaltiesAmount) > 0.01) {
+        setWorksheetData(prev => ({
+          ...prev,
+          motorolaRoyaltiesAmount: newAmount
+        }));
+      }
+    }
+  }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.motorolaRoyaltiesPercent]);
 
   // Load existing scenario if editing
   useEffect(() => {
@@ -294,16 +306,18 @@ function SKUWorksheetPageContent() {
   const syncMotorolaRoyalties = (percent?: number, amount?: number) => {
     const netSales = calculateNetSales();
     if (percent !== undefined) {
+      const calculatedAmount = (netSales * percent) / 100;
       setWorksheetData(prev => ({
         ...prev,
         motorolaRoyaltiesPercent: percent,
-        motorolaRoyaltiesAmount: (netSales * percent) / 100
+        motorolaRoyaltiesAmount: calculatedAmount
       }));
     } else if (amount !== undefined) {
+      const calculatedPercent = netSales > 0 ? (amount / netSales) * 100 : 0;
       setWorksheetData(prev => ({
         ...prev,
         motorolaRoyaltiesAmount: amount,
-        motorolaRoyaltiesPercent: netSales > 0 ? (amount / netSales) * 100 : 0
+        motorolaRoyaltiesPercent: calculatedPercent
       }));
     }
   };
@@ -345,11 +359,17 @@ function SKUWorksheetPageContent() {
     return worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
   };
 
-  // Total Frontend Costs
+  // Total Backend Costs (calculated from individual line items)
+  const calculateTotalBackendCosts = () => {
+    const { motorolaRoyaltiesAmount, rtvFreightAssumptions, rtvRepairCosts, doaCredits, invoiceFactoringNet, salesCommissionsAmount } = worksheetData;
+    return motorolaRoyaltiesAmount + rtvFreightAssumptions + rtvRepairCosts + doaCredits + invoiceFactoringNet + salesCommissionsAmount;
+  };
+
+  // Total Frontend Costs (includes backend costs + other frontend costs)
   const calculateTotalFrontendCosts = () => {
-    const { motorolaRoyaltiesAmount, rtvFreightAssumptions, rtvRepairCosts, doaCredits, invoiceFactoringNet, salesCommissionsAmount, totalBackendCosts, otherFrontendCosts } = worksheetData;
-    const otherTotal = otherFrontendCosts.reduce((sum, item) => sum + item.value, 0);
-    return motorolaRoyaltiesAmount + rtvFreightAssumptions + rtvRepairCosts + doaCredits + invoiceFactoringNet + salesCommissionsAmount + totalBackendCosts + otherTotal;
+    const backendCosts = calculateTotalBackendCosts();
+    const otherTotal = worksheetData.otherFrontendCosts.reduce((sum, item) => sum + item.value, 0);
+    return backendCosts + otherTotal;
   };
 
   // Landed DDP = ExWorks + Import Duties + Import Shipping + Gryphon Software + Other
@@ -417,7 +437,6 @@ function SKUWorksheetPageContent() {
         invoiceFactoringNet: worksheetData.invoiceFactoringNet,
         salesCommissionsPercent: worksheetData.salesCommissionsPercent,
         salesCommissionsAmount: worksheetData.salesCommissionsAmount,
-        totalBackendCosts: worksheetData.totalBackendCosts,
         otherFrontendCosts: worksheetData.otherFrontendCosts,
         
         // Landed DDP Calculations Section
@@ -965,22 +984,11 @@ function SKUWorksheetPageContent() {
                 </div>
               </div>
 
-              {/* Total Backend Costs */}
-              <div className="space-y-2">
-                <Label htmlFor="total-backend">Total Backend Costs</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-                  <Input
-                    id="total-backend"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="pl-7"
-                    value={worksheetData.totalBackendCosts || ''}
-                    onChange={(e) => setWorksheetData(prev => ({ ...prev, totalBackendCosts: parseFloat(e.target.value) || 0 }))}
-                    onFocus={(e) => e.target.select()}
-                  />
-                </div>
+              {/* Total Backend Costs (Calculated) */}
+              <div className="pt-4 border-t">
+                <Label className="text-sm font-medium text-gray-600">Total Backend Costs</Label>
+                <p className="text-2xl font-bold text-purple-600">${calculateTotalBackendCosts().toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-1">Sum of all backend costs above</p>
               </div>
 
               {/* Other Frontend Costs (Dynamic) */}

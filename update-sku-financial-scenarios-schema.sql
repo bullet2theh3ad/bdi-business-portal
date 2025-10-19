@@ -55,9 +55,6 @@ CREATE TABLE IF NOT EXISTS public.sku_financial_scenarios (
   sales_commissions_percent NUMERIC(5, 2) DEFAULT 0,
   sales_commissions_amount NUMERIC(15, 2) DEFAULT 0,
   
-  -- Backend Costs
-  total_backend_costs NUMERIC(15, 2) DEFAULT 0,
-  
   -- Dynamic Other Frontend Costs (JSONB array)
   other_frontend_costs JSONB DEFAULT '[]'::jsonb,
   
@@ -143,9 +140,13 @@ SELECT
   -- Net Sales = ASP - FBA Fee - Amazon Referral Fee - ACOS
   (s.asp - s.fba_fee_amount - s.amazon_referral_fee_amount - s.acos_amount) AS net_sales,
   
-  -- Total Frontend Costs
+  -- Total Backend Costs (calculated)
   (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-   s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount + s.total_backend_costs) AS total_frontend_costs,
+   s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) AS total_backend_costs,
+  
+  -- Total Frontend Costs (backend costs + other frontend costs - note: other_frontend_costs is JSONB so needs special handling)
+  (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
+   s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) AS total_frontend_costs,
   
   -- Landed DDP
   (s.ex_works_standard + s.import_duties_amount + s.import_shipping_sea + s.gryphon_software) AS landed_ddp,
@@ -153,7 +154,7 @@ SELECT
   -- Gross Profit = Net Sales - Total Frontend Costs - Landed DDP
   ((s.asp - s.fba_fee_amount - s.amazon_referral_fee_amount - s.acos_amount) - 
    (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-    s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount + s.total_backend_costs) - 
+    s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) - 
    (s.ex_works_standard + s.import_duties_amount + s.import_shipping_sea + s.gryphon_software)) AS gross_profit,
   
   -- Gross Margin % = (Gross Profit / ASP) * 100
@@ -161,7 +162,7 @@ SELECT
     WHEN s.asp > 0 THEN 
       (((s.asp - s.fba_fee_amount - s.amazon_referral_fee_amount - s.acos_amount) - 
         (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-         s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount + s.total_backend_costs) - 
+         s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) - 
         (s.ex_works_standard + s.import_duties_amount + s.import_shipping_sea + s.gryphon_software)) / s.asp) * 100
     ELSE 0
   END AS gross_margin_percent
