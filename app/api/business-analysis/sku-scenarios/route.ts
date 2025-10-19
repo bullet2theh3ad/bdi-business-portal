@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
 
     // Templates filter removed - isTemplate column doesn't exist in DB
 
-    // Fetch scenarios with creator info
+    // Fetch scenarios with creator info and calculated fields from view
     let query = db
       .select({
         // Scenario fields
@@ -197,7 +197,53 @@ export async function GET(request: NextRequest) {
       ? await query.where(and(...conditions))
       : await query;
 
-    return NextResponse.json({ scenarios, count: scenarios.length });
+    // Calculate GP for each scenario
+    const scenariosWithGP = scenarios.map(scenario => {
+      const asp = parseFloat(scenario.asp || '0');
+      
+      // Calculate total fees
+      const fbaFee = parseFloat(scenario.fbaFeeAmount || '0');
+      const referralFee = parseFloat(scenario.amazonReferralFeeAmount || '0');
+      const acos = parseFloat(scenario.acosAmount || '0');
+      const otherFees = (scenario.otherFeesAndAdvertising as any[] || []).reduce((sum, item) => sum + (item.value || 0), 0);
+      
+      // Calculate Net Sales
+      const netSales = asp - fbaFee - referralFee - acos - otherFees;
+      
+      // Calculate total frontend costs
+      const motorolaRoyalties = parseFloat(scenario.motorolaRoyaltiesAmount || '0');
+      const rtvFreight = parseFloat(scenario.rtvFreightAssumptions || '0');
+      const rtvRepair = parseFloat(scenario.rtvRepairCosts || '0');
+      const doaCredits = parseFloat(scenario.doaCreditsAmount || '0');
+      const invoiceFactoring = parseFloat(scenario.invoiceFactoringNet || '0');
+      const salesCommissions = parseFloat(scenario.salesCommissionsAmount || '0');
+      const otherFrontend = (scenario.otherFrontendCosts as any[] || []).reduce((sum, item) => sum + (item.value || 0), 0);
+      
+      const totalFrontendCosts = motorolaRoyalties + rtvFreight + rtvRepair + doaCredits + invoiceFactoring + salesCommissions + otherFrontend;
+      
+      // Calculate total landed costs
+      const importDuties = parseFloat(scenario.importDutiesAmount || '0');
+      const exWorks = parseFloat(scenario.exWorksStandard || '0');
+      const importShipping = parseFloat(scenario.importShippingSea || '0');
+      const gryphonSoftware = parseFloat(scenario.gryphonSoftware || '0');
+      const otherLanded = (scenario.otherLandedCosts as any[] || []).reduce((sum, item) => sum + (item.value || 0), 0);
+      
+      const totalLandedCosts = importDuties + exWorks + importShipping + gryphonSoftware + otherLanded;
+      
+      // Calculate Gross Profit
+      const grossProfit = netSales - totalFrontendCosts - totalLandedCosts;
+      
+      // Calculate Gross Margin %
+      const grossMarginPercent = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
+      
+      return {
+        ...scenario,
+        grossProfit: grossProfit.toFixed(2),
+        grossMarginPercent: grossMarginPercent.toFixed(2),
+      };
+    });
+
+    return NextResponse.json({ scenarios: scenariosWithGP, count: scenariosWithGP.length });
 
   } catch (error) {
     console.error('Error fetching SKU scenarios:', error);
