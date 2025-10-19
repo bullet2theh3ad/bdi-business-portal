@@ -74,11 +74,12 @@ export default function SalesReportsPage() {
     setFormData({
       name: report.name,
       url: report.url,
-      description: report.description,
+      description: report.description || '',
       icon: report.icon,
       color: report.color
     });
     setIsAddingNew(false);
+    setShowSettings(true); // Open the settings dialog
   };
 
   const handleAddNew = () => {
@@ -91,6 +92,7 @@ export default function SalesReportsPage() {
       color: 'blue'
     });
     setIsAddingNew(true);
+    setShowSettings(true); // Open the settings dialog
   };
 
   const handleSaveReport = async () => {
@@ -138,6 +140,7 @@ export default function SalesReportsPage() {
 
       setEditingReport(null);
       setIsAddingNew(false);
+      setShowSettings(false); // Close the settings dialog
     } catch (error) {
       console.error('Error saving report:', error);
       alert('Failed to save report');
@@ -291,15 +294,32 @@ export default function SalesReportsPage() {
           {selectedReport ? (
             <>
               {iframeError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-                  <div className="text-center max-w-md px-6">
+                <div className="absolute inset-0 flex items-center justify-center bg-white z-10 overflow-y-auto">
+                  <div className="text-center max-w-2xl px-6 py-8">
                     <div className="text-6xl mb-4">⚠️</div>
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-                      Report Failed to Load
+                      Report Cannot Be Embedded
                     </h2>
                     <p className="text-sm sm:text-base text-gray-600 mb-4">
-                      The report URL may be incorrect, expired, or the report may have been deleted.
+                      This report is blocked by Content Security Policy (CSP) and cannot be displayed in an iframe.
                     </p>
+                    
+                    {selectedReport.url.includes('sharepoint.com') && (
+                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4 text-left">
+                        <p className="text-sm font-semibold text-blue-900 mb-2">📋 SharePoint Embed Instructions:</p>
+                        <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                          <li>Open the file in SharePoint</li>
+                          <li>Click <strong>File → Share → Embed</strong></li>
+                          <li>Click <strong>Generate</strong> to get the embed code</li>
+                          <li>Copy the URL from the <code className="bg-blue-100 px-1 rounded">src="..."</code> attribute</li>
+                          <li>Update this report with the embed URL (not the direct file URL)</li>
+                        </ol>
+                        <p className="text-xs text-blue-700 mt-2">
+                          💡 Embed URLs look like: <code className="bg-blue-100 px-1 rounded">https://...sharepoint.com/_layouts/15/...</code>
+                        </p>
+                      </div>
+                    )}
+                    
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
                       <p className="text-xs text-gray-500 mb-1">Current URL:</p>
                       <p className="text-xs font-mono text-gray-700 break-all">{selectedReport.url}</p>
@@ -309,7 +329,11 @@ export default function SalesReportsPage() {
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Retry
                       </Button>
-                      <Button onClick={handleOpenSettings} size="sm">
+                      <Button onClick={() => window.open(selectedReport.url, '_blank')} size="sm">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open in New Tab
+                      </Button>
+                      <Button onClick={handleOpenSettings} variant="outline" size="sm">
                         <Edit2 className="w-4 h-4 mr-2" />
                         Update URL
                       </Button>

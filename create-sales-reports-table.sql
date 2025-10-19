@@ -16,7 +16,7 @@ CREATE TABLE public.sales_reports (
     color TEXT DEFAULT 'blue',
     display_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
-    created_by UUID REFERENCES auth.users(id),
+    created_by UUID, -- References auth.users(id) but no FK constraint
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

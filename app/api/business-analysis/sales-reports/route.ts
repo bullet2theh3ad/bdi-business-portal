@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         color: color || 'blue',
         displayOrder: nextOrder,
         isActive: true,
-        createdBy: dbUser.id,
+        createdBy: authUser.id, // Use auth user ID, not DB user ID
       })
       .returning();
 

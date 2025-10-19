@@ -1559,7 +1559,7 @@ export const salesReports = pgTable('sales_reports', {
   color: text('color').default('blue'),
   displayOrder: integer('display_order').default(0),
   isActive: boolean('is_active').default(true),
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by'), // References auth.users(id), not public.users
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
