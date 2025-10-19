@@ -172,6 +172,23 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ ${validUnits.length} units validated, ${failedCount} failed`);
 
+    // 🔥 DELETE ALL EXISTING DATA BEFORE INSERTING NEW DATA
+    // This ensures each upload REPLACES the data instead of accumulating it
+    console.log('🗑️  Deleting all existing WIP data...');
+    const { error: deleteError } = await supabaseService
+      .from('warehouse_wip_units')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
+    
+    if (deleteError) {
+      console.error('❌ Error deleting existing data:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to clear existing data before import' },
+        { status: 500 }
+      );
+    }
+    console.log('✅ Existing WIP data cleared');
+
     // Batch insert units (500 at a time for performance)
     const BATCH_SIZE = 500;
     const totalBatches = Math.ceil(validUnits.length / BATCH_SIZE);

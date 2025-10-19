@@ -1498,41 +1498,52 @@ export const skuFinancialScenarios = pgTable('sku_financial_scenarios', {
   channel: varchar('channel', { length: 255 }).notNull(),
   countryCode: varchar('country_code', { length: 3 }).notNull().default('US'),
   
-  // Section 1: Pricing & Deductions (Input)
+  // Pricing
   asp: numeric('asp', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  resellerMarginPercent: numeric('reseller_margin_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
-  marketingReservePercent: numeric('marketing_reserve_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
-  fulfillmentCosts: numeric('fulfillment_costs', { precision: 12, scale: 2 }).notNull().default('0.00'),
   
-  // Section 4: Product Costs (Input)
-  productCostFob: numeric('product_cost_fob', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  swLicenseFee: numeric('sw_license_fee', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  otherProductCosts: jsonb('other_product_costs').default([]), // Array of {label: string, value: number}
+  // FBA Fee
+  fbaFeePercent: numeric('fba_fee_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  fbaFeeAmount: numeric('fba_fee_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
   
-  // Section 6: Cost of Goods Sold (Input)
-  returnsFreight: numeric('returns_freight', { precision: 12, scale: 2 }).notNull().default('13.00'),
-  returnsHandling: numeric('returns_handling', { precision: 12, scale: 2 }).notNull().default('0.45'),
-  doaChannelCredit: numeric('doa_channel_credit', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  financingCost: numeric('financing_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  ppsHandlingFee: numeric('pps_handling_fee', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  inboundShippingCost: numeric('inbound_shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  outboundShippingCost: numeric('outbound_shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  greenfileMarketing: numeric('greenfile_marketing', { precision: 12, scale: 2 }).notNull().default('0.00'),
-  otherCogs: jsonb('other_cogs').default([]), // Array of {label: string, value: number}
+  // Amazon Referral Fee
+  amazonReferralFeePercent: numeric('amazon_referral_fee_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  amazonReferralFeeAmount: numeric('amazon_referral_fee_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  
+  // ACOS
+  acosPercent: numeric('acos_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  acosAmount: numeric('acos_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  
+  // Other Fees & Advertising (dynamic)
+  otherFeesAndAdvertising: jsonb('other_fees_and_advertising').default([]),
+  
+  // Backend Costs
+  motorolaRoyaltiesPercent: numeric('motorola_royalties_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  motorolaRoyaltiesAmount: numeric('motorola_royalties_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  rtvFreightAssumptions: numeric('rtv_freight_assumptions', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  rtvRepairCosts: numeric('rtv_repair_costs', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  doaCreditsPercent: numeric('doa_credits_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  doaCreditsAmount: numeric('doa_credits_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  invoiceFactoringNet: numeric('invoice_factoring_net', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  salesCommissionsPercent: numeric('sales_commissions_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  salesCommissionsAmount: numeric('sales_commissions_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  
+  // Other Frontend Costs (dynamic)
+  otherFrontendCosts: jsonb('other_frontend_costs').default([]),
+  
+  // Landed Costs
+  importDutiesPercent: numeric('import_duties_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  importDutiesAmount: numeric('import_duties_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  exWorksStandard: numeric('ex_works_standard', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  importShippingSea: numeric('import_shipping_sea', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  gryphonSoftware: numeric('gryphon_software', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  
+  // Other Landed Costs (dynamic)
+  otherLandedCosts: jsonb('other_landed_costs').default([]),
   
   // Audit & Access Control
-  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
-  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  
-  // Soft Delete & Status
-  isActive: boolean('is_active').notNull().default(true),
-  isTemplate: boolean('is_template').notNull().default(false),
-  
-  // Version Control
-  version: integer('version').notNull().default(1),
-  parentScenarioId: uuid('parent_scenario_id').references((): any => skuFinancialScenarios.id, { onDelete: 'set null' }),
+  userId: uuid('user_id').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export type SkuFinancialScenario = typeof skuFinancialScenarios.$inferSelect;

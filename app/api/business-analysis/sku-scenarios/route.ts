@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { skuFinancialScenarios, users, organizations } from '@/lib/db/schema';
+import { skuFinancialScenarios, users } from '@/lib/db/schema';
 import { eq, and, desc, or, ilike } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -24,6 +24,10 @@ const skuScenarioSchema = z.object({
   amazonReferralFeeAmount: z.number().min(0).default(0),
   acosPercent: z.number().min(0).max(100).default(0),
   acosAmount: z.number().min(0).default(0),
+  otherFeesAndAdvertising: z.array(z.object({
+    label: z.string(),
+    value: z.number()
+  })).default([]),
   
   // Less Frontend Section
   motorolaRoyaltiesPercent: z.number().min(0).max(100).default(0),
@@ -103,11 +107,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query conditions
-    const conditions = [eq(skuFinancialScenarios.isActive, true)];
+    const conditions = [];
 
     // Only super_admins can see all scenarios, others see their own
     if (user.role !== 'super_admin') {
-      conditions.push(eq(skuFinancialScenarios.createdBy, authUser.id));
+      conditions.push(eq(skuFinancialScenarios.userId, user.id));
     }
 
     if (search) {
@@ -132,12 +136,10 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(skuFinancialScenarios.countryCode, countryFilter));
     }
 
-    if (templatesOnly) {
-      conditions.push(eq(skuFinancialScenarios.isTemplate, true));
-    }
+    // Templates filter removed - isTemplate column doesn't exist in DB
 
     // Fetch scenarios with creator info
-    const scenarios = await db
+    let query = db
       .select({
         // Scenario fields
         id: skuFinancialScenarios.id,
@@ -149,47 +151,51 @@ export async function GET(request: NextRequest) {
         
         // Pricing
         asp: skuFinancialScenarios.asp,
-        resellerMarginPercent: skuFinancialScenarios.resellerMarginPercent,
-        marketingReservePercent: skuFinancialScenarios.marketingReservePercent,
-        fulfillmentCosts: skuFinancialScenarios.fulfillmentCosts,
+        fbaFeePercent: skuFinancialScenarios.fbaFeePercent,
+        fbaFeeAmount: skuFinancialScenarios.fbaFeeAmount,
+        amazonReferralFeePercent: skuFinancialScenarios.amazonReferralFeePercent,
+        amazonReferralFeeAmount: skuFinancialScenarios.amazonReferralFeeAmount,
+        acosPercent: skuFinancialScenarios.acosPercent,
+        acosAmount: skuFinancialScenarios.acosAmount,
+        otherFeesAndAdvertising: skuFinancialScenarios.otherFeesAndAdvertising,
         
-        // Product Costs
-        productCostFob: skuFinancialScenarios.productCostFob,
-        swLicenseFee: skuFinancialScenarios.swLicenseFee,
-        otherProductCosts: skuFinancialScenarios.otherProductCosts,
+        // Backend Costs
+        motorolaRoyaltiesPercent: skuFinancialScenarios.motorolaRoyaltiesPercent,
+        motorolaRoyaltiesAmount: skuFinancialScenarios.motorolaRoyaltiesAmount,
+        rtvFreightAssumptions: skuFinancialScenarios.rtvFreightAssumptions,
+        rtvRepairCosts: skuFinancialScenarios.rtvRepairCosts,
+        doaCreditsPercent: skuFinancialScenarios.doaCreditsPercent,
+        doaCreditsAmount: skuFinancialScenarios.doaCreditsAmount,
+        invoiceFactoringNet: skuFinancialScenarios.invoiceFactoringNet,
+        salesCommissionsPercent: skuFinancialScenarios.salesCommissionsPercent,
+        salesCommissionsAmount: skuFinancialScenarios.salesCommissionsAmount,
+        otherFrontendCosts: skuFinancialScenarios.otherFrontendCosts,
         
-        // CoGS
-        returnsFreight: skuFinancialScenarios.returnsFreight,
-        returnsHandling: skuFinancialScenarios.returnsHandling,
-        doaChannelCredit: skuFinancialScenarios.doaChannelCredit,
-        financingCost: skuFinancialScenarios.financingCost,
-        ppsHandlingFee: skuFinancialScenarios.ppsHandlingFee,
-        inboundShippingCost: skuFinancialScenarios.inboundShippingCost,
-        outboundShippingCost: skuFinancialScenarios.outboundShippingCost,
-        greenfileMarketing: skuFinancialScenarios.greenfileMarketing,
-        otherCogs: skuFinancialScenarios.otherCogs,
+        // Landed Costs
+        importDutiesPercent: skuFinancialScenarios.importDutiesPercent,
+        importDutiesAmount: skuFinancialScenarios.importDutiesAmount,
+        exWorksStandard: skuFinancialScenarios.exWorksStandard,
+        importShippingSea: skuFinancialScenarios.importShippingSea,
+        gryphonSoftware: skuFinancialScenarios.gryphonSoftware,
+        otherLandedCosts: skuFinancialScenarios.otherLandedCosts,
         
         // Metadata
-        createdBy: skuFinancialScenarios.createdBy,
-        organizationId: skuFinancialScenarios.organizationId,
+        userId: skuFinancialScenarios.userId,
         createdAt: skuFinancialScenarios.createdAt,
         updatedAt: skuFinancialScenarios.updatedAt,
-        isTemplate: skuFinancialScenarios.isTemplate,
-        version: skuFinancialScenarios.version,
-        parentScenarioId: skuFinancialScenarios.parentScenarioId,
         
         // Creator info
         creatorName: users.name,
         creatorEmail: users.email,
-        
-        // Organization info
-        organizationName: organizations.name,
       })
       .from(skuFinancialScenarios)
-      .leftJoin(users, eq(skuFinancialScenarios.createdBy, users.authId))
-      .leftJoin(organizations, eq(skuFinancialScenarios.organizationId, organizations.id))
-      .where(and(...conditions))
+      .leftJoin(users, eq(skuFinancialScenarios.userId, users.id))
       .orderBy(desc(skuFinancialScenarios.createdAt));
+
+    // Apply conditions only if there are any
+    const scenarios = conditions.length > 0 
+      ? await query.where(and(...conditions))
+      : await query;
 
     return NextResponse.json({ scenarios, count: scenarios.length });
 
@@ -243,10 +249,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = skuScenarioSchema.parse(body);
 
-    // Convert numeric fields to strings for Drizzle
+    // Convert numeric fields to strings for Drizzle - ONLY include fields that exist in DB
     const insertData: any = {
-      ...validatedData,
+      // Metadata
+      scenarioName: validatedData.scenarioName,
+      description: validatedData.description,
+      skuName: validatedData.skuName,
+      channel: validatedData.channel,
+      countryCode: validatedData.countryCode,
       userId: user.id,
+      // Note: Only these columns exist in the actual DB table
+      
+      // Numeric fields converted to strings
       asp: validatedData.asp.toString(),
       fbaFeePercent: validatedData.fbaFeePercent.toString(),
       fbaFeeAmount: validatedData.fbaFeeAmount.toString(),
@@ -254,6 +268,7 @@ export async function POST(request: NextRequest) {
       amazonReferralFeeAmount: validatedData.amazonReferralFeeAmount.toString(),
       acosPercent: validatedData.acosPercent.toString(),
       acosAmount: validatedData.acosAmount.toString(),
+      otherFeesAndAdvertising: validatedData.otherFeesAndAdvertising,
       motorolaRoyaltiesPercent: validatedData.motorolaRoyaltiesPercent.toString(),
       motorolaRoyaltiesAmount: validatedData.motorolaRoyaltiesAmount.toString(),
       rtvFreightAssumptions: validatedData.rtvFreightAssumptions.toString(),
@@ -268,7 +283,10 @@ export async function POST(request: NextRequest) {
       exWorksStandard: validatedData.exWorksStandard.toString(),
       importShippingSea: validatedData.importShippingSea.toString(),
       gryphonSoftware: validatedData.gryphonSoftware.toString(),
-      createdBy: authUser.id,
+      
+      // JSONB fields
+      otherFrontendCosts: validatedData.otherFrontendCosts,
+      otherLandedCosts: validatedData.otherLandedCosts,
     };
 
     // Create the scenario

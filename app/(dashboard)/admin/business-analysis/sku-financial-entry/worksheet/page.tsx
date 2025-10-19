@@ -24,6 +24,7 @@ interface SKUWorksheetData {
   amazonReferralFeeAmount: number;
   acosPercent: number;
   acosAmount: number;
+  otherFeesAndAdvertising: { label: string; value: number }[]; // Dynamic line items for fees
   
   // Less Frontend Section
   motorolaRoyaltiesPercent: number;
@@ -134,6 +135,7 @@ function SKUWorksheetPageContent() {
     amazonReferralFeeAmount: 0,
     acosPercent: 8,
     acosAmount: 0,
+    otherFeesAndAdvertising: [],
     
     // Less Frontend Section
     motorolaRoyaltiesPercent: 5,
@@ -245,6 +247,7 @@ function SKUWorksheetPageContent() {
           amazonReferralFeeAmount: parseFloat(scenario.amazonReferralFeeAmount) || 0,
           acosPercent: parseFloat(scenario.acosPercent) || 8,
           acosAmount: parseFloat(scenario.acosAmount) || 0,
+          otherFeesAndAdvertising: scenario.otherFeesAndAdvertising || [],
           
           // Less Frontend Section
           motorolaRoyaltiesPercent: parseFloat(scenario.motorolaRoyaltiesPercent) || 5,
@@ -407,7 +410,8 @@ function SKUWorksheetPageContent() {
 
   // Net Sales = ASP - FBA Fee - Amazon Referral Fee - ACOS
   const calculateNetSales = () => {
-    return worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
+    const otherFeesTotal = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => sum + item.value, 0);
+    return worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount - otherFeesTotal;
   };
 
   // Total Backend Costs (calculated from individual line items)
@@ -479,6 +483,7 @@ function SKUWorksheetPageContent() {
         amazonReferralFeeAmount: worksheetData.amazonReferralFeeAmount,
         acosPercent: worksheetData.acosPercent,
         acosAmount: worksheetData.acosAmount,
+        otherFeesAndAdvertising: worksheetData.otherFeesAndAdvertising,
         
         // Less Frontend Section
         motorolaRoyaltiesPercent: worksheetData.motorolaRoyaltiesPercent,
@@ -739,10 +744,10 @@ function SKUWorksheetPageContent() {
           </CardContent>
         </Card>
 
-        {/* Section 2: Amazon Fees & ACOS */}
+        {/* Section 2: Fees & Advertising */}
         <Card className="border-2 border-orange-200">
           <CardHeader className="bg-orange-50">
-            <CardTitle className="text-lg sm:text-xl">2. Amazon Fees & Advertising</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">2. Fees & Advertising</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-4">
@@ -861,6 +866,70 @@ function SKUWorksheetPageContent() {
                 <div className="text-sm text-gray-500 italic">
                   Advertising Cost of Sale
                 </div>
+              </div>
+
+              {/* Other Fees & Advertising (Dynamic) */}
+              <div className="space-y-2 border-t pt-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Other Fees & Advertising</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setWorksheetData(prev => ({
+                        ...prev,
+                        otherFeesAndAdvertising: [...prev.otherFeesAndAdvertising, { label: '', value: 0 }]
+                      }));
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Line Item
+                  </Button>
+                </div>
+                {worksheetData.otherFeesAndAdvertising.map((item, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Fee name (e.g., Shopify Fee)"
+                      value={item.label}
+                      onChange={(e) => {
+                        const newItems = [...worksheetData.otherFeesAndAdvertising];
+                        newItems[index].label = e.target.value;
+                        setWorksheetData(prev => ({ ...prev, otherFeesAndAdvertising: newItems }));
+                      }}
+                      className="flex-1"
+                    />
+                    <div className="relative w-32">
+                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="pl-7"
+                        value={item.value || ''}
+                        onChange={(e) => {
+                          const newItems = [...worksheetData.otherFeesAndAdvertising];
+                          newItems[index].value = parseFloat(e.target.value) || 0;
+                          setWorksheetData(prev => ({ ...prev, otherFeesAndAdvertising: newItems }));
+                        }}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setWorksheetData(prev => ({
+                          ...prev,
+                          otherFeesAndAdvertising: prev.otherFeesAndAdvertising.filter((_, i) => i !== index)
+                        }));
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
