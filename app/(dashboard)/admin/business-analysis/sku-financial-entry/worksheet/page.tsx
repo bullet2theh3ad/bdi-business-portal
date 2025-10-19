@@ -202,6 +202,20 @@ function SKUWorksheetPageContent() {
     }
   }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.motorolaRoyaltiesPercent]);
 
+  // Recalculate DOA Credits when Net Sales changes
+  useEffect(() => {
+    if (worksheetData.doaCreditsPercent > 0) {
+      const netSales = worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
+      const newAmount = (netSales * worksheetData.doaCreditsPercent) / 100;
+      if (Math.abs(newAmount - worksheetData.doaCreditsAmount) > 0.01) {
+        setWorksheetData(prev => ({
+          ...prev,
+          doaCreditsAmount: newAmount
+        }));
+      }
+    }
+  }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.doaCreditsPercent]);
+
   // Load existing scenario if editing
   useEffect(() => {
     if (scenarioId) {
@@ -339,17 +353,23 @@ function SKUWorksheetPageContent() {
 
   const syncDoaCredits = (percent?: number, amount?: number) => {
     if (percent !== undefined) {
-      setWorksheetData(prev => ({
-        ...prev,
-        doaCreditsPercent: percent,
-        doaCreditsAmount: (prev.asp * percent) / 100
-      }));
+      setWorksheetData(prev => {
+        const netSales = prev.asp - prev.fbaFeeAmount - prev.amazonReferralFeeAmount - prev.acosAmount;
+        return {
+          ...prev,
+          doaCreditsPercent: percent,
+          doaCreditsAmount: (netSales * percent) / 100
+        };
+      });
     } else if (amount !== undefined) {
-      setWorksheetData(prev => ({
-        ...prev,
-        doaCreditsAmount: amount,
-        doaCreditsPercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
-      }));
+      setWorksheetData(prev => {
+        const netSales = prev.asp - prev.fbaFeeAmount - prev.amazonReferralFeeAmount - prev.acosAmount;
+        return {
+          ...prev,
+          doaCreditsAmount: amount,
+          doaCreditsPercent: netSales > 0 ? (amount / netSales) * 100 : 0
+        };
+      });
     }
   };
 
@@ -976,7 +996,7 @@ function SKUWorksheetPageContent() {
                   </div>
                 </div>
                 <div className="text-sm text-gray-500 italic">
-                  % of ASP
+                  % of Net Sales
                 </div>
               </div>
 
