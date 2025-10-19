@@ -30,7 +30,8 @@ interface SKUWorksheetData {
   motorolaRoyaltiesAmount: number;
   rtvFreightAssumptions: number;
   rtvRepairCosts: number;
-  doaCredits: number;
+  doaCreditsPercent: number;
+  doaCreditsAmount: number;
   invoiceFactoringNet: number;
   salesCommissionsPercent: number;
   salesCommissionsAmount: number;
@@ -139,7 +140,8 @@ function SKUWorksheetPageContent() {
     motorolaRoyaltiesAmount: 0,
     rtvFreightAssumptions: 0.80,
     rtvRepairCosts: 2.93,
-    doaCredits: 0,
+    doaCreditsPercent: 0,
+    doaCreditsAmount: 0,
     invoiceFactoringNet: 0,
     salesCommissionsPercent: 0,
     salesCommissionsAmount: 0,
@@ -235,7 +237,8 @@ function SKUWorksheetPageContent() {
           motorolaRoyaltiesAmount: parseFloat(scenario.motorolaRoyaltiesAmount) || 0,
           rtvFreightAssumptions: parseFloat(scenario.rtvFreightAssumptions) || 0.80,
           rtvRepairCosts: parseFloat(scenario.rtvRepairCosts) || 2.93,
-          doaCredits: parseFloat(scenario.doaCredits) || 0,
+          doaCreditsPercent: parseFloat(scenario.doaCreditsPercent) || 0,
+          doaCreditsAmount: parseFloat(scenario.doaCreditsAmount) || 0,
           invoiceFactoringNet: parseFloat(scenario.invoiceFactoringNet) || 0,
           salesCommissionsPercent: parseFloat(scenario.salesCommissionsPercent) || 0,
           salesCommissionsAmount: parseFloat(scenario.salesCommissionsAmount) || 0,
@@ -334,6 +337,22 @@ function SKUWorksheetPageContent() {
     }
   };
 
+  const syncDoaCredits = (percent?: number, amount?: number) => {
+    if (percent !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        doaCreditsPercent: percent,
+        doaCreditsAmount: (prev.asp * percent) / 100
+      }));
+    } else if (amount !== undefined) {
+      setWorksheetData(prev => ({
+        ...prev,
+        doaCreditsAmount: amount,
+        doaCreditsPercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
+      }));
+    }
+  };
+
   const syncSalesCommissions = (percent?: number, amount?: number) => {
     if (percent !== undefined) {
       setWorksheetData(prev => ({
@@ -373,8 +392,8 @@ function SKUWorksheetPageContent() {
 
   // Total Backend Costs (calculated from individual line items)
   const calculateTotalBackendCosts = () => {
-    const { motorolaRoyaltiesAmount, rtvFreightAssumptions, rtvRepairCosts, doaCredits, invoiceFactoringNet, salesCommissionsAmount } = worksheetData;
-    return motorolaRoyaltiesAmount + rtvFreightAssumptions + rtvRepairCosts + doaCredits + invoiceFactoringNet + salesCommissionsAmount;
+    const { motorolaRoyaltiesAmount, rtvFreightAssumptions, rtvRepairCosts, doaCreditsAmount, invoiceFactoringNet, salesCommissionsAmount } = worksheetData;
+    return motorolaRoyaltiesAmount + rtvFreightAssumptions + rtvRepairCosts + doaCreditsAmount + invoiceFactoringNet + salesCommissionsAmount;
   };
 
   // Total Frontend Costs (includes backend costs + other frontend costs)
@@ -445,7 +464,8 @@ function SKUWorksheetPageContent() {
         motorolaRoyaltiesAmount: worksheetData.motorolaRoyaltiesAmount,
         rtvFreightAssumptions: worksheetData.rtvFreightAssumptions,
         rtvRepairCosts: worksheetData.rtvRepairCosts,
-        doaCredits: worksheetData.doaCredits,
+        doaCreditsPercent: worksheetData.doaCreditsPercent,
+        doaCreditsAmount: worksheetData.doaCreditsAmount,
         invoiceFactoringNet: worksheetData.invoiceFactoringNet,
         salesCommissionsPercent: worksheetData.salesCommissionsPercent,
         salesCommissionsAmount: worksheetData.salesCommissionsAmount,
@@ -922,20 +942,41 @@ function SKUWorksheetPageContent() {
               </div>
 
               {/* DOA Credits */}
-              <div className="space-y-2">
-                <Label htmlFor="doa-credits">DOA Credits</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-                  <Input
-                    id="doa-credits"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="pl-7"
-                    value={worksheetData.doaCredits || ''}
-                    onChange={(e) => setWorksheetData(prev => ({ ...prev, doaCredits: parseFloat(e.target.value) || 0 }))}
-                    onFocus={(e) => e.target.select()}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="doa-credits-percent">DOA Credits (%)</Label>
+                  <div className="relative">
+                    <Input
+                      id="doa-credits-percent"
+                      type="number"
+                      step="0.01"
+                      placeholder="0"
+                      className="pr-7"
+                      value={worksheetData.doaCreditsPercent || ''}
+                      onChange={(e) => syncDoaCredits(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="doa-credits-amount">DOA Credits ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <Input
+                      id="doa-credits-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={worksheetData.doaCreditsAmount || ''}
+                      onChange={(e) => syncDoaCredits(undefined, parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 italic">
+                  % of ASP
                 </div>
               </div>
 

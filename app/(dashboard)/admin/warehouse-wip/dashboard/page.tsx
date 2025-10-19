@@ -17,6 +17,9 @@ import {
   Filter,
   X,
   Loader2,
+  Upload,
+  FileSpreadsheet,
+  Trash2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -40,6 +43,14 @@ export default function WarehouseWIPDashboard() {
   const [source, setSource] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<string>('');
+
+  // Upload state
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Export modal
   const [showExportModal, setShowExportModal] = useState(false);
@@ -94,6 +105,70 @@ export default function WarehouseWIPDashboard() {
   };
 
   const hasFilters = importBatchId || sku || source || search || selectedStage;
+
+  // Handle file upload
+  const handleFileUpload = async () => {
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError('');
+    setUploadSuccess(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/warehouse/wip/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      setUploadSuccess(true);
+      setFile(null);
+      
+      // Refresh data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setUploadError(error.message || 'Failed to upload file');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle delete all data
+  const handleDeleteAllData = async () => {
+    setDeleting(true);
+    try {
+      const response = await fetch('/api/warehouse/wip/imports', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete data');
+      }
+
+      setShowDeleteConfirm(false);
+      
+      // Refresh page
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      alert(error.message || 'Failed to delete data');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Build filter label for metric cards
   const getFilterLabel = () => {
@@ -179,6 +254,111 @@ export default function WarehouseWIPDashboard() {
           Export Report
         </Button>
       </div>
+
+      {/* Data Upload Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5" />
+                Data Upload
+              </CardTitle>
+              <CardDescription>
+                Upload Weekly_Report_*.xlsx file to import WIP data
+              </CardDescription>
+            </div>
+            {importsData?.imports && importsData.imports.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete All Data
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* File Input */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => {
+                    const selectedFile = e.target.files?.[0];
+                    if (selectedFile) {
+                      setFile(selectedFile);
+                      setUploadError('');
+                      setUploadSuccess(false);
+                    }
+                  }}
+                  disabled={uploading}
+                  className="cursor-pointer"
+                />
+              </div>
+              <Button
+                onClick={handleFileUpload}
+                disabled={!file || uploading}
+                className="gap-2"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Upload File
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Status Messages */}
+            {uploadSuccess && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm">
+                ✅ File uploaded successfully! Refreshing data...
+              </div>
+            )}
+            {uploadError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                ❌ {uploadError}
+              </div>
+            )}
+
+            {/* Recent Imports */}
+            {importsData?.imports && importsData.imports.length > 0 && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold mb-2">Recent Imports:</h4>
+                <div className="space-y-2">
+                  {importsData.imports.slice(0, 3).map((imp: any) => (
+                    <div
+                      key={imp.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
+                    >
+                      <div>
+                        <span className="font-medium">{imp.file_name}</span>
+                        <span className="text-gray-500 ml-2">
+                          ({imp.total_records} records)
+                        </span>
+                      </div>
+                      <span className="text-gray-500 text-xs">
+                        {new Date(imp.started_at).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card>
@@ -575,6 +755,44 @@ export default function WarehouseWIPDashboard() {
                 <>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete All WIP Data?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete all warehouse WIP data and import history. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAllData}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete All Data
                 </>
               )}
             </Button>

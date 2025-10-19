@@ -47,8 +47,11 @@ CREATE TABLE IF NOT EXISTS public.sku_financial_scenarios (
   rtv_freight_assumptions NUMERIC(15, 2) DEFAULT 0.80,
   rtv_repair_costs NUMERIC(15, 2) DEFAULT 2.93,
   
+  -- DOA Credits (% and $)
+  doa_credits_percent NUMERIC(5, 2) DEFAULT 0,
+  doa_credits_amount NUMERIC(15, 2) DEFAULT 0,
+  
   -- Other Frontend Costs
-  doa_credits NUMERIC(15, 2) DEFAULT 0,
   invoice_factoring_net NUMERIC(15, 2) DEFAULT 0,
   
   -- Sales Commissions (% and $)
@@ -142,11 +145,11 @@ SELECT
   
   -- Total Backend Costs (calculated)
   (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-   s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) AS total_backend_costs,
+   s.doa_credits_amount + s.invoice_factoring_net + s.sales_commissions_amount) AS total_backend_costs,
   
   -- Total Frontend Costs (backend costs + other frontend costs - note: other_frontend_costs is JSONB so needs special handling)
   (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-   s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) AS total_frontend_costs,
+   s.doa_credits_amount + s.invoice_factoring_net + s.sales_commissions_amount) AS total_frontend_costs,
   
   -- Landed DDP
   (s.ex_works_standard + s.import_duties_amount + s.import_shipping_sea + s.gryphon_software) AS landed_ddp,
@@ -154,7 +157,7 @@ SELECT
   -- Gross Profit = Net Sales - Total Frontend Costs - Landed DDP
   ((s.asp - s.fba_fee_amount - s.amazon_referral_fee_amount - s.acos_amount) - 
    (s.motorola_royalties_amount + s.rtv_freight_assumptions + s.rtv_repair_costs + 
-    s.doa_credits + s.invoice_factoring_net + s.sales_commissions_amount) - 
+    s.doa_credits_amount + s.invoice_factoring_net + s.sales_commissions_amount) - 
    (s.ex_works_standard + s.import_duties_amount + s.import_shipping_sea + s.gryphon_software)) AS gross_profit,
   
   -- Gross Margin % = (Gross Profit / ASP) * 100
