@@ -16,30 +16,37 @@ const skuScenarioSchema = z.object({
   channel: z.string().min(1, 'Channel is required'),
   countryCode: z.string().length(2).or(z.string().length(3)),
   
-  // Pricing & Deductions
+  // Top Section - ASP and Marketplace Fees
   asp: z.number().min(0),
-  resellerMarginPercent: z.number().min(0).max(100),
-  marketingReservePercent: z.number().min(0).max(100),
-  fulfillmentCosts: z.number().min(0),
+  fbaFeePercent: z.number().min(0).max(100).default(0),
+  fbaFeeAmount: z.number().min(0).default(0),
+  amazonReferralFeePercent: z.number().min(0).max(100).default(0),
+  amazonReferralFeeAmount: z.number().min(0).default(0),
+  acosPercent: z.number().min(0).max(100).default(0),
+  acosAmount: z.number().min(0).default(0),
   
-  // Product Costs
-  productCostFob: z.number().min(0),
-  swLicenseFee: z.number().min(0),
-  otherProductCosts: z.array(z.object({
+  // Less Frontend Section
+  motorolaRoyaltiesPercent: z.number().min(0).max(100).default(0),
+  motorolaRoyaltiesAmount: z.number().min(0).default(0),
+  rtvFreightAssumptions: z.number().min(0).default(0),
+  rtvRepairCosts: z.number().min(0).default(0),
+  doaCreditsPercent: z.number().min(0).max(100).default(0),
+  doaCreditsAmount: z.number().min(0).default(0),
+  invoiceFactoringNet: z.number().min(0).default(0),
+  salesCommissionsPercent: z.number().min(0).max(100).default(0),
+  salesCommissionsAmount: z.number().min(0).default(0),
+  otherFrontendCosts: z.array(z.object({
     label: z.string(),
     value: z.number()
   })).default([]),
   
-  // CoGS
-  returnsFreight: z.number().min(0).default(13.00),
-  returnsHandling: z.number().min(0).default(0.45),
-  doaChannelCredit: z.number().min(0).default(0),
-  financingCost: z.number().min(0).default(0),
-  ppsHandlingFee: z.number().min(0).default(0),
-  inboundShippingCost: z.number().min(0).default(0),
-  outboundShippingCost: z.number().min(0).default(0),
-  greenfileMarketing: z.number().min(0).default(0),
-  otherCogs: z.array(z.object({
+  // Landed DDP Calculations Section
+  importDutiesPercent: z.number().min(0).max(100).default(0),
+  importDutiesAmount: z.number().min(0).default(0),
+  exWorksStandard: z.number().min(0).default(0),
+  importShippingSea: z.number().min(0).default(0),
+  gryphonSoftware: z.number().min(0).default(0),
+  otherLandedCosts: z.array(z.object({
     label: z.string(),
     value: z.number()
   })).default([]),
@@ -239,20 +246,28 @@ export async function POST(request: NextRequest) {
     // Convert numeric fields to strings for Drizzle
     const insertData: any = {
       ...validatedData,
+      userId: user.id,
       asp: validatedData.asp.toString(),
-      resellerMarginPercent: validatedData.resellerMarginPercent.toString(),
-      marketingReservePercent: validatedData.marketingReservePercent.toString(),
-      fulfillmentCosts: validatedData.fulfillmentCosts.toString(),
-      productCostFob: validatedData.productCostFob.toString(),
-      swLicenseFee: validatedData.swLicenseFee.toString(),
-      returnsFreight: validatedData.returnsFreight.toString(),
-      returnsHandling: validatedData.returnsHandling.toString(),
-      doaChannelCredit: validatedData.doaChannelCredit.toString(),
-      financingCost: validatedData.financingCost.toString(),
-      ppsHandlingFee: validatedData.ppsHandlingFee.toString(),
-      inboundShippingCost: validatedData.inboundShippingCost.toString(),
-      outboundShippingCost: validatedData.outboundShippingCost.toString(),
-      greenfileMarketing: validatedData.greenfileMarketing.toString(),
+      fbaFeePercent: validatedData.fbaFeePercent.toString(),
+      fbaFeeAmount: validatedData.fbaFeeAmount.toString(),
+      amazonReferralFeePercent: validatedData.amazonReferralFeePercent.toString(),
+      amazonReferralFeeAmount: validatedData.amazonReferralFeeAmount.toString(),
+      acosPercent: validatedData.acosPercent.toString(),
+      acosAmount: validatedData.acosAmount.toString(),
+      motorolaRoyaltiesPercent: validatedData.motorolaRoyaltiesPercent.toString(),
+      motorolaRoyaltiesAmount: validatedData.motorolaRoyaltiesAmount.toString(),
+      rtvFreightAssumptions: validatedData.rtvFreightAssumptions.toString(),
+      rtvRepairCosts: validatedData.rtvRepairCosts.toString(),
+      doaCreditsPercent: validatedData.doaCreditsPercent.toString(),
+      doaCreditsAmount: validatedData.doaCreditsAmount.toString(),
+      invoiceFactoringNet: validatedData.invoiceFactoringNet.toString(),
+      salesCommissionsPercent: validatedData.salesCommissionsPercent.toString(),
+      salesCommissionsAmount: validatedData.salesCommissionsAmount.toString(),
+      importDutiesPercent: validatedData.importDutiesPercent.toString(),
+      importDutiesAmount: validatedData.importDutiesAmount.toString(),
+      exWorksStandard: validatedData.exWorksStandard.toString(),
+      importShippingSea: validatedData.importShippingSea.toString(),
+      gryphonSoftware: validatedData.gryphonSoftware.toString(),
       createdBy: authUser.id,
     };
 
