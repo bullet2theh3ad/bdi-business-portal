@@ -809,7 +809,7 @@ function SKUWorksheetPageContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="greenfile-marketing">Greenfile Marketing *</Label>
+                <Label htmlFor="greenfile-marketing">Greenfield Marketing *</Label>
                 <Input
                   id="greenfile-marketing"
                   type="number"

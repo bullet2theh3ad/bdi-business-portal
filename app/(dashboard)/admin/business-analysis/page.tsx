@@ -1146,7 +1146,7 @@ export default function BusinessAnalysisPage() {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Greenfile Marketing
+                            Greenfield Marketing
                           </label>
                           <div className="relative">
                             <span className="absolute left-3 top-2 text-gray-500">$</span>
