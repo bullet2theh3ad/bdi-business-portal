@@ -1548,3 +1548,21 @@ export const skuFinancialScenarios = pgTable('sku_financial_scenarios', {
 
 export type SkuFinancialScenario = typeof skuFinancialScenarios.$inferSelect;
 export type NewSkuFinancialScenario = typeof skuFinancialScenarios.$inferInsert;
+
+// ===== SALES REPORTS =====
+export const salesReports = pgTable('sales_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  description: text('description'),
+  icon: text('icon').default('📊'),
+  color: text('color').default('blue'),
+  displayOrder: integer('display_order').default(0),
+  isActive: boolean('is_active').default(true),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type SalesReport = typeof salesReports.$inferSelect;
+export type NewSalesReport = typeof salesReports.$inferInsert;

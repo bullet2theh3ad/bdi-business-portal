@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,21 +17,9 @@ interface ReportSource {
   color: string;
 }
 
-// Default reports - easily updatable
-const DEFAULT_REPORTS: ReportSource[] = [
-  {
-    id: 'harpia-sales',
-    name: 'Harpia Sales Dashboard',
-    url: 'https://reports.harpia.co/shared/yW1gQ5NQB2J8dbAj#tab:900448',
-    description: 'Main sales reporting and analytics dashboard',
-    icon: '📊',
-    color: 'blue'
-  },
-  // Add more reports here as needed
-];
-
 export default function SalesReportsPage() {
-  const [reports, setReports] = useState<ReportSource[]>(DEFAULT_REPORTS);
+  const [reports, setReports] = useState<ReportSource[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportSource | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -47,6 +35,29 @@ export default function SalesReportsPage() {
     icon: '📊',
     color: 'blue'
   });
+  const [saving, setSaving] = useState(false);
+
+  // Fetch reports on mount
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/business-analysis/sales-reports');
+      if (response.ok) {
+        const data = await response.json();
+        setReports(data.reports || []);
+      } else {
+        console.error('Failed to fetch reports');
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSelectReport = (report: ReportSource) => {
     setSelectedReport(report);
@@ -82,32 +93,81 @@ export default function SalesReportsPage() {
     setIsAddingNew(true);
   };
 
-  const handleSaveReport = () => {
-    if (editingReport) {
-      // Update existing
-      setReports(reports.map(r => 
-        r.id === editingReport.id 
-          ? { ...editingReport, ...formData }
-          : r
-      ));
-    } else if (isAddingNew) {
-      // Add new
-      const newReport: ReportSource = {
-        id: `custom-${Date.now()}`,
-        ...formData
-      };
-      setReports([...reports, newReport]);
+  const handleSaveReport = async () => {
+    if (!formData.name || !formData.url) {
+      alert('Name and URL are required');
+      return;
     }
-    setEditingReport(null);
-    setIsAddingNew(false);
+
+    try {
+      setSaving(true);
+      
+      if (editingReport) {
+        // Update existing
+        const response = await fetch(`/api/business-analysis/sales-reports/${editingReport.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setReports(reports.map(r => r.id === editingReport.id ? data.report : r));
+        } else {
+          const error = await response.json();
+          alert(`Failed to update report: ${error.error}`);
+          return;
+        }
+      } else if (isAddingNew) {
+        // Add new
+        const response = await fetch('/api/business-analysis/sales-reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setReports([...reports, data.report]);
+        } else {
+          const error = await response.json();
+          alert(`Failed to create report: ${error.error}`);
+          return;
+        }
+      }
+
+      setEditingReport(null);
+      setIsAddingNew(false);
+    } catch (error) {
+      console.error('Error saving report:', error);
+      alert('Failed to save report');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteReport = (reportId: string) => {
-    if (confirm('Are you sure you want to delete this report?')) {
-      setReports(reports.filter(r => r.id !== reportId));
-      if (selectedReport?.id === reportId) {
-        setSelectedReport(null);
+  const handleDeleteReport = async (reportId: string) => {
+    if (!confirm('Are you sure you want to delete this report?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/business-analysis/sales-reports/${reportId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setReports(reports.filter(r => r.id !== reportId));
+        if (selectedReport?.id === reportId) {
+          setSelectedReport(null);
+        }
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete report: ${error.error}`);
       }
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      alert('Failed to delete report');
     }
   };
 
@@ -427,13 +487,13 @@ export default function SalesReportsPage() {
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                      <Button 
+                      <Button
                         onClick={handleSaveReport} 
                         className="flex-1"
                         size="lg"
-                        disabled={!formData.name || !formData.url}
+                        disabled={!formData.name || !formData.url || saving}
                       >
-                        Save Report
+                        {saving ? 'Saving...' : 'Save Report'}
                       </Button>
                       <Button
                         variant="outline"
