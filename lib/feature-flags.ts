@@ -6,8 +6,8 @@
 // QuickBooks Integration Feature Flag
 export const QUICKBOOKS_WHITELIST = [
   'scistulli@boundlessdevices.com',
-  // Add more emails here as you expand access
-  // 'dzand@boundlessdevices.com',
+  'dzand@boundlessdevices.com',
+  'sjin@boundlessdevices.com',
 ];
 
 export function canAccessQuickBooks(userEmail: string | null | undefined): boolean {
@@ -19,7 +19,8 @@ export function canAccessQuickBooks(userEmail: string | null | undefined): boole
 export const BUSINESS_ANALYSIS_WHITELIST = [
   'scistulli@boundlessdevices.com',
   'dzand@boundlessdevices.com',
-  // Add more emails here as you expand access
+  'sjin@boundlessdevices.com',
+  'hmitchem@boundlessdevices.com',
 ];
 
 export function canAccessBusinessAnalysis(userEmail: string | null | undefined): boolean {

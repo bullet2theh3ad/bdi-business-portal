@@ -200,25 +200,27 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     icon: 'lock',
     requiresRole: ['super_admin'], // Super Admin only
     requiresBDI: true, // BDI-only feature
-    requiresFeatureFlag: canAccessBusinessAnalysis, // Email-based whitelist
+    // NOTE: Parent menu shows if user has access to ANY child item
     children: [
       {
         title: 'NRE Spend',
         href: '/admin/nre-budget',
         icon: 'orders',
         requiresRole: ['super_admin', 'admin_cfo', 'admin_nre'],
+        // All BDI super_admins can see this
       },
       {
         title: 'Budget Targets',
         href: '/admin/budget-targets',
         icon: 'forecasts',
         requiresRole: ['super_admin', 'admin_cfo'],
+        // All BDI super_admins can see this
       },
       {
         title: 'QuickBooks',
         icon: 'analytics',
         requiresRole: ['super_admin'],
-        requiresFeatureFlag: canAccessQuickBooks,
+        requiresFeatureFlag: canAccessQuickBooks, // scistulli, dzand, sjin only
         children: [
           {
             title: 'Dashboard',
@@ -271,7 +273,7 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         title: 'Business Analysis',
         icon: 'analytics',
         requiresRole: ['super_admin'],
-        requiresFeatureFlag: canAccessBusinessAnalysis,
+        requiresFeatureFlag: canAccessBusinessAnalysis, // scistulli, dzand, sjin, hmitchem only
         children: [
           {
             title: 'Dashboard',
