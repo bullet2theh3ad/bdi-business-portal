@@ -142,6 +142,12 @@ export async function POST(request: NextRequest) {
           actualEndDate = endDate;
           console.log(`[Financial Data] 🔄 Fetching only new data from ${actualStartDate} onwards (delta sync)`);
         }
+        // If we get here, the requested range is entirely within DB range but didn't match the first condition
+        // This can happen due to date comparison precision. Skip API fetch.
+        else {
+          console.log('[Financial Data] ✅ Requested range is within DB range. No API fetch needed.');
+          needsAPIFetch = false;
+        }
       }
     } else {
       console.log('[Financial Data] No existing data in database. Fetching all data from API.');
