@@ -99,6 +99,25 @@ export async function POST(request: NextRequest) {
     
     const hasSummary = existingSummary && existingSummary.length > 0;
     
+    // If no exact match, check for overlapping summaries we can aggregate
+    let overlappingSummaries: any[] = [];
+    if (!hasSummary && lineItemCount > 0) {
+      overlappingSummaries = await db
+        .select()
+        .from(amazonFinancialSummaries)
+        .where(
+          and(
+            gte(amazonFinancialSummaries.dateRangeStart, new Date(startDate)),
+            lte(amazonFinancialSummaries.dateRangeEnd, new Date(endDate))
+          )
+        )
+        .execute();
+      
+      if (overlappingSummaries.length > 0) {
+        console.log(`[Financial Data] 📊 Found ${overlappingSummaries.length} overlapping summaries to aggregate ad spend/credits/debits.`);
+      }
+    }
+    
     // Logic: If we have line items AND a summary, use DB. Otherwise, fetch from API (if within limits).
     const hasCompleteData = lineItemCount > 0 && hasSummary;
     
@@ -273,11 +292,26 @@ export async function POST(request: NextRequest) {
         .filter(item => item.transactionType === 'refund')
         .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0));
       
-      // Ad spend, chargebacks, coupons, adjustments not available in line items
-      totalAdSpend = 0;
-      totalChargebacks = 0;
-      totalCoupons = 0;
-      adjustments = { credits: 0, debits: 0, net: 0 };
+      // Try to aggregate ad spend, credits, debits from overlapping summaries
+      if (overlappingSummaries.length > 0) {
+        console.log(`[Financial Data] 📊 Aggregating ad spend/credits/debits from ${overlappingSummaries.length} overlapping summaries...`);
+        totalAdSpend = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalAdSpend || 0)), 0);
+        totalChargebacks = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalChargebacks || 0)), 0);
+        totalCoupons = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalCoupons || 0)), 0);
+        const totalCredits = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentCredits || 0)), 0);
+        const totalDebits = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentDebits || 0)), 0);
+        adjustments = { 
+          credits: totalCredits, 
+          debits: totalDebits, 
+          net: totalCredits - totalDebits 
+        };
+      } else {
+        // Ad spend, chargebacks, coupons, adjustments not available
+        totalAdSpend = 0;
+        totalChargebacks = 0;
+        totalCoupons = 0;
+        adjustments = { credits: 0, debits: 0, net: 0 };
+      }
       adSpendBreakdown = {};
       adjustmentBreakdown = { credits: [], debits: [] };
       
