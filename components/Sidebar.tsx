@@ -176,103 +176,6 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         ],
       },
       {
-        title: '🔒 Business',
-        icon: 'lock',
-        requiresRole: ['super_admin'], // Super Admin only
-        requiresBDI: true, // BDI-only feature
-        requiresFeatureFlag: canAccessBusinessAnalysis, // Email-based whitelist (same as Business Analysis)
-        children: [
-          {
-            title: 'NRE Spend',
-            href: '/admin/nre-budget',
-            icon: 'orders',
-            requiresRole: ['super_admin', 'admin_cfo', 'admin_nre'],
-          },
-          {
-            title: 'Budget Targets',
-            href: '/admin/budget-targets',
-            icon: 'forecasts',
-            requiresRole: ['super_admin', 'admin_cfo'],
-          },
-          {
-            title: 'QuickBooks',
-            icon: 'analytics',
-            requiresRole: ['super_admin'],
-            requiresFeatureFlag: canAccessQuickBooks,
-            children: [
-              {
-                title: 'Dashboard',
-                href: '/admin/quickbooks',
-                icon: 'dashboard',
-              },
-              {
-                title: 'Reports',
-                href: '/admin/quickbooks/reports',
-                icon: 'reports',
-              },
-              {
-                title: 'Products',
-                href: '/admin/quickbooks/products',
-                icon: 'inventory',
-              },
-              {
-                title: 'Payments/Bills',
-                href: '/admin/quickbooks/payments-bills',
-                icon: 'finance',
-              },
-              {
-                title: 'Sales Receipts',
-                href: '/admin/quickbooks/sales-receipts',
-                icon: 'orders',
-              },
-              {
-                title: 'Credit Memos',
-                href: '/admin/quickbooks/credit-memos',
-                icon: 'document',
-              },
-              {
-                title: 'Purchase Orders',
-                href: '/admin/quickbooks/purchase-orders',
-                icon: 'shipping',
-              },
-              {
-                title: 'Bank Deposits',
-                href: '/admin/quickbooks/bank-deposits',
-                icon: 'finance',
-              },
-              {
-                title: 'Data Viewer',
-                href: '/admin/quickbooks/data-viewer',
-                icon: 'list',
-              },
-            ],
-          },
-          {
-            title: 'Business Analysis',
-            icon: 'analytics',
-            requiresRole: ['super_admin'],
-            requiresFeatureFlag: canAccessBusinessAnalysis,
-            children: [
-              {
-                title: 'Dashboard',
-                href: '/admin/business-analysis',
-                icon: 'dashboard',
-              },
-              {
-                title: 'SKU Financial Entry',
-                href: '/admin/business-analysis/sku-financial-entry',
-                icon: 'calculator',
-              },
-              {
-                title: 'Sales Reports',
-                href: '/admin/business-analysis/sales-reports',
-                icon: 'reports',
-              },
-            ],
-          },
-        ],
-      },
-      {
         title: '📦 WIP Flow',
         icon: 'inventory_analytics',
         requiresRole: ['super_admin', 'admin', 'operations'], // Operations team access
@@ -287,6 +190,103 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             title: '📊 RMA Analytics',
             href: '/admin/warehouse-wip/rma',
             icon: 'dashboard',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: '🔒 Business',
+    icon: 'lock',
+    requiresRole: ['super_admin'], // Super Admin only
+    requiresBDI: true, // BDI-only feature
+    requiresFeatureFlag: canAccessBusinessAnalysis, // Email-based whitelist
+    children: [
+      {
+        title: 'NRE Spend',
+        href: '/admin/nre-budget',
+        icon: 'orders',
+        requiresRole: ['super_admin', 'admin_cfo', 'admin_nre'],
+      },
+      {
+        title: 'Budget Targets',
+        href: '/admin/budget-targets',
+        icon: 'forecasts',
+        requiresRole: ['super_admin', 'admin_cfo'],
+      },
+      {
+        title: 'QuickBooks',
+        icon: 'analytics',
+        requiresRole: ['super_admin'],
+        requiresFeatureFlag: canAccessQuickBooks,
+        children: [
+          {
+            title: 'Dashboard',
+            href: '/admin/quickbooks',
+            icon: 'dashboard',
+          },
+          {
+            title: 'Reports',
+            href: '/admin/quickbooks/reports',
+            icon: 'reports',
+          },
+          {
+            title: 'Products',
+            href: '/admin/quickbooks/products',
+            icon: 'inventory',
+          },
+          {
+            title: 'Payments/Bills',
+            href: '/admin/quickbooks/payments-bills',
+            icon: 'finance',
+          },
+          {
+            title: 'Sales Receipts',
+            href: '/admin/quickbooks/sales-receipts',
+            icon: 'orders',
+          },
+          {
+            title: 'Credit Memos',
+            href: '/admin/quickbooks/credit-memos',
+            icon: 'document',
+          },
+          {
+            title: 'Purchase Orders',
+            href: '/admin/quickbooks/purchase-orders',
+            icon: 'shipping',
+          },
+          {
+            title: 'Bank Deposits',
+            href: '/admin/quickbooks/bank-deposits',
+            icon: 'finance',
+          },
+          {
+            title: 'Data Viewer',
+            href: '/admin/quickbooks/data-viewer',
+            icon: 'list',
+          },
+        ],
+      },
+      {
+        title: 'Business Analysis',
+        icon: 'analytics',
+        requiresRole: ['super_admin'],
+        requiresFeatureFlag: canAccessBusinessAnalysis,
+        children: [
+          {
+            title: 'Dashboard',
+            href: '/admin/business-analysis',
+            icon: 'dashboard',
+          },
+          {
+            title: 'SKU Financial Entry',
+            href: '/admin/business-analysis/sku-financial-entry',
+            icon: 'calculator',
+          },
+          {
+            title: 'Sales Reports',
+            href: '/admin/business-analysis/sales-reports',
+            icon: 'reports',
           },
         ],
       },
