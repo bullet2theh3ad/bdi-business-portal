@@ -74,12 +74,27 @@ export async function POST(request: NextRequest) {
     let syncType: 'full' | 'delta';
 
     if (lastSync.length > 0 && lastSync[0].periodEnd) {
-      // Delta sync: Start from day after last sync
       const lastSyncEnd = new Date(lastSync[0].periodEnd);
-      startDate = new Date(lastSyncEnd.getTime() + 24 * 60 * 60 * 1000); // Next day
-      syncType = 'delta';
-      console.log(`   ✓ Last sync: ${lastSync[0].periodEnd}`);
-      console.log(`   ✓ Delta sync from ${startDate.toISOString().split('T')[0]}`);
+      const todayStr = today.toISOString().split('T')[0];
+      const lastSyncStr = lastSyncEnd.toISOString().split('T')[0];
+      
+      // If last sync was today, force full re-sync
+      if (lastSyncStr === todayStr) {
+        console.log(`   ⚠️  Last sync was today (${lastSyncStr}), forcing FULL re-sync`);
+        startDate = new Date(today.getTime() - 179 * 24 * 60 * 60 * 1000);
+        syncType = 'full';
+        
+        // Delete old data to avoid duplicates
+        console.log(`   🗑️  Clearing old transaction data...`);
+        await db.delete(amazonFinancialTransactions).execute();
+        console.log(`   ✓ Old data cleared`);
+      } else {
+        // Delta sync: Start from day after last sync
+        startDate = new Date(lastSyncEnd.getTime() + 24 * 60 * 60 * 1000);
+        syncType = 'delta';
+        console.log(`   ✓ Last sync: ${lastSyncStr}`);
+        console.log(`   ✓ Delta sync from ${startDate.toISOString().split('T')[0]}`);
+      }
     } else {
       // Full sync: Last 179 days (Amazon API limit)
       startDate = new Date(today.getTime() - 179 * 24 * 60 * 60 * 1000);
@@ -93,8 +108,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`   📊 Sync period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]} (${daysDiff} days)`);
 
-    // If no new data to sync, return early
-    if (daysDiff <= 0) {
+    // If no new data to sync (delta mode only), return early
+    if (daysDiff <= 0 && syncType === 'delta') {
       console.log('   ℹ️  No new data to sync');
       return NextResponse.json({
         success: true,
