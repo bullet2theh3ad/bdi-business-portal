@@ -289,6 +289,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/business-analysis/sales-reports',
             icon: 'reports',
           },
+          {
+            title: 'Sales Velocity',
+            href: '/admin/business-analysis/sales-velocity',
+            icon: 'trending-up',
+          },
         ],
       },
     ],

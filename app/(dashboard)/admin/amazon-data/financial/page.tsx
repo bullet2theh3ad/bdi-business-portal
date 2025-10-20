@@ -352,7 +352,6 @@ export default function AmazonFinancialDataPage() {
         ['Total Orders', financialData.uniqueOrders, ''],
         ['Total SKUs', financialData.uniqueSKUs || 0, ''],
         ['Total Revenue', financialData.totalRevenue, 'Excludes tax'],
-        ['Total Tax Collected', financialData.totalTax || 0, 'Sales tax from customers'],
         ['Total Fees', financialData.totalFees, 'Amazon fees'],
         ['Total Refunds', financialData.totalRefunds || 0, 'Money refunded'],
         ['Net Revenue', financialData.netRevenue, 'Revenue - Fees'],
@@ -810,18 +809,6 @@ export default function AmazonFinancialDataPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-indigo-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Tax</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-indigo-600">
-                  {formatCurrency(financialData.totalTax || 0)}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Tax collected</p>
-              </CardContent>
-            </Card>
-
             <Card className="border-l-4 border-l-red-500">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 flex items-center justify-between">
@@ -893,20 +880,6 @@ export default function AmazonFinancialDataPage() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {financialData.marketingROI?.toFixed(0)}% ROI
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-teal-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Tax Refunded</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-teal-600">
-                  {formatCurrency(financialData.totalTaxRefunded || 0)}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Tax returned to customers
                 </p>
               </CardContent>
             </Card>
