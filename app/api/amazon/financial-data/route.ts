@@ -99,18 +99,33 @@ export async function POST(request: NextRequest) {
     
     const hasSummary = existingSummary && existingSummary.length > 0;
     
-    // Logic: If we have line items AND a summary, use DB. Otherwise, fetch from API.
+    // Logic: If we have line items AND a summary, use DB. Otherwise, fetch from API (if within limits).
     const hasCompleteData = lineItemCount > 0 && hasSummary;
+    
+    // Check if date range exceeds Amazon API limit (180 days)
+    const exceedsAPILimit = daysDiff > 180;
     
     if (hasCompleteData) {
       console.log(`[Financial Data] ✅ Found ${lineItemCount} line items + summary in DB for ${startDate} to ${endDate}. Using cached data.`);
     } else if (lineItemCount > 0 && !hasSummary) {
-      console.log(`[Financial Data] ⚠️ Found ${lineItemCount} line items but no summary. Will fetch from API to get ad spend/credits/debits.`);
+      if (exceedsAPILimit) {
+        console.log(`[Financial Data] ⚠️ Found ${lineItemCount} line items but no summary. Date range (${daysDiff} days) exceeds API limit. Using DB only (ad spend will be $0).`);
+      } else {
+        console.log(`[Financial Data] ⚠️ Found ${lineItemCount} line items but no summary. Will fetch from API to get ad spend/credits/debits.`);
+      }
     } else {
-      console.log(`[Financial Data] 🔄 No data in DB. Will fetch from Amazon API.`);
+      if (exceedsAPILimit) {
+        console.log(`[Financial Data] ❌ No data in DB and date range (${daysDiff} days) exceeds API limit (180 days). Cannot fetch.`);
+      } else {
+        console.log(`[Financial Data] 🔄 No data in DB. Will fetch from Amazon API.`);
+      }
     }
     
-    const needsAPIFetch = !hasCompleteData;
+    // Only fetch from API if:
+    // 1. We don't have complete data (line items + summary)
+    // 2. Date range is within API limits (180 days)
+    // 3. We either have no data OR we have line items but need summary
+    const needsAPIFetch = !hasCompleteData && !exceedsAPILimit && (lineItemCount === 0 || !hasSummary);
     
     const actualStartDate = startDate;
     const actualEndDate = endDate;

@@ -31,6 +31,15 @@ export async function GET() {
 
     const { earliestDate, latestDate, totalRecords } = dateRange[0];
 
+    // Format dates to YYYY-MM-DD (strip time and timezone)
+    const formatDate = (dateStr: string) => {
+      const date = new Date(dateStr);
+      return date.toISOString().split('T')[0];
+    };
+
+    const formattedEarliestDate = formatDate(earliestDate);
+    const formattedLatestDate = formatDate(latestDate);
+
     // Check for gaps in the data (dates with no records)
     const gapCheck = await db
       .select({
@@ -43,8 +52,8 @@ export async function GET() {
       .execute();
 
     // Calculate total days in range
-    const start = new Date(earliestDate);
-    const end = new Date(latestDate);
+    const start = new Date(formattedEarliestDate);
+    const end = new Date(formattedLatestDate);
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const daysWithData = gapCheck.length;
     const hasGaps = daysWithData < totalDays;
@@ -52,8 +61,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       hasData: true,
-      earliestDate: earliestDate.split('T')[0], // Return YYYY-MM-DD only
-      latestDate: latestDate.split('T')[0],
+      earliestDate: formattedEarliestDate,
+      latestDate: formattedLatestDate,
       totalRecords: Number(totalRecords),
       totalDays,
       daysWithData,
