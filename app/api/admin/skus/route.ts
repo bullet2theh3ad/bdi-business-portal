@@ -41,6 +41,7 @@ const createSkuSchema = z.object({
   // Business/Forecast Terms
   moq: z.number().int().positive().optional().default(1),
   leadTimeDays: z.number().int().positive().optional().default(30),
+  standardCost: z.number().positive().optional(),
   
   // Trade Classification
   htsCode: z.string().regex(/^\d{4}\.\d{2}\.\d{4}$/, 'HTS Code must be in format NNNN.NN.NNNN').optional(),
@@ -121,6 +122,7 @@ export async function GET(request: NextRequest) {
         color: productSkus.color,
         moq: productSkus.moq,
         leadTimeDays: productSkus.leadTimeDays,
+        standardCost: productSkus.standardCost,
         mpStartDate: productSkus.mpStartDate,
         mfg: productSkus.mfg,
         htsCode: productSkus.htsCode,
@@ -241,6 +243,7 @@ export async function POST(request: NextRequest) {
         color: null,
         moq: validatedData.moq || 1,
         leadTimeDays: validatedData.leadTimeDays || 30,
+        standardCost: validatedData.standardCost ? validatedData.standardCost.toString() : null,
         htsCode: validatedData.htsCode || null,
         tags: [],
         

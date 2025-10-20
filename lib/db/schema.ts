@@ -513,6 +513,7 @@ export const productSkus = pgTable('product_skus', {
   // Business Information (restored for CPFR planning)
   moq: integer('moq').default(1), // Minimum Order Quantity
   leadTimeDays: integer('lead_time_days').default(30), // Lead time in days
+  standardCost: numeric('standard_cost', { precision: 10, scale: 2 }), // Standard/baseline cost per unit in USD
   
   // Inventory & Status
   isActive: boolean('is_active').default(true),

@@ -173,6 +173,7 @@ export default function SKUsPage() {
         mfg: variantParentSku.mfg,
         moq: variantParentSku.moq,
         leadTimeDays: variantParentSku.leadTimeDays,
+        standardCost: variantParentSku.standardCost ? Number(variantParentSku.standardCost) : undefined,
         isActive: true,
         isDiscontinued: false,
         
@@ -268,6 +269,7 @@ export default function SKUsPage() {
           // Business terms
           moq: formData.get('moq') ? parseInt(formData.get('moq') as string) : 1,
           leadTimeDays: formData.get('leadTimeDays') ? parseInt(formData.get('leadTimeDays') as string) : 30,
+          standardCost: formData.get('standardCost') ? parseFloat(formData.get('standardCost') as string) : undefined,
           htsCode: formData.get('htsCode') || undefined,
           mpStartDate: formData.get('mpStartDate'),
           mfg: formData.get('mfg'),
@@ -361,6 +363,7 @@ export default function SKUsPage() {
           // Business terms
           moq: formData.get('editMoq') ? parseInt(formData.get('editMoq') as string) : 1,
           leadTimeDays: formData.get('editLeadTimeDays') ? parseInt(formData.get('editLeadTimeDays') as string) : 30,
+          standardCost: formData.get('editStandardCost') ? parseFloat(formData.get('editStandardCost') as string) : undefined,
           htsCode: formData.get('htsCode') || undefined,
           editMpStartDate: formData.get('editMpStartDate'),
           editMfg: formData.get('editMfg'),
@@ -1409,6 +1412,20 @@ export default function SKUsPage() {
                     </div>
                   </div>
                   <div>
+                    <Label className="text-xs">Standard Cost (USD)</Label>
+                    <Input
+                      name="standardCost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Standard/baseline cost per unit
+                    </div>
+                  </div>
+                  <div>
                     <Label className="text-xs">HTS Code</Label>
                     <Input
                       name="htsCode"
@@ -1841,6 +1858,21 @@ export default function SKUsPage() {
                     />
                     <div className="mt-1 text-xs text-gray-600">
                       Days from order to delivery
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Standard Cost (USD)</Label>
+                    <Input
+                      name="editStandardCost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      defaultValue={selectedSku?.standardCost ? Number(selectedSku.standardCost) : undefined}
+                      placeholder="0.00"
+                      className="text-sm"
+                    />
+                    <div className="mt-1 text-xs text-gray-600">
+                      Standard/baseline cost per unit
                     </div>
                   </div>
                   <div>
