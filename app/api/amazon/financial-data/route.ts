@@ -58,17 +58,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Check date range (Amazon API has limits)
+    // Calculate date range
     const daysDiff = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysDiff > 180) {
-      return NextResponse.json({
-        success: false,
-        error: 'Date range cannot exceed 180 days',
-        maxDays: 180,
-        requestedDays: daysDiff,
-      }, { status: 400 });
-    }
-
+    
     console.log(`[Financial Data] Fetching transactions from ${startDate} to ${endDate} (${daysDiff} days)`);
 
     // =====================================================

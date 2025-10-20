@@ -113,6 +113,15 @@ const COLORS = {
   purple: ['#8b5cf6', '#7c3aed', '#6d28d9', '#5b21b6'],
 };
 
+interface DBDateRange {
+  hasData: boolean;
+  earliestDate?: string;
+  latestDate?: string;
+  totalRecords?: number;
+  hasGaps?: boolean;
+  coverage?: string;
+}
+
 export default function AmazonFinancialDataPage() {
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -130,13 +139,27 @@ export default function AmazonFinancialDataPage() {
   const [showPasswordModal, setShowPasswordModal] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [dbDateRange, setDbDateRange] = useState<DBDateRange | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadFinancialData();
+      loadDBDateRange();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
+
+  async function loadDBDateRange() {
+    try {
+      const response = await fetch('/api/amazon/financial-data/range');
+      const data = await response.json();
+      if (data.success) {
+        setDbDateRange(data);
+      }
+    } catch (error) {
+      console.error('Error loading DB date range:', error);
+    }
+  }
 
   // Debug tax refunded value
   useEffect(() => {
@@ -638,10 +661,24 @@ export default function AmazonFinancialDataPage() {
         <Card className="bg-gray-50 mb-6">
           <CardContent className="pt-4">
             <div className="space-y-4">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Date Range
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Date Range
+                </Label>
+                {dbDateRange && dbDateRange.hasData && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      📊 Local DB: {formatDate(dbDateRange.earliestDate!)} - {formatDate(dbDateRange.latestDate!)}
+                    </Badge>
+                    {dbDateRange.hasGaps && (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                        ⚠️ {dbDateRange.coverage}% coverage
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
@@ -698,14 +735,23 @@ export default function AmazonFinancialDataPage() {
                 >
                   Last 90 Days
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => getQuickDateRange(365)}
-                  className="text-xs"
-                >
-                  Last Year
-                </Button>
+                {dbDateRange && dbDateRange.hasData && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      const newRange = {
+                        start: dbDateRange.earliestDate!,
+                        end: dbDateRange.latestDate!
+                      };
+                      setDateRange(newRange);
+                      loadFinancialDataWithRange(newRange.start, newRange.end);
+                    }}
+                    className="text-xs bg-green-50 hover:bg-green-100 border-green-200"
+                  >
+                    📊 All Data (DB)
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
