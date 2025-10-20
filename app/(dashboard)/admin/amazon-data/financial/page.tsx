@@ -18,6 +18,7 @@ import {
   TrendingDown,
   Calendar,
   BarChart3,
+  Database,
   PieChart as PieChartIcon,
   Receipt,
   CreditCard,
@@ -140,6 +141,7 @@ export default function AmazonFinancialDataPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [dbDateRange, setDbDateRange] = useState<DBDateRange | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -158,6 +160,34 @@ export default function AmazonFinancialDataPage() {
       }
     } catch (error) {
       console.error('Error loading DB date range:', error);
+    }
+  }
+
+  async function handleBackfillAdSpend() {
+    if (!confirm('This will fetch ad spend data from Amazon API for missing date ranges. Continue?')) {
+      return;
+    }
+
+    try {
+      setBackfilling(true);
+      const response = await fetch('/api/admin/amazon-data/backfill-ad-spend', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`✅ Backfill complete!\n\nProcessed: ${data.processed}\nFailed: ${data.failed}\nTotal: ${data.total}\n\n${data.note || ''}`);
+        // Reload data to show updated ad spend
+        loadFinancialData();
+        loadDBDateRange();
+      } else {
+        alert(`❌ Backfill failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Backfill error:', error);
+      alert(`❌ Backfill failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setBackfilling(false);
     }
   }
 
@@ -701,10 +731,20 @@ export default function AmazonFinancialDataPage() {
                     className="w-full"
                   />
                 </div>
-                <div className="flex items-end">
+                <div className="flex items-end gap-2">
                   <Button onClick={loadFinancialData} disabled={loading} className="w-full sm:w-auto">
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Update
+                  </Button>
+                  <Button 
+                    onClick={handleBackfillAdSpend} 
+                    disabled={backfilling} 
+                    variant="secondary"
+                    className="w-full sm:w-auto bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                    title="Fill missing ad spend data from Amazon API"
+                  >
+                    <Database className={`h-4 w-4 mr-2 ${backfilling ? 'animate-pulse' : ''}`} />
+                    {backfilling ? 'Backfilling...' : 'Backfill Ad Spend'}
                   </Button>
                 </div>
               </div>
