@@ -1665,3 +1665,149 @@ export type AmazonCampaignUpload = typeof amazonCampaignUploads.$inferSelect;
 export type NewAmazonCampaignUpload = typeof amazonCampaignUploads.$inferInsert;
 export type AmazonCampaignData = typeof amazonCampaignData.$inferSelect;
 export type NewAmazonCampaignData = typeof amazonCampaignData.$inferInsert;
+
+// ===== AMAZON FBA INVENTORY =====
+
+export const amazonInventoryUploads = pgTable('amazon_inventory_uploads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  fileName: text('file_name').notNull(),
+  uploadDate: timestamp('upload_date').defaultNow(),
+  uploadedBy: uuid('uploaded_by'), // References auth.users(id)
+  snapshotDate: date('snapshot_date').notNull(),
+  rowCount: integer('row_count').default(0),
+  status: text('status').default('completed'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const amazonInventorySnapshots = pgTable('amazon_inventory_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  uploadId: uuid('upload_id').references(() => amazonInventoryUploads.id, { onDelete: 'cascade' }),
+  snapshotDate: date('snapshot_date').notNull(),
+  
+  // Product Identifiers
+  sellerSku: text('seller_sku').notNull(),
+  fnsku: text('fnsku'),
+  asin: text('asin'),
+  productName: text('product_name'),
+  condition: text('condition'),
+  
+  // Pricing
+  yourPrice: numeric('your_price', { precision: 10, scale: 2 }),
+  
+  // MFN (Merchant Fulfilled)
+  mfnListingExists: boolean('mfn_listing_exists').default(false),
+  mfnFulfillableQuantity: integer('mfn_fulfillable_quantity').default(0),
+  
+  // AFN (Amazon Fulfilled)
+  afnListingExists: boolean('afn_listing_exists').default(false),
+  afnWarehouseQuantity: integer('afn_warehouse_quantity').default(0),
+  afnFulfillableQuantity: integer('afn_fulfillable_quantity').default(0),
+  afnUnsellableQuantity: integer('afn_unsellable_quantity').default(0),
+  afnReservedQuantity: integer('afn_reserved_quantity').default(0),
+  afnTotalQuantity: integer('afn_total_quantity').default(0),
+  
+  // Physical
+  perUnitVolume: numeric('per_unit_volume', { precision: 10, scale: 2 }),
+  
+  // Inbound
+  afnInboundWorkingQuantity: integer('afn_inbound_working_quantity').default(0),
+  afnInboundShippedQuantity: integer('afn_inbound_shipped_quantity').default(0),
+  afnInboundReceivingQuantity: integer('afn_inbound_receiving_quantity').default(0),
+  
+  // Other
+  afnResearchingQuantity: integer('afn_researching_quantity').default(0),
+  afnReservedFutureSupply: integer('afn_reserved_future_supply').default(0),
+  afnFutureSupplyBuyable: integer('afn_future_supply_buyable').default(0),
+  store: text('store'),
+  
+  // Metadata
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type AmazonInventoryUpload = typeof amazonInventoryUploads.$inferSelect;
+export type NewAmazonInventoryUpload = typeof amazonInventoryUploads.$inferInsert;
+export type AmazonInventorySnapshot = typeof amazonInventorySnapshots.$inferSelect;
+export type NewAmazonInventorySnapshot = typeof amazonInventorySnapshots.$inferInsert;
+
+// =====================================================
+// Sales Velocity Analysis
+// =====================================================
+export const salesVelocityCalculations = pgTable('sales_velocity_calculations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  calculationDate: date('calculation_date').notNull().unique(),
+  periodStart: date('period_start').notNull(),
+  periodEnd: date('period_end').notNull(),
+  totalSkusAnalyzed: integer('total_skus_analyzed').default(0),
+  dataSources: jsonb('data_sources'),
+  status: text('status').default('completed'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const salesVelocityMetrics = pgTable('sales_velocity_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  calculationId: uuid('calculation_id').references(() => salesVelocityCalculations.id, { onDelete: 'cascade' }),
+  calculationDate: date('calculation_date').notNull(),
+  
+  // SKU Identification
+  sku: text('sku').notNull(),
+  asin: text('asin'),
+  productName: text('product_name'),
+  
+  // Sales Velocity Metrics (Historical Period)
+  totalUnitsSold: integer('total_units_sold').default(0),
+  totalRevenue: numeric('total_revenue', { precision: 12, scale: 2 }).default('0'),
+  daysInPeriod: integer('days_in_period').default(0),
+  dailySalesVelocity: numeric('daily_sales_velocity', { precision: 10, scale: 4 }).default('0'),
+  weeklySalesVelocity: numeric('weekly_sales_velocity', { precision: 10, scale: 4 }).default('0'),
+  monthlySalesVelocity: numeric('monthly_sales_velocity', { precision: 10, scale: 4 }).default('0'),
+  
+  // Recent Velocity (Last 30 Days)
+  unitsSold30d: integer('units_sold_30d').default(0),
+  revenue30d: numeric('revenue_30d', { precision: 12, scale: 2 }).default('0'),
+  dailyVelocity30d: numeric('daily_velocity_30d', { precision: 10, scale: 4 }).default('0'),
+  
+  // Recent Velocity (Last 7 Days)
+  unitsSold7d: integer('units_sold_7d').default(0),
+  revenue7d: numeric('revenue_7d', { precision: 12, scale: 2 }).default('0'),
+  dailyVelocity7d: numeric('daily_velocity_7d', { precision: 10, scale: 4 }).default('0'),
+  
+  // Inventory Positions (Current)
+  amazonFbaQuantity: integer('amazon_fba_quantity').default(0),
+  amazonInboundQuantity: integer('amazon_inbound_quantity').default(0),
+  emgWarehouseQuantity: integer('emg_warehouse_quantity').default(0),
+  catvWarehouseQuantity: integer('catv_warehouse_quantity').default(0),
+  totalAvailableInventory: integer('total_available_inventory').default(0),
+  
+  // Calculated Metrics
+  daysOfInventory: numeric('days_of_inventory', { precision: 10, scale: 2 }),
+  stockoutRisk: text('stockout_risk'),
+  reorderPoint: integer('reorder_point'),
+  recommendedOrderQuantity: integer('recommended_order_quantity'),
+  
+  // Velocity Trends
+  velocityTrend: text('velocity_trend'),
+  velocityChange30d: numeric('velocity_change_30d', { precision: 10, scale: 4 }),
+  velocityChangePercent: numeric('velocity_change_percent', { precision: 10, scale: 2 }),
+  
+  // Financial Metrics
+  averageSellingPrice: numeric('average_selling_price', { precision: 10, scale: 2 }),
+  inventoryValue: numeric('inventory_value', { precision: 12, scale: 2 }),
+  dailyRevenueRate: numeric('daily_revenue_rate', { precision: 10, scale: 2 }),
+  
+  // Metadata
+  lastSaleDate: date('last_sale_date'),
+  firstSaleDate: date('first_sale_date'),
+  isActive: boolean('is_active').default(true),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type SalesVelocityCalculation = typeof salesVelocityCalculations.$inferSelect;
+export type NewSalesVelocityCalculation = typeof salesVelocityCalculations.$inferInsert;
+export type SalesVelocityMetric = typeof salesVelocityMetrics.$inferSelect;
+export type NewSalesVelocityMetric = typeof salesVelocityMetrics.$inferInsert;

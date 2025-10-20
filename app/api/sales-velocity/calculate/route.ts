@@ -1,0 +1,494 @@
+/**
+ * Sales Velocity Calculation API
+ * 
+ * Calculates sales velocity metrics from:
+ * 1. Amazon Financial Events (historical sales data)
+ * 2. Amazon Inventory Snapshots (current FBA inventory)
+ * 3. EMG Warehouse Inventory (current warehouse stock)
+ * 4. CATV WIP Units (current warehouse stock)
+ * 
+ * Stores results in sales_velocity_metrics table for fast retrieval
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db/drizzle';
+import { 
+  salesVelocityCalculations, 
+  salesVelocityMetrics,
+} from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+
+// Service role client for bypassing RLS
+const supabaseService = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
+interface SKUSalesData {
+  sku: string;
+  asin?: string;
+  productName?: string;
+  totalUnitsSold: number;
+  totalRevenue: number;
+  unitsSold30d: number;
+  revenue30d: number;
+  unitsSold7d: number;
+  revenue7d: number;
+  lastSaleDate: string | null;
+  firstSaleDate: string | null;
+}
+
+interface SKUInventoryData {
+  sku: string;
+  amazonFba: number;
+  amazonInbound: number;
+  emgWarehouse: number;
+  catvWarehouse: number;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookies) => {
+            cookies.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if user is super_admin
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (userError || userData?.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Forbidden - Super Admin only' }, { status: 403 });
+    }
+
+    console.log('🚀 Starting Sales Velocity Calculation...');
+
+    // Define calculation period
+    const periodStart = new Date('2024-08-01'); // August 2024
+    const periodEnd = new Date();
+    const calculationDate = new Date().toISOString().split('T')[0];
+    
+    const now = new Date();
+    const date30DaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const date7DaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Step 1: Get all sales data from Amazon Financial Events
+    console.log('📊 Step 1: Fetching sales data from Amazon Financial Events...');
+    const salesData = await fetchSalesData(periodStart, periodEnd, date30DaysAgo, date7DaysAgo);
+    console.log(`✅ Found sales data for ${salesData.length} SKUs`);
+
+    // Step 2: Get current inventory positions
+    console.log('📦 Step 2: Fetching current inventory positions...');
+    const inventoryData = await fetchInventoryData();
+    console.log(`✅ Found inventory data for ${Object.keys(inventoryData).length} SKUs`);
+
+    // Step 3: Create calculation record
+    console.log('💾 Step 3: Creating calculation record...');
+    const [calculation] = await db.insert(salesVelocityCalculations).values({
+      calculationDate: calculationDate,
+      periodStart: periodStart.toISOString().split('T')[0],
+      periodEnd: periodEnd.toISOString().split('T')[0],
+      totalSkusAnalyzed: salesData.length,
+      dataSources: {
+        amazonFinancialEvents: true,
+        amazonInventory: true,
+        emgWarehouse: true,
+        catvWarehouse: true,
+      },
+      status: 'processing',
+    }).returning();
+
+    console.log(`✅ Calculation record created: ${calculation.id}`);
+
+    // Step 4: Calculate velocity metrics for each SKU
+    console.log('🧮 Step 4: Calculating velocity metrics...');
+    const metricsToInsert = [];
+    const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    for (const sale of salesData) {
+      const inventory = inventoryData[sale.sku] || {
+        amazonFba: 0,
+        amazonInbound: 0,
+        emgWarehouse: 0,
+        catvWarehouse: 0,
+      };
+
+      const totalAvailableInventory = 
+        inventory.amazonFba + 
+        inventory.amazonInbound + 
+        inventory.emgWarehouse + 
+        inventory.catvWarehouse;
+
+      // Calculate velocity
+      const dailyVelocity = sale.totalUnitsSold / daysInPeriod;
+      const weeklyVelocity = dailyVelocity * 7;
+      const monthlyVelocity = dailyVelocity * 30;
+      const dailyVelocity30d = sale.unitsSold30d / 30;
+      const dailyVelocity7d = sale.unitsSold7d / 7;
+
+      // Calculate days of inventory
+      const daysOfInventory = dailyVelocity > 0 
+        ? totalAvailableInventory / dailyVelocity 
+        : null;
+
+      // Determine stockout risk
+      let stockoutRisk = 'LOW';
+      if (daysOfInventory === null || daysOfInventory === 0) {
+        stockoutRisk = 'CRITICAL';
+      } else if (daysOfInventory < 7) {
+        stockoutRisk = 'CRITICAL';
+      } else if (daysOfInventory < 14) {
+        stockoutRisk = 'HIGH';
+      } else if (daysOfInventory < 30) {
+        stockoutRisk = 'MEDIUM';
+      }
+
+      // Calculate velocity trend
+      let velocityTrend = 'STABLE';
+      let velocityChange30d = 0;
+      let velocityChangePercent = 0;
+      
+      if (dailyVelocity > 0) {
+        velocityChange30d = dailyVelocity30d - dailyVelocity;
+        velocityChangePercent = (velocityChange30d / dailyVelocity) * 100;
+        
+        if (velocityChangePercent > 10) {
+          velocityTrend = 'INCREASING';
+        } else if (velocityChangePercent < -10) {
+          velocityTrend = 'DECREASING';
+        }
+      }
+
+      // Calculate financial metrics
+      const averageSellingPrice = sale.totalUnitsSold > 0 
+        ? sale.totalRevenue / sale.totalUnitsSold 
+        : 0;
+      const inventoryValue = averageSellingPrice * totalAvailableInventory;
+      const dailyRevenueRate = averageSellingPrice * dailyVelocity;
+
+      // Reorder calculations (assuming 30-day lead time)
+      const leadTimeDays = 30;
+      const reorderPoint = Math.ceil(dailyVelocity * leadTimeDays * 1.5); // 1.5x safety factor
+      const recommendedOrderQuantity = Math.ceil(monthlyVelocity * 2); // 2 months supply
+
+      metricsToInsert.push({
+        calculationId: calculation.id,
+        calculationDate: calculationDate,
+        sku: sale.sku,
+        asin: sale.asin || null,
+        productName: sale.productName || null,
+        
+        // Historical metrics
+        totalUnitsSold: sale.totalUnitsSold,
+        totalRevenue: sale.totalRevenue.toFixed(2),
+        daysInPeriod,
+        dailySalesVelocity: dailyVelocity.toFixed(4),
+        weeklySalesVelocity: weeklyVelocity.toFixed(4),
+        monthlySalesVelocity: monthlyVelocity.toFixed(4),
+        
+        // Recent metrics
+        unitsSold30d: sale.unitsSold30d,
+        revenue30d: sale.revenue30d.toFixed(2),
+        dailyVelocity30d: dailyVelocity30d.toFixed(4),
+        unitsSold7d: sale.unitsSold7d,
+        revenue7d: sale.revenue7d.toFixed(2),
+        dailyVelocity7d: dailyVelocity7d.toFixed(4),
+        
+        // Inventory
+        amazonFbaQuantity: inventory.amazonFba,
+        amazonInboundQuantity: inventory.amazonInbound,
+        emgWarehouseQuantity: inventory.emgWarehouse,
+        catvWarehouseQuantity: inventory.catvWarehouse,
+        totalAvailableInventory,
+        
+        // Calculated metrics
+        daysOfInventory: daysOfInventory !== null ? daysOfInventory.toFixed(2) : null,
+        stockoutRisk,
+        reorderPoint,
+        recommendedOrderQuantity,
+        
+        // Trends
+        velocityTrend,
+        velocityChange30d: velocityChange30d.toFixed(4),
+        velocityChangePercent: velocityChangePercent.toFixed(2),
+        
+        // Financial
+        averageSellingPrice: averageSellingPrice.toFixed(2),
+        inventoryValue: inventoryValue.toFixed(2),
+        dailyRevenueRate: dailyRevenueRate.toFixed(2),
+        
+        // Metadata
+        lastSaleDate: sale.lastSaleDate,
+        firstSaleDate: sale.firstSaleDate,
+        isActive: true,
+      });
+    }
+
+    // Step 5: Insert all metrics
+    console.log(`💾 Step 5: Inserting ${metricsToInsert.length} velocity metrics...`);
+    if (metricsToInsert.length > 0) {
+      await db.insert(salesVelocityMetrics).values(metricsToInsert);
+    }
+
+    // Step 6: Update calculation status
+    await db.update(salesVelocityCalculations)
+      .set({ 
+        status: 'completed',
+        updatedAt: new Date(),
+      })
+      .where(eq(salesVelocityCalculations.id, calculation.id));
+
+    console.log('✅ Sales Velocity Calculation Complete!');
+
+    return NextResponse.json({
+      success: true,
+      calculationId: calculation.id,
+      calculationDate,
+      skusAnalyzed: salesData.length,
+      metricsCreated: metricsToInsert.length,
+      periodStart: periodStart.toISOString().split('T')[0],
+      periodEnd: periodEnd.toISOString().split('T')[0],
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error calculating sales velocity:', error);
+    return NextResponse.json(
+      { error: 'Failed to calculate sales velocity', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Fetch sales data from Amazon Financial Events
+ */
+async function fetchSalesData(
+  periodStart: Date,
+  periodEnd: Date,
+  date30DaysAgo: Date,
+  date7DaysAgo: Date
+): Promise<SKUSalesData[]> {
+  const supabase = supabaseService;
+  
+  // Fetch all financial events in the period
+  const { data: events, error } = await supabase
+    .from('amazon_financial_events')
+    .select('*')
+    .gte('posted_date', periodStart.toISOString())
+    .lte('posted_date', periodEnd.toISOString())
+    .order('posted_date', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching financial events:', error);
+    return [];
+  }
+
+  // Aggregate by SKU
+  const skuMap = new Map<string, SKUSalesData>();
+
+  for (const event of events || []) {
+    const sku = event.sku || 'UNKNOWN';
+    const units = event.quantity || 0;
+    const revenue = parseFloat(event.total_amount || '0');
+    const eventDate = event.posted_date;
+
+    if (!skuMap.has(sku)) {
+      skuMap.set(sku, {
+        sku,
+        asin: event.asin,
+        productName: event.product_name,
+        totalUnitsSold: 0,
+        totalRevenue: 0,
+        unitsSold30d: 0,
+        revenue30d: 0,
+        unitsSold7d: 0,
+        revenue7d: 0,
+        lastSaleDate: null,
+        firstSaleDate: null,
+      });
+    }
+
+    const skuData = skuMap.get(sku)!;
+    
+    // Total metrics
+    skuData.totalUnitsSold += units;
+    skuData.totalRevenue += revenue;
+
+    // 30-day metrics
+    if (new Date(eventDate) >= date30DaysAgo) {
+      skuData.unitsSold30d += units;
+      skuData.revenue30d += revenue;
+    }
+
+    // 7-day metrics
+    if (new Date(eventDate) >= date7DaysAgo) {
+      skuData.unitsSold7d += units;
+      skuData.revenue7d += revenue;
+    }
+
+    // Track first and last sale dates
+    if (!skuData.firstSaleDate || eventDate < skuData.firstSaleDate) {
+      skuData.firstSaleDate = eventDate;
+    }
+    if (!skuData.lastSaleDate || eventDate > skuData.lastSaleDate) {
+      skuData.lastSaleDate = eventDate;
+    }
+  }
+
+  return Array.from(skuMap.values());
+}
+
+/**
+ * Fetch current inventory positions from all sources
+ */
+async function fetchInventoryData(): Promise<Record<string, SKUInventoryData>> {
+  const supabase = supabaseService;
+  const inventoryMap: Record<string, SKUInventoryData> = {};
+
+  // 1. Amazon FBA Inventory (latest snapshot)
+  const { data: amazonInventory } = await supabase
+    .from('amazon_inventory_snapshots')
+    .select('*')
+    .order('snapshot_date', { ascending: false })
+    .limit(1000);
+
+  for (const item of amazonInventory || []) {
+    const sku = item.seller_sku || item.asin;
+    if (!sku) continue;
+
+    if (!inventoryMap[sku]) {
+      inventoryMap[sku] = {
+        sku,
+        amazonFba: 0,
+        amazonInbound: 0,
+        emgWarehouse: 0,
+        catvWarehouse: 0,
+      };
+    }
+
+    inventoryMap[sku].amazonFba += item.afn_fulfillable_quantity || 0;
+    inventoryMap[sku].amazonInbound += 
+      (item.afn_inbound_working_quantity || 0) +
+      (item.afn_inbound_shipped_quantity || 0) +
+      (item.afn_inbound_receiving_quantity || 0);
+  }
+
+  // 2. EMG Warehouse Inventory
+  const { data: emgInventory } = await supabase
+    .from('emg_inventory_tracking')
+    .select('sku, quantity_on_hand')
+    .gt('quantity_on_hand', 0);
+
+  for (const item of emgInventory || []) {
+    const sku = item.sku;
+    if (!sku) continue;
+
+    if (!inventoryMap[sku]) {
+      inventoryMap[sku] = {
+        sku,
+        amazonFba: 0,
+        amazonInbound: 0,
+        emgWarehouse: 0,
+        catvWarehouse: 0,
+      };
+    }
+
+    inventoryMap[sku].emgWarehouse += item.quantity_on_hand || 0;
+  }
+
+  // 3. CATV Warehouse (Active WIP units)
+  // Get latest import batch
+  const { data: latestImport } = await supabase
+    .from('warehouse_wip_imports')
+    .select('id')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (latestImport) {
+    // Fetch all WIP units from latest import
+    let allUnits: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: wipUnits } = await supabase
+        .from('warehouse_wip_units')
+        .select('serial_number, model_number, stage')
+        .eq('import_batch_id', latestImport.id)
+        .eq('stage', 'WIP')
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (!wipUnits || wipUnits.length === 0) {
+        hasMore = false;
+      } else {
+        allUnits = allUnits.concat(wipUnits);
+        if (wipUnits.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+    }
+
+    // Count unique serial numbers by model
+    const modelCounts: Record<string, Set<string>> = {};
+    for (const unit of allUnits) {
+      const model = unit.model_number || 'UNKNOWN';
+      if (!modelCounts[model]) {
+        modelCounts[model] = new Set();
+      }
+      if (unit.serial_number) {
+        modelCounts[model].add(unit.serial_number);
+      }
+    }
+
+    // Add to inventory map
+    for (const [model, serials] of Object.entries(modelCounts)) {
+      if (!inventoryMap[model]) {
+        inventoryMap[model] = {
+          sku: model,
+          amazonFba: 0,
+          amazonInbound: 0,
+          emgWarehouse: 0,
+          catvWarehouse: 0,
+        };
+      }
+      inventoryMap[model].catvWarehouse = serials.size;
+    }
+  }
+
+  return inventoryMap;
+}
+

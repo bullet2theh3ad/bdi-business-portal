@@ -366,6 +366,49 @@ export default function BusinessAnalysisPage() {
             </CardContent>
           </Card>
 
+          {/* Sales Velocity */}
+          <Card 
+            className="hover:shadow-lg transition-shadow border-t-4 border-t-purple-500 cursor-pointer"
+            onClick={() => {/* TODO: Open Sales Velocity modal */}}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Activity className="h-5 w-5 text-purple-600" />
+                Sales Velocity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-3">
+                Track daily sales rates and calculate days of inventory remaining across all channels.
+              </p>
+              <ul className="text-xs text-gray-500 space-y-1">
+                <li>• Daily sales velocity by SKU</li>
+                <li>• Days of inventory (Amazon + Warehouses)</li>
+                <li>• Reorder alerts & timing</li>
+                <li>• Historical trends since Aug 2024</li>
+              </ul>
+              <div className="mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-purple-50 p-2 rounded">
+                    <div className="font-semibold text-purple-900">Data Sources</div>
+                    <div className="text-purple-700 mt-1">
+                      Amazon FBA<br/>
+                      EMG Warehouse<br/>
+                      CATV Warehouse
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 p-2 rounded">
+                    <div className="font-semibold text-purple-900">Status</div>
+                    <div className="text-purple-700 mt-1">
+                      🔄 Building...<br/>
+                      Step 2 of 4
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Scenario Planning */}
           <Card className="hover:shadow-lg transition-shadow border-t-4 border-t-red-500">
             <CardHeader>
