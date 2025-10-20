@@ -14,7 +14,7 @@ import { getAmazonCredentials, getConfigStatus } from '@/lib/services/amazon-sp-
 import { FinancialEventsParser } from '@/lib/services/amazon-sp-api';
 import { db } from '@/lib/db/drizzle';
 import { skuMappings, productSkus, amazonFinancialLineItems } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,18 +71,93 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Financial Data] Fetching transactions from ${startDate} to ${endDate} (${daysDiff} days)`);
 
+    // =====================================================
+    // CHECK DATABASE FOR EXISTING DATA (DELTA SYNC)
+    // =====================================================
+    console.log('[Financial Data] Checking database for existing data...');
+    
+    // Get the latest date we have in the database using SQL aggregation
+    const dbStats = await db
+      .select({
+        maxDate: sql<string>`MAX(${amazonFinancialLineItems.postedDate})`,
+        minDate: sql<string>`MIN(${amazonFinancialLineItems.postedDate})`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(amazonFinancialLineItems)
+      .execute();
+    
+    let latestDateInDB: Date | null = null;
+    let earliestDateInDB: Date | null = null;
+    
+    if (dbStats && dbStats.length > 0 && dbStats[0].maxDate) {
+      latestDateInDB = new Date(dbStats[0].maxDate);
+      earliestDateInDB = dbStats[0].minDate ? new Date(dbStats[0].minDate) : null;
+      console.log(`[Financial Data] Database contains ${dbStats[0].count} records from ${earliestDateInDB?.toISOString().split('T')[0]} to ${latestDateInDB.toISOString().split('T')[0]}`);
+    }
+    
+    // Determine if we need to fetch from API
+    let actualStartDate = startDate;
+    let needsAPIFetch = true;
+    
+    if (latestDateInDB) {
+      console.log(`[Financial Data] Latest data in DB: ${latestDateInDB.toISOString().split('T')[0]}`);
+      
+      // If requested end date is before our latest DB date, we can serve entirely from DB
+      if (endDateObj <= latestDateInDB) {
+        console.log('[Financial Data] ✅ All requested data exists in database. No API fetch needed.');
+        needsAPIFetch = false;
+      } else {
+        // Only fetch data AFTER what we already have
+        const nextDay = new Date(latestDateInDB);
+        nextDay.setDate(nextDay.getDate() + 1);
+        actualStartDate = nextDay.toISOString().split('T')[0];
+        console.log(`[Financial Data] 🔄 Fetching only new data from ${actualStartDate} onwards (delta sync)`);
+      }
+    } else {
+      console.log('[Financial Data] No existing data in database. Fetching all data from API.');
+    }
+
     // Initialize Amazon SP-API service
     const credentials = getAmazonCredentials();
     const amazon = new AmazonSPAPIService(credentials);
 
-    // Fetch financial transactions
-    const startTime = Date.now();
-    const transactions = await amazon.getFinancialTransactions(startDate, endDate);
-    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    // Fetch financial transactions (only if needed)
+    let transactions: any[] = [];
+    let duration = '0.00';
+    
+    if (needsAPIFetch) {
+      const startTime = Date.now();
+      transactions = await amazon.getFinancialTransactions(actualStartDate, endDate);
+      duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`[Financial Data] Retrieved ${transactions.length} event groups from API in ${duration}s`);
+    } else {
+      console.log('[Financial Data] Skipping API fetch - using database data only');
+      // Set empty transactions array - we'll read from DB instead
+      transactions = [];
+    }
+    
+    // =====================================================
+    // READ FROM DATABASE FOR REQUESTED DATE RANGE
+    // =====================================================
+    console.log('[Financial Data] Reading data from database for requested range...');
+    const dbLineItems = await db
+      .select()
+      .from(amazonFinancialLineItems)
+      .where(
+        and(
+          gte(amazonFinancialLineItems.postedDate, new Date(startDate)),
+          lte(amazonFinancialLineItems.postedDate, new Date(endDate))
+        )
+      )
+      .execute();
+    
+    console.log(`[Financial Data] Retrieved ${dbLineItems.length} line items from database`);
+    
+    // NOTE: For now, we'll continue using the FinancialEventsParser with API data
+    // and then merge with DB data for the summary. In a future update, we can
+    // optimize to read directly from DB when no API fetch is needed.
 
-    console.log(`[Financial Data] Retrieved ${transactions.length} event groups in ${duration}s`);
-
-    // Parse and analyze the data
+    // Parse and analyze the API data (if any)
     const orderIds = FinancialEventsParser.extractOrderIds(transactions);
     const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions); // Excludes tax
     const totalTax = FinancialEventsParser.calculateTotalTax(transactions); // Tax only
