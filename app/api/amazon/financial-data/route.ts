@@ -76,6 +76,22 @@ export async function POST(request: NextRequest) {
     // =====================================================
     console.log('[Financial Data] Checking database for existing data...');
     
+    // Check how many line items we have for this date range
+    const existingLineItemsCount = await db
+      .select({
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(amazonFinancialLineItems)
+      .where(
+        and(
+          gte(amazonFinancialLineItems.postedDate, new Date(startDate)),
+          lte(amazonFinancialLineItems.postedDate, new Date(endDate))
+        )
+      )
+      .execute();
+    
+    const lineItemCount = existingLineItemsCount[0]?.count || 0;
+    
     // Check if we have a summary for this exact date range
     const existingSummary = await db
       .select()
@@ -91,14 +107,18 @@ export async function POST(request: NextRequest) {
     
     const hasSummary = existingSummary && existingSummary.length > 0;
     
-    if (hasSummary) {
-      console.log(`[Financial Data] ✅ Found cached summary for ${startDate} to ${endDate}`);
+    // Logic: If we have line items AND a summary, use DB. Otherwise, fetch from API.
+    const hasCompleteData = lineItemCount > 0 && hasSummary;
+    
+    if (hasCompleteData) {
+      console.log(`[Financial Data] ✅ Found ${lineItemCount} line items + summary in DB for ${startDate} to ${endDate}. Using cached data.`);
+    } else if (lineItemCount > 0 && !hasSummary) {
+      console.log(`[Financial Data] ⚠️ Found ${lineItemCount} line items but no summary. Will fetch from API to get ad spend/credits/debits.`);
     } else {
-      console.log(`[Financial Data] 🔄 No cached summary. Will fetch from Amazon API.`);
+      console.log(`[Financial Data] 🔄 No data in DB. Will fetch from Amazon API.`);
     }
     
-    // Simple logic: If we have a summary for this range, use it. Otherwise, fetch from API.
-    const needsAPIFetch = !hasSummary;
+    const needsAPIFetch = !hasCompleteData;
     
     const actualStartDate = startDate;
     const actualEndDate = endDate;
