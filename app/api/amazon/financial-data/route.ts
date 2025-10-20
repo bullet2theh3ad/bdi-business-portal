@@ -189,26 +189,109 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Financial Data] Retrieved ${dbLineItems.length} line items from database`);
     
-    // NOTE: For now, we'll continue using the FinancialEventsParser with API data
-    // and then merge with DB data for the summary. In a future update, we can
-    // optimize to read directly from DB when no API fetch is needed.
+    // =====================================================
+    // CALCULATE SUMMARY FROM DB OR API
+    // =====================================================
+    let orderIds: string[];
+    let totalRevenue: number;
+    let totalTax: number;
+    let totalFees: number;
+    let totalRefunds: number;
+    let totalAdSpend: number;
+    let adSpendBreakdown: any;
+    let totalChargebacks: number;
+    let adjustments: any;
+    let adjustmentBreakdown: any;
+    let totalCoupons: number;
+    let totalTaxRefunded: number;
+    let feeBreakdown: any;
+    let skuSummary: Map<string, { units: number; revenue: number; fees: number }>;
+    let refundSummary: Map<string, { units: number; refundAmount: number }>;
 
-    // Parse and analyze the API data (if any)
-    const orderIds = FinancialEventsParser.extractOrderIds(transactions);
-    const totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions); // Excludes tax
-    const totalTax = FinancialEventsParser.calculateTotalTax(transactions); // Tax only
-    const totalFees = FinancialEventsParser.calculateTotalFees(transactions);
-    const totalRefunds = FinancialEventsParser.calculateTotalRefunds(transactions);
-    const totalAdSpend = FinancialEventsParser.calculateTotalAdSpend(transactions);
-    const adSpendBreakdown = FinancialEventsParser.getAdSpendBreakdown(transactions);
-    const totalChargebacks = FinancialEventsParser.calculateTotalChargebacks(transactions);
-    const adjustments = FinancialEventsParser.calculateTotalAdjustments(transactions);
-    const adjustmentBreakdown = FinancialEventsParser.getAdjustmentBreakdown(transactions);
-    const totalCoupons = FinancialEventsParser.calculateTotalCoupons(transactions);
-    const totalTaxRefunded = FinancialEventsParser.calculateTotalTaxRefunded(transactions);
-    const feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
-    const skuSummary = FinancialEventsParser.getSKUSummary(transactions);
-    const refundSummary = FinancialEventsParser.getRefundSummary(transactions);
+    if (!needsAPIFetch) {
+      // Calculate summary from DB data (even if empty - means no data for this period)
+      console.log('[Financial Data] Calculating summary from database records...');
+      
+      // Get unique order IDs from DB
+      orderIds = Array.from(new Set(dbLineItems.map(item => item.orderId)));
+      
+      // Aggregate totals
+      totalRevenue = dbLineItems
+        .filter(item => item.transactionType === 'sale')
+        .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0);
+      
+      totalTax = dbLineItems
+        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0);
+      
+      totalFees = dbLineItems
+        .filter(item => item.transactionType === 'sale')
+        .reduce((sum, item) => sum + parseFloat(String(item.totalFees || 0)), 0);
+      
+      totalRefunds = Math.abs(dbLineItems
+        .filter(item => item.transactionType === 'refund')
+        .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0));
+      
+      totalAdSpend = 0; // TODO: Extract from raw_event if needed
+      adSpendBreakdown = {};
+      totalChargebacks = 0;
+      adjustments = { credits: 0, debits: 0, net: 0 };
+      adjustmentBreakdown = { credits: [], debits: [] };
+      totalCoupons = 0;
+      
+      totalTaxRefunded = Math.abs(dbLineItems
+        .filter(item => item.transactionType === 'refund')
+        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0));
+      
+      // Fee breakdown (simplified - can be enhanced later)
+      feeBreakdown = {
+        commission: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.commission || 0)), 0),
+        fbaFees: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.fbaFees || 0)), 0),
+        otherFees: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.otherFees || 0)), 0),
+      };
+      
+      // SKU summary
+      skuSummary = new Map();
+      refundSummary = new Map();
+      
+      dbLineItems.forEach(item => {
+        const sku = item.amazonSku;
+        if (!sku) return;
+        
+        if (item.transactionType === 'sale') {
+          const existing = skuSummary.get(sku) || { units: 0, revenue: 0, fees: 0 };
+          skuSummary.set(sku, {
+            units: existing.units + (item.quantity || 0),
+            revenue: existing.revenue + parseFloat(String(item.grossRevenue || 0)),
+            fees: existing.fees + parseFloat(String(item.totalFees || 0)),
+          });
+        } else if (item.transactionType === 'refund') {
+          const existing = refundSummary.get(sku) || { units: 0, refundAmount: 0 };
+          refundSummary.set(sku, {
+            units: existing.units + Math.abs(item.quantity || 0),
+            refundAmount: existing.refundAmount + Math.abs(parseFloat(String(item.grossRevenue || 0))),
+          });
+        }
+      });
+      
+    } else {
+      // Parse and analyze the API data
+      console.log('[Financial Data] Calculating summary from API response...');
+      orderIds = FinancialEventsParser.extractOrderIds(transactions);
+      totalRevenue = FinancialEventsParser.calculateTotalRevenue(transactions); // Excludes tax
+      totalTax = FinancialEventsParser.calculateTotalTax(transactions); // Tax only
+      totalFees = FinancialEventsParser.calculateTotalFees(transactions);
+      totalRefunds = FinancialEventsParser.calculateTotalRefunds(transactions);
+      totalAdSpend = FinancialEventsParser.calculateTotalAdSpend(transactions);
+      adSpendBreakdown = FinancialEventsParser.getAdSpendBreakdown(transactions);
+      totalChargebacks = FinancialEventsParser.calculateTotalChargebacks(transactions);
+      adjustments = FinancialEventsParser.calculateTotalAdjustments(transactions);
+      adjustmentBreakdown = FinancialEventsParser.getAdjustmentBreakdown(transactions);
+      totalCoupons = FinancialEventsParser.calculateTotalCoupons(transactions);
+      totalTaxRefunded = FinancialEventsParser.calculateTotalTaxRefunded(transactions);
+      feeBreakdown = FinancialEventsParser.getFeeBreakdown(transactions);
+      skuSummary = FinancialEventsParser.getSKUSummary(transactions);
+      refundSummary = FinancialEventsParser.getRefundSummary(transactions);
+    }
 
     // Fetch all SKU mappings from database for lookup
     const allMappings = await db
@@ -443,20 +526,20 @@ export async function POST(request: NextRequest) {
 
     // Format fee breakdown for response
     const feeBreakdownFormatted = Object.entries(feeBreakdown)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => (b[1] as number) - (a[1] as number))
       .map(([type, amount]) => ({
         feeType: type,
-        amount: Number(amount.toFixed(2)),
-        percentage: totalFees > 0 ? Number(((amount / totalFees) * 100).toFixed(2)) : 0
+        amount: Number((amount as number).toFixed(2)),
+        percentage: totalFees > 0 ? Number((((amount as number) / totalFees) * 100).toFixed(2)) : 0
       }));
 
     // Format ad spend breakdown for response
     const adSpendBreakdownFormatted = Object.entries(adSpendBreakdown)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => (b[1] as number) - (a[1] as number))
       .map(([type, amount]) => ({
         transactionType: type,
-        amount: Number(amount.toFixed(2)),
-        percentage: totalAdSpend > 0 ? Number(((amount / totalAdSpend) * 100).toFixed(2)) : 0
+        amount: Number((amount as number).toFixed(2)),
+        percentage: totalAdSpend > 0 ? Number((((amount as number) / totalAdSpend) * 100).toFixed(2)) : 0
       }));
 
     const response: any = {
@@ -493,18 +576,18 @@ export async function POST(request: NextRequest) {
       adSpendBreakdown: adSpendBreakdownFormatted, // Detailed ad spend breakdown by transaction type
       adjustmentBreakdown: {
         credits: Object.entries(adjustmentBreakdown.credits)
-          .sort((a, b) => b[1] - a[1])
+          .sort((a, b) => (b[1] as number) - (a[1] as number))
           .map(([type, amount]) => ({
             adjustmentType: type,
-            amount: Number(amount.toFixed(2)),
-            percentage: adjustments.credits > 0 ? Number(((amount / adjustments.credits) * 100).toFixed(2)) : 0
+            amount: Number((amount as number).toFixed(2)),
+            percentage: adjustments.credits > 0 ? Number((((amount as number) / adjustments.credits) * 100).toFixed(2)) : 0
           })),
         debits: Object.entries(adjustmentBreakdown.debits)
-          .sort((a, b) => b[1] - a[1])
+          .sort((a, b) => (b[1] as number) - (a[1] as number))
           .map(([type, amount]) => ({
             adjustmentType: type,
-            amount: Number(amount.toFixed(2)),
-            percentage: adjustments.debits > 0 ? Number(((amount / adjustments.debits) * 100).toFixed(2)) : 0
+            amount: Number((amount as number).toFixed(2)),
+            percentage: adjustments.debits > 0 ? Number((((amount as number) / adjustments.debits) * 100).toFixed(2)) : 0
           }))
       }, // Detailed adjustment breakdown by type
       topSKUs, // Top 10 for the chart
