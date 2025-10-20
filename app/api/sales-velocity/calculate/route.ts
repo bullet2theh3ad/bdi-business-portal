@@ -18,8 +18,9 @@ import { db } from '@/lib/db/drizzle';
 import { 
   salesVelocityCalculations, 
   salesVelocityMetrics,
+  amazonFinancialTransactions,
 } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 
 // Service role client for bypassing RLS
 const supabaseService = createClient(
@@ -39,10 +40,14 @@ interface SKUSalesData {
   productName?: string;
   totalUnitsSold: number;
   totalRevenue: number;
+  daysInPeriod: number;
+  dailyVelocity: number;
   unitsSold30d: number;
   revenue30d: number;
+  dailyVelocity30d: number;
   unitsSold7d: number;
   revenue7d: number;
+  dailyVelocity7d: number;
   lastSaleDate: string | null;
   firstSaleDate: string | null;
 }
@@ -115,46 +120,32 @@ export async function POST(request: NextRequest) {
     }
 
     // =====================================================
-    // STEP 0b: Fetch Amazon Financial Data (Last 179 days to be safe)
+    // STEP 0b: Sync Amazon Financial Transactions (Delta Sync)
     // =====================================================
-    console.log('💰 Step 0b: Fetching Amazon Financial Events (Last 179 days)...');
-    let financialData: any = null;
+    console.log('💰 Step 0b: Syncing Amazon Financial Transactions (Delta Sync)...');
     try {
-      // Amazon API has a 180-day limit, but adds time buffer, so use 179 days to be safe
-      const today = new Date();
-      const days179Ago = new Date(today.getTime() - 179 * 24 * 60 * 60 * 1000);
-      const startDate = days179Ago.toISOString().split('T')[0];
-      const endDate = today.toISOString().split('T')[0];
-      
-      console.log(`   Fetching from ${startDate} to ${endDate}`);
-      
-      // Call the financial data endpoint to get transaction data
-      const financialResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/amazon/financial-data`, {
+      const transactionSyncResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/amazon/financial-transactions/sync`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Cookie': cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; '),
         },
-        body: JSON.stringify({
-          startDate,
-          endDate,
-          includeTransactions: true,
-        }),
       });
-
-      if (financialResponse.ok) {
-        financialData = await financialResponse.json();
-        console.log(`✅ Amazon Financial Data fetched successfully`);
-        console.log(`   - Revenue: $${financialData.summary?.totalRevenue || 0}`);
-        console.log(`   - Orders: ${financialData.summary?.uniqueOrders || 0}`);
-        console.log(`   - SKUs: ${financialData.summary?.uniqueSKUs || 0}`);
+      
+      if (transactionSyncResponse.ok) {
+        const transactionSyncData = await transactionSyncResponse.json();
+        console.log(`✅ Financial Transactions synced successfully`);
+        console.log(`   - Sync Type: ${transactionSyncData.syncType || 'unknown'}`);
+        console.log(`   - Period: ${transactionSyncData.periodStart} to ${transactionSyncData.periodEnd}`);
+        console.log(`   - Transactions Stored: ${transactionSyncData.transactionsStored || 0}`);
+        console.log(`   - SKUs Processed: ${transactionSyncData.skusProcessed || 0}`);
+        console.log(`   - Duration: ${transactionSyncData.durationSeconds || 0}s`);
       } else {
-        const errorData = await financialResponse.json().catch(() => ({}));
-        console.warn('⚠️  Amazon Financial data fetch failed:', errorData.error || 'Unknown error');
-        console.warn('   Continuing with 0 sales data');
+        const errorData = await transactionSyncResponse.json().catch(() => ({}));
+        console.warn('⚠️  Financial transaction sync failed:', errorData.error || 'Unknown error');
+        console.warn('   Continuing with existing DB data');
       }
     } catch (error: any) {
-      console.warn('⚠️  Amazon Financial data error (continuing with 0 sales):', error.message);
+      console.warn('⚠️  Financial transaction sync error (continuing with existing DB data):', error.message);
     }
 
     console.log('🚀 Starting Sales Velocity Calculation (Data Collection Complete)...');
@@ -168,9 +159,9 @@ export async function POST(request: NextRequest) {
     const date30DaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const date7DaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Step 1: Process sales data from Amazon Financial Events
-    console.log('📊 Step 1: Processing sales data from Amazon Financial Events...');
-    const salesData = await processSalesData(financialData, periodStart, periodEnd, date30DaysAgo, date7DaysAgo);
+    // Step 1: Read sales data from DB (fast!)
+    console.log('📊 Step 1: Reading sales data from database...');
+    const salesData = await readSalesDataFromDB(periodStart, periodEnd, date30DaysAgo, date7DaysAgo);
     console.log(`✅ Found sales data for ${salesData.length} SKUs`);
 
     // Step 2: Get current inventory positions
@@ -399,6 +390,110 @@ export async function POST(request: NextRequest) {
 /**
  * Process sales data from Amazon Financial API response
  */
+/**
+ * Read sales data from database (FAST!)
+ * Replaces the old processSalesData that re-downloaded data every time
+ */
+async function readSalesDataFromDB(
+  periodStart: Date,
+  periodEnd: Date,
+  date30DaysAgo: Date,
+  date7DaysAgo: Date
+): Promise<SKUSalesData[]> {
+  console.log('📖 Reading sales data from amazon_financial_transactions table...');
+  
+  // Query all transactions in the period
+  const transactions = await db
+    .select()
+    .from(amazonFinancialTransactions)
+    .where(
+      and(
+        gte(amazonFinancialTransactions.postedDate, periodStart),
+        lte(amazonFinancialTransactions.postedDate, periodEnd)
+      )
+    );
+
+  console.log(`   📊 Found ${transactions.length} transactions in DB`);
+
+  // Group by SKU and calculate metrics
+  const skuMap = new Map<string, SKUSalesData>();
+
+  for (const txn of transactions) {
+    if (!txn.sku) continue;
+
+    if (!skuMap.has(txn.sku)) {
+      skuMap.set(txn.sku, {
+        sku: txn.sku,
+        asin: txn.asin || undefined,
+        productName: txn.productName || undefined,
+        totalUnitsSold: 0,
+        totalRevenue: 0,
+        daysInPeriod: 0,
+        dailyVelocity: 0,
+        unitsSold30d: 0,
+        revenue30d: 0,
+        dailyVelocity30d: 0,
+        unitsSold7d: 0,
+        revenue7d: 0,
+        dailyVelocity7d: 0,
+        firstSaleDate: txn.postedDate ? txn.postedDate.toISOString().split('T')[0] : null,
+        lastSaleDate: txn.postedDate ? txn.postedDate.toISOString().split('T')[0] : null,
+      });
+    }
+
+    const skuData = skuMap.get(txn.sku)!;
+    const txnDate = txn.postedDate ? new Date(txn.postedDate) : null;
+
+    // Only count 'sale' transactions (not refunds) for velocity
+    if (txn.transactionType === 'sale' && txn.quantity && txn.quantity > 0) {
+      skuData.totalUnitsSold += txn.quantity;
+      skuData.totalRevenue += Number(txn.netRevenue || 0);
+
+      // 30-day metrics
+      if (txnDate && txnDate >= date30DaysAgo) {
+        skuData.unitsSold30d += txn.quantity;
+        skuData.revenue30d += Number(txn.netRevenue || 0);
+      }
+
+      // 7-day metrics
+      if (txnDate && txnDate >= date7DaysAgo) {
+        skuData.unitsSold7d += txn.quantity;
+        skuData.revenue7d += Number(txn.netRevenue || 0);
+      }
+
+      // Update date range
+      if (txnDate) {
+        const txnDateStr = txnDate.toISOString().split('T')[0];
+        if (!skuData.firstSaleDate || txnDateStr < skuData.firstSaleDate) {
+          skuData.firstSaleDate = txnDateStr;
+        }
+        if (!skuData.lastSaleDate || txnDateStr > skuData.lastSaleDate) {
+          skuData.lastSaleDate = txnDateStr;
+        }
+      }
+    }
+  }
+
+  // Calculate velocities
+  const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+  
+  for (const skuData of skuMap.values()) {
+    skuData.daysInPeriod = daysInPeriod;
+    skuData.dailyVelocity = daysInPeriod > 0 ? skuData.totalUnitsSold / daysInPeriod : 0;
+    skuData.dailyVelocity30d = skuData.unitsSold30d / 30;
+    skuData.dailyVelocity7d = skuData.unitsSold7d / 7;
+  }
+
+  const result = Array.from(skuMap.values());
+  console.log(`   ✅ Processed ${result.length} unique SKUs from DB`);
+  
+  return result;
+}
+
+/**
+ * OLD FUNCTION - Kept for reference but no longer used
+ * Now we read from DB instead of processing in-memory data
+ */
 async function processSalesData(
   financialData: any,
   periodStart: Date,
@@ -434,10 +529,14 @@ async function processSalesData(
         productName: undefined,
         totalUnitsSold: 0,
         totalRevenue: 0,
+        daysInPeriod: 0,
+        dailyVelocity: 0,
         unitsSold30d: 0,
         revenue30d: 0,
+        dailyVelocity30d: 0,
         unitsSold7d: 0,
         revenue7d: 0,
+        dailyVelocity7d: 0,
         lastSaleDate: null,
         firstSaleDate: null,
       });
@@ -508,10 +607,14 @@ async function fetchSalesData(
         productName: event.product_name,
         totalUnitsSold: 0,
         totalRevenue: 0,
+        daysInPeriod: 0,
+        dailyVelocity: 0,
         unitsSold30d: 0,
         revenue30d: 0,
+        dailyVelocity30d: 0,
         unitsSold7d: 0,
         revenue7d: 0,
+        dailyVelocity7d: 0,
         lastSaleDate: null,
         firstSaleDate: null,
       });
