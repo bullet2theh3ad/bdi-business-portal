@@ -1747,6 +1747,103 @@ export const salesVelocityCalculations = pgTable('sales_velocity_calculations', 
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// ===== AMAZON FINANCIAL TRANSACTIONS (SKU-LEVEL DELTA SYNC) =====
+
+export const amazonFinancialTransactionSyncs = pgTable('amazon_financial_transaction_syncs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Sync metadata
+  syncStartedAt: timestamp('sync_started_at').defaultNow().notNull(),
+  syncCompletedAt: timestamp('sync_completed_at'),
+  syncStatus: text('sync_status').default('in_progress').notNull(), // 'in_progress', 'completed', 'failed'
+  syncType: text('sync_type').default('full'), // 'full', 'delta'
+  
+  // Date range synced
+  periodStart: date('period_start').notNull(),
+  periodEnd: date('period_end').notNull(),
+  daysSynced: integer('days_synced'),
+  
+  // Sync results
+  transactionsFetched: integer('transactions_fetched').default(0),
+  transactionsStored: integer('transactions_stored').default(0),
+  skusProcessed: integer('skus_processed').default(0),
+  apiPagesFetched: integer('api_pages_fetched').default(0),
+  
+  // Error tracking
+  errorMessage: text('error_message'),
+  errorDetails: jsonb('error_details'),
+  
+  // Performance metrics
+  durationSeconds: numeric('duration_seconds', { precision: 10, scale: 2 }),
+  
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const amazonFinancialTransactions = pgTable('amazon_financial_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Link to sync batch
+  syncId: uuid('sync_id').references(() => amazonFinancialTransactionSyncs.id, { onDelete: 'cascade' }),
+  
+  // Transaction identification
+  orderId: text('order_id'),
+  postedDate: timestamp('posted_date'),
+  transactionType: text('transaction_type').notNull(), // 'sale', 'refund', 'fee', 'adjustment'
+  
+  // SKU information
+  sku: text('sku').notNull(),
+  asin: text('asin'),
+  productName: text('product_name'),
+  
+  // Quantity
+  quantity: integer('quantity').default(0), // Positive for sales, negative for refunds
+  
+  // Revenue breakdown (per-unit basis)
+  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).default('0'),
+  itemPrice: numeric('item_price', { precision: 12, scale: 2 }).default('0'), // Total item price
+  shippingPrice: numeric('shipping_price', { precision: 10, scale: 2 }).default('0'),
+  giftWrapPrice: numeric('gift_wrap_price', { precision: 10, scale: 2 }).default('0'),
+  itemTax: numeric('item_tax', { precision: 10, scale: 2 }).default('0'),
+  shippingTax: numeric('shipping_tax', { precision: 10, scale: 2 }).default('0'),
+  giftWrapTax: numeric('gift_wrap_tax', { precision: 10, scale: 2 }).default('0'),
+  
+  // Promotional discounts
+  itemPromotion: numeric('item_promotion', { precision: 10, scale: 2 }).default('0'),
+  shippingPromotion: numeric('shipping_promotion', { precision: 10, scale: 2 }).default('0'),
+  
+  // Fees (Amazon's cut)
+  commission: numeric('commission', { precision: 10, scale: 2 }).default('0'),
+  fbaFees: numeric('fba_fees', { precision: 10, scale: 2 }).default('0'),
+  referralFee: numeric('referral_fee', { precision: 10, scale: 2 }).default('0'),
+  variableClosingFee: numeric('variable_closing_fee', { precision: 10, scale: 2 }).default('0'),
+  otherTransactionFees: numeric('other_transaction_fees', { precision: 10, scale: 2 }).default('0'),
+  totalFees: numeric('total_fees', { precision: 10, scale: 2 }).default('0'),
+  
+  // Calculated amounts
+  grossRevenue: numeric('gross_revenue', { precision: 12, scale: 2 }).default('0'), // Before fees, before tax
+  netRevenue: numeric('net_revenue', { precision: 12, scale: 2 }).default('0'), // After fees, before tax
+  totalTax: numeric('total_tax', { precision: 12, scale: 2 }).default('0'), // Sum of all taxes
+  
+  // Refund-specific
+  refundReason: text('refund_reason'),
+  isReimbursement: boolean('is_reimbursement').default(false),
+  
+  // Ad spend (if applicable to this transaction)
+  adSpend: numeric('ad_spend', { precision: 10, scale: 2 }).default('0'),
+  campaignName: text('campaign_name'),
+  
+  // Metadata
+  marketplaceId: text('marketplace_id').default('ATVPDKIKX0DER'), // US marketplace
+  currencyCode: text('currency_code').default('USD'),
+  
+  // Raw data for debugging
+  rawEvent: jsonb('raw_event'),
+  
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export const salesVelocityMetrics = pgTable('sales_velocity_metrics', {
   id: uuid('id').primaryKey().defaultRandom(),
   calculationId: uuid('calculation_id').references(() => salesVelocityCalculations.id, { onDelete: 'cascade' }),
