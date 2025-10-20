@@ -13,7 +13,7 @@ import { AmazonSPAPIService } from '@/lib/services/amazon-sp-api';
 import { getAmazonCredentials, getConfigStatus } from '@/lib/services/amazon-sp-api/config';
 import { FinancialEventsParser } from '@/lib/services/amazon-sp-api';
 import { db } from '@/lib/db/drizzle';
-import { skuMappings, productSkus, amazonFinancialLineItems } from '@/lib/db/schema';
+import { skuMappings, productSkus, amazonFinancialLineItems, amazonFinancialSummaries } from '@/lib/db/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
@@ -76,32 +76,29 @@ export async function POST(request: NextRequest) {
     // =====================================================
     console.log('[Financial Data] Checking database for existing data...');
     
-    // Check if we have ANY data for the requested date range
-    const existingDataCount = await db
-      .select({
-        count: sql<number>`COUNT(*)`,
-      })
-      .from(amazonFinancialLineItems)
+    // Check if we have a summary for this exact date range
+    const existingSummary = await db
+      .select()
+      .from(amazonFinancialSummaries)
       .where(
         and(
-          gte(amazonFinancialLineItems.postedDate, new Date(startDate)),
-          lte(amazonFinancialLineItems.postedDate, new Date(endDate))
+          eq(amazonFinancialSummaries.dateRangeStart, new Date(startDate)),
+          eq(amazonFinancialSummaries.dateRangeEnd, new Date(endDate))
         )
       )
+      .limit(1)
       .execute();
     
-    const hasDataForRange = existingDataCount && existingDataCount[0] && existingDataCount[0].count > 0;
+    const hasSummary = existingSummary && existingSummary.length > 0;
     
-    console.log(`[Financial Data] Found ${existingDataCount[0]?.count || 0} records for requested range ${startDate} to ${endDate}`);
-    
-    // Simple logic: If we have data for this range, use it. Otherwise, fetch from API.
-    const needsAPIFetch = !hasDataForRange;
-    
-    if (needsAPIFetch) {
-      console.log('[Financial Data] 🔄 No data in DB for this range. Fetching from Amazon API...');
+    if (hasSummary) {
+      console.log(`[Financial Data] ✅ Found cached summary for ${startDate} to ${endDate}`);
     } else {
-      console.log('[Financial Data] ✅ Data exists in DB for this range. Using cached data.');
+      console.log(`[Financial Data] 🔄 No cached summary. Will fetch from Amazon API.`);
     }
+    
+    // Simple logic: If we have a summary for this range, use it. Otherwise, fetch from API.
+    const needsAPIFetch = !hasSummary;
     
     const actualStartDate = startDate;
     const actualEndDate = endDate;
@@ -161,35 +158,31 @@ export async function POST(request: NextRequest) {
     let skuSummary: Map<string, { units: number; revenue: number; fees: number }>;
     let refundSummary: Map<string, { units: number; refundAmount: number }>;
 
-    if (!needsAPIFetch) {
-      // Calculate summary from DB data (even if empty - means no data for this period)
-      console.log('[Financial Data] Calculating summary from database records...');
+    if (!needsAPIFetch && existingSummary[0]) {
+      // Use cached summary from DB
+      console.log('[Financial Data] Using cached summary from database...');
+      const summary = existingSummary[0];
       
-      // Get unique order IDs from DB
+      // Get unique order IDs from DB line items
       orderIds = Array.from(new Set(dbLineItems.map(item => item.orderId)));
       
-      // Aggregate totals
-      totalRevenue = dbLineItems
-        .filter(item => item.transactionType === 'sale')
-        .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0);
+      // Use cached totals (includes ad spend, credits, debits!)
+      totalRevenue = parseFloat(String(summary.totalRevenue || 0));
+      totalTax = parseFloat(String(summary.totalTax || 0));
+      totalFees = parseFloat(String(summary.totalFees || 0));
+      totalRefunds = parseFloat(String(summary.totalRefunds || 0));
+      totalAdSpend = parseFloat(String(summary.totalAdSpend || 0));
+      totalChargebacks = parseFloat(String(summary.totalChargebacks || 0));
+      totalCoupons = parseFloat(String(summary.totalCoupons || 0));
+      adjustments = {
+        credits: parseFloat(String(summary.adjustmentCredits || 0)),
+        debits: parseFloat(String(summary.adjustmentDebits || 0)),
+        net: parseFloat(String(summary.adjustmentCredits || 0)) - parseFloat(String(summary.adjustmentDebits || 0)),
+      };
       
-      totalTax = dbLineItems
-        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0);
-      
-      totalFees = dbLineItems
-        .filter(item => item.transactionType === 'sale')
-        .reduce((sum, item) => sum + parseFloat(String(item.totalFees || 0)), 0);
-      
-      totalRefunds = Math.abs(dbLineItems
-        .filter(item => item.transactionType === 'refund')
-        .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0));
-      
-      totalAdSpend = 0; // TODO: Extract from raw_event if needed
+      // These breakdowns are not cached, so set to empty
       adSpendBreakdown = {};
-      totalChargebacks = 0;
-      adjustments = { credits: 0, debits: 0, net: 0 };
       adjustmentBreakdown = { credits: [], debits: [] };
-      totalCoupons = 0;
       
       totalTaxRefunded = Math.abs(dbLineItems
         .filter(item => item.transactionType === 'refund')
@@ -461,6 +454,43 @@ export async function POST(request: NextRequest) {
       }
       
       console.log(`[Financial Data] ✅ Saved ${savedCount} line items to database`);
+      
+      // Save summary for this date range (for caching ad spend, credits, debits)
+      if (needsAPIFetch) {
+        console.log('[Financial Data] Saving summary to database...');
+        await db.insert(amazonFinancialSummaries).values({
+          dateRangeStart: new Date(startDate),
+          dateRangeEnd: new Date(endDate),
+          totalRevenue: totalRevenue.toFixed(2),
+          totalTax: totalTax.toFixed(2),
+          totalFees: totalFees.toFixed(2),
+          totalRefunds: totalRefunds.toFixed(2),
+          totalAdSpend: totalAdSpend.toFixed(2),
+          totalChargebacks: totalChargebacks.toFixed(2),
+          totalCoupons: totalCoupons.toFixed(2),
+          adjustmentCredits: adjustments.credits.toFixed(2),
+          adjustmentDebits: adjustments.debits.toFixed(2),
+          uniqueOrders: orderIds.length,
+          eventGroups: transactions.length,
+        }).onConflictDoUpdate({
+          target: [amazonFinancialSummaries.dateRangeStart, amazonFinancialSummaries.dateRangeEnd],
+          set: {
+            totalRevenue: totalRevenue.toFixed(2),
+            totalTax: totalTax.toFixed(2),
+            totalFees: totalFees.toFixed(2),
+            totalRefunds: totalRefunds.toFixed(2),
+            totalAdSpend: totalAdSpend.toFixed(2),
+            totalChargebacks: totalChargebacks.toFixed(2),
+            totalCoupons: totalCoupons.toFixed(2),
+            adjustmentCredits: adjustments.credits.toFixed(2),
+            adjustmentDebits: adjustments.debits.toFixed(2),
+            uniqueOrders: orderIds.length,
+            eventGroups: transactions.length,
+            updatedAt: new Date(),
+          },
+        });
+        console.log('[Financial Data] ✅ Summary saved to database');
+      }
     } else {
       console.log('[Financial Data] No line items to save');
     }

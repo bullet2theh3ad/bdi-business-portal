@@ -1963,3 +1963,34 @@ export const amazonFinancialLineItems = pgTable('amazon_financial_line_items', {
 
 export type AmazonFinancialLineItem = typeof amazonFinancialLineItems.$inferSelect;
 export type NewAmazonFinancialLineItem = typeof amazonFinancialLineItems.$inferInsert;
+
+// ===== AMAZON FINANCIAL SUMMARIES (CACHE FOR AD SPEND, CREDITS, DEBITS) =====
+export const amazonFinancialSummaries = pgTable('amazon_financial_summaries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Date Range
+  dateRangeStart: timestamp('date_range_start').notNull(),
+  dateRangeEnd: timestamp('date_range_end').notNull(),
+  
+  // Aggregated Totals
+  totalRevenue: numeric('total_revenue', { precision: 10, scale: 2 }).default('0'),
+  totalTax: numeric('total_tax', { precision: 10, scale: 2 }).default('0'),
+  totalFees: numeric('total_fees', { precision: 10, scale: 2 }).default('0'),
+  totalRefunds: numeric('total_refunds', { precision: 10, scale: 2 }).default('0'),
+  totalAdSpend: numeric('total_ad_spend', { precision: 10, scale: 2 }).default('0'),
+  totalChargebacks: numeric('total_chargebacks', { precision: 10, scale: 2 }).default('0'),
+  totalCoupons: numeric('total_coupons', { precision: 10, scale: 2 }).default('0'),
+  adjustmentCredits: numeric('adjustment_credits', { precision: 10, scale: 2 }).default('0'),
+  adjustmentDebits: numeric('adjustment_debits', { precision: 10, scale: 2 }).default('0'),
+  
+  // Metadata
+  uniqueOrders: integer('unique_orders').default(0),
+  eventGroups: integer('event_groups').default(0),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type AmazonFinancialSummary = typeof amazonFinancialSummaries.$inferSelect;
+export type NewAmazonFinancialSummary = typeof amazonFinancialSummaries.$inferInsert;
