@@ -153,29 +153,6 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         requiresBDI: true, // BDI-only feature
       },
       {
-        title: tn('amazonData', 'Amazon Data'), // 🌍 TRANSLATED
-        icon: 'analytics',
-        requiresRole: ['super_admin', 'admin_cfo'], // Super Admin and CFO only
-        requiresBDI: true, // BDI-only feature
-        children: [
-          {
-            title: 'Reports',
-            href: '/admin/amazon-data',
-            icon: 'reports',
-          },
-          {
-            title: 'Financial Data',
-            href: '/admin/amazon-data/financial',
-            icon: 'finance',
-          },
-          {
-            title: 'Campaign Analytics',
-            href: '/admin/amazon-data/campaigns',
-            icon: 'analytics',
-          },
-        ],
-      },
-      {
         title: '📦 WIP Flow',
         icon: 'inventory_analytics',
         requiresRole: ['super_admin', 'admin', 'operations'], // Operations team access
@@ -202,6 +179,28 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     requiresBDI: true, // BDI-only feature
     // NOTE: Parent menu shows if user has access to ANY child item
     children: [
+      {
+        title: tn('amazonData', 'Amazon Data'), // 🌍 TRANSLATED
+        icon: 'analytics',
+        requiresRole: ['super_admin'], // All BDI super_admins can see this
+        children: [
+          {
+            title: 'Reports',
+            href: '/admin/amazon-data',
+            icon: 'reports',
+          },
+          {
+            title: 'Financial Data',
+            href: '/admin/amazon-data/financial',
+            icon: 'finance',
+          },
+          {
+            title: 'Campaign Analytics',
+            href: '/admin/amazon-data/campaigns',
+            icon: 'analytics',
+          },
+        ],
+      },
       {
         title: 'NRE Spend',
         href: '/admin/nre-budget',
