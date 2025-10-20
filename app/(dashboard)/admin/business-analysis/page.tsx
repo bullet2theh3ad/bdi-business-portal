@@ -79,6 +79,7 @@ export default function BusinessAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showSKUWorksheet, setShowSKUWorksheet] = useState(false);
+  const [showSalesVelocityModal, setShowSalesVelocityModal] = useState(false);
   const [availableSKUs, setAvailableSKUs] = useState<string[]>([]);
   const [isCustomSKU, setIsCustomSKU] = useState(false);
   
@@ -369,7 +370,7 @@ export default function BusinessAnalysisPage() {
           {/* Sales Velocity */}
           <Card 
             className="hover:shadow-lg transition-shadow border-t-4 border-t-purple-500 cursor-pointer"
-            onClick={() => {/* TODO: Open Sales Velocity modal */}}
+            onClick={() => setShowSalesVelocityModal(true)}
           >
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1323,6 +1324,304 @@ export default function BusinessAnalysisPage() {
           </div>
         </div>
       )}
+
+      {/* Sales Velocity Modal (Full Screen) */}
+      {showSalesVelocityModal && (
+        <SalesVelocityModal onClose={() => setShowSalesVelocityModal(false)} />
+      )}
+    </div>
+  );
+}
+
+// =====================================================
+// Sales Velocity Modal Component
+// =====================================================
+interface SalesVelocityModalProps {
+  onClose: () => void;
+}
+
+function SalesVelocityModal({ onClose }: SalesVelocityModalProps) {
+  const [loading, setLoading] = useState(true);
+  const [calculating, setCalculating] = useState(false);
+  const [metrics, setMetrics] = useState<any[]>([]);
+  const [calculation, setCalculation] = useState<any>(null);
+  const [view, setView] = useState<'latest' | 'stockout' | 'top_movers'>('latest');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'velocity' | 'inventory' | 'risk'>('velocity');
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [view]);
+
+  async function fetchMetrics() {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/sales-velocity/metrics?view=${view}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMetrics(data.metrics || []);
+        setCalculation(data.calculation);
+      }
+    } catch (error) {
+      console.error('Error fetching velocity metrics:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCalculate() {
+    if (!confirm('This will recalculate sales velocity for all SKUs. This may take a few minutes. Continue?')) {
+      return;
+    }
+
+    try {
+      setCalculating(true);
+      const response = await fetch('/api/sales-velocity/calculate', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`✅ Calculation complete!\n\n${data.skusAnalyzed} SKUs analyzed\n${data.metricsCreated} metrics created`);
+        fetchMetrics();
+      } else {
+        const error = await response.json();
+        alert(`❌ Calculation failed: ${error.error}`);
+      }
+    } catch (error: any) {
+      console.error('Error calculating velocity:', error);
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setCalculating(false);
+    }
+  }
+
+  // Filter and sort metrics
+  const filteredMetrics = metrics
+    .filter(m => 
+      !searchTerm || 
+      m.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === 'velocity') {
+        return parseFloat(b.daily_sales_velocity || 0) - parseFloat(a.daily_sales_velocity || 0);
+      } else if (sortBy === 'inventory') {
+        return (b.total_available_inventory || 0) - (a.total_available_inventory || 0);
+      } else {
+        // Sort by risk: CRITICAL > HIGH > MEDIUM > LOW
+        const riskOrder: any = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        return (riskOrder[b.stockout_risk] || 0) - (riskOrder[a.stockout_risk] || 0);
+      }
+    });
+
+  // Calculate summary stats
+  const totalSKUs = metrics.length;
+  const avgVelocity = metrics.reduce((sum, m) => sum + parseFloat(m.daily_sales_velocity || 0), 0) / (totalSKUs || 1);
+  const totalInventory = metrics.reduce((sum, m) => sum + (m.total_available_inventory || 0), 0);
+  const criticalCount = metrics.filter(m => m.stockout_risk === 'CRITICAL').length;
+  const highCount = metrics.filter(m => m.stockout_risk === 'HIGH').length;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full h-full max-h-[98vh] overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 border-b bg-gradient-to-r from-purple-50 to-white gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Activity className="h-6 w-6 sm:h-7 sm:w-7 text-purple-600" />
+              Sales Velocity Analysis
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+              {calculation ? `Last calculated: ${new Date(calculation.calculation_date).toLocaleDateString()}` : 'No calculations yet'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              onClick={handleCalculate}
+              disabled={calculating}
+              className="flex-1 sm:flex-none bg-purple-600 hover:bg-purple-700 text-sm"
+            >
+              {calculating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Calculating...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2" />
+                  Calculate Now
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="hover:bg-purple-100"
+            >
+              <span className="text-2xl">&times;</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Modal Content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            </div>
+          ) : metrics.length === 0 ? (
+            <div className="text-center py-12">
+              <Activity className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Data Available</h3>
+              <p className="text-gray-600 mb-4">Click "Calculate Now" to generate sales velocity metrics</p>
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardContent className="p-3 sm:p-4">
+                    <p className="text-xs text-gray-600 mb-1">Total SKUs</p>
+                    <p className="text-xl sm:text-2xl font-bold text-purple-600">{totalSKUs}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="p-3 sm:p-4">
+                    <p className="text-xs text-gray-600 mb-1">Avg Daily Velocity</p>
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600">{avgVelocity.toFixed(1)}</p>
+                    <p className="text-xs text-gray-500">units/day</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-green-500">
+                  <CardContent className="p-3 sm:p-4">
+                    <p className="text-xs text-gray-600 mb-1">Total Inventory</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">{totalInventory.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">units</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-red-500">
+                  <CardContent className="p-3 sm:p-4">
+                    <p className="text-xs text-gray-600 mb-1">At Risk</p>
+                    <p className="text-xl sm:text-2xl font-bold text-red-600">{criticalCount + highCount}</p>
+                    <p className="text-xs text-gray-500">SKUs</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* View Tabs */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button
+                  variant={view === 'latest' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('latest')}
+                  className={view === 'latest' ? 'bg-purple-600' : ''}
+                >
+                  All SKUs
+                </Button>
+                <Button
+                  variant={view === 'stockout' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('stockout')}
+                  className={view === 'stockout' ? 'bg-red-600' : ''}
+                >
+                  Stockout Risk
+                </Button>
+                <Button
+                  variant={view === 'top_movers' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('top_movers')}
+                  className={view === 'top_movers' ? 'bg-green-600' : ''}
+                >
+                  Top Movers
+                </Button>
+              </div>
+
+              {/* Search and Sort */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
+                <input
+                  type="text"
+                  placeholder="Search SKU or product name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="velocity">Sort by Velocity</option>
+                  <option value="inventory">Sort by Inventory</option>
+                  <option value="risk">Sort by Risk</option>
+                </select>
+              </div>
+
+              {/* Data Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">SKU</th>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700 hidden sm:table-cell">Product</th>
+                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Velocity</th>
+                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Inventory</th>
+                        <th className="px-3 py-2 text-right font-semibold text-gray-700 hidden md:table-cell">Days Left</th>
+                        <th className="px-3 py-2 text-center font-semibold text-gray-700">Risk</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredMetrics.map((metric, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 font-mono text-xs">{metric.sku}</td>
+                          <td className="px-3 py-2 text-xs hidden sm:table-cell truncate max-w-[200px]">
+                            {metric.product_name || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="font-semibold">{parseFloat(metric.daily_sales_velocity || 0).toFixed(1)}</div>
+                            <div className="text-xs text-gray-500">units/day</div>
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="font-semibold">{metric.total_available_inventory || 0}</div>
+                            <div className="text-xs text-gray-500">
+                              FBA: {metric.amazon_fba_quantity || 0}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right hidden md:table-cell">
+                            {metric.days_of_inventory ? (
+                              <div className="font-semibold">{parseFloat(metric.days_of_inventory).toFixed(0)} days</div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                              metric.stockout_risk === 'CRITICAL' ? 'bg-red-100 text-red-800' :
+                              metric.stockout_risk === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                              metric.stockout_risk === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {metric.stockout_risk || 'LOW'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {filteredMetrics.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No SKUs match your search criteria
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
