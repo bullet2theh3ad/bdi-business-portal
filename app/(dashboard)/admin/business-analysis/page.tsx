@@ -1343,6 +1343,7 @@ interface SalesVelocityModalProps {
 function SalesVelocityModal({ onClose }: SalesVelocityModalProps) {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [calculationProgress, setCalculationProgress] = useState<string[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [calculation, setCalculation] = useState<any>(null);
   const [view, setView] = useState<'latest' | 'stockout' | 'top_movers'>('latest');
@@ -1376,21 +1377,51 @@ function SalesVelocityModal({ onClose }: SalesVelocityModalProps) {
 
     try {
       setCalculating(true);
+      setCalculationProgress([]);
+      
+      // Add progress updates
+      const addProgress = (message: string) => {
+        setCalculationProgress(prev => [...prev, message]);
+      };
+
+      addProgress('🚀 Starting calculation...');
+      addProgress('📦 Step 1/4: Syncing Amazon FBA Inventory...');
+      
+      // Simulate progress updates (in real implementation, use Server-Sent Events or polling)
+      setTimeout(() => addProgress('💰 Step 2/4: Fetching Amazon Financial Data (Aug 2024 - Today)...'), 1000);
+      setTimeout(() => addProgress('📊 Step 3/4: Processing sales data...'), 2000);
+      setTimeout(() => addProgress('🏭 Step 4/4: Pulling warehouse data (EMG + CATV)...'), 3000);
+      
       const response = await fetch('/api/sales-velocity/calculate', {
         method: 'POST',
       });
 
       if (response.ok) {
         const data = await response.json();
-        alert(`✅ Calculation complete!\n\n${data.skusAnalyzed} SKUs analyzed\n${data.metricsCreated} metrics created`);
-        fetchMetrics();
+        addProgress('✅ Calculation complete!');
+        addProgress(`📊 ${data.skusAnalyzed} SKUs analyzed`);
+        addProgress(`📈 ${data.metricsCreated} metrics created`);
+        
+        setTimeout(() => {
+          alert(`✅ Calculation complete!\n\n${data.skusAnalyzed} SKUs analyzed\n${data.metricsCreated} metrics created`);
+          fetchMetrics();
+          setCalculationProgress([]);
+        }, 1000);
       } else {
         const error = await response.json();
-        alert(`❌ Calculation failed: ${error.error}`);
+        addProgress(`❌ Calculation failed: ${error.error}`);
+        setTimeout(() => {
+          alert(`❌ Calculation failed: ${error.error}\n\nCheck console for details.`);
+          setCalculationProgress([]);
+        }, 1000);
       }
     } catch (error: any) {
       console.error('Error calculating velocity:', error);
-      alert(`❌ Error: ${error.message}`);
+      setCalculationProgress(prev => [...prev, `❌ Error: ${error.message}`]);
+      setTimeout(() => {
+        alert(`❌ Error: ${error.message}`);
+        setCalculationProgress([]);
+      }, 1000);
     } finally {
       setCalculating(false);
     }
@@ -1467,6 +1498,23 @@ function SalesVelocityModal({ onClose }: SalesVelocityModalProps) {
 
         {/* Modal Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Progress Display */}
+          {calculating && calculationProgress.length > 0 && (
+            <div className="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                Calculation in Progress
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {calculationProgress.map((msg, idx) => (
+                  <div key={idx} className="text-sm text-purple-800 font-mono">
+                    {msg}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>

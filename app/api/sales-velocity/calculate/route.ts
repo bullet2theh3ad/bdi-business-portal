@@ -168,23 +168,64 @@ export async function POST(request: NextRequest) {
     const inventoryData = await fetchInventoryData();
     console.log(`✅ Found inventory data for ${Object.keys(inventoryData).length} SKUs`);
 
-    // Step 3: Create calculation record
+    // Step 3: Create or update calculation record
     console.log('💾 Step 3: Creating calculation record...');
-    const [calculation] = await db.insert(salesVelocityCalculations).values({
-      calculationDate: calculationDate,
-      periodStart: periodStart.toISOString().split('T')[0],
-      periodEnd: periodEnd.toISOString().split('T')[0],
-      totalSkusAnalyzed: salesData.length,
-      dataSources: {
-        amazonFinancialEvents: true,
-        amazonInventory: true,
-        emgWarehouse: true,
-        catvWarehouse: true,
-      },
-      status: 'processing',
-    }).returning();
+    
+    // Check if calculation for today already exists
+    const existingCalculation = await db
+      .select()
+      .from(salesVelocityCalculations)
+      .where(eq(salesVelocityCalculations.calculationDate, calculationDate))
+      .limit(1);
 
-    console.log(`✅ Calculation record created: ${calculation.id}`);
+    let calculation;
+    if (existingCalculation.length > 0) {
+      console.log('⚠️  Calculation for today already exists, deleting old metrics...');
+      // Delete old metrics for this calculation
+      await db
+        .delete(salesVelocityMetrics)
+        .where(eq(salesVelocityMetrics.calculationId, existingCalculation[0].id));
+      
+      // Update existing calculation
+      const [updated] = await db
+        .update(salesVelocityCalculations)
+        .set({
+          periodStart: periodStart.toISOString().split('T')[0],
+          periodEnd: periodEnd.toISOString().split('T')[0],
+          totalSkusAnalyzed: salesData.length,
+          dataSources: {
+            amazonFinancialEvents: true,
+            amazonInventory: true,
+            emgWarehouse: true,
+            catvWarehouse: true,
+          },
+          status: 'processing',
+          updatedAt: new Date(),
+        })
+        .where(eq(salesVelocityCalculations.id, existingCalculation[0].id))
+        .returning();
+      
+      calculation = updated;
+      console.log(`✅ Updated existing calculation record: ${calculation.id}`);
+    } else {
+      // Create new calculation
+      const [created] = await db.insert(salesVelocityCalculations).values({
+        calculationDate: calculationDate,
+        periodStart: periodStart.toISOString().split('T')[0],
+        periodEnd: periodEnd.toISOString().split('T')[0],
+        totalSkusAnalyzed: salesData.length,
+        dataSources: {
+          amazonFinancialEvents: true,
+          amazonInventory: true,
+          emgWarehouse: true,
+          catvWarehouse: true,
+        },
+        status: 'processing',
+      }).returning();
+      
+      calculation = created;
+      console.log(`✅ Calculation record created: ${calculation.id}`);
+    }
 
     // Step 4: Calculate velocity metrics for each SKU
     console.log('🧮 Step 4: Calculating velocity metrics...');
