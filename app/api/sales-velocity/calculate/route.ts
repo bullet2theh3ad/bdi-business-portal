@@ -414,10 +414,15 @@ async function processSalesData(
   const skuMap = new Map<string, SKUSalesData>();
 
   // Process SKU-level data from financial API
-  // The API returns data in summary.allSKUs array
-  const allSKUs = financialData.summary?.allSKUs || [];
+  // The API returns data in allSKUs array at the top level
+  const allSKUs = financialData.allSKUs || [];
   
   console.log(`📊 Processing ${allSKUs.length} SKUs from financial data`);
+  
+  if (allSKUs.length === 0) {
+    console.warn('⚠️  allSKUs array is empty or undefined');
+    console.warn('   Financial data structure:', Object.keys(financialData));
+  }
 
   for (const skuEntry of allSKUs) {
     const sku = skuEntry.sku || skuEntry.bdiSku || 'UNKNOWN';
