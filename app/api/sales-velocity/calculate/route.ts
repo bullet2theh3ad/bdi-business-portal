@@ -115,15 +115,15 @@ export async function POST(request: NextRequest) {
     }
 
     // =====================================================
-    // STEP 0b: Fetch Amazon Financial Data (Last 180 days max)
+    // STEP 0b: Fetch Amazon Financial Data (Last 179 days to be safe)
     // =====================================================
-    console.log('💰 Step 0b: Fetching Amazon Financial Events (Last 180 days)...');
+    console.log('💰 Step 0b: Fetching Amazon Financial Events (Last 179 days)...');
     let financialData: any = null;
     try {
-      // Amazon API has a 180-day limit, so use last 180 days instead of Aug 2024
+      // Amazon API has a 180-day limit, but adds time buffer, so use 179 days to be safe
       const today = new Date();
-      const days180Ago = new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000);
-      const startDate = days180Ago.toISOString().split('T')[0];
+      const days179Ago = new Date(today.getTime() - 179 * 24 * 60 * 60 * 1000);
+      const startDate = days179Ago.toISOString().split('T')[0];
       const endDate = today.toISOString().split('T')[0];
       
       console.log(`   Fetching from ${startDate} to ${endDate}`);
@@ -159,9 +159,9 @@ export async function POST(request: NextRequest) {
 
     console.log('🚀 Starting Sales Velocity Calculation (Data Collection Complete)...');
 
-    // Define calculation period (last 180 days to match Amazon API limit)
+    // Define calculation period (last 179 days to match Amazon API limit)
     const periodEnd = new Date();
-    const periodStart = new Date(periodEnd.getTime() - 180 * 24 * 60 * 60 * 1000);
+    const periodStart = new Date(periodEnd.getTime() - 179 * 24 * 60 * 60 * 1000);
     const calculationDate = new Date().toISOString().split('T')[0];
     
     const now = new Date();
