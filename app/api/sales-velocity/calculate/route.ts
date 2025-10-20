@@ -115,11 +115,19 @@ export async function POST(request: NextRequest) {
     }
 
     // =====================================================
-    // STEP 0b: Fetch Amazon Financial Data (Aug 2024 - Today)
+    // STEP 0b: Fetch Amazon Financial Data (Last 180 days max)
     // =====================================================
-    console.log('💰 Step 0b: Fetching Amazon Financial Events (Aug 2024 - Today)...');
+    console.log('💰 Step 0b: Fetching Amazon Financial Events (Last 180 days)...');
     let financialData: any = null;
     try {
+      // Amazon API has a 180-day limit, so use last 180 days instead of Aug 2024
+      const today = new Date();
+      const days180Ago = new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000);
+      const startDate = days180Ago.toISOString().split('T')[0];
+      const endDate = today.toISOString().split('T')[0];
+      
+      console.log(`   Fetching from ${startDate} to ${endDate}`);
+      
       // Call the financial data endpoint to get transaction data
       const financialResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/amazon/financial-data`, {
         method: 'POST',
@@ -128,8 +136,8 @@ export async function POST(request: NextRequest) {
           'Cookie': cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; '),
         },
         body: JSON.stringify({
-          startDate: '2024-08-01',
-          endDate: new Date().toISOString().split('T')[0],
+          startDate,
+          endDate,
           includeTransactions: true,
         }),
       });
@@ -138,20 +146,22 @@ export async function POST(request: NextRequest) {
         financialData = await financialResponse.json();
         console.log(`✅ Amazon Financial Data fetched successfully`);
         console.log(`   - Revenue: $${financialData.summary?.totalRevenue || 0}`);
-        console.log(`   - Orders: ${financialData.summary?.totalOrders || 0}`);
-        console.log(`   - Refunds: ${financialData.summary?.totalRefunds || 0}`);
+        console.log(`   - Orders: ${financialData.summary?.uniqueOrders || 0}`);
+        console.log(`   - SKUs: ${financialData.summary?.uniqueSKUs || 0}`);
       } else {
-        console.warn('⚠️  Amazon Financial data fetch failed (continuing with 0 sales)');
+        const errorData = await financialResponse.json().catch(() => ({}));
+        console.warn('⚠️  Amazon Financial data fetch failed:', errorData.error || 'Unknown error');
+        console.warn('   Continuing with 0 sales data');
       }
-    } catch (error) {
-      console.warn('⚠️  Amazon Financial data error (continuing with 0 sales):', error);
+    } catch (error: any) {
+      console.warn('⚠️  Amazon Financial data error (continuing with 0 sales):', error.message);
     }
 
     console.log('🚀 Starting Sales Velocity Calculation (Data Collection Complete)...');
 
-    // Define calculation period
-    const periodStart = new Date('2024-08-01'); // August 2024
+    // Define calculation period (last 180 days to match Amazon API limit)
     const periodEnd = new Date();
+    const periodStart = new Date(periodEnd.getTime() - 180 * 24 * 60 * 60 * 1000);
     const calculationDate = new Date().toISOString().split('T')[0];
     
     const now = new Date();
@@ -396,7 +406,7 @@ async function processSalesData(
   date30DaysAgo: Date,
   date7DaysAgo: Date
 ): Promise<SKUSalesData[]> {
-  if (!financialData || !financialData.skuData) {
+  if (!financialData || !financialData.success) {
     console.log('⚠️  No financial data available, returning empty sales data');
     return [];
   }
@@ -404,14 +414,19 @@ async function processSalesData(
   const skuMap = new Map<string, SKUSalesData>();
 
   // Process SKU-level data from financial API
-  for (const skuEntry of financialData.skuData || []) {
-    const sku = skuEntry.sku || 'UNKNOWN';
+  // The API returns data in summary.allSKUs array
+  const allSKUs = financialData.summary?.allSKUs || [];
+  
+  console.log(`📊 Processing ${allSKUs.length} SKUs from financial data`);
+
+  for (const skuEntry of allSKUs) {
+    const sku = skuEntry.sku || skuEntry.bdiSku || 'UNKNOWN';
     
     if (!skuMap.has(sku)) {
       skuMap.set(sku, {
         sku,
-        asin: skuEntry.asin || undefined,
-        productName: skuEntry.productName || undefined,
+        asin: undefined, // ASIN not directly available in summary
+        productName: undefined,
         totalUnitsSold: 0,
         totalRevenue: 0,
         unitsSold30d: 0,
@@ -425,19 +440,26 @@ async function processSalesData(
 
     const skuData = skuMap.get(sku)!;
     
-    // Aggregate totals
-    skuData.totalUnitsSold += Math.abs(skuEntry.netUnits || 0);
-    skuData.totalRevenue += parseFloat(skuEntry.netRevenue || 0);
+    // Aggregate totals (netUnits accounts for refunds)
+    const netUnits = Math.abs(skuEntry.netUnits || skuEntry.units || 0);
+    const netRevenue = Math.abs(skuEntry.net || skuEntry.revenue || 0);
+    
+    skuData.totalUnitsSold += netUnits;
+    skuData.totalRevenue += netRevenue;
     
     // Note: The financial API doesn't provide date-level breakdown
     // So we'll use the total data as a proxy for now
-    // In future, we can enhance this with transaction-level data
-    skuData.unitsSold30d = skuData.totalUnitsSold;
-    skuData.revenue30d = skuData.totalRevenue;
-    skuData.unitsSold7d = Math.floor(skuData.totalUnitsSold * 0.2); // Rough estimate
-    skuData.revenue7d = skuData.totalRevenue * 0.2;
+    // Assume even distribution across the period for 30d and 7d estimates
+    const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+    const dailyRate = netUnits / daysInPeriod;
+    
+    skuData.unitsSold30d = Math.floor(dailyRate * 30);
+    skuData.revenue30d = (netRevenue / daysInPeriod) * 30;
+    skuData.unitsSold7d = Math.floor(dailyRate * 7);
+    skuData.revenue7d = (netRevenue / daysInPeriod) * 7;
   }
 
+  console.log(`✅ Processed ${skuMap.size} unique SKUs`);
   return Array.from(skuMap.values());
 }
 
