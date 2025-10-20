@@ -251,6 +251,22 @@ export async function POST(request: NextRequest) {
       // Aggregate from DB line items directly
       console.log('[Financial Data] Aggregating summary from DB line items (no cached summary)...');
       
+      // Check for overlapping summaries to get ad spend/credits/debits
+      const overlappingSummaries = await db
+        .select()
+        .from(amazonFinancialSummaries)
+        .where(
+          and(
+            gte(amazonFinancialSummaries.dateRangeEnd, new Date(startDate)),
+            lte(amazonFinancialSummaries.dateRangeStart, new Date(endDate))
+          )
+        )
+        .execute();
+      
+      if (overlappingSummaries.length > 0) {
+        console.log(`[Financial Data] 📊 Found ${overlappingSummaries.length} overlapping summaries to aggregate ad spend/credits/debits.`);
+      }
+      
       // Get unique order IDs
       orderIds = Array.from(new Set(dbLineItems.map(item => item.orderId)));
       
@@ -273,12 +289,26 @@ export async function POST(request: NextRequest) {
         .filter(item => item.transactionType === 'refund')
         .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0));
       
-      // Ad spend, chargebacks, coupons, adjustments not available in line items
-      // Run backfill script to populate summaries: npx ts-node scripts/backfill-ad-spend.ts
-      totalAdSpend = 0;
-      totalChargebacks = 0;
-      totalCoupons = 0;
-      adjustments = { credits: 0, debits: 0, net: 0 };
+      // Aggregate ad spend, chargebacks, coupons, adjustments from overlapping summaries
+      if (overlappingSummaries.length > 0) {
+        console.log(`[Financial Data] 📊 Aggregating ad spend/credits/debits from ${overlappingSummaries.length} overlapping summaries...`);
+        totalAdSpend = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalAdSpend || 0)), 0);
+        totalChargebacks = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalChargebacks || 0)), 0);
+        totalCoupons = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalCoupons || 0)), 0);
+        adjustments = {
+          credits: overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentCredits || 0)), 0),
+          debits: overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentDebits || 0)), 0),
+          net: 0, // Will be calculated below
+        };
+        adjustments.net = adjustments.credits - adjustments.debits;
+      } else {
+        // No summaries available - ad spend will be $0
+        // Run backfill: Click "Backfill Ad Spend" button on Financial Data page
+        totalAdSpend = 0;
+        totalChargebacks = 0;
+        totalCoupons = 0;
+        adjustments = { credits: 0, debits: 0, net: 0 };
+      }
       adSpendBreakdown = {};
       adjustmentBreakdown = { credits: [], debits: [] };
       
@@ -492,13 +522,28 @@ export async function POST(request: NextRequest) {
               const quantity = Math.abs(item.QuantityShipped || 0);
               const bdiSku = skuLookup.get(amazonSku.toLowerCase());
               
-              // Calculate refund amount
+              // Calculate refund amount and tax
               let itemPrice = 0;
+              let itemTax = 0;
+              let shippingTax = 0;
+              
               if (item.ItemChargeAdjustmentList) {
                 for (const charge of item.ItemChargeAdjustmentList) {
-                  itemPrice += Math.abs(parseFloat(String(charge.ChargeAmount?.CurrencyAmount || '0')));
+                  const amount = Math.abs(parseFloat(String(charge.ChargeAmount?.CurrencyAmount || '0')));
+                  const chargeType = charge.ChargeType;
+                  
+                  if (chargeType === 'Tax') {
+                    itemTax += amount;
+                  } else if (chargeType === 'ShippingTax') {
+                    shippingTax += amount;
+                  } else {
+                    // Principal, Shipping, etc.
+                    itemPrice += amount;
+                  }
                 }
               }
+              
+              const totalTax = itemTax + shippingTax;
               
               lineItemsToSave.push({
                 orderId,
@@ -515,8 +560,8 @@ export async function POST(request: NextRequest) {
                 giftWrapPrice: '0',
                 itemPromotion: '0',
                 shippingPromotion: '0',
-                itemTax: '0',
-                shippingTax: '0',
+                itemTax: (-itemTax).toFixed(2),
+                shippingTax: (-shippingTax).toFixed(2),
                 giftWrapTax: '0',
                 commission: '0',
                 fbaFees: '0',
@@ -524,7 +569,7 @@ export async function POST(request: NextRequest) {
                 totalFees: '0',
                 grossRevenue: (-itemPrice).toFixed(2),
                 netRevenue: (-itemPrice).toFixed(2),
-                totalTax: '0',
+                totalTax: (-totalTax).toFixed(2),
                 marketplaceId: 'ATVPDKIKX0DER',
                 currencyCode: 'USD',
                 rawEvent: item,
