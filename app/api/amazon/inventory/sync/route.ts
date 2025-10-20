@@ -87,11 +87,13 @@ async function requestInventoryReport(credentials: any, auth: AmazonSPAPIAuth, r
   
   const response = await rateLimiter.executeWithRetry(async () => {
     const accessToken = await auth.getAccessToken();
-    const url = `${credentials.apiEndpoint}/reports/2021-06-30/reports`;
+    const SP_API_URL = 'https://sellingpartnerapi-na.amazon.com';
+    const MARKETPLACE_ID = 'ATVPDKIKX0DER'; // US marketplace
+    const url = `${SP_API_URL}/reports/2021-06-30/reports`;
     
     const requestBody = {
       reportType: 'GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA',
-      marketplaceIds: [credentials.marketplaceId],
+      marketplaceIds: [MARKETPLACE_ID],
     };
     
     const res = await fetch(url, {
@@ -124,7 +126,8 @@ async function pollReportStatus(reportId: string, credentials: any, auth: Amazon
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const response = await rateLimiter.executeWithRetry(async () => {
       const accessToken = await auth.getAccessToken();
-      const url = `${credentials.apiEndpoint}/reports/2021-06-30/reports/${reportId}`;
+      const SP_API_URL = 'https://sellingpartnerapi-na.amazon.com';
+      const url = `${SP_API_URL}/reports/2021-06-30/reports/${reportId}`;
       
       const res = await fetch(url, {
         headers: {
@@ -165,7 +168,8 @@ async function downloadReport(documentId: string, credentials: any, auth: Amazon
   // Get document info
   const docInfo = await rateLimiter.executeWithRetry(async () => {
     const accessToken = await auth.getAccessToken();
-    const url = `${credentials.apiEndpoint}/reports/2021-06-30/documents/${documentId}`;
+    const SP_API_URL = 'https://sellingpartnerapi-na.amazon.com';
+    const url = `${SP_API_URL}/reports/2021-06-30/documents/${documentId}`;
     
     const res = await fetch(url, {
       headers: {
