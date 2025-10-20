@@ -1977,6 +1977,7 @@ export const amazonFinancialSummaries = pgTable('amazon_financial_summaries', {
   totalTax: numeric('total_tax', { precision: 10, scale: 2 }).default('0'),
   totalFees: numeric('total_fees', { precision: 10, scale: 2 }).default('0'),
   totalRefunds: numeric('total_refunds', { precision: 10, scale: 2 }).default('0'),
+  totalTaxRefunded: numeric('total_tax_refunded', { precision: 10, scale: 2 }).default('0'),
   totalAdSpend: numeric('total_ad_spend', { precision: 10, scale: 2 }).default('0'),
   totalChargebacks: numeric('total_chargebacks', { precision: 10, scale: 2 }).default('0'),
   totalCoupons: numeric('total_coupons', { precision: 10, scale: 2 }).default('0'),

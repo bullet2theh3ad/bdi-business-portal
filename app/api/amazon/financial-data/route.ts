@@ -193,11 +193,12 @@ export async function POST(request: NextRequest) {
       // Get unique order IDs from DB line items
       orderIds = Array.from(new Set(dbLineItems.map(item => item.orderId)));
       
-      // Use cached totals (includes ad spend, credits, debits!)
+      // Use cached totals (includes ad spend, credits, debits, tax refunded!)
       totalRevenue = parseFloat(String(summary.totalRevenue || 0));
       totalTax = parseFloat(String(summary.totalTax || 0));
       totalFees = parseFloat(String(summary.totalFees || 0));
       totalRefunds = parseFloat(String(summary.totalRefunds || 0));
+      totalTaxRefunded = parseFloat(String(summary.totalTaxRefunded || 0));
       totalAdSpend = parseFloat(String(summary.totalAdSpend || 0));
       totalChargebacks = parseFloat(String(summary.totalChargebacks || 0));
       totalCoupons = parseFloat(String(summary.totalCoupons || 0));
@@ -210,10 +211,6 @@ export async function POST(request: NextRequest) {
       // These breakdowns are not cached, so set to empty
       adSpendBreakdown = {};
       adjustmentBreakdown = { credits: [], debits: [] };
-      
-      totalTaxRefunded = Math.abs(dbLineItems
-        .filter(item => item.transactionType === 'refund')
-        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0));
       
       // Fee breakdown (simplified - can be enhanced later)
       feeBreakdown = {
@@ -285,16 +282,13 @@ export async function POST(request: NextRequest) {
         .filter(item => item.transactionType === 'refund')
         .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0));
       
-      totalTaxRefunded = Math.abs(dbLineItems
-        .filter(item => item.transactionType === 'refund')
-        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0));
-      
-      // Aggregate ad spend, chargebacks, coupons, adjustments from overlapping summaries
+      // Aggregate ad spend, chargebacks, coupons, adjustments, tax refunded from overlapping summaries
       if (overlappingSummaries.length > 0) {
-        console.log(`[Financial Data] 📊 Aggregating ad spend/credits/debits from ${overlappingSummaries.length} overlapping summaries...`);
+        console.log(`[Financial Data] 📊 Aggregating ad spend/credits/debits/tax refunded from ${overlappingSummaries.length} overlapping summaries...`);
         totalAdSpend = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalAdSpend || 0)), 0);
         totalChargebacks = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalChargebacks || 0)), 0);
         totalCoupons = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalCoupons || 0)), 0);
+        totalTaxRefunded = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalTaxRefunded || 0)), 0);
         adjustments = {
           credits: overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentCredits || 0)), 0),
           debits: overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentDebits || 0)), 0),
@@ -302,11 +296,12 @@ export async function POST(request: NextRequest) {
         };
         adjustments.net = adjustments.credits - adjustments.debits;
       } else {
-        // No summaries available - ad spend will be $0
+        // No summaries available - ad spend and tax refunded will be $0
         // Run backfill: Click "Backfill Ad Spend" button on Financial Data page
         totalAdSpend = 0;
         totalChargebacks = 0;
         totalCoupons = 0;
+        totalTaxRefunded = 0;
         adjustments = { credits: 0, debits: 0, net: 0 };
       }
       adSpendBreakdown = {};
@@ -604,6 +599,7 @@ export async function POST(request: NextRequest) {
           totalTax: totalTax.toFixed(2),
           totalFees: totalFees.toFixed(2),
           totalRefunds: totalRefunds.toFixed(2),
+          totalTaxRefunded: totalTaxRefunded.toFixed(2),
           totalAdSpend: totalAdSpend.toFixed(2),
           totalChargebacks: totalChargebacks.toFixed(2),
           totalCoupons: totalCoupons.toFixed(2),
@@ -618,6 +614,7 @@ export async function POST(request: NextRequest) {
             totalTax: totalTax.toFixed(2),
             totalFees: totalFees.toFixed(2),
             totalRefunds: totalRefunds.toFixed(2),
+            totalTaxRefunded: totalTaxRefunded.toFixed(2),
             totalAdSpend: totalAdSpend.toFixed(2),
             totalChargebacks: totalChargebacks.toFixed(2),
             totalCoupons: totalCoupons.toFixed(2),
