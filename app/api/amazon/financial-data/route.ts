@@ -13,7 +13,7 @@ import { AmazonSPAPIService } from '@/lib/services/amazon-sp-api';
 import { getAmazonCredentials, getConfigStatus } from '@/lib/services/amazon-sp-api/config';
 import { FinancialEventsParser } from '@/lib/services/amazon-sp-api';
 import { db } from '@/lib/db/drizzle';
-import { skuMappings, productSkus } from '@/lib/db/schema';
+import { skuMappings, productSkus, amazonFinancialLineItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
@@ -145,6 +145,178 @@ export async function POST(request: NextRequest) {
     
     // Get top 10 for the chart
     const topSKUs = allSKUs.slice(0, 10);
+
+    // =====================================================
+    // SAVE LINE ITEMS TO DATABASE
+    // =====================================================
+    console.log('[Financial Data] Saving line items to database...');
+    const lineItemsToSave: any[] = [];
+    
+    // Extract individual line items from raw transactions
+    for (const eventGroup of transactions) {
+      // Process ShipmentEventList (sales)
+      if (eventGroup.ShipmentEventList) {
+        for (const shipment of eventGroup.ShipmentEventList) {
+          const orderId = shipment.AmazonOrderId || 'UNKNOWN';
+          const postedDate = shipment.PostedDate ? new Date(shipment.PostedDate) : new Date();
+          
+          if (shipment.ShipmentItemList) {
+            for (const item of shipment.ShipmentItemList) {
+              const amazonSku = item.SellerSKU || 'UNKNOWN';
+              const quantity = item.QuantityShipped || 0;
+              const bdiSku = skuLookup.get(amazonSku.toLowerCase());
+              
+              // Calculate amounts from charge lists
+              let itemPrice = 0;
+              let shippingPrice = 0;
+              let itemPromotion = 0;
+              let itemTax = 0;
+              let shippingTax = 0;
+              
+              if (item.ItemChargeList) {
+                for (const charge of item.ItemChargeList) {
+                  const amount = parseFloat(String(charge.ChargeAmount?.CurrencyAmount || '0'));
+                  if (charge.ChargeType === 'Principal') {
+                    itemPrice += amount;
+                  } else if (charge.ChargeType === 'Shipping') {
+                    shippingPrice += amount;
+                  } else if (charge.ChargeType === 'ShippingChargeback') {
+                    itemPromotion += Math.abs(amount);
+                  } else if (charge.ChargeType === 'Tax') {
+                    itemTax += amount;
+                  } else if (charge.ChargeType === 'ShippingTax') {
+                    shippingTax += amount;
+                  }
+                }
+              }
+              
+              // Calculate fees
+              let totalFees = 0;
+              let commission = 0;
+              let fbaFees = 0;
+              
+              if (item.ItemFeeList) {
+                for (const fee of item.ItemFeeList) {
+                  const feeAmount = Math.abs(parseFloat(String(fee.FeeAmount?.CurrencyAmount || '0')));
+                  totalFees += feeAmount;
+                  
+                  if (fee.FeeType?.includes('Commission')) {
+                    commission += feeAmount;
+                  } else if (fee.FeeType?.includes('FBA')) {
+                    fbaFees += feeAmount;
+                  }
+                }
+              }
+              
+              const grossRevenue = itemPrice + shippingPrice - itemPromotion;
+              const netRevenue = grossRevenue - totalFees;
+              const totalTax = itemTax + shippingTax;
+              
+              lineItemsToSave.push({
+                orderId,
+                postedDate,
+                transactionType: 'sale',
+                amazonSku,
+                asin: null,
+                bdiSku: bdiSku || null,
+                productName: null,
+                quantity,
+                unitPrice: quantity > 0 ? (itemPrice / quantity).toFixed(2) : '0',
+                itemPrice: itemPrice.toFixed(2),
+                shippingPrice: shippingPrice.toFixed(2),
+                giftWrapPrice: '0',
+                itemPromotion: itemPromotion.toFixed(2),
+                shippingPromotion: '0',
+                itemTax: itemTax.toFixed(2),
+                shippingTax: shippingTax.toFixed(2),
+                giftWrapTax: '0',
+                commission: commission.toFixed(2),
+                fbaFees: fbaFees.toFixed(2),
+                otherFees: (totalFees - commission - fbaFees).toFixed(2),
+                totalFees: totalFees.toFixed(2),
+                grossRevenue: grossRevenue.toFixed(2),
+                netRevenue: netRevenue.toFixed(2),
+                totalTax: totalTax.toFixed(2),
+                marketplaceId: 'ATVPDKIKX0DER',
+                currencyCode: 'USD',
+                rawEvent: item,
+              });
+            }
+          }
+        }
+      }
+      
+      // Process RefundEventList (refunds)
+      if (eventGroup.RefundEventList) {
+        for (const refund of eventGroup.RefundEventList) {
+          const orderId = refund.AmazonOrderId || 'UNKNOWN';
+          const postedDate = refund.PostedDate ? new Date(refund.PostedDate) : new Date();
+          
+          if (refund.ShipmentItemAdjustmentList) {
+            for (const item of refund.ShipmentItemAdjustmentList) {
+              const amazonSku = item.SellerSKU || 'UNKNOWN';
+              const quantity = Math.abs(item.QuantityShipped || 0);
+              const bdiSku = skuLookup.get(amazonSku.toLowerCase());
+              
+              // Calculate refund amount
+              let itemPrice = 0;
+              if (item.ItemChargeAdjustmentList) {
+                for (const charge of item.ItemChargeAdjustmentList) {
+                  itemPrice += Math.abs(parseFloat(String(charge.ChargeAmount?.CurrencyAmount || '0')));
+                }
+              }
+              
+              lineItemsToSave.push({
+                orderId,
+                postedDate,
+                transactionType: 'refund',
+                amazonSku,
+                asin: null,
+                bdiSku: bdiSku || null,
+                productName: null,
+                quantity,
+                unitPrice: quantity > 0 ? (itemPrice / quantity).toFixed(2) : '0',
+                itemPrice: (-itemPrice).toFixed(2),
+                shippingPrice: '0',
+                giftWrapPrice: '0',
+                itemPromotion: '0',
+                shippingPromotion: '0',
+                itemTax: '0',
+                shippingTax: '0',
+                giftWrapTax: '0',
+                commission: '0',
+                fbaFees: '0',
+                otherFees: '0',
+                totalFees: '0',
+                grossRevenue: (-itemPrice).toFixed(2),
+                netRevenue: (-itemPrice).toFixed(2),
+                totalTax: '0',
+                marketplaceId: 'ATVPDKIKX0DER',
+                currencyCode: 'USD',
+                rawEvent: item,
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    // Save to database in batches
+    if (lineItemsToSave.length > 0) {
+      const batchSize = 100;
+      let savedCount = 0;
+      
+      for (let i = 0; i < lineItemsToSave.length; i += batchSize) {
+        const batch = lineItemsToSave.slice(i, i + batchSize);
+        await db.insert(amazonFinancialLineItems).values(batch);
+        savedCount += batch.length;
+        console.log(`[Financial Data] Saved batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(lineItemsToSave.length / batchSize)} (${savedCount}/${lineItemsToSave.length} items)`);
+      }
+      
+      console.log(`[Financial Data] ✅ Saved ${savedCount} line items to database`);
+    } else {
+      console.log('[Financial Data] No line items to save');
+    }
 
     // Calculate additional metrics
     const netRevenue = totalRevenue - totalFees;

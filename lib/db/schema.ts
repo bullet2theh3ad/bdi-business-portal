@@ -1908,3 +1908,58 @@ export type SalesVelocityCalculation = typeof salesVelocityCalculations.$inferSe
 export type NewSalesVelocityCalculation = typeof salesVelocityCalculations.$inferInsert;
 export type SalesVelocityMetric = typeof salesVelocityMetrics.$inferSelect;
 export type NewSalesVelocityMetric = typeof salesVelocityMetrics.$inferInsert;
+
+// ===== AMAZON FINANCIAL LINE ITEMS (SIMPLIFIED) =====
+export const amazonFinancialLineItems = pgTable('amazon_financial_line_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Transaction Identification
+  orderId: text('order_id').notNull(),
+  postedDate: timestamp('posted_date').notNull(),
+  transactionType: text('transaction_type').notNull(), // 'sale', 'refund', 'adjustment'
+  
+  // SKU Information
+  amazonSku: text('amazon_sku').notNull(),
+  asin: text('asin'),
+  bdiSku: text('bdi_sku'),
+  productName: text('product_name'),
+  
+  // Quantity & Pricing
+  quantity: integer('quantity').notNull().default(0),
+  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).default('0'),
+  
+  // Revenue Components
+  itemPrice: numeric('item_price', { precision: 10, scale: 2 }).default('0'),
+  shippingPrice: numeric('shipping_price', { precision: 10, scale: 2 }).default('0'),
+  giftWrapPrice: numeric('gift_wrap_price', { precision: 10, scale: 2 }).default('0'),
+  itemPromotion: numeric('item_promotion', { precision: 10, scale: 2 }).default('0'),
+  shippingPromotion: numeric('shipping_promotion', { precision: 10, scale: 2 }).default('0'),
+  
+  // Tax
+  itemTax: numeric('item_tax', { precision: 10, scale: 2 }).default('0'),
+  shippingTax: numeric('shipping_tax', { precision: 10, scale: 2 }).default('0'),
+  giftWrapTax: numeric('gift_wrap_tax', { precision: 10, scale: 2 }).default('0'),
+  
+  // Fees
+  commission: numeric('commission', { precision: 10, scale: 2 }).default('0'),
+  fbaFees: numeric('fba_fees', { precision: 10, scale: 2 }).default('0'),
+  otherFees: numeric('other_fees', { precision: 10, scale: 2 }).default('0'),
+  totalFees: numeric('total_fees', { precision: 10, scale: 2 }).default('0'),
+  
+  // Calculated Totals
+  grossRevenue: numeric('gross_revenue', { precision: 10, scale: 2 }).default('0'),
+  netRevenue: numeric('net_revenue', { precision: 10, scale: 2 }).default('0'),
+  totalTax: numeric('total_tax', { precision: 10, scale: 2 }).default('0'),
+  
+  // Metadata
+  marketplaceId: text('marketplace_id'),
+  currencyCode: text('currency_code').default('USD'),
+  rawEvent: jsonb('raw_event'),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type AmazonFinancialLineItem = typeof amazonFinancialLineItems.$inferSelect;
+export type NewAmazonFinancialLineItem = typeof amazonFinancialLineItems.$inferInsert;
