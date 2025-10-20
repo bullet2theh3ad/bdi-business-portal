@@ -97,21 +97,51 @@ export async function POST(request: NextRequest) {
     
     // Determine if we need to fetch from API
     let actualStartDate = startDate;
+    let actualEndDate = endDate;
     let needsAPIFetch = true;
     
-    if (latestDateInDB) {
+    if (latestDateInDB && earliestDateInDB) {
       console.log(`[Financial Data] Latest data in DB: ${latestDateInDB.toISOString().split('T')[0]}`);
+      console.log(`[Financial Data] Earliest data in DB: ${earliestDateInDB.toISOString().split('T')[0]}`);
       
-      // If requested end date is before our latest DB date, we can serve entirely from DB
-      if (endDateObj <= latestDateInDB) {
+      // Check if requested range is entirely within DB range
+      if (startDateObj >= earliestDateInDB && endDateObj <= latestDateInDB) {
         console.log('[Financial Data] ✅ All requested data exists in database. No API fetch needed.');
         needsAPIFetch = false;
-      } else {
-        // Only fetch data AFTER what we already have
-        const nextDay = new Date(latestDateInDB);
-        nextDay.setDate(nextDay.getDate() + 1);
-        actualStartDate = nextDay.toISOString().split('T')[0];
-        console.log(`[Financial Data] 🔄 Fetching only new data from ${actualStartDate} onwards (delta sync)`);
+      }
+      // Check if requested range is entirely BEFORE DB range (need to fetch older data)
+      else if (endDateObj < earliestDateInDB) {
+        console.log(`[Financial Data] 🔄 Requested range is BEFORE existing data. Fetching ${startDate} to ${endDate} from API.`);
+        needsAPIFetch = true;
+        actualStartDate = startDate;
+        actualEndDate = endDate;
+      }
+      // Check if requested range is entirely AFTER DB range (need to fetch newer data)
+      else if (startDateObj > latestDateInDB) {
+        console.log(`[Financial Data] 🔄 Requested range is AFTER existing data. Fetching ${startDate} to ${endDate} from API.`);
+        needsAPIFetch = true;
+        actualStartDate = startDate;
+        actualEndDate = endDate;
+      }
+      // Requested range overlaps with DB range
+      else {
+        // If start date is before DB range, we need to fetch the gap
+        if (startDateObj < earliestDateInDB) {
+          // Fetch up to the day before earliest DB date
+          const dayBeforeEarliest = new Date(earliestDateInDB);
+          dayBeforeEarliest.setDate(dayBeforeEarliest.getDate() - 1);
+          actualEndDate = dayBeforeEarliest.toISOString().split('T')[0];
+          console.log(`[Financial Data] 🔄 Fetching gap data from ${startDate} to ${actualEndDate}`);
+          actualStartDate = startDate;
+        }
+        // If end date is after DB range, fetch only new data
+        else if (endDateObj > latestDateInDB) {
+          const nextDay = new Date(latestDateInDB);
+          nextDay.setDate(nextDay.getDate() + 1);
+          actualStartDate = nextDay.toISOString().split('T')[0];
+          actualEndDate = endDate;
+          console.log(`[Financial Data] 🔄 Fetching only new data from ${actualStartDate} onwards (delta sync)`);
+        }
       }
     } else {
       console.log('[Financial Data] No existing data in database. Fetching all data from API.');
@@ -127,7 +157,7 @@ export async function POST(request: NextRequest) {
     
     if (needsAPIFetch) {
       const startTime = Date.now();
-      transactions = await amazon.getFinancialTransactions(actualStartDate, endDate);
+      transactions = await amazon.getFinancialTransactions(actualStartDate, actualEndDate);
       duration = ((Date.now() - startTime) / 1000).toFixed(2);
       console.log(`[Financial Data] Retrieved ${transactions.length} event groups from API in ${duration}s`);
     } else {
