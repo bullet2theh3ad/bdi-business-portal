@@ -246,6 +246,72 @@ export async function POST(request: NextRequest) {
         }
       });
       
+    } else if (!needsAPIFetch && dbLineItems.length > 0) {
+      // Have line items but no summary (and can't fetch from API due to date range)
+      // Aggregate from DB line items directly
+      console.log('[Financial Data] Aggregating summary from DB line items (no cached summary)...');
+      
+      // Get unique order IDs
+      orderIds = Array.from(new Set(dbLineItems.map(item => item.orderId)));
+      
+      // Aggregate totals from line items
+      totalRevenue = dbLineItems
+        .filter(item => item.transactionType === 'sale')
+        .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0);
+      
+      totalTax = dbLineItems
+        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0);
+      
+      totalFees = dbLineItems
+        .reduce((sum, item) => sum + parseFloat(String(item.totalFees || 0)), 0);
+      
+      totalRefunds = Math.abs(dbLineItems
+        .filter(item => item.transactionType === 'refund')
+        .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0));
+      
+      totalTaxRefunded = Math.abs(dbLineItems
+        .filter(item => item.transactionType === 'refund')
+        .reduce((sum, item) => sum + parseFloat(String(item.totalTax || 0)), 0));
+      
+      // Ad spend, chargebacks, coupons, adjustments not available in line items
+      totalAdSpend = 0;
+      totalChargebacks = 0;
+      totalCoupons = 0;
+      adjustments = { credits: 0, debits: 0, net: 0 };
+      adSpendBreakdown = {};
+      adjustmentBreakdown = { credits: [], debits: [] };
+      
+      // Fee breakdown
+      feeBreakdown = {
+        commission: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.commission || 0)), 0),
+        fbaFees: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.fbaFees || 0)), 0),
+        otherFees: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.otherFees || 0)), 0),
+      };
+      
+      // SKU summary
+      skuSummary = new Map();
+      refundSummary = new Map();
+      
+      dbLineItems.forEach(item => {
+        const sku = item.amazonSku;
+        if (!sku) return;
+        
+        if (item.transactionType === 'sale') {
+          const existing = skuSummary.get(sku) || { units: 0, revenue: 0, fees: 0 };
+          skuSummary.set(sku, {
+            units: existing.units + (item.quantity || 0),
+            revenue: existing.revenue + parseFloat(String(item.grossRevenue || 0)),
+            fees: existing.fees + parseFloat(String(item.totalFees || 0)),
+          });
+        } else if (item.transactionType === 'refund') {
+          const existing = refundSummary.get(sku) || { units: 0, refundAmount: 0 };
+          refundSummary.set(sku, {
+            units: existing.units + Math.abs(item.quantity || 0),
+            refundAmount: existing.refundAmount + Math.abs(parseFloat(String(item.grossRevenue || 0))),
+          });
+        }
+      });
+      
     } else {
       // Parse and analyze the API data
       console.log('[Financial Data] Calculating summary from API response...');
