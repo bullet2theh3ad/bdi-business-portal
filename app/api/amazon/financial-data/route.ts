@@ -76,82 +76,35 @@ export async function POST(request: NextRequest) {
     // =====================================================
     console.log('[Financial Data] Checking database for existing data...');
     
-    // Get the latest date we have in the database using SQL aggregation
-    const dbStats = await db
+    // Check if we have ANY data for the requested date range
+    const existingDataCount = await db
       .select({
-        maxDate: sql<string>`MAX(${amazonFinancialLineItems.postedDate})`,
-        minDate: sql<string>`MIN(${amazonFinancialLineItems.postedDate})`,
         count: sql<number>`COUNT(*)`,
       })
       .from(amazonFinancialLineItems)
+      .where(
+        and(
+          gte(amazonFinancialLineItems.postedDate, new Date(startDate)),
+          lte(amazonFinancialLineItems.postedDate, new Date(endDate))
+        )
+      )
       .execute();
     
-    let latestDateInDB: Date | null = null;
-    let earliestDateInDB: Date | null = null;
+    const hasDataForRange = existingDataCount && existingDataCount[0] && existingDataCount[0].count > 0;
     
-    if (dbStats && dbStats.length > 0 && dbStats[0].maxDate) {
-      latestDateInDB = new Date(dbStats[0].maxDate);
-      earliestDateInDB = dbStats[0].minDate ? new Date(dbStats[0].minDate) : null;
-      console.log(`[Financial Data] Database contains ${dbStats[0].count} records from ${earliestDateInDB?.toISOString().split('T')[0]} to ${latestDateInDB.toISOString().split('T')[0]}`);
-    }
+    console.log(`[Financial Data] Found ${existingDataCount[0]?.count || 0} records for requested range ${startDate} to ${endDate}`);
     
-    // Determine if we need to fetch from API
-    let actualStartDate = startDate;
-    let actualEndDate = endDate;
-    let needsAPIFetch = true;
+    // Simple logic: If we have data for this range, use it. Otherwise, fetch from API.
+    const needsAPIFetch = !hasDataForRange;
     
-    if (latestDateInDB && earliestDateInDB) {
-      console.log(`[Financial Data] Latest data in DB: ${latestDateInDB.toISOString().split('T')[0]}`);
-      console.log(`[Financial Data] Earliest data in DB: ${earliestDateInDB.toISOString().split('T')[0]}`);
-      
-      // Check if requested range is entirely within DB range
-      if (startDateObj >= earliestDateInDB && endDateObj <= latestDateInDB) {
-        console.log('[Financial Data] ✅ All requested data exists in database. No API fetch needed.');
-        needsAPIFetch = false;
-      }
-      // Check if requested range is entirely BEFORE DB range (need to fetch older data)
-      else if (endDateObj < earliestDateInDB) {
-        console.log(`[Financial Data] 🔄 Requested range is BEFORE existing data. Fetching ${startDate} to ${endDate} from API.`);
-        needsAPIFetch = true;
-        actualStartDate = startDate;
-        actualEndDate = endDate;
-      }
-      // Check if requested range is entirely AFTER DB range (need to fetch newer data)
-      else if (startDateObj > latestDateInDB) {
-        console.log(`[Financial Data] 🔄 Requested range is AFTER existing data. Fetching ${startDate} to ${endDate} from API.`);
-        needsAPIFetch = true;
-        actualStartDate = startDate;
-        actualEndDate = endDate;
-      }
-      // Requested range overlaps with DB range
-      else {
-        // If start date is before DB range, we need to fetch the gap
-        if (startDateObj < earliestDateInDB) {
-          // Fetch up to the day before earliest DB date
-          const dayBeforeEarliest = new Date(earliestDateInDB);
-          dayBeforeEarliest.setDate(dayBeforeEarliest.getDate() - 1);
-          actualEndDate = dayBeforeEarliest.toISOString().split('T')[0];
-          console.log(`[Financial Data] 🔄 Fetching gap data from ${startDate} to ${actualEndDate}`);
-          actualStartDate = startDate;
-        }
-        // If end date is after DB range, fetch only new data
-        else if (endDateObj > latestDateInDB) {
-          const nextDay = new Date(latestDateInDB);
-          nextDay.setDate(nextDay.getDate() + 1);
-          actualStartDate = nextDay.toISOString().split('T')[0];
-          actualEndDate = endDate;
-          console.log(`[Financial Data] 🔄 Fetching only new data from ${actualStartDate} onwards (delta sync)`);
-        }
-        // If we get here, the requested range is entirely within DB range but didn't match the first condition
-        // This can happen due to date comparison precision. Skip API fetch.
-        else {
-          console.log('[Financial Data] ✅ Requested range is within DB range. No API fetch needed.');
-          needsAPIFetch = false;
-        }
-      }
+    if (needsAPIFetch) {
+      console.log('[Financial Data] 🔄 No data in DB for this range. Fetching from Amazon API...');
     } else {
-      console.log('[Financial Data] No existing data in database. Fetching all data from API.');
+      console.log('[Financial Data] ✅ Data exists in DB for this range. Using cached data.');
     }
+    
+    const actualStartDate = startDate;
+    const actualEndDate = endDate;
 
     // Initialize Amazon SP-API service
     const credentials = getAmazonCredentials();
