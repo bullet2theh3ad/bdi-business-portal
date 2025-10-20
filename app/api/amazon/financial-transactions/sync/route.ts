@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { amazonFinancialTransactionSyncs, amazonFinancialTransactions, skuMappings, productSkus, users } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
-import { AmazonSPAPIService } from '@/lib/services/amazon-sp-api';
+import { AmazonSPAPIService, FinancialEventsParser } from '@/lib/services/amazon-sp-api';
 import { getAmazonCredentials } from '@/lib/services/amazon-sp-api/config';
 
 /**
@@ -124,23 +124,23 @@ export async function POST(request: NextRequest) {
     console.log(`   ✓ Sync record created: ${syncRecord.id}`);
 
     // =====================================================
-    // STEP 4: Fetch Financial Data from Amazon
+    // STEP 4: Fetch Financial Data from Amazon (raw event groups)
     // =====================================================
-    console.log('📥 Step 3: Fetching financial data from Amazon SP-API...');
+    console.log('📥 Step 3: Fetching financial event groups from Amazon SP-API...');
     
-    let financialData: any;
+    let eventGroups: any[] = [];
     try {
       const credentials = getAmazonCredentials();
       const amazonService = new AmazonSPAPIService(credentials);
-      financialData = await amazonService.getFinancialTransactions(
+      
+      // Get raw FinancialEventGroup[] from Amazon
+      eventGroups = await amazonService.getFinancialTransactions(
         startDate.toISOString().split('T')[0],
         endDate.toISOString().split('T')[0]
       );
       
-      console.log(`   ✓ Financial data fetched successfully`);
-      console.log(`   - Orders: ${financialData.summary?.uniqueOrders || 0}`);
-      console.log(`   - Revenue: $${financialData.summary?.totalRevenue || 0}`);
-      console.log(`   - SKUs: ${financialData.allSKUs?.length || 0}`);
+      console.log(`   ✓ Financial event groups fetched successfully`);
+      console.log(`   - Event Groups: ${eventGroups.length}`);
     } catch (error: any) {
       console.error('   ❌ Failed to fetch financial data:', error.message);
       
@@ -185,54 +185,148 @@ export async function POST(request: NextRequest) {
     console.log(`   ✓ Loaded ${mappings.length} ASIN mappings`);
 
     // =====================================================
-    // STEP 6: Process & Store Transactions
+    // STEP 6: Process Event Groups & Extract Order Line Items
     // =====================================================
-    console.log('💾 Step 5: Processing and storing transactions...');
+    console.log('💾 Step 5: Processing event groups and extracting order line items...');
     
-    const transactions = financialData.allSKUs || [];
     const transactionsToInsert: any[] = [];
     const skusProcessed = new Set<string>();
+    let orderItemsProcessed = 0;
 
-    for (const skuData of transactions) {
-      const amazonSku = skuData.sku || skuData.bdiSku;
-      const asin = skuData.asin;
-      
-      // Map ASIN to BDI SKU
-      let bdiSku = amazonSku;
-      let bdiSkuName = skuData.productName;
-      
-      if (asin && asinToBdiSku.has(asin)) {
-        const mapped = asinToBdiSku.get(asin)!;
-        bdiSku = mapped.sku;
-        bdiSkuName = mapped.skuName || bdiSkuName;
+    // Process each event group
+    for (const eventGroup of eventGroups) {
+      // Process ShipmentEventList (orders/sales)
+      if (eventGroup.ShipmentEventList) {
+        for (const shipment of eventGroup.ShipmentEventList) {
+          const orderId = shipment.AmazonOrderId;
+          const postedDate = shipment.PostedDate ? new Date(shipment.PostedDate) : new Date();
+          
+          // Process each item in the shipment
+          if (shipment.ShipmentItemList) {
+            for (const item of shipment.ShipmentItemList) {
+              const amazonSku = item.SellerSKU;
+              const asin = item.ASIN;
+              const quantity = item.QuantityShipped || 0;
+              
+              // Map to BDI SKU
+              let bdiSku = amazonSku;
+              if (asin && asinToBdiSku.has(asin)) {
+                bdiSku = asinToBdiSku.get(asin)!.sku;
+              }
+              
+              skusProcessed.add(bdiSku);
+              
+              // Calculate amounts
+              const itemPrice = parseFloat(item.ItemPrice?.CurrencyAmount || '0');
+              const itemTax = parseFloat(item.ItemTax?.CurrencyAmount || '0');
+              const shippingPrice = parseFloat(item.ShippingPrice?.CurrencyAmount || '0');
+              const shippingTax = parseFloat(item.ShippingTax?.CurrencyAmount || '0');
+              const itemPromotion = Math.abs(parseFloat(item.PromotionDiscount?.CurrencyAmount || '0'));
+              const shippingPromotion = Math.abs(parseFloat(item.ShippingDiscount?.CurrencyAmount || '0'));
+              
+              // Calculate fees
+              let totalFees = 0;
+              let commission = 0;
+              let fbaFees = 0;
+              
+              if (item.ItemFeeList) {
+                for (const fee of item.ItemFeeList) {
+                  const feeAmount = Math.abs(parseFloat(fee.FeeAmount?.CurrencyAmount || '0'));
+                  totalFees += feeAmount;
+                  
+                  if (fee.FeeType?.includes('Commission')) {
+                    commission += feeAmount;
+                  } else if (fee.FeeType?.includes('FBA')) {
+                    fbaFees += feeAmount;
+                  }
+                }
+              }
+              
+              const grossRevenue = itemPrice + shippingPrice - itemPromotion - shippingPromotion;
+              const netRevenue = grossRevenue - totalFees;
+              
+              transactionsToInsert.push({
+                syncId: syncRecord.id,
+                orderId,
+                postedDate,
+                transactionType: 'sale',
+                sku: bdiSku,
+                asin: asin || null,
+                productName: null, // Not available in raw events
+                quantity,
+                unitPrice: quantity > 0 ? itemPrice / quantity : 0,
+                itemPrice,
+                shippingPrice,
+                itemTax,
+                shippingTax,
+                itemPromotion,
+                shippingPromotion,
+                commission,
+                fbaFees,
+                totalFees,
+                grossRevenue,
+                netRevenue,
+                totalTax: itemTax + shippingTax,
+                rawEvent: item,
+              });
+              
+              orderItemsProcessed++;
+            }
+          }
+        }
       }
-
-      skusProcessed.add(bdiSku);
-
-      // Create transaction record for sales
-      if (skuData.netUnits && skuData.netUnits !== 0) {
-        transactionsToInsert.push({
-          syncId: syncRecord.id,
-          orderId: null, // Aggregated data doesn't have individual order IDs
-          postedDate: new Date(), // Use current date as approximation
-          transactionType: skuData.netUnits > 0 ? 'sale' : 'refund',
-          sku: bdiSku,
-          asin: asin || null,
-          productName: bdiSkuName,
-          quantity: Math.abs(skuData.netUnits),
-          unitPrice: skuData.netUnits !== 0 ? (skuData.net / skuData.netUnits) : 0,
-          itemPrice: skuData.net || 0,
-          totalFees: skuData.fees || 0,
-          netRevenue: skuData.net || 0,
-          grossRevenue: (skuData.net || 0) + (skuData.fees || 0),
-          adSpend: skuData.adSpend || 0,
-          rawEvent: skuData,
-        });
+      
+      // Process RefundEventList (refunds)
+      if (eventGroup.RefundEventList) {
+        for (const refund of eventGroup.RefundEventList) {
+          const orderId = refund.AmazonOrderId;
+          const postedDate = refund.PostedDate ? new Date(refund.PostedDate) : new Date();
+          
+          if (refund.ShipmentItemAdjustmentList) {
+            for (const item of refund.ShipmentItemAdjustmentList) {
+              const amazonSku = item.SellerSKU;
+              const asin = item.ASIN;
+              const quantity = Math.abs(item.QuantityShipped || 0);
+              
+              // Map to BDI SKU
+              let bdiSku = amazonSku;
+              if (asin && asinToBdiSku.has(asin)) {
+                bdiSku = asinToBdiSku.get(asin)!.sku;
+              }
+              
+              skusProcessed.add(bdiSku);
+              
+              const itemPrice = Math.abs(parseFloat(item.ItemPriceAdjustment?.CurrencyAmount || '0'));
+              const itemTax = Math.abs(parseFloat(item.ItemTaxAdjustment?.CurrencyAmount || '0'));
+              
+              transactionsToInsert.push({
+                syncId: syncRecord.id,
+                orderId,
+                postedDate,
+                transactionType: 'refund',
+                sku: bdiSku,
+                asin: asin || null,
+                productName: null,
+                quantity,
+                unitPrice: quantity > 0 ? itemPrice / quantity : 0,
+                itemPrice: -itemPrice, // Negative for refunds
+                itemTax: -itemTax,
+                netRevenue: -itemPrice,
+                grossRevenue: -itemPrice,
+                totalTax: -itemTax,
+                rawEvent: item,
+              });
+              
+              orderItemsProcessed++;
+            }
+          }
+        }
       }
     }
 
-    console.log(`   📊 Processed ${transactions.length} SKU entries`);
-    console.log(`   📦 ${skusProcessed.size} unique BDI SKUs`);
+    console.log(`   📊 Processed ${eventGroups.length} event groups`);
+    console.log(`   📦 ${orderItemsProcessed} order line items extracted`);
+    console.log(`   🏷️  ${skusProcessed.size} unique BDI SKUs`);
     console.log(`   💾 Inserting ${transactionsToInsert.length} transaction records...`);
 
     // Insert transactions in batches
@@ -255,10 +349,10 @@ export async function POST(request: NextRequest) {
       .set({
         syncStatus: 'completed',
         syncCompletedAt: new Date(),
-        transactionsFetched: transactions.length,
+        transactionsFetched: orderItemsProcessed,
         transactionsStored: transactionsToInsert.length,
         skusProcessed: skusProcessed.size,
-        apiPagesFetched: financialData.metadata?.pagesProcessed || 0,
+        apiPagesFetched: eventGroups.length,
         durationSeconds,
       })
       .where(eq(amazonFinancialTransactionSyncs.id, syncRecord.id));
@@ -273,7 +367,7 @@ export async function POST(request: NextRequest) {
       periodStart: startDate.toISOString().split('T')[0],
       periodEnd: endDate.toISOString().split('T')[0],
       daysSynced: daysDiff,
-      transactionsFetched: transactions.length,
+      transactionsFetched: orderItemsProcessed,
       transactionsStored: transactionsToInsert.length,
       skusProcessed: skusProcessed.size,
       durationSeconds: parseFloat(durationSeconds),
