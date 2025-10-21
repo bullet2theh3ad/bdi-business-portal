@@ -60,10 +60,10 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Step 1: List available FBA Manage Inventory reports
+    // Step 1: List available Amazon-Fulfilled Inventory reports
     console.log('[Sales Velocity] Step 1: Listing available reports...');
     const listResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/amazon/list-reports?reportType=GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA&processingStatus=DONE`,
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/amazon/list-reports?reportType=GET_FBA_FULFILLMENT_CURRENT_INVENTORY_DATA&processingStatus=DONE`,
       { cache: 'no-store' }
     );
 
