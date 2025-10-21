@@ -145,8 +145,15 @@ export default function SalesVelocityPage() {
           // Add padding to the captured element
           const targetElement = clonedDoc.querySelector('[data-chart-content]');
           if (targetElement) {
-            (targetElement as HTMLElement).style.padding = '30px 60px 30px 30px'; // top right bottom left
+            (targetElement as HTMLElement).style.padding = '30px 80px 30px 30px'; // top right bottom left - extra right for week labels
             (targetElement as HTMLElement).style.boxSizing = 'content-box';
+            (targetElement as HTMLElement).style.overflow = 'visible'; // Ensure nothing is clipped
+          }
+          
+          // Also ensure the parent container doesn't clip content
+          const parentCard = clonedDoc.querySelector('[data-chart-content]')?.parentElement;
+          if (parentCard) {
+            (parentCard as HTMLElement).style.overflow = 'visible';
           }
         }
       });
