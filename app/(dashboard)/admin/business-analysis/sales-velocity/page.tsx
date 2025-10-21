@@ -118,6 +118,10 @@ export default function SalesVelocityPage() {
         backgroundColor: '#ffffff',
         scale: 2, // Higher quality
         logging: false,
+        windowWidth: chartRef.current.scrollWidth + 40, // Add extra width for padding
+        windowHeight: chartRef.current.scrollHeight + 40, // Add extra height for padding
+        x: -20, // Offset to center the content
+        y: -20, // Offset to center the content
         ignoreElements: (element) => {
           // Skip elements that might have unsupported colors
           return false;
@@ -139,6 +143,12 @@ export default function SalesVelocityPage() {
               el.style.borderColor = '#e5e7eb';
             }
           });
+          
+          // Add padding to the captured element
+          const targetElement = clonedDoc.querySelector('[data-chart-content]');
+          if (targetElement) {
+            (targetElement as HTMLElement).style.padding = '20px';
+          }
         }
       });
 
@@ -462,7 +472,7 @@ export default function SalesVelocityPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div ref={chartRef} className="space-y-1">
+          <div ref={chartRef} data-chart-content className="space-y-1">
             {(() => {
               // Filter to only show selected SKUs
               const selectedVelocityData = velocityData.filter(sku => selectedSkus.has(sku.bdiSku));
