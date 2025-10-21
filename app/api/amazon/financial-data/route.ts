@@ -759,7 +759,7 @@ export async function POST(request: NextRequest) {
             eventGroup.ShipmentEventList = [{
               AmazonOrderId: orderId,
               PostedDate: group.sales[0].postedDate,
-              ShipmentItemList: group.sales.map(item => ({
+              ShipmentItemList: group.sales.map((item: any) => ({
                 SellerSKU: item.amazonSku,
                 ASIN: item.asin,
                 QuantityShipped: item.quantity,
@@ -783,7 +783,7 @@ export async function POST(request: NextRequest) {
             eventGroup.RefundEventList = [{
               AmazonOrderId: orderId,
               PostedDate: group.refunds[0].postedDate,
-              ShipmentItemAdjustmentList: group.refunds.map(item => ({
+              ShipmentItemAdjustmentList: group.refunds.map((item: any) => ({
                 SellerSKU: item.amazonSku,
                 ASIN: item.asin,
                 QuantityShipped: Math.abs(item.quantity || 0),
