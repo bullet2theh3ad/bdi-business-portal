@@ -398,9 +398,15 @@ export async function GET(request: NextRequest) {
       const costFromBdiSku = bdiSku ? skuCostMap.get(bdiSku) : undefined;
       const standardCost = costFromBdiSku || costFromWarehouseModel || 0;
       
+      // If no mapping exists but the warehouse model itself has a cost in product_skus,
+      // use the warehouse model as the BDI SKU (it's already in our system)
+      const effectiveBdiSku = bdiSku || (costFromWarehouseModel && costFromWarehouseModel > 0 ? warehouseModel : undefined);
+      
       return {
-        bdiSku: bdiSku || undefined,
-        mappingStatus: bdiSku ? 'mapped' : (skuLookup.size === 0 ? 'no_mapping' : 'no_sku') as 'mapped' | 'no_mapping' | 'no_sku',
+        bdiSku: effectiveBdiSku,
+        mappingStatus: bdiSku ? 'mapped' : 
+                      (effectiveBdiSku ? 'direct_match' : 
+                       (skuLookup.size === 0 ? 'no_mapping' : 'no_sku')) as 'mapped' | 'direct_match' | 'no_mapping' | 'no_sku',
         standardCost,
         hasCost: standardCost > 0,
       };

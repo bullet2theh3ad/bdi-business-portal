@@ -46,7 +46,7 @@ interface WarehouseSummaryData {
       hasCost: boolean;
       standardCost: number;
       bdiSku?: string;
-      mappingStatus?: 'mapped' | 'no_mapping' | 'no_sku';
+      mappingStatus?: 'mapped' | 'direct_match' | 'no_mapping' | 'no_sku';
       totalValue: number;
     }>;
     topSkus: Array<{
@@ -91,7 +91,7 @@ interface WarehouseSummaryData {
       hasCost: boolean;
       standardCost: number;
       bdiSku?: string;
-      mappingStatus?: 'mapped' | 'no_mapping' | 'no_sku';
+      mappingStatus?: 'mapped' | 'direct_match' | 'no_mapping' | 'no_sku';
       totalValue: number;
     }>;
     topSkus: Array<{
@@ -583,7 +583,11 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                           <td className="p-2 font-medium font-mono text-xs">{item.model}</td>
                           <td className="p-2">
                             {item.bdiSku ? (
-                              <span className="font-semibold text-green-700 bg-green-100 px-2 py-1 rounded text-xs">
+                              <span className={`font-semibold px-2 py-1 rounded text-xs ${
+                                item.mappingStatus === 'mapped' 
+                                  ? 'text-green-700 bg-green-100' 
+                                  : 'text-blue-700 bg-blue-100'
+                              }`}>
                                 {item.bdiSku}
                               </span>
                             ) : item.mappingStatus === 'no_mapping' ? (
@@ -695,7 +699,11 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                           <td className="p-2 font-medium font-mono text-xs">{item.sku}</td>
                           <td className="p-2">
                             {item.bdiSku ? (
-                              <span className="font-semibold text-green-700 bg-green-100 px-2 py-1 rounded text-xs">
+                              <span className={`font-semibold px-2 py-1 rounded text-xs ${
+                                item.mappingStatus === 'mapped' 
+                                  ? 'text-green-700 bg-green-100' 
+                                  : 'text-blue-700 bg-blue-100'
+                              }`}>
                                 {item.bdiSku}
                               </span>
                             ) : item.mappingStatus === 'no_mapping' ? (
