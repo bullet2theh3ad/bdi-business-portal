@@ -30,6 +30,9 @@ export default function SKUFinancialEntryPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [skuFilter, setSkuFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [countryFilter, setCountryFilter] = useState<string>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean; id: string; name: string}>({
     show: false,
     id: '',
@@ -183,11 +186,55 @@ export default function SKUFinancialEntryPage() {
     }
   };
 
-  const filteredScenarios = scenarios.filter(scenario =>
-    scenario.scenarioName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    scenario.skuName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    scenario.channel.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Channel categorization
+  const D2C_CHANNELS = ['amazon_fba', 'Amazon (FBA)', 'shopify', 'Shopify'];
+  const B2B_CHANNELS = ['best_buy_direct', 'Best Buy (Direct)', 'costco_direct', 'Costco (Direct)', 
+                        'walmart_direct', 'Walmart (Direct)', 'tekpoint', 'Tekpoint (Distributor)', 
+                        'emg', 'EMG (Distributor)'];
+  
+  const isD2CChannel = (channel: string) => {
+    return D2C_CHANNELS.some(d2c => channel.toLowerCase().includes(d2c.toLowerCase())) ||
+           channel.toLowerCase().includes('d2c');
+  };
+  
+  const isB2BChannel = (channel: string) => {
+    return B2B_CHANNELS.some(b2b => channel.toLowerCase().includes(b2b.toLowerCase())) ||
+           channel.toLowerCase().includes('b2b');
+  };
+
+  // Get unique values for filters
+  const uniqueSkus = Array.from(new Set(scenarios.map(s => s.skuName))).sort();
+  const uniqueChannels = Array.from(new Set(scenarios.map(s => s.channel))).sort();
+  const uniqueCountries = Array.from(new Set(scenarios.map(s => s.countryCode))).sort();
+  
+  // Count scenarios per channel category
+  const d2cCount = scenarios.filter(s => isD2CChannel(s.channel)).length;
+  const b2bCount = scenarios.filter(s => isB2BChannel(s.channel)).length;
+
+  // Apply all filters
+  const filteredScenarios = scenarios.filter(scenario => {
+    const matchesSearch = scenario.scenarioName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scenario.skuName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scenario.channel.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSku = skuFilter === 'all' || scenario.skuName === skuFilter;
+    
+    // Enhanced channel filter logic
+    let matchesChannel = true;
+    if (channelFilter === 'all') {
+      matchesChannel = true;
+    } else if (channelFilter === 'all_d2c') {
+      matchesChannel = isD2CChannel(scenario.channel);
+    } else if (channelFilter === 'all_b2b') {
+      matchesChannel = isB2BChannel(scenario.channel);
+    } else {
+      matchesChannel = scenario.channel === channelFilter;
+    }
+    
+    const matchesCountry = countryFilter === 'all' || scenario.countryCode === countryFilter;
+    
+    return matchesSearch && matchesSku && matchesChannel && matchesCountry;
+  });
 
   return (
     <div className="container mx-auto p-4 sm:p-6">
@@ -196,8 +243,8 @@ export default function SKUFinancialEntryPage() {
         <p className="text-sm sm:text-base text-gray-600">Create and manage SKU financial scenarios with detailed cost analysis</p>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      {/* Action Button */}
+      <div className="mb-6">
         <Button 
           onClick={handleNewWorksheet}
           className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
@@ -205,10 +252,13 @@ export default function SKUFinancialEntryPage() {
           <Calculator className="w-4 h-4 mr-2" />
           New SKU Worksheet
         </Button>
-        
-        {/* Search */}
-        {scenarios.length > 0 && (
-          <div className="relative flex-1 sm:max-w-md">
+      </div>
+
+      {/* Filters */}
+      {scenarios.length > 0 && (
+        <div className="mb-6 space-y-4">
+          {/* Search */}
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search scenarios..."
@@ -217,8 +267,140 @@ export default function SKUFinancialEntryPage() {
               className="pl-10"
             />
           </div>
-        )}
-      </div>
+
+          {/* Filter Dropdowns */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* SKU Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Filter by SKU</label>
+              <select
+                value={skuFilter}
+                onChange={(e) => setSkuFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="all">All SKUs ({scenarios.length})</option>
+                {uniqueSkus.map(sku => (
+                  <option key={sku} value={sku}>
+                    {sku} ({scenarios.filter(s => s.skuName === sku).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Channel Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Filter by Channel</label>
+              <select
+                value={channelFilter}
+                onChange={(e) => setChannelFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="all">All Channels ({scenarios.length})</option>
+                {d2cCount > 0 && (
+                  <option value="all_d2c" className="font-semibold">
+                    📦 All D2C ({d2cCount})
+                  </option>
+                )}
+                {b2bCount > 0 && (
+                  <option value="all_b2b" className="font-semibold">
+                    🏢 All B2B ({b2bCount})
+                  </option>
+                )}
+                {d2cCount > 0 && <option disabled>──────────</option>}
+                {uniqueChannels.filter(ch => isD2CChannel(ch)).map(channel => (
+                  <option key={channel} value={channel} className="pl-4">
+                    &nbsp;&nbsp;{channel} ({scenarios.filter(s => s.channel === channel).length})
+                  </option>
+                ))}
+                {b2bCount > 0 && d2cCount > 0 && <option disabled>──────────</option>}
+                {uniqueChannels.filter(ch => isB2BChannel(ch)).map(channel => (
+                  <option key={channel} value={channel} className="pl-4">
+                    &nbsp;&nbsp;{channel} ({scenarios.filter(s => s.channel === channel).length})
+                  </option>
+                ))}
+                {uniqueChannels.filter(ch => !isD2CChannel(ch) && !isB2BChannel(ch)).length > 0 && (
+                  <option disabled>──────────</option>
+                )}
+                {uniqueChannels.filter(ch => !isD2CChannel(ch) && !isB2BChannel(ch)).map(channel => (
+                  <option key={channel} value={channel}>
+                    {channel} ({scenarios.filter(s => s.channel === channel).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Country Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Filter by Country</label>
+              <select
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="all">All Countries ({scenarios.length})</option>
+                {uniqueCountries.map(country => (
+                  <option key={country} value={country}>
+                    {country} ({scenarios.filter(s => s.countryCode === country).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          {(skuFilter !== 'all' || channelFilter !== 'all' || countryFilter !== 'all') && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-gray-600 font-medium">Active filters:</span>
+              {skuFilter !== 'all' && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                  SKU: {skuFilter}
+                  <button
+                    onClick={() => setSkuFilter('all')}
+                    className="hover:bg-blue-200 rounded-full p-0.5"
+                    title="Clear filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {channelFilter !== 'all' && (
+                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
+                  Channel: {channelFilter === 'all_d2c' ? '📦 All D2C' : channelFilter === 'all_b2b' ? '🏢 All B2B' : channelFilter}
+                  <button
+                    onClick={() => setChannelFilter('all')}
+                    className="hover:bg-green-200 rounded-full p-0.5"
+                    title="Clear filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {countryFilter !== 'all' && (
+                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full flex items-center gap-1">
+                  Country: {countryFilter}
+                  <button
+                    onClick={() => setCountryFilter('all')}
+                    className="hover:bg-purple-200 rounded-full p-0.5"
+                    title="Clear filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setSkuFilter('all');
+                  setChannelFilter('all');
+                  setCountryFilter('all');
+                }}
+                className="px-2 py-1 text-gray-600 hover:text-gray-900 underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (
