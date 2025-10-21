@@ -12,38 +12,58 @@ export async function GET(request: NextRequest) {
     // Step 1: Get ALL sales data with daily breakdown
     console.log('[Sales Velocity] Step 1: Fetching all Amazon sales by date and SKU...');
     
-    // Count DISTINCT orders to avoid counting duplicate line items per order
-    // Amazon creates multiple line items per order (item, shipping, fees, etc.)
-    const dailySales = await db
-      .select({
-        bdiSku: amazonFinancialLineItems.bdiSku,
-        amazonSku: amazonFinancialLineItems.amazonSku,
-        date: sql<string>`DATE(${amazonFinancialLineItems.postedDate})::text`,
-        units: sql<number>`COUNT(DISTINCT ${amazonFinancialLineItems.orderId})::int`,  // Count unique orders (1 order = 1 unit)
-        grossRevenue: sql<number>`SUM(${amazonFinancialLineItems.itemPrice})`,  // Total revenue (before fees)
-        netRevenue: sql<number>`SUM(${amazonFinancialLineItems.netRevenue})`,  // Net revenue (after fees)
-      })
-      .from(amazonFinancialLineItems)
-      .where(
-        sql`${amazonFinancialLineItems.bdiSku} IS NOT NULL 
-            AND ${amazonFinancialLineItems.transactionType} = 'sale'
-            AND ${amazonFinancialLineItems.quantity} > 0`  // Only sales with positive quantities
+    // CRITICAL: Amazon creates multiple line items per order (item, shipping, fees, etc.)
+    // Each line item duplicates the item_price and net_revenue values
+    // We must group by order_id FIRST, then aggregate by date/SKU
+    // 
+    // Use a CTE (Common Table Expression) to:
+    // 1. Group by order_id to get one row per order (avoiding 7x multiplication)
+    // 2. Then aggregate by date/SKU
+    const dailySales = await db.execute(sql`
+      WITH order_totals AS (
+        SELECT 
+          ${amazonFinancialLineItems.bdiSku} as bdi_sku,
+          ${amazonFinancialLineItems.amazonSku} as amazon_sku,
+          DATE(${amazonFinancialLineItems.postedDate}) as sale_date,
+          ${amazonFinancialLineItems.orderId} as order_id,
+          MAX(${amazonFinancialLineItems.itemPrice}) as item_price,
+          MAX(${amazonFinancialLineItems.netRevenue}) as net_revenue
+        FROM ${amazonFinancialLineItems}
+        WHERE ${amazonFinancialLineItems.bdiSku} IS NOT NULL 
+          AND ${amazonFinancialLineItems.transactionType} = 'sale'
+          AND ${amazonFinancialLineItems.quantity} > 0
+        GROUP BY 
+          ${amazonFinancialLineItems.bdiSku},
+          ${amazonFinancialLineItems.amazonSku},
+          DATE(${amazonFinancialLineItems.postedDate}),
+          ${amazonFinancialLineItems.orderId}
       )
-      .groupBy(
-        amazonFinancialLineItems.bdiSku,
-        amazonFinancialLineItems.amazonSku,
-        sql`DATE(${amazonFinancialLineItems.postedDate})`
-      )
-      .orderBy(
-        amazonFinancialLineItems.bdiSku,
-        sql`DATE(${amazonFinancialLineItems.postedDate})`
-      );
+      SELECT 
+        bdi_sku as "bdiSku",
+        amazon_sku as "amazonSku",
+        sale_date::text as "date",
+        COUNT(*)::int as "units",
+        SUM(item_price)::numeric as "grossRevenue",
+        SUM(net_revenue)::numeric as "netRevenue"
+      FROM order_totals
+      GROUP BY bdi_sku, amazon_sku, sale_date
+      ORDER BY bdi_sku, sale_date
+    `);
+    
+    const dailySalesData = dailySales as unknown as Array<{
+      bdiSku: string;
+      amazonSku: string;
+      date: string;
+      units: number;
+      grossRevenue: number;
+      netRevenue: number;
+    }>;
 
-    console.log(`[Sales Velocity] ✅ Found ${dailySales.length} daily data points`);
+    console.log(`[Sales Velocity] ✅ Found ${dailySalesData.length} daily data points`);
     
     // DEBUG: Show first 5 raw data points
     console.log('[Sales Velocity] 🔍 First 5 daily data points:');
-    dailySales.slice(0, 5).forEach(item => {
+    dailySalesData.slice(0, 5).forEach(item => {
       console.log(`   ${item.date} | ${item.bdiSku} | ${item.amazonSku} | units: ${item.units} | gross: ${item.grossRevenue} | net: ${item.netRevenue}`);
     });
 
@@ -58,7 +78,7 @@ export async function GET(request: NextRequest) {
       totalNetRevenue: number;
     }>();
 
-    dailySales.forEach(item => {
+    dailySalesData.forEach(item => {
       const bdiSku = item.bdiSku || 'Unknown';
       
       if (!skuMap.has(bdiSku)) {
