@@ -174,6 +174,58 @@ export class AmazonSPAPIService {
   }
 
   // ==========================================================================
+  // FBA INVENTORY API
+  // ==========================================================================
+
+  /**
+   * Get FBA Inventory Summaries (real-time inventory)
+   * Returns current inventory levels at Amazon FBA
+   */
+  async getInventorySummaries(
+    marketplaceIds: string[] = [AmazonMarketplace.US],
+    details: boolean = true,
+    startDateTime?: string
+  ) {
+    return await this.reportsClient.getInventorySummaries(
+      marketplaceIds,
+      details,
+      'Marketplace',
+      startDateTime
+    );
+  }
+
+  /**
+   * Get Inbound Shipments (inventory in transit)
+   * Returns shipments on their way to Amazon FBA
+   */
+  async getInboundShipments(
+    shipmentStatusList?: string[],
+    lastUpdatedAfter?: string,
+    lastUpdatedBefore?: string
+  ) {
+    return await this.reportsClient.getInboundShipments(
+      shipmentStatusList,
+      lastUpdatedAfter,
+      lastUpdatedBefore
+    );
+  }
+
+  /**
+   * Get Inbound Shipment Items (detailed items for a shipment)
+   */
+  async getInboundShipmentItems(
+    shipmentId?: string,
+    lastUpdatedAfter?: string,
+    lastUpdatedBefore?: string
+  ) {
+    return await this.reportsClient.getInboundShipmentItems(
+      shipmentId,
+      lastUpdatedAfter,
+      lastUpdatedBefore
+    );
+  }
+
+  // ==========================================================================
   // FINANCIAL EVENTS API
   // ==========================================================================
 

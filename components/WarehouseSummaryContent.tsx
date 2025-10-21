@@ -17,7 +17,9 @@ import {
   BarChart3,
   PieChart,
   Upload,
-  FileUp
+  FileUp,
+  RefreshCw,
+  Cloud
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -175,6 +177,8 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
   const [activeTab, setActiveTab] = useState('overview');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
+  const [fetchingFromAmazon, setFetchingFromAmazon] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState<string>('');
 
   useEffect(() => {
     fetchSummaryData();
@@ -193,6 +197,96 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
       console.error('Error fetching warehouse summary:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchFromAmazon = async () => {
+    try {
+      setFetchingFromAmazon(true);
+      setFetchProgress('🔄 Fetching inventory from Amazon FBA...');
+
+      // Fetch FBA inventory summaries
+      const inventoryResponse = await fetch('/api/amazon/inventory/summaries?details=true');
+      const inventoryData = await inventoryResponse.json();
+
+      if (!inventoryData.success) {
+        throw new Error(inventoryData.error || 'Failed to fetch inventory');
+      }
+
+      setFetchProgress('🔄 Fetching inbound shipments...');
+
+      // Fetch inbound shipments
+      const inboundResponse = await fetch('/api/amazon/inbound/shipments');
+      const inboundData = await inboundResponse.json();
+
+      if (!inboundData.success) {
+        throw new Error(inboundData.error || 'Failed to fetch inbound shipments');
+      }
+
+      setFetchProgress('🔄 Processing inventory data...');
+
+      // Transform the API data to match the expected format
+      const inventorySummaries = inventoryData.data?.inventorySummaries || [];
+      const inboundShipments = inboundData.data?.shipments || [];
+
+      // Build a map of inbound quantities by SKU
+      const inboundMap: Record<string, number> = {};
+      inboundShipments.forEach((shipment: any) => {
+        shipment.items?.forEach((item: any) => {
+          const sku = item.SellerSKU;
+          const qty = parseInt(item.QuantityShipped || 0) || parseInt(item.QuantityReceived || 0) || 0;
+          inboundMap[sku] = (inboundMap[sku] || 0) + qty;
+        });
+      });
+
+      // Transform inventory summaries to match database format
+      const transformedInventory = inventorySummaries.map((item: any) => {
+        const fulfillable = parseInt(String(item.inventoryDetails?.fulfillableQuantity || 0));
+        const unsellable = parseInt(String(item.inventoryDetails?.unfulfillableQuantity || 0));
+        const reserved = parseInt(String(item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0));
+        const inbound = inboundMap[item.sellerSku] || 0;
+        
+        return {
+          sku: item.sellerSku || '',
+          asin: item.asin || '',
+          fnsku: item.fnSku || '',
+          condition: item.condition || 'NewItem',
+          totalQuantity: fulfillable + unsellable + reserved,
+          fulfillableQuantity: fulfillable,
+          unsellableQuantity: unsellable,
+          reservedQuantity: reserved,
+          inboundQuantity: inbound,
+        };
+      });
+
+      setFetchProgress('🔄 Saving to database...');
+
+      // Save to database
+      const saveResponse = await fetch('/api/inventory/amazon-inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventory: transformedInventory }),
+      });
+
+      const saveResult = await saveResponse.json();
+
+      if (!saveResult.success) {
+        throw new Error(saveResult.error || 'Failed to save inventory');
+      }
+
+      setFetchProgress(`✅ Successfully fetched and saved ${transformedInventory.length} SKUs from Amazon!`);
+
+      // Refresh the summary data
+      setTimeout(() => {
+        fetchSummaryData();
+        setFetchProgress('');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error fetching from Amazon:', error);
+      setFetchProgress(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setFetchingFromAmazon(false);
     }
   };
 
@@ -885,19 +979,37 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   Amazon FBA Inventory
                 </CardTitle>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={fetchingFromAmazon || uploading}
+                    onClick={handleFetchFromAmazon}
+                  >
+                    {fetchingFromAmazon ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Fetching...
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="h-4 w-4 mr-2" />
+                        Fetch from Amazon
+                      </>
+                    )}
+                  </Button>
                   <input
                     type="file"
                     id="amazon-upload"
                     accept=".csv"
                     onChange={handleAmazonUpload}
-                    disabled={uploading}
+                    disabled={uploading || fetchingFromAmazon}
                     className="hidden"
                   />
                   <label htmlFor="amazon-upload">
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={uploading}
+                      disabled={uploading || fetchingFromAmazon}
                       asChild
                     >
                       <span className="cursor-pointer">
@@ -917,6 +1029,11 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   </label>
                 </div>
               </div>
+              {fetchProgress && (
+                <div className={`mt-2 text-sm ${fetchProgress.startsWith('✅') ? 'text-green-600' : fetchProgress.startsWith('❌') ? 'text-red-600' : 'text-blue-600'}`}>
+                  {fetchProgress}
+                </div>
+              )}
               {uploadProgress && (
                 <div className={`mt-2 text-sm ${uploadProgress.startsWith('✅') ? 'text-green-600' : uploadProgress.startsWith('❌') ? 'text-red-600' : 'text-blue-600'}`}>
                   {uploadProgress}
@@ -931,15 +1048,23 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   </div>
                   <h3 className="text-xl font-semibold mb-2">No Amazon Inventory Data</h3>
                   <p className="text-muted-foreground mb-4">
-                    Upload your Amazon FBA Inventory CSV to see inventory levels and analytics
+                    Click "Fetch from Amazon" to get real-time inventory, or upload a CSV file
                   </p>
-                  <div className="max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4 space-y-2">
-                    <p className="text-sm font-medium">How to get the CSV:</p>
-                    <ol className="text-sm text-muted-foreground space-y-1 ml-4 list-decimal">
-                      <li>Go to Amazon Data → Reports</li>
-                      <li>Download "FBA Inventory" report</li>
-                      <li>Upload the CSV file here</li>
-                    </ol>
+                  <div className="max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium text-green-600 mb-1">✨ Recommended: Fetch from Amazon</p>
+                      <p className="text-xs text-muted-foreground">
+                        Get real-time inventory including FBA units and inbound shipments
+                      </p>
+                    </div>
+                    <div className="border-t pt-2">
+                      <p className="text-sm font-medium mb-1">Alternative: Upload CSV</p>
+                      <ol className="text-xs text-muted-foreground space-y-1 ml-4 list-decimal">
+                        <li>Go to Amazon Data → Reports</li>
+                        <li>Download "FBA Inventory" report</li>
+                        <li>Upload the CSV file here</li>
+                      </ol>
+                    </div>
                   </div>
                 </div>
               ) : (

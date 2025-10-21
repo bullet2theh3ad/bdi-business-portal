@@ -296,6 +296,189 @@ export class AmazonSPAPIClient {
   }
 
   // ==========================================================================
+  // FBA INVENTORY API
+  // ==========================================================================
+
+  /**
+   * Get FBA Inventory Summaries (real-time inventory data)
+   * https://developer-docs.amazon.com/sp-api/docs/fba-inventory-api-v1-reference#get-inventorysummaries
+   * 
+   * @param marketplaceIds Marketplace IDs
+   * @param details Include details (default: false)
+   * @param granularityType MARKETPLACE or ASIN
+   * @param startDateTime Filter for inventory updated after this date
+   * @returns Inventory summaries
+   */
+  async getInventorySummaries(
+    marketplaceIds: string[] = [AmazonMarketplace.US],
+    details: boolean = true,
+    granularityType: 'Marketplace' | 'ASIN' = 'Marketplace',
+    startDateTime?: string
+  ): Promise<any> {
+    console.log(`[SP-API] Fetching FBA inventory summaries...`);
+    
+    return await this.rateLimiter.executeWithRetry(async () => {
+      const queryParams = new URLSearchParams({
+        granularityType,
+        granularityId: marketplaceIds[0],
+        marketplaceIds: marketplaceIds.join(','),
+        details: details.toString(),
+      });
+
+      if (startDateTime) {
+        queryParams.append('startDateTime', startDateTime);
+      }
+
+      const path = `/fba/inventory/v1/summaries?${queryParams.toString()}`;
+      const headers = await this.auth.getSignedHeaders(
+        'GET',
+        path,
+        this.SP_API_URL.replace('https://', '')
+      );
+
+      const response = await fetch(`${this.SP_API_URL}${path}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new AmazonSPAPIError(
+          'GET_INVENTORY_SUMMARIES_FAILED',
+          `Failed to get inventory summaries: ${response.status}`,
+          response.status,
+          errorText
+        );
+      }
+
+      const data = await response.json();
+      console.log(`[SP-API] Inventory summaries fetched successfully`);
+      return data;
+    }, 'Get Inventory Summaries');
+  }
+
+  /**
+   * Get Inbound Shipments (inventory in transit to Amazon)
+   * https://developer-docs.amazon.com/sp-api/docs/fulfillment-inbound-api-v0-reference#get-shipments
+   * 
+   * @param shipmentStatusList Filter by status (WORKING, SHIPPED, IN_TRANSIT, DELIVERED, etc.)
+   * @param lastUpdatedAfter Filter for shipments updated after this date
+   * @param lastUpdatedBefore Filter for shipments updated before this date
+   * @returns Inbound shipments
+   */
+  async getInboundShipments(
+    shipmentStatusList?: string[],
+    lastUpdatedAfter?: string,
+    lastUpdatedBefore?: string
+  ): Promise<any> {
+    console.log(`[SP-API] Fetching inbound shipments...`);
+    
+    return await this.rateLimiter.executeWithRetry(async () => {
+      const queryParams = new URLSearchParams();
+
+      if (shipmentStatusList && shipmentStatusList.length > 0) {
+        queryParams.append('ShipmentStatusList', shipmentStatusList.join(','));
+      }
+      if (lastUpdatedAfter) {
+        queryParams.append('LastUpdatedAfter', lastUpdatedAfter);
+      }
+      if (lastUpdatedBefore) {
+        queryParams.append('LastUpdatedBefore', lastUpdatedBefore);
+      }
+
+      const path = `/fba/inbound/v0/shipments?${queryParams.toString()}`;
+      const headers = await this.auth.getSignedHeaders(
+        'GET',
+        path,
+        this.SP_API_URL.replace('https://', '')
+      );
+
+      const response = await fetch(`${this.SP_API_URL}${path}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new AmazonSPAPIError(
+          'GET_INBOUND_SHIPMENTS_FAILED',
+          `Failed to get inbound shipments: ${response.status}`,
+          response.status,
+          errorText
+        );
+      }
+
+      const data = await response.json();
+      console.log(`[SP-API] Inbound shipments fetched successfully`);
+      return data;
+    }, 'Get Inbound Shipments');
+  }
+
+  /**
+   * Get Inbound Shipment Items (detailed items for a specific shipment)
+   * https://developer-docs.amazon.com/sp-api/docs/fulfillment-inbound-api-v0-reference#get-shipmentitems
+   * 
+   * @param shipmentId Shipment ID (optional if using date range)
+   * @param lastUpdatedAfter Filter for items updated after this date
+   * @param lastUpdatedBefore Filter for items updated before this date
+   * @returns Shipment items
+   */
+  async getInboundShipmentItems(
+    shipmentId?: string,
+    lastUpdatedAfter?: string,
+    lastUpdatedBefore?: string
+  ): Promise<any> {
+    console.log(`[SP-API] Fetching inbound shipment items${shipmentId ? ` for ${shipmentId}` : ''}...`);
+    
+    return await this.rateLimiter.executeWithRetry(async () => {
+      const queryParams = new URLSearchParams();
+      
+      // Amazon requires EITHER shipmentId OR both date parameters
+      if (shipmentId) {
+        queryParams.append('ShipmentId', shipmentId);
+      } else if (lastUpdatedAfter && lastUpdatedBefore) {
+        queryParams.append('LastUpdatedAfter', lastUpdatedAfter);
+        queryParams.append('LastUpdatedBefore', lastUpdatedBefore);
+      } else {
+        // If no shipmentId, use a 30-day date range
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        queryParams.append('LastUpdatedAfter', thirtyDaysAgo.toISOString());
+        queryParams.append('LastUpdatedBefore', now.toISOString());
+      }
+
+      const path = `/fba/inbound/v0/shipmentItems?${queryParams.toString()}`;
+      console.log(`[SP-API] Inbound shipment items URL:`, path);
+      console.log(`[SP-API] Query params:`, Object.fromEntries(queryParams.entries()));
+      
+      const headers = await this.auth.getSignedHeaders(
+        'GET',
+        path,
+        this.SP_API_URL.replace('https://', '')
+      );
+
+      const response = await fetch(`${this.SP_API_URL}${path}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new AmazonSPAPIError(
+          'GET_INBOUND_SHIPMENT_ITEMS_FAILED',
+          `Failed to get inbound shipment items: ${response.status}`,
+          response.status,
+          errorText
+        );
+      }
+
+      const data = await response.json();
+      console.log(`[SP-API] Inbound shipment items fetched successfully`);
+      return data;
+    }, 'Get Inbound Shipment Items');
+  }
+
+  // ==========================================================================
   // HELPER METHODS
   // ==========================================================================
 
