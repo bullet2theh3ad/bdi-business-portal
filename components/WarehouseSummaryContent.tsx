@@ -44,6 +44,12 @@ interface WarehouseSummaryData {
       qtyOnHand: number;
       netStock: number;
     }>;
+    inventoryValue: {
+      totalValue: number;
+      skusWithCost: number;
+      skusWithoutCost: number;
+      hasCostData: boolean;
+    };
   };
   catv: {
     totals: {
@@ -71,6 +77,12 @@ interface WarehouseSummaryData {
       totalUnits: number;
       stages: Record<string, number>;
     }>;
+    inventoryValue: {
+      totalValue: number;
+      skusWithCost: number;
+      skusWithoutCost: number;
+      hasCostData: boolean;
+    };
   };
   summary: {
     totalWarehouses: number;
@@ -219,6 +231,97 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Inventory Value Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* EMG Inventory Value */}
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Warehouse className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">EMG Warehouse</p>
+                  <p className="text-xs text-muted-foreground">Inventory Value</p>
+                </div>
+              </div>
+            </div>
+            {summaryData.emg.inventoryValue.hasCostData ? (
+              <div>
+                <p className="text-4xl font-bold text-blue-600">
+                  ${formatNumber(Math.round(summaryData.emg.inventoryValue.totalValue))}
+                </p>
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">SKUs with cost data:</span>
+                    <span className="font-medium text-green-600">{summaryData.emg.inventoryValue.skusWithCost}</span>
+                  </div>
+                  {summaryData.emg.inventoryValue.skusWithoutCost > 0 && (
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-muted-foreground">SKUs without cost:</span>
+                      <span className="font-medium text-orange-600">{summaryData.emg.inventoryValue.skusWithoutCost}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">No Cost Data Available</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add standard costs to SKUs in Inventory → SKUs
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* CATV Inventory Value */}
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-10 w-10 rounded-full bg-green-600 flex items-center justify-center">
+                  <Warehouse className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">CATV Warehouse</p>
+                  <p className="text-xs text-muted-foreground">Inventory Value</p>
+                </div>
+              </div>
+            </div>
+            {summaryData.catv.inventoryValue.hasCostData ? (
+              <div>
+                <p className="text-4xl font-bold text-green-600">
+                  ${formatNumber(Math.round(summaryData.catv.inventoryValue.totalValue))}
+                </p>
+                <div className="mt-3 pt-3 border-t border-green-200">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">SKUs with cost data:</span>
+                    <span className="font-medium text-green-600">{summaryData.catv.inventoryValue.skusWithCost}</span>
+                  </div>
+                  {summaryData.catv.inventoryValue.skusWithoutCost > 0 && (
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-muted-foreground">SKUs without cost:</span>
+                      <span className="font-medium text-orange-600">{summaryData.catv.inventoryValue.skusWithoutCost}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">No Cost Data Available</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add standard costs to SKUs in Inventory → SKUs
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

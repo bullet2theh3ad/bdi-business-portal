@@ -314,6 +314,69 @@ export async function GET(request: NextRequest) {
           }, {}),
       }));
 
+    // Calculate inventory values using standard cost from product_skus
+    console.log('[Warehouse Summary] Calculating inventory values...');
+    
+    // Get all unique SKUs from both warehouses
+    const emgSkuModels = emgInventory.map(item => item.model).filter(Boolean);
+    const catvSkuModels = Object.keys(catvWipTotals.bySku).filter(Boolean);
+    const allSkuModels = [...new Set([...emgSkuModels, ...catvSkuModels])].filter((sku): sku is string => Boolean(sku));
+    
+    console.log(`[Warehouse Summary] Found ${allSkuModels.length} unique SKUs across warehouses`);
+    
+    // Fetch standard costs for all SKUs (only if we have SKUs)
+    let skuCosts: Array<{ sku: string; standardCost: string | null }> = [];
+    if (allSkuModels.length > 0) {
+      skuCosts = await db
+        .select({
+          sku: productSkus.sku,
+          standardCost: productSkus.standardCost,
+        })
+        .from(productSkus)
+        .where(inArray(productSkus.sku, allSkuModels));
+    }
+    
+    console.log(`[Warehouse Summary] Found standard costs for ${skuCosts.length} SKUs`);
+    
+    // Create a map of SKU -> standard cost
+    const skuCostMap = new Map(
+      skuCosts.map(item => [item.sku, parseFloat(String(item.standardCost || 0))])
+    );
+    
+    // Calculate EMG inventory value
+    let emgTotalValue = 0;
+    let emgSkusWithCost = 0;
+    let emgSkusWithoutCost = 0;
+    
+    emgInventory.forEach(item => {
+      if (!item.model) return;
+      const standardCost = skuCostMap.get(item.model);
+      if (standardCost && standardCost > 0) {
+        emgTotalValue += (item.qtyOnHand || 0) * standardCost;
+        emgSkusWithCost++;
+      } else {
+        emgSkusWithoutCost++;
+      }
+    });
+    
+    // Calculate CATV inventory value (using unique serial numbers)
+    let catvTotalValue = 0;
+    let catvSkusWithCost = 0;
+    let catvSkusWithoutCost = 0;
+    
+    Object.entries(catvWipTotals.bySku).forEach(([sku, count]) => {
+      const standardCost = skuCostMap.get(sku);
+      if (standardCost && standardCost > 0) {
+        catvTotalValue += (count as number) * standardCost;
+        catvSkusWithCost++;
+      } else {
+        catvSkusWithoutCost++;
+      }
+    });
+    
+    console.log(`[Warehouse Summary] EMG Value: $${emgTotalValue.toFixed(2)} (${emgSkusWithCost} SKUs with cost, ${emgSkusWithoutCost} without)`);
+    console.log(`[Warehouse Summary] CATV Value: $${catvTotalValue.toFixed(2)} (${catvSkusWithCost} SKUs with cost, ${catvSkusWithoutCost} without)`);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -322,6 +385,12 @@ export async function GET(request: NextRequest) {
           inventory: emgInventory,
           topSkus: topEmgSkus,
           lastUpdated: emgInventory.length > 0 ? emgInventory[0].lastUpdated : null,
+          inventoryValue: {
+            totalValue: emgTotalValue,
+            skusWithCost: emgSkusWithCost,
+            skusWithoutCost: emgSkusWithoutCost,
+            hasCostData: emgSkusWithCost > 0,
+          },
         },
         catv: {
           totals: catvTotals,
@@ -331,6 +400,12 @@ export async function GET(request: NextRequest) {
           wipSummary: wipUnits || [],
           topSkus: topCatvSkus,
           lastUpdated: catvInventory.length > 0 ? catvInventory[0].lastUpdated : null,
+          inventoryValue: {
+            totalValue: catvTotalValue,
+            skusWithCost: catvSkusWithCost,
+            skusWithoutCost: catvSkusWithoutCost,
+            hasCostData: catvSkusWithCost > 0,
+          },
         },
         summary: {
           totalWarehouses: 2, // EMG and CATV
