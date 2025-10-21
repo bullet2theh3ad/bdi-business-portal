@@ -166,6 +166,8 @@ export const SEMANTIC_ICONS: Record<string, BDIIconName> = {
   query: 'mobile-16', // Query icon
   delete: 'repair-5', // Delete/trash icon
   finance: 'ecommerce-5', // Finance/payments/bills icon
+  velocity: 'freight-5', // Speed/velocity icon (shipping/fast delivery)
+  'trending-up': 'retail-2', // Trending up icon
 };
 
 interface SemanticBDIIconProps {

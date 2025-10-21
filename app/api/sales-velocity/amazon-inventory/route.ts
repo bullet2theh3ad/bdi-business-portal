@@ -46,7 +46,7 @@ function parseInteger(value: string): number {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[Sales Velocity] Downloading Amazon FBA inventory report...');
+    console.log('[Sales Velocity] Fetching Amazon FBA inventory report...');
 
     // Check Amazon API configuration
     const status = getConfigStatus();
@@ -60,16 +60,62 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const credentials = getAmazonCredentials();
-    const amazon = new AmazonSPAPIService(credentials);
+    // Step 1: List available FBA Manage Inventory reports
+    console.log('[Sales Velocity] Step 1: Listing available reports...');
+    const listResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/amazon/list-reports?reportType=GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA&processingStatus=DONE`,
+      { cache: 'no-store' }
+    );
 
-    // Download inventory report - this uses GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA
-    const csvText = await amazon.getInventoryReport();
+    if (!listResponse.ok) {
+      throw new Error('Failed to list reports');
+    }
+
+    const listData = await listResponse.json();
+    const reports = listData.reports || [];
+
+    if (reports.length === 0) {
+      console.log('[Sales Velocity] No available reports found');
+      return NextResponse.json({
+        error: 'No inventory reports available',
+        totalSKUs: 0,
+        totalUnits: 0,
+        lastSyncDate: null,
+        skuDetails: [],
+      });
+    }
+
+    // Step 2: Get the latest report (first one in the list)
+    const latestReport = reports[0];
+    console.log(`[Sales Velocity] Step 2: Using latest report: ${latestReport.reportId}`);
+    console.log(`[Sales Velocity] Created: ${latestReport.createdTime}`);
+
+    if (!latestReport.reportDocumentId) {
+      throw new Error('Report has no document ID');
+    }
+
+    // Step 3: Download the report
+    console.log('[Sales Velocity] Step 3: Downloading report...');
+    const downloadResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/amazon/download-report?documentId=${latestReport.reportDocumentId}`,
+      { cache: 'no-store' }
+    );
+
+    if (!downloadResponse.ok) {
+      throw new Error('Failed to download report');
+    }
+
+    const downloadData = await downloadResponse.json();
+    const csvText = downloadData.content || ''; // Use 'content' not 'data'
+    
+    if (!csvText) {
+      throw new Error('No content in downloaded report');
+    }
     
     console.log(`[Sales Velocity] Report downloaded: ${csvText.split('\n').length} lines`);
 
     // Parse CSV data (comma-separated, not tab-separated)
-    const lines = csvText.split('\n').filter(line => line.trim());
+    const lines = csvText.split('\n').filter((line: string) => line.trim());
     if (lines.length === 0) {
       return NextResponse.json({
         totalSKUs: 0,
@@ -135,7 +181,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       totalSKUs: uniqueSKUs,
       totalUnits,
-      lastSyncDate: new Date().toISOString(),
+      lastSyncDate: latestReport.createdTime || new Date().toISOString(),
       skuDetails,
     });
   } catch (error: any) {

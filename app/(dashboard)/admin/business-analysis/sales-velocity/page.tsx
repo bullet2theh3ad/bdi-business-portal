@@ -3,54 +3,37 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Activity, 
-  Package, 
-  Warehouse, 
-  TrendingUp,
-  RefreshCw,
-  Loader2,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
+import { Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from 'recharts';
+import { RefreshCw, Loader2, TrendingUp } from 'lucide-react';
 
 // =====================================================
 // Type Definitions
 // =====================================================
-interface AmazonInventoryStats {
-  totalSKUs: number;
-  totalUnits: number;
-  lastSyncDate: string | null;
-  skuDetails: Array<{
-    sku: string;
-    asin: string;
-    fnsku: string;
-    condition: string;
-    totalQuantity: number;
-  }>;
+interface DailyDataPoint {
+  date: string;
+  units: number;
+  grossRevenue: number;
+  netRevenue: number;
 }
 
-interface WarehouseInventoryStats {
-  warehouseName: string;
-  totalSKUs: number;
+interface VelocityData {
+  bdiSku: string;
+  amazonSku: string;
   totalUnits: number;
-  totalCost: number;
-  skuDetails: Array<{
-    sku: string;
-    units: number;
-    standardCost: number | null;
-    totalValue: number;
-  }>;
-}
-
-interface SalesVelocityData {
-  sku: string;
-  totalSales: number;
-  totalRevenue: number;
-  firstSaleDate: string | null;
-  lastSaleDate: string | null;
-  daysInPeriod: number;
+  totalGrossRevenue: number;
+  totalNetRevenue: number;
+  daysActive: number;
   dailyVelocity: number;
+  firstSaleDate: string;
+  lastSaleDate: string;
+  dailyTimeline: DailyDataPoint[];
+}
+
+interface BubbleDataPoint {
+  date: string;
+  dayIndex: number;
+  value: number;
+  revenue: number;
 }
 
 // =====================================================
@@ -58,472 +41,367 @@ interface SalesVelocityData {
 // =====================================================
 export default function SalesVelocityPage() {
   const [loading, setLoading] = useState(false);
-  const [amazonInventory, setAmazonInventory] = useState<AmazonInventoryStats | null>(null);
-  const [emgInventory, setEmgInventory] = useState<WarehouseInventoryStats | null>(null);
-  const [catvInventory, setCatvInventory] = useState<WarehouseInventoryStats | null>(null);
-  const [salesVelocity, setSalesVelocity] = useState<SalesVelocityData[]>([]);
-  
-  // Expandable sections
-  const [expandedSections, setExpandedSections] = useState<{
-    amazon: boolean;
-    emg: boolean;
-    catv: boolean;
-    velocity: boolean;
-  }>({
-    amazon: false,
-    emg: false,
-    catv: false,
-    velocity: false,
-  });
+  const [velocityData, setVelocityData] = useState<VelocityData[]>([]);
+  const [weeksToShow, setWeeksToShow] = useState<number>(12); // Default: last 12 weeks
 
-  // Fetch all data on mount
   useEffect(() => {
-    fetchAllData();
+    fetchVelocityData();
   }, []);
 
-  async function fetchAllData() {
+  async function fetchVelocityData() {
     setLoading(true);
-    
-    // Fetch all three data sources in parallel
-    await Promise.all([
-      fetchAmazonInventory(),
-      fetchWarehouseInventory('EMG'),
-      fetchWarehouseInventory('CATV'),
-      fetchSalesVelocity(),
-    ]);
-    
-    setLoading(false);
-  }
-
-  async function fetchAmazonInventory() {
     try {
-      const response = await fetch('/api/sales-velocity/amazon-inventory');
-      if (response.ok) {
-        const data = await response.json();
-        setAmazonInventory(data);
-      }
-    } catch (error) {
-      console.error('Error fetching Amazon inventory:', error);
-    }
-  }
-
-  async function fetchWarehouseInventory(warehouse: 'EMG' | 'CATV') {
-    try {
-      const response = await fetch(`/api/sales-velocity/warehouse-inventory?warehouse=${warehouse}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (warehouse === 'EMG') {
-          setEmgInventory(data);
-        } else {
-          setCatvInventory(data);
-        }
-      }
-    } catch (error) {
-      console.error(`Error fetching ${warehouse} inventory:`, error);
-    }
-  }
-
-  async function fetchSalesVelocity() {
-    try {
+      console.log('🔄 Fetching velocity data...');
       const response = await fetch('/api/sales-velocity/calculate-from-db');
-      if (response.ok) {
-        const data = await response.json();
-        setSalesVelocity(data.velocityData || []);
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ Velocity data loaded:', data.velocityData.length, 'SKUs');
+        
+        // Debug: Show first SKU's daily timeline
+        if (data.velocityData.length > 0) {
+          const firstSku = data.velocityData[0];
+          console.log(`🔍 Sample SKU: ${firstSku.bdiSku}`);
+          console.log(`   Total Units: ${firstSku.totalUnits}`);
+          console.log(`   Days Active: ${firstSku.daysActive}`);
+          console.log(`   Daily Velocity: ${firstSku.dailyVelocity}`);
+          console.log(`   First 5 days of timeline:`, firstSku.dailyTimeline.slice(0, 5));
+        }
+        
+        setVelocityData(data.velocityData);
       }
     } catch (error) {
-      console.error('Error fetching sales velocity:', error);
+      console.error('❌ Error fetching velocity:', error);
+    } finally {
+      setLoading(false);
     }
   }
 
-  function toggleSection(section: keyof typeof expandedSections) {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section],
+  // Group daily data into weeks
+  function groupByWeek(timeline: DailyDataPoint[], skuName: string) {
+    console.log(`📦 [${skuName}] Grouping ${timeline.length} daily records into weeks...`);
+    
+    const weeks = new Map<string, { units: number; grossRevenue: number; netRevenue: number; dates: string[] }>();
+    
+    timeline.forEach(point => {
+      const date = new Date(point.date);
+      // Get ISO week number
+      const weekNumber = getISOWeek(date);
+      const year = date.getFullYear();
+      const weekKey = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+      
+      if (!weeks.has(weekKey)) {
+        weeks.set(weekKey, { units: 0, grossRevenue: 0, netRevenue: 0, dates: [] });
+      }
+      
+      const week = weeks.get(weekKey)!;
+      week.units += point.units;
+      week.grossRevenue += point.grossRevenue;
+      week.netRevenue += point.netRevenue;
+      week.dates.push(point.date);
+    });
+    
+    // Convert to array format for chart
+    const weeklyData = Array.from(weeks.entries()).map(([weekKey, data]) => ({
+      weekLabel: weekKey,
+      index: 1, // Fixed Y position for this SKU's row
+      units: data.units,
+      grossRevenue: data.grossRevenue,
+      netRevenue: data.netRevenue,
+      dates: data.dates,
     }));
+    
+    console.log(`📊 [${skuName}] Created ${weeklyData.length} weeks:`);
+    weeklyData.forEach(week => {
+      console.log(`   ${week.weekLabel}: ${week.units} units, Gross: $${week.grossRevenue.toFixed(2)}, Net: $${week.netRevenue.toFixed(2)}`);
+    });
+    
+    const maxUnits = Math.max(...weeklyData.map(w => w.units), 0);
+    const minUnits = Math.min(...weeklyData.map(w => w.units), 0);
+    console.log(`   📈 Range: ${minUnits} - ${maxUnits} units`);
+    
+    return weeklyData;
+  }
+  
+  // Get ISO week number
+  function getISOWeek(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   }
 
-  function formatCurrency(value: number) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  }
-
-  return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Activity className="h-7 w-7 text-purple-600" />
-              Sales Velocity Analysis
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Real-time inventory and sales velocity tracking
+  // Custom tooltip
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const fees = data.grossRevenue - data.netRevenue;
+      return (
+        <div className="bg-white border border-gray-300 rounded-lg p-3 shadow-lg min-w-[200px]">
+          <p className="font-semibold text-sm mb-2">{data.weekLabel}</p>
+          <p className="text-sm">
+            <span className="text-gray-600">Units: </span>
+            <span className="font-bold text-blue-600">{data.units}</span>
+          </p>
+          <div className="border-t mt-2 pt-2 space-y-1">
+            <p className="text-sm">
+              <span className="text-gray-600">Gross Revenue: </span>
+              <span className="font-bold text-green-700">
+                ${Math.round(data.grossRevenue).toLocaleString()}
+              </span>
+            </p>
+            <p className="text-sm">
+              <span className="text-gray-600">Fees: </span>
+              <span className="font-bold text-red-600">
+                -${Math.round(fees).toLocaleString()}
+              </span>
+            </p>
+            <p className="text-sm border-t pt-1">
+              <span className="text-gray-600">Net Revenue: </span>
+              <span className="font-bold text-green-600">
+                ${Math.round(data.netRevenue).toLocaleString()}
+              </span>
             </p>
           </div>
-          <Button
-            onClick={fetchAllData}
-            disabled={loading}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh All
-              </>
-            )}
-          </Button>
+          {data.dates && (
+            <p className="text-xs text-gray-500 mt-2 border-t pt-1">
+              {data.dates.length} days
+            </p>
+          )}
         </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-8 w-8 text-blue-600" />
+            Sales Velocity Analysis
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Daily sales velocity per SKU from Amazon financial data
+          </p>
+        </div>
+        <Button
+          onClick={fetchVelocityData}
+          disabled={loading}
+          className="flex items-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </>
+          )}
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* Amazon Inventory Card */}
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-blue-600" />
-                Amazon FBA Inventory
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleSection('amazon')}
-              >
-                {expandedSections.amazon ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading && !amazonInventory ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
-            ) : amazonInventory ? (
-              <div className="space-y-4">
-                {/* Summary Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Total SKUs</p>
-                    <p className="text-2xl font-bold text-blue-600">{amazonInventory.totalSKUs}</p>
+      {/* Summary Cards - Dynamic based on week selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {(() => {
+          // Calculate metrics for the selected week range
+          const allWeeklyData = velocityData.map(sku => {
+            const allWeeks = groupByWeek(sku.dailyTimeline, sku.bdiSku);
+            const sortedWeeks = allWeeks.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
+            return weeksToShow === 999 ? sortedWeeks : sortedWeeks.slice(0, weeksToShow);
+          });
+          
+          const totalUnits = allWeeklyData.flat().reduce((sum, w) => sum + w.units, 0);
+          const totalGrossRevenue = allWeeklyData.flat().reduce((sum, w) => sum + w.grossRevenue, 0);
+          const totalNetRevenue = allWeeklyData.flat().reduce((sum, w) => sum + w.netRevenue, 0);
+          const totalFees = totalGrossRevenue - totalNetRevenue;
+          
+          // Calculate average daily velocity for the selected period
+          const totalDays = allWeeklyData.flat().reduce((sum, w) => sum + (w.dates?.length || 0), 0);
+          const avgDailyVelocity = totalDays > 0 ? totalUnits / totalDays : 0;
+          
+          return (
+            <>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total SKUs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{velocityData.length}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Units Sold</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {totalUnits.toLocaleString()}
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Units</p>
-                    <p className="text-2xl font-bold text-blue-600">{amazonInventory.totalUnits.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Gross Revenue</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-700">
+                    ${totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Last Sync</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {amazonInventory.lastSyncDate 
-                        ? new Date(amazonInventory.lastSyncDate).toLocaleDateString()
-                        : 'Never'}
-                    </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Fees</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    ${totalFees.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
-                </div>
-
-                {/* Expandable Details */}
-                {expandedSections.amazon && (
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">SKU Details</h4>
-                    <div className="max-h-64 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="text-left p-2">SKU</th>
-                            <th className="text-left p-2">ASIN</th>
-                            <th className="text-left p-2">Condition</th>
-                            <th className="text-right p-2">Quantity</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {amazonInventory.skuDetails.map((item, idx) => (
-                            <tr key={idx} className="border-b">
-                              <td className="p-2 font-mono text-xs">{item.sku}</td>
-                              <td className="p-2 font-mono text-xs">{item.asin}</td>
-                              <td className="p-2">{item.condition}</td>
-                              <td className="p-2 text-right font-semibold">{item.totalQuantity}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Net Revenue</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    ${totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No data available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* EMG Warehouse Card */}
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Warehouse className="h-5 w-5 text-green-600" />
-                EMG Warehouse Inventory
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleSection('emg')}
-              >
-                {expandedSections.emg ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading && !emgInventory ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-              </div>
-            ) : emgInventory ? (
-              <div className="space-y-4">
-                {/* Summary Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Total SKUs</p>
-                    <p className="text-2xl font-bold text-green-600">{emgInventory.totalSKUs}</p>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {avgDailyVelocity.toFixed(1)} units/day avg
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Units</p>
-                    <p className="text-2xl font-bold text-green-600">{emgInventory.totalUnits.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Value</p>
-                    <p className="text-2xl font-bold text-green-600">{formatCurrency(emgInventory.totalCost)}</p>
-                  </div>
-                </div>
-
-                {/* Expandable Details */}
-                {expandedSections.emg && (
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">SKU Details</h4>
-                    <div className="max-h-64 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="text-left p-2">SKU</th>
-                            <th className="text-right p-2">Units</th>
-                            <th className="text-right p-2">Std Cost</th>
-                            <th className="text-right p-2">Total Value</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {emgInventory.skuDetails.map((item, idx) => (
-                            <tr key={idx} className="border-b">
-                              <td className="p-2 font-mono text-xs">{item.sku}</td>
-                              <td className="p-2 text-right">{item.units}</td>
-                              <td className="p-2 text-right">
-                                {item.standardCost ? formatCurrency(item.standardCost) : '-'}
-                              </td>
-                              <td className="p-2 text-right font-semibold">
-                                {formatCurrency(item.totalValue)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No data available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* CATV Warehouse Card */}
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Warehouse className="h-5 w-5 text-orange-600" />
-                CATV Warehouse Inventory
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleSection('catv')}
-              >
-                {expandedSections.catv ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading && !catvInventory ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-              </div>
-            ) : catvInventory ? (
-              <div className="space-y-4">
-                {/* Summary Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Total SKUs</p>
-                    <p className="text-2xl font-bold text-orange-600">{catvInventory.totalSKUs}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Units</p>
-                    <p className="text-2xl font-bold text-orange-600">{catvInventory.totalUnits.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Value</p>
-                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(catvInventory.totalCost)}</p>
-                  </div>
-                </div>
-
-                {/* Expandable Details */}
-                {expandedSections.catv && (
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">SKU Details</h4>
-                    <div className="max-h-64 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="text-left p-2">SKU</th>
-                            <th className="text-right p-2">Units</th>
-                            <th className="text-right p-2">Std Cost</th>
-                            <th className="text-right p-2">Total Value</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {catvInventory.skuDetails.map((item, idx) => (
-                            <tr key={idx} className="border-b">
-                              <td className="p-2 font-mono text-xs">{item.sku}</td>
-                              <td className="p-2 text-right">{item.units}</td>
-                              <td className="p-2 text-right">
-                                {item.standardCost ? formatCurrency(item.standardCost) : '-'}
-                              </td>
-                              <td className="p-2 text-right font-semibold">
-                                {formatCurrency(item.totalValue)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No data available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Sales Velocity Card */}
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-                Sales Velocity (DB Data)
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleSection('velocity')}
-              >
-                {expandedSections.velocity ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading && salesVelocity.length === 0 ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-              </div>
-            ) : salesVelocity.length > 0 ? (
-              <div className="space-y-4">
-                {/* Summary Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Total SKUs</p>
-                    <p className="text-2xl font-bold text-purple-600">{salesVelocity.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Sales</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {salesVelocity.reduce((sum, item) => sum + item.totalSales, 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {formatCurrency(salesVelocity.reduce((sum, item) => sum + item.totalRevenue, 0))}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Expandable Details */}
-                {expandedSections.velocity && (
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">SKU Velocity Details</h4>
-                    <div className="max-h-64 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="text-left p-2">SKU</th>
-                            <th className="text-right p-2">Total Sales</th>
-                            <th className="text-right p-2">Revenue</th>
-                            <th className="text-right p-2">Days</th>
-                            <th className="text-right p-2">Daily Velocity</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {salesVelocity.map((item, idx) => (
-                            <tr key={idx} className="border-b">
-                              <td className="p-2 font-mono text-xs">{item.sku}</td>
-                              <td className="p-2 text-right">{item.totalSales}</td>
-                              <td className="p-2 text-right">{formatCurrency(item.totalRevenue)}</td>
-                              <td className="p-2 text-right">{item.daysInPeriod}</td>
-                              <td className="p-2 text-right font-semibold text-purple-600">
-                                {item.dailyVelocity.toFixed(2)} units/day
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No data available</p>
-            )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            </>
+          );
+        })()}
       </div>
+
+      {/* Bubble Chart - SKUs as Rows, Weeks as Columns */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Weekly Sales Velocity by SKU (Bubble Chart)</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Each row is a SKU, each column is a week. Bubble size = units sold that week.
+              </p>
+            </div>
+            
+            {/* Week Range Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-600">Show:</label>
+              <select
+                value={weeksToShow}
+                onChange={(e) => setWeeksToShow(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={4}>Last 4 weeks</option>
+                <option value={8}>Last 8 weeks</option>
+                <option value={12}>Last 12 weeks</option>
+                <option value={16}>Last 16 weeks</option>
+                <option value={26}>Last 26 weeks</option>
+                <option value={52}>Last 52 weeks</option>
+                <option value={999}>All time</option>
+              </select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1">
+            {(() => {
+              // Calculate GLOBAL maximum across ALL SKUs for consistent bubble sizing
+              const allWeeklyData = velocityData.slice(0, 10).map(sku => 
+                groupByWeek(sku.dailyTimeline, sku.bdiSku)
+              );
+              
+              // Filter to show only the selected number of weeks (most recent)
+              const filteredWeeklyData = allWeeklyData.map(weekData => {
+                const sorted = weekData.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
+                return weeksToShow === 999 ? sorted : sorted.slice(0, weeksToShow);
+              });
+              
+              const globalMaxUnits = Math.max(
+                ...filteredWeeklyData.flat().map(w => w.units),
+                1
+              );
+              
+              console.log(`🌍 Global max units across all SKUs: ${globalMaxUnits} (showing ${weeksToShow} weeks)`);
+              
+              return velocityData.slice(0, 10).map((sku, skuIndex) => {
+                // Group daily data into weeks and filter to selected range
+                const allWeeks = groupByWeek(sku.dailyTimeline, sku.bdiSku);
+                const sortedWeeks = allWeeks.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
+                const weeklyData = weeksToShow === 999 ? sortedWeeks : sortedWeeks.slice(0, weeksToShow);
+                
+                // Reverse to show oldest to newest (left to right)
+                weeklyData.reverse();
+                const skuMaxUnits = Math.max(...weeklyData.map(w => w.units), 1);
+                
+                console.log(`🎯 [${sku.bdiSku}] Max: ${skuMaxUnits} (global: ${globalMaxUnits})`);
+                
+                return (
+                  <div key={sku.bdiSku} className="border-b last:border-b-0">
+                    <ResponsiveContainer width="100%" height={60}>
+                      <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 80 }}>
+                        <XAxis
+                          type="category"
+                          dataKey="weekLabel"
+                          name="week"
+                          interval={0}
+                          tick={skuIndex === velocityData.slice(0, 10).length - 1 ? { fontSize: 10 } : false}
+                          tickLine={{ transform: 'translate(0, -6)' }}
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="index"
+                          name={sku.bdiSku}
+                          height={10}
+                          width={70}
+                          tick={false}
+                          tickLine={false}
+                          axisLine={false}
+                          label={{ 
+                            value: `${sku.bdiSku} (${sku.dailyVelocity.toFixed(1)}/day)`, 
+                            position: 'insideRight',
+                            style: { fontSize: 11, fontWeight: 500 }
+                          }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="units" 
+                          domain={[0, globalMaxUnits]}  // Use GLOBAL max for all SKUs
+                          range={[16, 400]} 
+                        />
+                      <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+                      <Scatter data={weeklyData} fill="#3b82f6" fillOpacity={0.6} />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            });
+            })()}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      )}
     </div>
   );
 }
-
