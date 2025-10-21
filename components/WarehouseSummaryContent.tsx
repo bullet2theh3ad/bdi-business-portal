@@ -224,10 +224,31 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="emg">EMG Warehouse</TabsTrigger>
-          <TabsTrigger value="catv">CATV Warehouse</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 gap-2">
+          <TabsTrigger 
+            value="overview"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger 
+            value="emg"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+          >
+            EMG Warehouse
+          </TabsTrigger>
+          <TabsTrigger 
+            value="catv"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white"
+          >
+            CATV Warehouse
+          </TabsTrigger>
+          <TabsTrigger 
+            value="amazon"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white"
+          >
+            Amazon
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -512,6 +533,40 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="amazon" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold">
+                  A
+                </div>
+                Amazon Inventory
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+                  A
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Amazon Inventory Analysis</h3>
+                <p className="text-muted-foreground mb-4">
+                  Coming Soon - Amazon FBA inventory data and analytics
+                </p>
+                <div className="max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium">Planned Features:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                    <li>• FBA Inventory Levels by SKU</li>
+                    <li>• Fulfillment Center Distribution</li>
+                    <li>• Inbound Shipment Tracking</li>
+                    <li>• Storage Fees & Recommendations</li>
+                    <li>• Restock Alerts & Forecasting</li>
+                  </ul>
                 </div>
               </div>
             </CardContent>
