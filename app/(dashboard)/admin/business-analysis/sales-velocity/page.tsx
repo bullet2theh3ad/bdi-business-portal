@@ -176,39 +176,39 @@ export default function SalesVelocityPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-8 w-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
             Sales Velocity Analysis
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Daily sales velocity per SKU from Amazon financial data
           </p>
         </div>
         <Button
           onClick={fetchVelocityData}
           disabled={loading}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading...
+              <span className="text-sm sm:text-base">Loading...</span>
             </>
           ) : (
             <>
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              <span className="text-sm sm:text-base">Refresh</span>
             </>
           )}
         </Button>
       </div>
 
       {/* Summary Cards - Dynamic based on week selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {(() => {
           // Calculate metrics for the selected week range
           const allWeeklyData = velocityData.map(sku => {
@@ -278,8 +278,19 @@ export default function SalesVelocityPage() {
                   <div className="text-2xl font-bold text-green-600">
                     ${totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Avg Daily Velocity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {avgDailyVelocity.toFixed(1)}
+                  </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {avgDailyVelocity.toFixed(1)} units/day avg
+                    units/day
                   </div>
                 </CardContent>
               </Card>
@@ -291,21 +302,21 @@ export default function SalesVelocityPage() {
       {/* Bubble Chart - SKUs as Rows, Weeks as Columns */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle>Weekly Sales Velocity by SKU (Bubble Chart)</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <CardTitle className="text-lg sm:text-xl">Weekly Sales Velocity by SKU</CardTitle>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
                 Each row is a SKU, each column is a week. Bubble size = units sold that week.
               </p>
             </div>
             
             {/* Week Range Selector */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-600">Show:</label>
+              <label className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">Show:</label>
               <select
                 value={weeksToShow}
                 onChange={(e) => setWeeksToShow(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
               >
                 <option value={4}>Last 4 weeks</option>
                 <option value={8}>Last 8 weeks</option>
