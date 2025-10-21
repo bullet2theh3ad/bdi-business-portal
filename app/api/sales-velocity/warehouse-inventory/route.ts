@@ -29,24 +29,24 @@ export async function GET(request: NextRequest) {
       // Get CATV data from warehouse_wip_units (Active WIP only)
       const { data: wipData, error } = await supabase
         .from('warehouse_wip_units')
-        .select('serial_number, sku, source, stage, wip')
-        .eq('wip', 1);
+        .select('serial_number, model_number, source, stage, is_wip')
+        .eq('is_wip', true);
 
       if (error) {
         console.error('[Sales Velocity] Supabase error:', error);
         throw new Error(`Supabase error: ${error.message}`);
       }
 
-      // Group by SKU and count unique serial numbers
+      // Group by model_number and count unique serial numbers
       const skuMap = new Map<string, Set<string>>();
       
       for (const item of wipData || []) {
-        if (!item.sku) continue;
-        if (!skuMap.has(item.sku)) {
-          skuMap.set(item.sku, new Set());
+        if (!item.model_number) continue;
+        if (!skuMap.has(item.model_number)) {
+          skuMap.set(item.model_number, new Set());
         }
         if (item.serial_number) {
-          skuMap.get(item.sku)!.add(item.serial_number);
+          skuMap.get(item.model_number)!.add(item.serial_number);
         }
       }
 
