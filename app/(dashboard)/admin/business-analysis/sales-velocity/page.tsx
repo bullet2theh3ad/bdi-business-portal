@@ -145,7 +145,7 @@ export default function SalesVelocityPage() {
           // Add padding to the captured element
           const targetElement = clonedDoc.querySelector('[data-chart-content]');
           if (targetElement) {
-            (targetElement as HTMLElement).style.padding = '30px';
+            (targetElement as HTMLElement).style.padding = '30px 60px 30px 30px'; // top right bottom left
             (targetElement as HTMLElement).style.boxSizing = 'content-box';
           }
         }
