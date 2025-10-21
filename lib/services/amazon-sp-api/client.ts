@@ -433,14 +433,17 @@ export class AmazonSPAPIClient {
     return await this.rateLimiter.executeWithRetry(async () => {
       const queryParams = new URLSearchParams();
       
-      // Amazon requires EITHER shipmentId OR both date parameters
+      // Amazon FBA Inbound API v0 requires QueryType parameter
       if (shipmentId) {
+        queryParams.append('QueryType', 'SHIPMENT');
         queryParams.append('ShipmentId', shipmentId);
       } else if (lastUpdatedAfter && lastUpdatedBefore) {
+        queryParams.append('QueryType', 'DATE_RANGE');
         queryParams.append('LastUpdatedAfter', lastUpdatedAfter);
         queryParams.append('LastUpdatedBefore', lastUpdatedBefore);
       } else {
         // If no shipmentId, use a 30-day date range
+        queryParams.append('QueryType', 'DATE_RANGE');
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         queryParams.append('LastUpdatedAfter', thirtyDaysAgo.toISOString());
