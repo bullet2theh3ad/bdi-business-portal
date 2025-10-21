@@ -397,7 +397,14 @@ export default function SalesVelocityPage() {
                 console.log(`🎯 [${sku.bdiSku}] Max: ${skuMaxUnits} (global: ${globalMaxUnits})`);
                 
                 return (
-                  <div key={sku.bdiSku} className="border-b last:border-b-0">
+                  <div key={sku.bdiSku} className="border-b last:border-b-0 relative">
+                    {/* Custom SKU Label with Units/Day */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[70px] text-right pr-2">
+                      <div className="font-bold text-xs leading-tight">{sku.bdiSku}</div>
+                      <div className="font-bold text-[10px] text-gray-600 leading-tight">
+                        ({sku.dailyVelocity.toFixed(1)}/day)
+                      </div>
+                    </div>
                     <ResponsiveContainer width="100%" height={60}>
                       <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 80 }}>
                         <XAxis
@@ -417,11 +424,6 @@ export default function SalesVelocityPage() {
                           tick={false}
                           tickLine={false}
                           axisLine={false}
-                          label={{ 
-                            value: `${sku.bdiSku} (${sku.dailyVelocity.toFixed(1)}/day)`, 
-                            position: 'insideRight',
-                            style: { fontSize: 11, fontWeight: 500 }
-                          }}
                         />
                         <ZAxis 
                           type="number" 
@@ -440,19 +442,25 @@ export default function SalesVelocityPage() {
               {/* Custom Week Labels - Full Control */}
               <div className="flex items-center" style={{ marginLeft: '80px' }}>
                 <div className="flex-1 flex justify-between px-2">
-                  {globalWeekLabels.map((weekLabel, idx) => (
-                    <div 
-                      key={idx} 
-                      className="text-xs text-gray-600"
-                      style={{ 
-                        flex: 1, 
-                        textAlign: 'center',
-                        fontSize: '10px'
-                      }}
-                    >
-                      {weekLabel}
-                    </div>
-                  ))}
+                  {globalWeekLabels.map((weekLabel, idx) => {
+                    // Show every other label for 26+ weeks to avoid crowding
+                    const shouldShow = globalWeekLabels.length < 26 || idx % 2 === 0;
+                    
+                    return (
+                      <div 
+                        key={idx} 
+                        className="text-xs text-gray-600"
+                        style={{ 
+                          flex: 1, 
+                          textAlign: 'center',
+                          fontSize: '10px',
+                          visibility: shouldShow ? 'visible' : 'hidden'
+                        }}
+                      >
+                        {weekLabel}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>
