@@ -193,7 +193,8 @@ function SKUWorksheetPageContent() {
   // Recalculate Motorola Royalties when Net Sales changes
   useEffect(() => {
     if (worksheetData.motorolaRoyaltiesPercent > 0) {
-      const netSales = worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
+      const otherFeesTotal = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => sum + item.value, 0);
+      const netSales = worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount - otherFeesTotal;
       const newAmount = (netSales * worksheetData.motorolaRoyaltiesPercent) / 100;
       if (Math.abs(newAmount - worksheetData.motorolaRoyaltiesAmount) > 0.01) {
         setWorksheetData(prev => ({
@@ -202,12 +203,13 @@ function SKUWorksheetPageContent() {
         }));
       }
     }
-  }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.motorolaRoyaltiesPercent]);
+  }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.otherFeesAndAdvertising, worksheetData.motorolaRoyaltiesPercent]);
 
   // Recalculate DOA Credits when Net Sales changes
   useEffect(() => {
     if (worksheetData.doaCreditsPercent > 0) {
-      const netSales = worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount;
+      const otherFeesTotal = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => sum + item.value, 0);
+      const netSales = worksheetData.asp - worksheetData.fbaFeeAmount - worksheetData.amazonReferralFeeAmount - worksheetData.acosAmount - otherFeesTotal;
       const newAmount = (netSales * worksheetData.doaCreditsPercent) / 100;
       if (Math.abs(newAmount - worksheetData.doaCreditsAmount) > 0.01) {
         setWorksheetData(prev => ({
@@ -216,7 +218,7 @@ function SKUWorksheetPageContent() {
         }));
       }
     }
-  }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.doaCreditsPercent]);
+  }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.otherFeesAndAdvertising, worksheetData.doaCreditsPercent]);
 
   // Load existing scenario if editing
   useEffect(() => {
