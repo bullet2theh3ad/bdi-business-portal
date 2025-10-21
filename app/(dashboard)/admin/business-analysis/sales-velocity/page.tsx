@@ -42,6 +42,7 @@ interface BubbleDataPoint {
 export default function SalesVelocityPage() {
   const [loading, setLoading] = useState(false);
   const [velocityData, setVelocityData] = useState<VelocityData[]>([]);
+  const [warehouseInventory, setWarehouseInventory] = useState<Record<string, number>>({}); // SKU -> total quantity
   const [weeksToShow, setWeeksToShow] = useState<number>(12); // Default: last 12 weeks
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set()); // Track selected SKUs
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set()); // Track expanded rows
@@ -49,6 +50,7 @@ export default function SalesVelocityPage() {
 
   useEffect(() => {
     fetchVelocityData();
+    fetchWarehouseInventory();
   }, []);
 
   async function fetchVelocityData() {
@@ -81,6 +83,51 @@ export default function SalesVelocityPage() {
       console.error('❌ Error fetching velocity:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchWarehouseInventory() {
+    try {
+      console.log('🔄 Fetching warehouse inventory...');
+      const response = await fetch('/api/inventory/warehouse-summary');
+      const data = await response.json();
+      
+      if (data.success) {
+        const inventoryMap: Record<string, number> = {};
+        
+        // Aggregate inventory from all warehouses (EMG, CATV, Amazon)
+        // EMG
+        data.data.emg.allSkus.forEach((item: any) => {
+          const sku = item.bdiSku || item.model;
+          if (sku) {
+            inventoryMap[sku] = (inventoryMap[sku] || 0) + (item.qtyOnHand || 0);
+          }
+        });
+        
+        // CATV (WIP only - units in warehouse)
+        data.data.catv.allSkus.forEach((item: any) => {
+          const sku = item.bdiSku || item.sku;
+          if (sku) {
+            const wipQty = item.stages?.WIP || 0;
+            inventoryMap[sku] = (inventoryMap[sku] || 0) + wipQty;
+          }
+        });
+        
+        // Amazon (Fulfillable only)
+        data.data.amazon.allSkus.forEach((item: any) => {
+          const sku = item.bdiSku || item.sku;
+          if (sku) {
+            inventoryMap[sku] = (inventoryMap[sku] || 0) + (item.fulfillableQuantity || 0);
+          }
+        });
+        
+        console.log('✅ Warehouse inventory loaded:', Object.keys(inventoryMap).length, 'SKUs');
+        console.log('📦 Sample inventory:', Object.entries(inventoryMap).slice(0, 5));
+        
+        setWarehouseInventory(inventoryMap);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching warehouse inventory:', error);
     }
   }
 
@@ -750,6 +797,7 @@ export default function SalesVelocityPage() {
                     <th className="text-left p-3 font-semibold">SKU</th>
                     <th className="text-right p-3 font-semibold">Daily Velocity</th>
                     <th className="text-right p-3 font-semibold">Total Units</th>
+                    <th className="text-right p-3 font-semibold">DSOH</th>
                     <th className="text-right p-3 font-semibold">Gross Revenue</th>
                     <th className="text-right p-3 font-semibold">Net Revenue</th>
                     <th className="text-right p-3 font-semibold">Days Active</th>
@@ -776,6 +824,28 @@ export default function SalesVelocityPage() {
                             {calculateVelocityForPeriod(sku).toFixed(1)}/day
                           </td>
                           <td className="p-3 text-right">{sku.totalUnits.toLocaleString()}</td>
+                          <td className="p-3 text-right">
+                            {(() => {
+                              const warehouseQty = warehouseInventory[sku.bdiSku] || 0;
+                              const velocity = calculateVelocityForPeriod(sku);
+                              const dsoh = velocity > 0 ? warehouseQty / velocity : 0;
+                              
+                              if (warehouseQty === 0) {
+                                return <span className="text-gray-400">—</span>;
+                              }
+                              
+                              // Color code based on days of supply
+                              let color = '#22c55e'; // green (good)
+                              if (dsoh < 30) color = '#ef4444'; // red (critical)
+                              else if (dsoh < 60) color = '#eab308'; // yellow (warning)
+                              
+                              return (
+                                <span className="font-semibold" style={{ color }}>
+                                  {Math.round(dsoh)} days
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td className="p-3 text-right">${sku.totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                           <td className="p-3 text-right">${sku.totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                           <td className="p-3 text-right">{sku.daysActive}</td>
@@ -792,7 +862,7 @@ export default function SalesVelocityPage() {
                         </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={7} className="p-0">
+                            <td colSpan={8} className="p-0">
                               <div className="bg-gray-50 p-4">
                                 <h4 className="font-semibold text-sm mb-3">Weekly Breakdown for {sku.bdiSku}</h4>
                                 <div className="overflow-x-auto">
