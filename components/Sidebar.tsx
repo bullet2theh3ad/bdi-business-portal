@@ -180,7 +180,7 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
     // NOTE: Parent menu shows if user has access to ANY child item
     children: [
       {
-        title: tn('amazonData', 'Amazon Data'), // 🌍 TRANSLATED
+        title: 'Amazon Analysis',
         icon: 'analytics',
         requiresRole: ['super_admin'], // All BDI super_admins can see this
         children: [
@@ -202,18 +202,21 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         ],
       },
       {
-        title: 'NRE Spend',
-        href: '/admin/nre-budget',
-        icon: 'orders',
-        requiresRole: ['super_admin', 'admin_cfo', 'admin_nre'],
-        // All BDI super_admins can see this
-      },
-      {
-        title: 'Budget Targets',
-        href: '/admin/budget-targets',
+        title: 'NRE Analysis',
         icon: 'forecasts',
-        requiresRole: ['super_admin', 'admin_cfo'],
-        // All BDI super_admins can see this
+        requiresRole: ['super_admin', 'admin_cfo', 'admin_nre'],
+        children: [
+          {
+            title: 'NRE Spend',
+            href: '/admin/nre-budget',
+            icon: 'orders',
+          },
+          {
+            title: 'Budget Targets',
+            href: '/admin/budget-targets',
+            icon: 'forecasts',
+          },
+        ],
       },
       {
         title: 'QuickBooks',
