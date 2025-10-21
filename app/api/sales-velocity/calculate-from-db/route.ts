@@ -17,14 +17,15 @@ export async function GET(request: NextRequest) {
         bdiSku: amazonFinancialLineItems.bdiSku,
         amazonSku: amazonFinancialLineItems.amazonSku,
         date: sql<string>`DATE(${amazonFinancialLineItems.postedDate})::text`,
-        units: sql<number>`COUNT(*)::int`,  // Count number of line items (orders)
+        units: sql<number>`SUM(${amazonFinancialLineItems.quantity})::int`,  // Sum actual quantity (units sold)
         grossRevenue: sql<number>`SUM(${amazonFinancialLineItems.itemPrice})`,  // Total revenue (before fees)
         netRevenue: sql<number>`SUM(${amazonFinancialLineItems.netRevenue})`,  // Net revenue (after fees)
       })
       .from(amazonFinancialLineItems)
       .where(
         sql`${amazonFinancialLineItems.bdiSku} IS NOT NULL 
-            AND ${amazonFinancialLineItems.quantity} > 0`  // Only positive quantities (sales, not refunds)
+            AND ${amazonFinancialLineItems.transactionType} = 'sale'
+            AND ${amazonFinancialLineItems.quantity} > 0`  // Only sales with positive quantities
       )
       .groupBy(
         amazonFinancialLineItems.bdiSku,

@@ -720,7 +720,91 @@ export async function POST(request: NextRequest) {
 
     // Include raw transaction data if requested (for detailed exports)
     if (includeTransactions) {
-      response.transactions = transactions;
+      // If we have API transactions, use them
+      if (transactions && transactions.length > 0) {
+        response.transactions = transactions;
+      } 
+      // Otherwise, reconstruct from DB line items
+      else if (dbLineItems && dbLineItems.length > 0) {
+        console.log('[Financial Data] Reconstructing transactions from DB line items for export...');
+        
+        // Group line items by order_id to reconstruct transaction structure
+        const orderGroups = new Map();
+        
+        dbLineItems.forEach(item => {
+          const orderId = item.orderId;
+          if (!orderGroups.has(orderId)) {
+            orderGroups.set(orderId, {
+              sales: [],
+              refunds: []
+            });
+          }
+          
+          const group = orderGroups.get(orderId);
+          if (item.transactionType === 'sale') {
+            group.sales.push(item);
+          } else if (item.transactionType === 'refund') {
+            group.refunds.push(item);
+          }
+        });
+        
+        // Convert to Amazon API format
+        const reconstructedTransactions = [];
+        
+        for (const [orderId, group] of orderGroups.entries()) {
+          const eventGroup: any = {};
+          
+          // Add sales (ShipmentEventList)
+          if (group.sales.length > 0) {
+            eventGroup.ShipmentEventList = [{
+              AmazonOrderId: orderId,
+              PostedDate: group.sales[0].postedDate,
+              ShipmentItemList: group.sales.map(item => ({
+                SellerSKU: item.amazonSku,
+                ASIN: item.asin,
+                QuantityShipped: item.quantity,
+                ItemChargeList: [
+                  { ChargeType: 'Principal', ChargeAmount: { CurrencyAmount: parseFloat(String(item.itemPrice || 0)) } },
+                  { ChargeType: 'Shipping', ChargeAmount: { CurrencyAmount: parseFloat(String(item.shippingPrice || 0)) } },
+                  { ChargeType: 'GiftWrap', ChargeAmount: { CurrencyAmount: parseFloat(String(item.giftWrapPrice || 0)) } },
+                  { ChargeType: 'Promotion', ChargeAmount: { CurrencyAmount: -parseFloat(String(item.itemPromotion || 0)) } },
+                ],
+                ItemFeeList: [
+                  { FeeType: 'Commission', FeeAmount: { CurrencyAmount: parseFloat(String(item.commission || 0)) } },
+                  { FeeType: 'FBAPerUnitFulfillmentFee', FeeAmount: { CurrencyAmount: parseFloat(String(item.fbaFees || 0)) } },
+                  { FeeType: 'Other', FeeAmount: { CurrencyAmount: parseFloat(String(item.otherFees || 0)) } },
+                ]
+              }))
+            }];
+          }
+          
+          // Add refunds (RefundEventList)
+          if (group.refunds.length > 0) {
+            eventGroup.RefundEventList = [{
+              AmazonOrderId: orderId,
+              PostedDate: group.refunds[0].postedDate,
+              ShipmentItemAdjustmentList: group.refunds.map(item => ({
+                SellerSKU: item.amazonSku,
+                ASIN: item.asin,
+                QuantityShipped: Math.abs(item.quantity || 0),
+                ItemChargeAdjustmentList: [
+                  { ChargeType: 'Principal', ChargeAmount: { CurrencyAmount: Math.abs(parseFloat(String(item.itemPrice || 0))) } },
+                  { ChargeType: 'Tax', ChargeAmount: { CurrencyAmount: Math.abs(parseFloat(String(item.itemTax || 0))) } },
+                ],
+                ItemFeeAdjustmentList: [
+                  { FeeType: 'Commission', FeeAmount: { CurrencyAmount: Math.abs(parseFloat(String(item.commission || 0))) } },
+                  { FeeType: 'FBAPerUnitFulfillmentFee', FeeAmount: { CurrencyAmount: Math.abs(parseFloat(String(item.fbaFees || 0))) } },
+                ]
+              }))
+            }];
+          }
+          
+          reconstructedTransactions.push(eventGroup);
+        }
+        
+        response.transactions = reconstructedTransactions;
+        console.log(`[Financial Data] Reconstructed ${reconstructedTransactions.length} transaction groups from ${dbLineItems.length} line items`);
+      }
     }
 
     console.log(`[Financial Data] Summary: ${orderIds.length} orders, $${totalRevenue.toFixed(2)} revenue (excl. tax), $${totalTax.toFixed(2)} tax, $${totalFees.toFixed(2)} fees, $${totalRefunds.toFixed(2)} refunds, $${totalAdSpend.toFixed(2)} ads, $${totalCoupons.toFixed(2)} coupons, $${totalChargebacks.toFixed(2)} chargebacks`);
