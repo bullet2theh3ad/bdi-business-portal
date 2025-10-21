@@ -348,7 +348,15 @@ export default function SalesVelocityPage() {
                 1
               );
               
+              // Get ALL unique week labels across ALL SKUs (for shared XAxis)
+              const allWeekLabelsSet = new Set<string>();
+              filteredWeeklyData.forEach(weekData => {
+                weekData.forEach(w => allWeekLabelsSet.add(w.weekLabel));
+              });
+              const globalWeekLabels = Array.from(allWeekLabelsSet).sort().reverse(); // Most recent first, then reverse for display
+              
               console.log(`🌍 Global max units across all SKUs: ${globalMaxUnits} (showing ${weeksToShow} weeks)`);
+              console.log(`📅 Global week labels (${globalWeekLabels.length}):`, globalWeekLabels);
               
               return velocityData.slice(0, 10).map((sku, skuIndex) => {
                 // Group daily data into weeks and filter to selected range
@@ -362,9 +370,6 @@ export default function SalesVelocityPage() {
                 
                 console.log(`🎯 [${sku.bdiSku}] Max: ${skuMaxUnits} (global: ${globalMaxUnits})`);
                 
-                // Get all unique week labels from this SKU's filtered data
-                const weekLabels = weeklyData.map(w => w.weekLabel);
-                
                 return (
                   <div key={sku.bdiSku} className="border-b last:border-b-0">
                     <ResponsiveContainer width="100%" height={60}>
@@ -374,7 +379,7 @@ export default function SalesVelocityPage() {
                           dataKey="weekLabel"
                           name="week"
                           interval={0}
-                          domain={weekLabels}  // Only show weeks that are in the filtered data
+                          domain={globalWeekLabels}  // Use GLOBAL week labels across all SKUs
                           tick={skuIndex === velocityData.slice(0, 10).length - 1 ? { fontSize: 10 } : false}
                           tickLine={{ transform: 'translate(0, -6)' }}
                         />
