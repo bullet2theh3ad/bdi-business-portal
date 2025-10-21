@@ -348,12 +348,36 @@ export default function SalesVelocityPage() {
                 1
               );
               
-              // Get ALL unique week labels across ALL SKUs (for shared XAxis)
-              const allWeekLabelsSet = new Set<string>();
-              filteredWeeklyData.forEach(weekData => {
-                weekData.forEach(w => allWeekLabelsSet.add(w.weekLabel));
-              });
-              const globalWeekLabels = Array.from(allWeekLabelsSet).sort().reverse(); // Most recent first, then reverse for display
+              // Generate week labels: Find most recent week and work backwards
+              const generateWeekLabels = (numWeeks: number) => {
+                // Get the most recent week from any SKU
+                const allWeeks = filteredWeeklyData.flat().map(w => w.weekLabel);
+                if (allWeeks.length === 0) return [];
+                
+                const mostRecentWeek = allWeeks.sort((a, b) => b.localeCompare(a))[0]; // e.g., "2025-W42"
+                
+                // Parse the year and week number
+                const [yearStr, weekStr] = mostRecentWeek.split('-W');
+                let year = parseInt(yearStr);
+                let week = parseInt(weekStr);
+                
+                // Generate labels by working backwards
+                const labels: string[] = [];
+                for (let i = 0; i < numWeeks; i++) {
+                  labels.unshift(`${year}-W${String(week).padStart(2, '0')}`);
+                  week--;
+                  if (week < 1) {
+                    week = 52; // Assume 52 weeks per year (simplified)
+                    year--;
+                  }
+                }
+                
+                return labels;
+              };
+              
+              const globalWeekLabels = weeksToShow === 999 
+                ? Array.from(new Set(filteredWeeklyData.flat().map(w => w.weekLabel))).sort()
+                : generateWeekLabels(weeksToShow);
               
               console.log(`🌍 Global max units across all SKUs: ${globalMaxUnits} (showing ${weeksToShow} weeks)`);
               console.log(`📅 Global week labels (${globalWeekLabels.length}):`, globalWeekLabels);
