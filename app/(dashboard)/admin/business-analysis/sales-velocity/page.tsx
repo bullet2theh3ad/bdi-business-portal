@@ -403,7 +403,7 @@ export default function SalesVelocityPage() {
                           dataKey="weekLabel"
                           name="week"
                           interval={0}
-                          domain={globalWeekLabels}  // Use GLOBAL week labels across all SKUs
+                          ticks={globalWeekLabels}  // Explicitly set which ticks to show
                           tick={skuIndex === velocityData.slice(0, 10).length - 1 ? { fontSize: 10 } : false}
                           tickLine={{ transform: 'translate(0, -6)' }}
                         />
