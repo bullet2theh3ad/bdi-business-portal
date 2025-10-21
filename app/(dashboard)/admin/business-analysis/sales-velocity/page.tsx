@@ -362,6 +362,9 @@ export default function SalesVelocityPage() {
                 
                 console.log(`🎯 [${sku.bdiSku}] Max: ${skuMaxUnits} (global: ${globalMaxUnits})`);
                 
+                // Get all unique week labels from this SKU's filtered data
+                const weekLabels = weeklyData.map(w => w.weekLabel);
+                
                 return (
                   <div key={sku.bdiSku} className="border-b last:border-b-0">
                     <ResponsiveContainer width="100%" height={60}>
@@ -371,6 +374,7 @@ export default function SalesVelocityPage() {
                           dataKey="weekLabel"
                           name="week"
                           interval={0}
+                          domain={weekLabels}  // Only show weeks that are in the filtered data
                           tick={skuIndex === velocityData.slice(0, 10).length - 1 ? { fontSize: 10 } : false}
                           tickLine={{ transform: 'translate(0, -6)' }}
                         />
