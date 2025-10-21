@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from 'recharts';
-import { RefreshCw, Loader2, TrendingUp } from 'lucide-react';
+import { RefreshCw, Loader2, TrendingUp, Download } from 'lucide-react';
 
 // =====================================================
 // Type Definitions
@@ -43,6 +43,8 @@ export default function SalesVelocityPage() {
   const [loading, setLoading] = useState(false);
   const [velocityData, setVelocityData] = useState<VelocityData[]>([]);
   const [weeksToShow, setWeeksToShow] = useState<number>(12); // Default: last 12 weeks
+  const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set()); // Track selected SKUs
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchVelocityData();
@@ -69,11 +71,70 @@ export default function SalesVelocityPage() {
         }
         
         setVelocityData(data.velocityData);
+        
+        // Select all SKUs by default
+        const allSkus = new Set<string>(data.velocityData.map((v: VelocityData) => v.bdiSku));
+        setSelectedSkus(allSkus);
       }
     } catch (error) {
       console.error('❌ Error fetching velocity:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Toggle individual SKU selection
+  function toggleSku(sku: string) {
+    const newSelected = new Set(selectedSkus);
+    if (newSelected.has(sku)) {
+      newSelected.delete(sku);
+    } else {
+      newSelected.add(sku);
+    }
+    setSelectedSkus(newSelected);
+  }
+
+  // Toggle all SKUs
+  function toggleAll() {
+    if (selectedSkus.size === velocityData.length) {
+      // Deselect all
+      setSelectedSkus(new Set());
+    } else {
+      // Select all
+      const allSkus = new Set(velocityData.map(v => v.bdiSku));
+      setSelectedSkus(allSkus);
+    }
+  }
+
+  // Download chart as PNG
+  async function downloadChartAsPNG() {
+    if (!chartRef.current) return;
+
+    try {
+      // Dynamically import html2canvas
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher quality
+        logging: false,
+      });
+
+      // Convert to PNG and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `sales-velocity-${new Date().toISOString().split('T')[0]}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      });
+    } catch (error) {
+      console.error('Error downloading chart:', error);
     }
   }
 
@@ -299,6 +360,44 @@ export default function SalesVelocityPage() {
         })()}
       </div>
 
+      {/* SKU Selection Panel */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Select SKUs to Display</CardTitle>
+            <Button
+              onClick={toggleAll}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              {selectedSkus.size === velocityData.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {velocityData.map(sku => (
+              <label
+                key={sku.bdiSku}
+                className="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedSkus.has(sku.bdiSku)}
+                  onChange={() => toggleSku(sku.bdiSku)}
+                  className="h-4 w-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-xs font-medium truncate">{sku.bdiSku}</span>
+              </label>
+            ))}
+          </div>
+          <div className="mt-4 text-sm text-gray-600">
+            {selectedSkus.size} of {velocityData.length} SKUs selected
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Bubble Chart - SKUs as Rows, Weeks as Columns */}
       <Card>
         <CardHeader>
@@ -310,8 +409,8 @@ export default function SalesVelocityPage() {
               </p>
             </div>
             
-            {/* Week Range Selector */}
-            <div className="flex items-center gap-2">
+            {/* Week Range Selector & Download */}
+            <div className="flex items-center gap-2 flex-wrap">
               <label className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">Show:</label>
               <select
                 value={weeksToShow}
@@ -326,14 +425,27 @@ export default function SalesVelocityPage() {
                 <option value={52}>Last 52 weeks</option>
                 <option value={999}>All time</option>
               </select>
+              
+              <Button
+                onClick={downloadChartAsPNG}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Download PNG</span>
+              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-1">
+          <div ref={chartRef} className="space-y-1">
             {(() => {
-              // Calculate GLOBAL maximum across ALL SKUs for consistent bubble sizing
-              const allWeeklyData = velocityData.slice(0, 10).map(sku => 
+              // Filter to only show selected SKUs
+              const selectedVelocityData = velocityData.filter(sku => selectedSkus.has(sku.bdiSku));
+              
+              // Calculate GLOBAL maximum across ALL SELECTED SKUs for consistent bubble sizing
+              const allWeeklyData = selectedVelocityData.map(sku => 
                 groupByWeek(sku.dailyTimeline, sku.bdiSku)
               );
               
@@ -384,7 +496,7 @@ export default function SalesVelocityPage() {
               
               return (
                 <>
-                  {velocityData.slice(0, 10).map((sku, skuIndex) => {
+                  {selectedVelocityData.map((sku, skuIndex) => {
                 // Group daily data into weeks and filter to selected range
                 const allWeeks = groupByWeek(sku.dailyTimeline, sku.bdiSku);
                 const sortedWeeks = allWeeks.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
