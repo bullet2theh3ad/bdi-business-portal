@@ -547,21 +547,21 @@ export default function SalesVelocityPage() {
 
       {/* SKU Selection Panel */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Select SKUs to Display</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+            <CardTitle className="text-base sm:text-lg">Select SKUs to Display</CardTitle>
             <Button
               onClick={toggleAll}
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs w-full sm:w-auto"
             >
               {selectedSkus.size === velocityData.length ? 'Deselect All' : 'Select All'}
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
             {velocityData.map(sku => (
               <label
                 key={sku.bdiSku}
@@ -571,13 +571,13 @@ export default function SalesVelocityPage() {
                   type="checkbox"
                   checked={selectedSkus.has(sku.bdiSku)}
                   onChange={() => toggleSku(sku.bdiSku)}
-                  className="h-4 w-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 flex-shrink-0"
                 />
                 <span className="text-xs font-medium truncate">{sku.bdiSku}</span>
               </label>
             ))}
           </div>
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-3 sm:mt-4 text-xs sm:text-sm text-gray-600">
             {selectedSkus.size} of {velocityData.length} SKUs selected
           </div>
         </CardContent>
@@ -785,25 +785,26 @@ export default function SalesVelocityPage() {
       {/* Data Table */}
       {!loading && velocityData.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Sales Data Table</CardTitle>
-            <p className="text-sm text-gray-600">Detailed metrics for selected SKUs</p>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Sales Data Table</CardTitle>
+            <p className="text-xs sm:text-sm text-gray-600">Detailed metrics for selected SKUs</p>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-semibold">SKU</th>
-                    <th className="text-right p-3 font-semibold">Daily Velocity</th>
-                    <th className="text-right p-3 font-semibold">Total Units</th>
-                    <th className="text-right p-3 font-semibold">DSOH</th>
-                    <th className="text-right p-3 font-semibold">Gross Revenue</th>
-                    <th className="text-right p-3 font-semibold">Net Revenue</th>
-                    <th className="text-right p-3 font-semibold">Days Active</th>
-                    <th className="text-center p-3 font-semibold">Details</th>
-                  </tr>
-                </thead>
+          <CardContent className="p-2 sm:p-6">
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left p-2 sm:p-3 font-semibold sticky left-0 bg-gray-50 z-10">SKU</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold whitespace-nowrap">Velocity</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold hidden sm:table-cell">Units</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold whitespace-nowrap">DSOH</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold hidden md:table-cell whitespace-nowrap">Gross $</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold hidden lg:table-cell whitespace-nowrap">Net $</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold hidden lg:table-cell">Days</th>
+                      <th className="text-center p-2 sm:p-3 font-semibold"></th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {velocityData.filter(sku => selectedSkus.has(sku.bdiSku)).map(sku => {
                     const isExpanded = expandedSkus.has(sku.bdiSku);
@@ -814,17 +815,18 @@ export default function SalesVelocityPage() {
                     return (
                       <React.Fragment key={sku.bdiSku}>
                         <tr className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-medium">{sku.bdiSku}</td>
+                          <td className="p-2 sm:p-3 font-medium sticky left-0 bg-white text-xs sm:text-sm">{sku.bdiSku}</td>
                           <td 
-                            className="p-3 text-right font-semibold"
+                            className="p-2 sm:p-3 text-right font-semibold text-xs sm:text-sm"
                             style={{
                               color: calculateVelocityForPeriod(sku) < 10 ? '#ef4444' : calculateVelocityForPeriod(sku) < 15 ? '#eab308' : '#22c55e'
                             }}
                           >
-                            {calculateVelocityForPeriod(sku).toFixed(1)}/day
+                            <span className="hidden sm:inline">{calculateVelocityForPeriod(sku).toFixed(1)}/day</span>
+                            <span className="inline sm:hidden">{calculateVelocityForPeriod(sku).toFixed(1)}/d</span>
                           </td>
-                          <td className="p-3 text-right">{sku.totalUnits.toLocaleString()}</td>
-                          <td className="p-3 text-right">
+                          <td className="p-2 sm:p-3 text-right hidden sm:table-cell">{sku.totalUnits.toLocaleString()}</td>
+                          <td className="p-2 sm:p-3 text-right text-xs sm:text-sm">
                             {(() => {
                               const warehouseQty = warehouseInventory[sku.bdiSku] || 0;
                               const velocity = calculateVelocityForPeriod(sku);
@@ -841,49 +843,50 @@ export default function SalesVelocityPage() {
                               
                               return (
                                 <span className="font-semibold" style={{ color }}>
-                                  {Math.round(dsoh)} days
+                                  <span className="hidden sm:inline">{Math.round(dsoh)} days</span>
+                                  <span className="inline sm:hidden">{Math.round(dsoh)}d</span>
                                 </span>
                               );
                             })()}
                           </td>
-                          <td className="p-3 text-right">${sku.totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                          <td className="p-3 text-right">${sku.totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                          <td className="p-3 text-right">{sku.daysActive}</td>
-                          <td className="p-3 text-center">
+                          <td className="p-2 sm:p-3 text-right hidden md:table-cell">${sku.totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                          <td className="p-2 sm:p-3 text-right hidden lg:table-cell">${sku.totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                          <td className="p-2 sm:p-3 text-right hidden lg:table-cell">{sku.daysActive}</td>
+                          <td className="p-2 sm:p-3 text-center">
                             <Button
                               onClick={() => toggleExpanded(sku.bdiSku)}
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                             >
-                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              {isExpanded ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
                             </Button>
                           </td>
                         </tr>
                         {isExpanded && (
                           <tr>
                             <td colSpan={8} className="p-0">
-                              <div className="bg-gray-50 p-4">
-                                <h4 className="font-semibold text-sm mb-3">Weekly Breakdown for {sku.bdiSku}</h4>
+                              <div className="bg-gray-50 p-2 sm:p-4">
+                                <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Weekly Breakdown for {sku.bdiSku}</h4>
                                 <div className="overflow-x-auto">
                                   <table className="w-full text-xs">
                                     <thead>
-                                      <tr className="border-b border-gray-300">
+                                      <tr className="border-b border-gray-300 bg-white">
                                         <th className="text-left p-2 font-semibold">Week</th>
                                         <th className="text-right p-2 font-semibold">Units</th>
-                                        <th className="text-right p-2 font-semibold">Gross Revenue</th>
-                                        <th className="text-right p-2 font-semibold">Net Revenue</th>
-                                        <th className="text-right p-2 font-semibold">Fees</th>
+                                        <th className="text-right p-2 font-semibold hidden sm:table-cell">Gross $</th>
+                                        <th className="text-right p-2 font-semibold">Net $</th>
+                                        <th className="text-right p-2 font-semibold hidden md:table-cell">Fees</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {filteredWeeks.reverse().map(week => (
-                                        <tr key={week.weekLabel} className="border-b border-gray-200">
-                                          <td className="p-2">{week.weekLabel}</td>
-                                          <td className="p-2 text-right">{week.units}</td>
-                                          <td className="p-2 text-right">${week.grossRevenue.toFixed(2)}</td>
-                                          <td className="p-2 text-right">${week.netRevenue.toFixed(2)}</td>
-                                          <td className="p-2 text-right">${(week.grossRevenue - week.netRevenue).toFixed(2)}</td>
+                                        <tr key={week.weekLabel} className="border-b border-gray-200 bg-white">
+                                          <td className="p-2 whitespace-nowrap">{week.weekLabel}</td>
+                                          <td className="p-2 text-right font-medium">{week.units}</td>
+                                          <td className="p-2 text-right hidden sm:table-cell">${week.grossRevenue.toFixed(2)}</td>
+                                          <td className="p-2 text-right text-green-700 font-semibold">${week.netRevenue.toFixed(2)}</td>
+                                          <td className="p-2 text-right text-red-600 hidden md:table-cell">${(week.grossRevenue - week.netRevenue).toFixed(2)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -896,8 +899,9 @@ export default function SalesVelocityPage() {
                       </React.Fragment>
                     );
                   })}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </CardContent>
         </Card>
