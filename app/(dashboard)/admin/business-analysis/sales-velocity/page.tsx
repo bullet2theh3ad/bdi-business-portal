@@ -382,7 +382,9 @@ export default function SalesVelocityPage() {
               console.log(`🌍 Global max units across all SKUs: ${globalMaxUnits} (showing ${weeksToShow} weeks)`);
               console.log(`📅 Global week labels (${globalWeekLabels.length}):`, globalWeekLabels);
               
-              return velocityData.slice(0, 10).map((sku, skuIndex) => {
+              return (
+                <>
+                  {velocityData.slice(0, 10).map((sku, skuIndex) => {
                 // Group daily data into weeks and filter to selected range
                 const allWeeks = groupByWeek(sku.dailyTimeline, sku.bdiSku);
                 const sortedWeeks = allWeeks.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
@@ -402,10 +404,9 @@ export default function SalesVelocityPage() {
                           type="category"
                           dataKey="weekLabel"
                           name="week"
-                          interval={0}
-                          ticks={globalWeekLabels}  // Explicitly set which ticks to show
-                          tick={skuIndex === velocityData.slice(0, 10).length - 1 ? { fontSize: 10 } : false}
-                          tickLine={{ transform: 'translate(0, -6)' }}
+                          tick={false}  // Hide all Recharts ticks - we'll add our own
+                          tickLine={false}
+                          axisLine={true}
                         />
                         <YAxis
                           type="number"
@@ -431,10 +432,31 @@ export default function SalesVelocityPage() {
                       <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
                       <Scatter data={weeklyData} fill="#3b82f6" fillOpacity={0.6} />
                     </ScatterChart>
-                  </ResponsiveContainer>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })}
+              
+              {/* Custom Week Labels - Full Control */}
+              <div className="flex items-center" style={{ marginLeft: '80px' }}>
+                <div className="flex-1 flex justify-between px-2">
+                  {globalWeekLabels.map((weekLabel, idx) => (
+                    <div 
+                      key={idx} 
+                      className="text-xs text-gray-600"
+                      style={{ 
+                        flex: 1, 
+                        textAlign: 'center',
+                        fontSize: '10px'
+                      }}
+                    >
+                      {weekLabel}
+                    </div>
+                  ))}
                 </div>
+              </div>
+            </>
               );
-            });
             })()}
           </div>
         </CardContent>
