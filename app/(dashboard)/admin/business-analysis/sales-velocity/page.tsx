@@ -199,7 +199,7 @@ export default function SalesVelocityPage() {
     // Summary rows
     const summaryRows = selectedVelocityData.map(sku => [
       sku.bdiSku,
-      sku.dailyVelocity.toFixed(2),
+      calculateVelocityForPeriod(sku).toFixed(2),
       sku.totalUnits,
       `$${sku.totalGrossRevenue.toFixed(2)}`,
       `$${sku.totalNetRevenue.toFixed(2)}`,
@@ -227,7 +227,7 @@ export default function SalesVelocityPage() {
       filteredWeeks.reverse().forEach((week, idx) => {
         csvContent += [
           idx === 0 ? sku.bdiSku : '',
-          idx === 0 ? `(${sku.dailyVelocity.toFixed(1)}/day)` : '',
+          idx === 0 ? `(${calculateVelocityForPeriod(sku).toFixed(1)}/day)` : '',
           week.weekLabel,
           week.units,
           `$${week.grossRevenue.toFixed(2)}`,
@@ -302,6 +302,33 @@ export default function SalesVelocityPage() {
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  // Calculate velocity for the selected time period
+  function calculateVelocityForPeriod(sku: VelocityData): number {
+    // Get weekly data
+    const weeklyData = groupByWeek(sku.dailyTimeline, sku.bdiSku);
+    
+    // Sort by week (most recent first)
+    const sortedWeeks = weeklyData.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
+    
+    // Filter to selected weeks
+    const filteredWeeks = weeksToShow === 999 ? sortedWeeks : sortedWeeks.slice(0, weeksToShow);
+    
+    if (filteredWeeks.length === 0) return 0;
+    
+    // Calculate total units in the selected period
+    const totalUnits = filteredWeeks.reduce((sum, week) => sum + week.units, 0);
+    
+    // Calculate total days in the selected period
+    const allDates = new Set<string>();
+    filteredWeeks.forEach(week => {
+      week.dates.forEach(date => allDates.add(date));
+    });
+    const daysInPeriod = allDates.size;
+    
+    // Calculate velocity: units per day
+    return daysInPeriod > 0 ? totalUnits / daysInPeriod : 0;
   }
 
   // Custom tooltip
@@ -637,10 +664,10 @@ export default function SalesVelocityPage() {
                       <div 
                         className="font-bold text-xs leading-tight whitespace-nowrap"
                         style={{
-                          color: sku.dailyVelocity < 10 ? '#ef4444' : sku.dailyVelocity < 15 ? '#eab308' : '#22c55e'
+                          color: calculateVelocityForPeriod(sku) < 10 ? '#ef4444' : calculateVelocityForPeriod(sku) < 15 ? '#eab308' : '#22c55e'
                         }}
                       >
-                        ({sku.dailyVelocity.toFixed(1)}/day)
+                        ({calculateVelocityForPeriod(sku).toFixed(1)}/day)
                       </div>
                     </div>
                     <ResponsiveContainer width="100%" height={60}>
@@ -743,10 +770,10 @@ export default function SalesVelocityPage() {
                           <td 
                             className="p-3 text-right font-semibold"
                             style={{
-                              color: sku.dailyVelocity < 10 ? '#ef4444' : sku.dailyVelocity < 15 ? '#eab308' : '#22c55e'
+                              color: calculateVelocityForPeriod(sku) < 10 ? '#ef4444' : calculateVelocityForPeriod(sku) < 15 ? '#eab308' : '#22c55e'
                             }}
                           >
-                            {sku.dailyVelocity.toFixed(1)}/day
+                            {calculateVelocityForPeriod(sku).toFixed(1)}/day
                           </td>
                           <td className="p-3 text-right">{sku.totalUnits.toLocaleString()}</td>
                           <td className="p-3 text-right">${sku.totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>

@@ -530,7 +530,9 @@ export async function GET(request: NextRequest) {
           .sort((a, b) => (b.afn_total_quantity || 0) - (a.afn_total_quantity || 0))
           .map(item => {
             const mappingData = getBdiSkuAndCost(item.sku);
-            const quantity = item.afn_fulfillable_quantity || item.afn_total_quantity || 0;
+            // Use fulfillable quantity for inventory value calculation
+            // Fulfillable = units available to sell (actual inventory on hand at Amazon)
+            const quantity = item.afn_fulfillable_quantity || 0;
             const totalValue = quantity * mappingData.standardCost;
             
             // Calculate total value
