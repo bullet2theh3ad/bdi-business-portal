@@ -299,6 +299,19 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
           },
         ],
       },
+      {
+        title: 'Inventory Analysis',
+        icon: 'inventory_items',
+        requiresRole: ['super_admin'],
+        requiresFeatureFlag: canAccessBusinessAnalysis, // Same access as Business Analysis
+        children: [
+          {
+            title: 'Warehouse Analysis',
+            href: '/admin/inventory-analysis/warehouse-analysis',
+            icon: 'warehouse',
+          },
+        ],
+      },
     ],
   },
   {
