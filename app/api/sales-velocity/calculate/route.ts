@@ -678,7 +678,8 @@ async function fetchInventoryData(): Promise<Record<string, SKUInventoryData>> {
       };
     }
 
-    inventoryMap[sku].amazonFba += item.afn_fulfillable_quantity || 0;
+    // Include fulfillable AND reserved quantities for DSOH calculation
+    inventoryMap[sku].amazonFba += (item.afn_fulfillable_quantity || 0) + (item.afn_reserved_quantity || 0);
     inventoryMap[sku].amazonInbound += 
       (item.afn_inbound_working_quantity || 0) +
       (item.afn_inbound_shipped_quantity || 0) +
