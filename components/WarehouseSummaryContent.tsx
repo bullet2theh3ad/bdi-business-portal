@@ -541,21 +541,56 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-2">Model</th>
+                        <th className="text-left p-2">Warehouse Model</th>
+                        <th className="text-left p-2">BDI SKU</th>
                         <th className="text-left p-2">Description</th>
                         <th className="text-right p-2">On Hand</th>
-                        <th className="text-right p-2">Net Stock</th>
+                        <th className="text-right p-2">Unit Cost</th>
+                        <th className="text-right p-2">Total Value</th>
                         <th className="text-right p-2">Location</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {summaryData.emg.topSkus.map((item, index) => (
-                        <tr key={index} className="border-b hover:bg-gray-50">
-                          <td className="p-2 font-medium">{item.model}</td>
-                          <td className="p-2 text-muted-foreground">{item.description}</td>
-                          <td className="p-2 text-right">{formatNumber(item.qtyOnHand)}</td>
-                          <td className="p-2 text-right">{formatNumber(item.netStock)}</td>
-                          <td className="p-2 text-right text-muted-foreground">{item.location}</td>
+                      {summaryData.emg.topSkus.map((item: any, index) => (
+                        <tr 
+                          key={index} 
+                          className={`border-b hover:bg-gray-50 transition-colors ${
+                            item.hasCost ? 'bg-green-50/30' : ''
+                          }`}
+                        >
+                          <td className="p-2 font-medium font-mono text-xs">{item.model}</td>
+                          <td className="p-2">
+                            {item.bdiSku ? (
+                              <span className="font-semibold text-green-700 bg-green-100 px-2 py-1 rounded text-xs">
+                                {item.bdiSku}
+                              </span>
+                            ) : item.mappingStatus === 'no_mapping' ? (
+                              <span className="text-xs text-gray-400 italic">no mappings</span>
+                            ) : (
+                              <span className="text-xs text-orange-500 italic">no SKU in DB</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-muted-foreground text-xs">{item.description}</td>
+                          <td className="p-2 text-right font-medium">{formatNumber(item.qtyOnHand)}</td>
+                          <td className="p-2 text-right">
+                            {item.hasCost ? (
+                              <span className="text-green-700 font-semibold">
+                                ${item.standardCost.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-orange-500 text-xs italic">no cost</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right">
+                            {item.hasCost ? (
+                              <span className="text-blue-700 font-bold">
+                                ${formatNumber(Math.round(item.totalValue))}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right text-muted-foreground text-xs">{item.location}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -617,21 +652,58 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-2">SKU</th>
+                        <th className="text-left p-2">Warehouse Model</th>
+                        <th className="text-left p-2">BDI SKU</th>
                         <th className="text-right p-2">Total Units</th>
                         <th className="text-right p-2">WIP</th>
                         <th className="text-right p-2">RMA</th>
                         <th className="text-right p-2">Outflow</th>
+                        <th className="text-right p-2">Unit Cost</th>
+                        <th className="text-right p-2">Total Value</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {summaryData.catv.topSkus.map((item, index) => (
-                        <tr key={index} className="border-b hover:bg-gray-50">
-                          <td className="p-2 font-medium">{item.sku}</td>
-                          <td className="p-2 text-right">{formatNumber(item.totalUnits)}</td>
+                      {summaryData.catv.topSkus.map((item: any, index) => (
+                        <tr 
+                          key={index} 
+                          className={`border-b hover:bg-gray-50 transition-colors ${
+                            item.hasCost ? 'bg-green-50/30' : ''
+                          }`}
+                        >
+                          <td className="p-2 font-medium font-mono text-xs">{item.sku}</td>
+                          <td className="p-2">
+                            {item.bdiSku ? (
+                              <span className="font-semibold text-green-700 bg-green-100 px-2 py-1 rounded text-xs">
+                                {item.bdiSku}
+                              </span>
+                            ) : item.mappingStatus === 'no_mapping' ? (
+                              <span className="text-xs text-gray-400 italic">no mappings</span>
+                            ) : (
+                              <span className="text-xs text-orange-500 italic">no SKU in DB</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right font-medium">{formatNumber(item.totalUnits)}</td>
                           <td className="p-2 text-right">{formatNumber(item.stages.WIP || 0)}</td>
                           <td className="p-2 text-right">{formatNumber(item.stages.RMA || 0)}</td>
                           <td className="p-2 text-right">{formatNumber(item.stages.Outflow || 0)}</td>
+                          <td className="p-2 text-right">
+                            {item.hasCost ? (
+                              <span className="text-green-700 font-semibold">
+                                ${item.standardCost.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-orange-500 text-xs italic">no cost</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right">
+                            {item.hasCost ? (
+                              <span className="text-blue-700 font-bold">
+                                ${formatNumber(Math.round(item.totalValue))}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

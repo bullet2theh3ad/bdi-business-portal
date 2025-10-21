@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { users, emgInventoryTracking, catvInventoryTracking, organizations, organizationMembers, invoices, invoiceLineItems, productSkus } from '@/lib/db/schema';
+import { users, emgInventoryTracking, catvInventoryTracking, organizations, organizationMembers, invoices, invoiceLineItems, productSkus, skuMappings } from '@/lib/db/schema';
 import { eq, desc, sql, inArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
       avgAging: (wipUnits || []).reduce((sum: number, unit: any) => sum + (unit.aging_days || 0), 0) / (wipUnits?.length || 1),
     };
 
-    // Top EMG SKUs by quantity
+    // Top EMG SKUs by quantity (will be updated with cost data later)
     const topEmgSkus = emgInventory
       .sort((a, b) => (b.qtyOnHand || 0) - (a.qtyOnHand || 0))
       .slice(0, 10)
@@ -319,9 +319,11 @@ export async function GET(request: NextRequest) {
         location: item.location,
         qtyOnHand: item.qtyOnHand || 0,
         netStock: item.netStock || 0,
+        hasCost: false, // Will be updated below
+        standardCost: 0, // Will be updated below
       }));
 
-    // Top CATV SKUs by WIP units
+    // Top CATV SKUs by WIP units (will be updated with cost data later)
     const topCatvSkus = Object.entries(catvWipTotals.bySku)
       .sort(([, a], [, b]) => (b as number) - (a as number))
       .slice(0, 10)
@@ -335,10 +337,12 @@ export async function GET(request: NextRequest) {
             acc[stage] = (acc[stage] || 0) + 1;
             return acc;
           }, {}),
+        hasCost: false, // Will be updated below
+        standardCost: 0, // Will be updated below
       }));
 
     // Calculate inventory values using standard cost from product_skus
-    console.log('[Warehouse Summary] Calculating inventory values...');
+    console.log('[Warehouse Summary] Calculating inventory values and SKU mappings...');
     
     // Get all unique SKUs from both warehouses
     const emgSkuModels = emgInventory.map(item => item.model).filter(Boolean);
@@ -347,16 +351,39 @@ export async function GET(request: NextRequest) {
     
     console.log(`[Warehouse Summary] Found ${allSkuModels.length} unique SKUs across warehouses`);
     
-    // Fetch standard costs for all SKUs (only if we have SKUs)
+    // Fetch SKU mappings (to match warehouse model names to BDI SKUs)
+    // Join with productSkus to get the actual SKU code
+    const allMappings = await db
+      .select({
+        externalIdentifier: skuMappings.externalIdentifier,
+        internalSku: productSkus.sku,
+      })
+      .from(skuMappings)
+      .leftJoin(productSkus, eq(skuMappings.internalSkuId, productSkus.id));
+    
+    console.log(`[Warehouse Summary] Found ${allMappings.length} SKU mappings`);
+    
+    // Create a map of external identifier -> BDI SKU (case-insensitive)
+    const skuLookup = new Map<string, string>();
+    allMappings.forEach(mapping => {
+      if (mapping.externalIdentifier && mapping.internalSku) {
+        skuLookup.set(mapping.externalIdentifier.toLowerCase(), mapping.internalSku);
+      }
+    });
+    
+    // Fetch standard costs for all SKUs (both warehouse models and BDI SKUs)
+    const allPossibleSkus = [...allSkuModels, ...Array.from(skuLookup.values())];
+    const uniqueSkusForCost = [...new Set(allPossibleSkus)].filter(Boolean);
+    
     let skuCosts: Array<{ sku: string; standardCost: string | null }> = [];
-    if (allSkuModels.length > 0) {
+    if (uniqueSkusForCost.length > 0) {
       skuCosts = await db
         .select({
           sku: productSkus.sku,
           standardCost: productSkus.standardCost,
         })
         .from(productSkus)
-        .where(inArray(productSkus.sku, allSkuModels));
+        .where(inArray(productSkus.sku, uniqueSkusForCost));
     }
     
     console.log(`[Warehouse Summary] Found standard costs for ${skuCosts.length} SKUs`);
@@ -366,6 +393,45 @@ export async function GET(request: NextRequest) {
       skuCosts.map(item => [item.sku, parseFloat(String(item.standardCost || 0))])
     );
     
+    // Helper function to get BDI SKU and cost for a warehouse model
+    const getBdiSkuAndCost = (warehouseModel: string) => {
+      const bdiSku = skuLookup.get(warehouseModel.toLowerCase());
+      const costFromWarehouseModel = skuCostMap.get(warehouseModel);
+      const costFromBdiSku = bdiSku ? skuCostMap.get(bdiSku) : undefined;
+      const standardCost = costFromBdiSku || costFromWarehouseModel || 0;
+      
+      return {
+        bdiSku: bdiSku || undefined,
+        mappingStatus: bdiSku ? 'mapped' : (skuLookup.size === 0 ? 'no_mapping' : 'no_sku') as 'mapped' | 'no_mapping' | 'no_sku',
+        standardCost,
+        hasCost: standardCost > 0,
+      };
+    };
+    
+    // Update EMG top SKUs with BDI SKU mapping and cost data
+    topEmgSkus.forEach(item => {
+      if (item.model) {
+        const mappingData = getBdiSkuAndCost(item.model);
+        item.hasCost = mappingData.hasCost;
+        item.standardCost = mappingData.standardCost;
+        (item as any).bdiSku = mappingData.bdiSku;
+        (item as any).mappingStatus = mappingData.mappingStatus;
+        (item as any).totalValue = (item.qtyOnHand || 0) * mappingData.standardCost;
+      }
+    });
+    
+    // Update CATV top SKUs with BDI SKU mapping and cost data
+    topCatvSkus.forEach(item => {
+      if (item.sku) {
+        const mappingData = getBdiSkuAndCost(item.sku);
+        item.hasCost = mappingData.hasCost;
+        item.standardCost = mappingData.standardCost;
+        (item as any).bdiSku = mappingData.bdiSku;
+        (item as any).mappingStatus = mappingData.mappingStatus;
+        (item as any).totalValue = (item.totalUnits as number) * mappingData.standardCost;
+      }
+    });
+    
     // Calculate EMG inventory value
     let emgTotalValue = 0;
     let emgSkusWithCost = 0;
@@ -373,9 +439,9 @@ export async function GET(request: NextRequest) {
     
     emgInventory.forEach(item => {
       if (!item.model) return;
-      const standardCost = skuCostMap.get(item.model);
-      if (standardCost && standardCost > 0) {
-        emgTotalValue += (item.qtyOnHand || 0) * standardCost;
+      const mappingData = getBdiSkuAndCost(item.model);
+      if (mappingData.hasCost) {
+        emgTotalValue += (item.qtyOnHand || 0) * mappingData.standardCost;
         emgSkusWithCost++;
       } else {
         emgSkusWithoutCost++;
@@ -388,9 +454,9 @@ export async function GET(request: NextRequest) {
     let catvSkusWithoutCost = 0;
     
     Object.entries(catvWipTotals.bySku).forEach(([sku, count]) => {
-      const standardCost = skuCostMap.get(sku);
-      if (standardCost && standardCost > 0) {
-        catvTotalValue += (count as number) * standardCost;
+      const mappingData = getBdiSkuAndCost(sku);
+      if (mappingData.hasCost) {
+        catvTotalValue += (count as number) * mappingData.standardCost;
         catvSkusWithCost++;
       } else {
         catvSkusWithoutCost++;
