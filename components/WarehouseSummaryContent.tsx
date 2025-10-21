@@ -15,7 +15,9 @@ import {
   Clock,
   Warehouse,
   BarChart3,
-  PieChart
+  PieChart,
+  Upload,
+  FileUp
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -106,6 +108,39 @@ interface WarehouseSummaryData {
       hasCostData: boolean;
     };
   };
+  amazon: {
+    allSkus: Array<{
+      sku: string;
+      asin: string;
+      fnsku: string;
+      condition: string;
+      totalQuantity: number;
+      fulfillableQuantity: number;
+      unsellableQuantity: number;
+      reservedQuantity: number;
+      inboundQuantity: number;
+      hasCost: boolean;
+      standardCost: number;
+      bdiSku?: string;
+      mappingStatus?: 'mapped' | 'direct_match' | 'no_mapping' | 'no_sku';
+      totalValue: number;
+    }>;
+    topSkus: Array<{
+      sku: string;
+      asin: string;
+      totalQuantity: number;
+      fulfillableQuantity: number;
+    }>;
+    lastUpdated: string | null;
+    totalSkus: number;
+    totalUnits: number;
+    inventoryValue: {
+      totalValue: number;
+      skusWithCost: number;
+      skusWithoutCost: number;
+      hasCostData: boolean;
+    };
+  };
   summary: {
     totalWarehouses: number;
     totalSkus: number;
@@ -138,6 +173,8 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
   const [summaryData, setSummaryData] = useState<WarehouseSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   useEffect(() => {
     fetchSummaryData();
@@ -156,6 +193,45 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
       console.error('Error fetching warehouse summary:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAmazonUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      setUploadProgress('Uploading file...');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/amazon/inventory/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setUploadProgress(`✅ Upload complete! ${result.totalSkus} SKUs, ${result.totalUnits} units`);
+        
+        // Refresh data after successful upload
+        setTimeout(() => {
+          fetchSummaryData();
+          setUploadProgress('');
+        }, 2000);
+      } else {
+        setUploadProgress(`❌ Upload failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadProgress(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -258,7 +334,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
       </div>
 
       {/* Inventory Value Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* EMG Inventory Value */}
         <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
           <CardContent className="p-6">
@@ -341,6 +417,60 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                 <p className="text-sm font-medium text-muted-foreground">No Cost Data Available</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Add standard costs to SKUs in Inventory → SKUs
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Amazon Inventory Value */}
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-10 w-10 rounded-full bg-orange-600 flex items-center justify-center text-white font-bold">
+                  A
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Amazon FBA</p>
+                  <p className="text-xs text-muted-foreground">Inventory Value</p>
+                </div>
+              </div>
+            </div>
+            {summaryData.amazon.allSkus.length > 0 ? (
+              summaryData.amazon.inventoryValue.hasCostData ? (
+                <div>
+                  <p className="text-4xl font-bold text-orange-600">
+                    ${formatNumber(Math.round(summaryData.amazon.inventoryValue.totalValue))}
+                  </p>
+                  <div className="mt-3 pt-3 border-t border-orange-200">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">SKUs with cost data:</span>
+                      <span className="font-medium text-green-600">{summaryData.amazon.inventoryValue.skusWithCost}</span>
+                    </div>
+                    {summaryData.amazon.inventoryValue.skusWithoutCost > 0 && (
+                      <div className="flex justify-between text-sm mt-1">
+                        <span className="text-muted-foreground">SKUs without cost:</span>
+                        <span className="font-medium text-orange-600">{summaryData.amazon.inventoryValue.skusWithoutCost}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">No Cost Data Available</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add standard costs to SKUs in Inventory → SKUs
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="text-center py-4">
+                <FileUp className="h-12 w-12 text-orange-400 mx-auto mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">No Data</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload Amazon FBA CSV in the Amazon tab
                 </p>
               </div>
             )}
@@ -747,33 +877,197 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
         <TabsContent value="amazon" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold">
-                  A
-                </div>
-                Amazon Inventory
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-                  A
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Amazon Inventory Analysis</h3>
-                <p className="text-muted-foreground mb-4">
-                  Coming Soon - Amazon FBA inventory data and analytics
-                </p>
-                <div className="max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4 space-y-2">
-                  <p className="text-sm font-medium">Planned Features:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                    <li>• FBA Inventory Levels by SKU</li>
-                    <li>• Fulfillment Center Distribution</li>
-                    <li>• Inbound Shipment Tracking</li>
-                    <li>• Storage Fees & Recommendations</li>
-                    <li>• Restock Alerts & Forecasting</li>
-                  </ul>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold">
+                    A
+                  </div>
+                  Amazon FBA Inventory
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id="amazon-upload"
+                    accept=".csv"
+                    onChange={handleAmazonUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                  <label htmlFor="amazon-upload">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      asChild
+                    >
+                      <span className="cursor-pointer">
+                        {uploading ? (
+                          <>
+                            <Clock className="h-4 w-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload CSV
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
                 </div>
               </div>
+              {uploadProgress && (
+                <div className={`mt-2 text-sm ${uploadProgress.startsWith('✅') ? 'text-green-600' : uploadProgress.startsWith('❌') ? 'text-red-600' : 'text-blue-600'}`}>
+                  {uploadProgress}
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              {summaryData.amazon.allSkus.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="h-16 w-16 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+                    <FileUp className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No Amazon Inventory Data</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Upload your Amazon FBA Inventory CSV to see inventory levels and analytics
+                  </p>
+                  <div className="max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm font-medium">How to get the CSV:</p>
+                    <ol className="text-sm text-muted-foreground space-y-1 ml-4 list-decimal">
+                      <li>Go to Amazon Data → Reports</li>
+                      <li>Download "FBA Inventory" report</li>
+                      <li>Upload the CSV file here</li>
+                    </ol>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary Metrics */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-orange-50 rounded-lg">
+                      <p className="text-2xl font-bold text-orange-600">{formatNumber(summaryData.amazon.totalSkus)}</p>
+                      <p className="text-sm text-muted-foreground">Total SKUs</p>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">{formatNumber(summaryData.amazon.totalUnits)}</p>
+                      <p className="text-sm text-muted-foreground">Fulfillable Units</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">
+                        ${formatNumber(Math.round(summaryData.amazon.inventoryValue.totalValue))}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Inventory Value</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-600">
+                        {summaryData.amazon.lastUpdated ? new Date(summaryData.amazon.lastUpdated).toLocaleDateString() : 'N/A'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Last Updated</p>
+                    </div>
+                  </div>
+
+                  {/* Inventory Value Card */}
+                  {summaryData.amazon.inventoryValue.hasCostData && (
+                    <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-white">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="h-10 w-10 rounded-full bg-orange-600 flex items-center justify-center">
+                              <Package className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Amazon FBA</p>
+                              <p className="text-xs text-muted-foreground">Inventory Value</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-4xl font-bold text-orange-600">
+                          ${formatNumber(Math.round(summaryData.amazon.inventoryValue.totalValue))}
+                        </p>
+                        <div className="mt-3 pt-3 border-t border-orange-200">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">SKUs with cost data:</span>
+                            <span className="font-medium text-green-600">{summaryData.amazon.inventoryValue.skusWithCost}</span>
+                          </div>
+                          {summaryData.amazon.inventoryValue.skusWithoutCost > 0 && (
+                            <div className="flex justify-between text-sm mt-1">
+                              <span className="text-muted-foreground">SKUs without cost:</span>
+                              <span className="font-medium text-orange-600">{summaryData.amazon.inventoryValue.skusWithoutCost}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* SKU Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Amazon SKU</th>
+                          <th className="text-left p-2">BDI SKU</th>
+                          <th className="text-left p-2">ASIN</th>
+                          <th className="text-right p-2">Fulfillable</th>
+                          <th className="text-right p-2">Reserved</th>
+                          <th className="text-right p-2">Unsellable</th>
+                          <th className="text-right p-2">Inbound</th>
+                          <th className="text-right p-2">Unit Cost</th>
+                          <th className="text-right p-2">Total Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summaryData.amazon.allSkus.map((item: any, index) => (
+                          <tr 
+                            key={index} 
+                            className={`border-b hover:bg-gray-50 ${item.hasCost ? 'bg-green-50/30' : ''}`}
+                          >
+                            <td className="p-2 font-medium">{item.sku}</td>
+                            <td className="p-2">
+                              {item.bdiSku && item.mappingStatus === 'mapped' ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                  {item.bdiSku}
+                                </Badge>
+                              ) : item.bdiSku && item.mappingStatus === 'direct_match' ? (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                                  {item.bdiSku}
+                                </Badge>
+                              ) : item.mappingStatus === 'no_mapping' ? (
+                                <span className="text-gray-400 italic text-xs">no mappings</span>
+                              ) : (
+                                <span className="text-orange-500 italic text-xs">no SKU in DB</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-gray-600">{item.asin || '—'}</td>
+                            <td className="p-2 text-right font-medium">{formatNumber(item.fulfillableQuantity)}</td>
+                            <td className="p-2 text-right text-gray-600">{formatNumber(item.reservedQuantity)}</td>
+                            <td className="p-2 text-right text-orange-600">{formatNumber(item.unsellableQuantity)}</td>
+                            <td className="p-2 text-right text-blue-600">{formatNumber(item.inboundQuantity)}</td>
+                            <td className="p-2 text-right">
+                              {item.hasCost ? (
+                                <span className="text-green-600 font-medium">${item.standardCost.toFixed(2)}</span>
+                              ) : (
+                                <span className="text-orange-500 italic text-xs">no cost</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-right">
+                              {item.hasCost ? (
+                                <span className="text-blue-700 font-bold">
+                                  ${formatNumber(Math.round(item.totalValue))}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

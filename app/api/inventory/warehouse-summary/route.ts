@@ -480,6 +480,91 @@ export async function GET(request: NextRequest) {
     console.log(`[Warehouse Summary] EMG Value: $${emgTotalValue.toFixed(2)} (${emgSkusWithCost} SKUs with cost, ${emgSkusWithoutCost} without)`);
     console.log(`[Warehouse Summary] CATV Value: $${catvTotalValue.toFixed(2)} (${catvSkusWithCost} SKUs with cost, ${catvSkusWithoutCost} without)`);
 
+    // =====================================================
+    // FETCH AMAZON INVENTORY DATA
+    // =====================================================
+    console.log('[Warehouse Summary] Fetching Amazon inventory...');
+    
+    // Get the most recent completed import
+    const { data: latestAmazonImport } = await supabaseService
+      .from('amazon_inventory_imports')
+      .select('id, completed_at, total_skus, total_units')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    let amazonInventory: any[] = [];
+    let allAmazonSkus: any[] = [];
+    let amazonTotalValue = 0;
+    let amazonSkusWithCost = 0;
+    let amazonSkusWithoutCost = 0;
+    
+    if (latestAmazonImport) {
+      console.log(`[Warehouse Summary] Found Amazon import: ${latestAmazonImport.id}`);
+      
+      // Fetch all inventory units from the latest import
+      const { data: amazonUnits, error: amazonError } = await supabaseService
+        .from('amazon_inventory_units')
+        .select('*')
+        .eq('import_batch_id', latestAmazonImport.id);
+      
+      if (amazonError) {
+        console.error('[Warehouse Summary] Error fetching Amazon inventory:', amazonError);
+      } else {
+        amazonInventory = amazonUnits || [];
+        console.log(`[Warehouse Summary] Found ${amazonInventory.length} Amazon SKUs`);
+        
+        // Apply fuzzy matching filter for partner organizations
+        if (!isBDIUser && skuPrefixes.length > 0) {
+          amazonInventory = amazonInventory.filter((item: any) => {
+            if (!item.sku) return false;
+            const itemSku = item.sku.toUpperCase();
+            return skuPrefixes.some(prefix => itemSku.startsWith(prefix.toUpperCase()));
+          });
+          console.log(`🔍 Amazon fuzzy filter: ${amazonInventory.length} items matched`);
+        }
+        
+        // Process Amazon SKUs with mapping and cost data
+        allAmazonSkus = amazonInventory
+          .sort((a, b) => (b.afn_total_quantity || 0) - (a.afn_total_quantity || 0))
+          .map(item => {
+            const mappingData = getBdiSkuAndCost(item.sku);
+            const quantity = item.afn_fulfillable_quantity || item.afn_total_quantity || 0;
+            const totalValue = quantity * mappingData.standardCost;
+            
+            // Calculate total value
+            if (mappingData.hasCost) {
+              amazonTotalValue += totalValue;
+              amazonSkusWithCost++;
+            } else {
+              amazonSkusWithoutCost++;
+            }
+            
+            return {
+              sku: item.sku,
+              asin: item.asin,
+              fnsku: item.fnsku,
+              condition: item.condition,
+              totalQuantity: item.afn_total_quantity || 0,
+              fulfillableQuantity: item.afn_fulfillable_quantity || 0,
+              unsellableQuantity: item.afn_unsellable_quantity || 0,
+              reservedQuantity: item.afn_reserved_quantity || 0,
+              inboundQuantity: item.afn_inbound_quantity || 0,
+              hasCost: mappingData.hasCost,
+              standardCost: mappingData.standardCost,
+              bdiSku: mappingData.bdiSku,
+              mappingStatus: mappingData.mappingStatus,
+              totalValue,
+            };
+          });
+        
+        console.log(`[Warehouse Summary] Amazon Value: $${amazonTotalValue.toFixed(2)} (${amazonSkusWithCost} SKUs with cost, ${amazonSkusWithoutCost} without)`);
+      }
+    } else {
+      console.log('[Warehouse Summary] No Amazon inventory imports found');
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -512,13 +597,27 @@ export async function GET(request: NextRequest) {
             hasCostData: catvSkusWithCost > 0,
           },
         },
+        amazon: {
+          allSkus: allAmazonSkus, // All Amazon SKUs with mapping and cost data
+          topSkus: allAmazonSkus.slice(0, 10), // Top 10 for charts (backward compatibility)
+          lastUpdated: latestAmazonImport?.completed_at || null,
+          totalSkus: allAmazonSkus.length,
+          totalUnits: allAmazonSkus.reduce((sum, item) => sum + item.fulfillableQuantity, 0),
+          inventoryValue: {
+            totalValue: amazonTotalValue,
+            skusWithCost: amazonSkusWithCost,
+            skusWithoutCost: amazonSkusWithoutCost,
+            hasCostData: amazonSkusWithCost > 0,
+          },
+        },
         summary: {
-          totalWarehouses: 2, // EMG and CATV
-          totalSkus: emgTotals.totalSkus + Object.keys(catvWipTotals.bySku).length,
-          totalUnits: emgTotals.totalOnHand + catvMetrics.activeWip, // EMG On Hand + CATV Active WIP (not total intake)
+          totalWarehouses: 3, // EMG, CATV, and Amazon
+          totalSkus: emgTotals.totalSkus + Object.keys(catvWipTotals.bySku).length + allAmazonSkus.length,
+          totalUnits: emgTotals.totalOnHand + catvMetrics.activeWip + allAmazonSkus.reduce((sum, item) => sum + item.fulfillableQuantity, 0),
           lastUpdated: Math.max(
             emgInventory.length > 0 ? new Date(emgInventory[0].lastUpdated || 0).getTime() : 0,
-            catvInventory.length > 0 ? new Date(catvInventory[0].lastUpdated || 0).getTime() : 0
+            catvInventory.length > 0 ? new Date(catvInventory[0].lastUpdated || 0).getTime() : 0,
+            latestAmazonImport ? new Date(latestAmazonImport.completed_at || 0).getTime() : 0
           ),
         }
       }
