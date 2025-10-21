@@ -432,7 +432,9 @@ export async function GET(request: NextRequest) {
         item.standardCost = mappingData.standardCost;
         (item as any).bdiSku = mappingData.bdiSku;
         (item as any).mappingStatus = mappingData.mappingStatus;
-        (item as any).totalValue = (item.totalUnits as number) * mappingData.standardCost;
+        // Use WIP quantity for value calculation (not total units which includes RMA and Outflow)
+        const wipQuantity = item.stages.WIP || 0;
+        (item as any).totalValue = wipQuantity * mappingData.standardCost;
       }
     });
     
@@ -452,12 +454,20 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Calculate CATV inventory value (using unique serial numbers)
+    // Calculate CATV inventory value (using WIP units only, not total units)
     let catvTotalValue = 0;
     let catvSkusWithCost = 0;
     let catvSkusWithoutCost = 0;
     
-    Object.entries(catvWipTotals.bySku).forEach(([sku, count]) => {
+    // Count WIP units by SKU (not all units - exclude RMA and Outflow)
+    const wipBySku: Record<string, number> = {};
+    (wipUnits || []).forEach((unit: any) => {
+      if (unit.stage === 'WIP' && unit.model_number) {
+        wipBySku[unit.model_number] = (wipBySku[unit.model_number] || 0) + 1;
+      }
+    });
+    
+    Object.entries(wipBySku).forEach(([sku, count]) => {
       const mappingData = getBdiSkuAndCost(sku);
       if (mappingData.hasCost) {
         catvTotalValue += (count as number) * mappingData.standardCost;
