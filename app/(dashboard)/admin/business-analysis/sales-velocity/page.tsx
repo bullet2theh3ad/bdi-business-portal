@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from 'recharts';
-import { RefreshCw, Loader2, TrendingUp, Download } from 'lucide-react';
+import { RefreshCw, Loader2, TrendingUp, Download, FileDown, ChevronDown, ChevronUp } from 'lucide-react';
 
 // =====================================================
 // Type Definitions
@@ -44,6 +44,7 @@ export default function SalesVelocityPage() {
   const [velocityData, setVelocityData] = useState<VelocityData[]>([]);
   const [weeksToShow, setWeeksToShow] = useState<number>(12); // Default: last 12 weeks
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set()); // Track selected SKUs
+  const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set()); // Track expanded rows
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,6 +105,17 @@ export default function SalesVelocityPage() {
       const allSkus = new Set(velocityData.map(v => v.bdiSku));
       setSelectedSkus(allSkus);
     }
+  }
+
+  // Toggle SKU expansion
+  function toggleExpanded(sku: string) {
+    const newExpanded = new Set(expandedSkus);
+    if (newExpanded.has(sku)) {
+      newExpanded.delete(sku);
+    } else {
+      newExpanded.add(sku);
+    }
+    setExpandedSkus(newExpanded);
   }
 
   // Download chart as PNG
@@ -175,6 +187,66 @@ export default function SalesVelocityPage() {
       console.error('Error downloading chart:', error);
       alert('Failed to download chart. Please try again.');
     }
+  }
+
+  // Export data as CSV
+  function exportDataAsCSV() {
+    const selectedVelocityData = velocityData.filter(sku => selectedSkus.has(sku.bdiSku));
+    
+    // CSV Header
+    const headers = ['SKU', 'Daily Velocity', 'Total Units', 'Gross Revenue', 'Net Revenue', 'Days Active', 'First Sale', 'Last Sale'];
+    
+    // Summary rows
+    const summaryRows = selectedVelocityData.map(sku => [
+      sku.bdiSku,
+      sku.dailyVelocity.toFixed(2),
+      sku.totalUnits,
+      `$${sku.totalGrossRevenue.toFixed(2)}`,
+      `$${sku.totalNetRevenue.toFixed(2)}`,
+      sku.daysActive,
+      sku.firstSaleDate,
+      sku.lastSaleDate
+    ]);
+    
+    // Weekly detail headers
+    const weeklyHeaders = ['', '', 'Week', 'Units', 'Gross Revenue', 'Net Revenue'];
+    
+    // Build CSV content
+    let csvContent = '# Sales Velocity Summary\n';
+    csvContent += headers.join(',') + '\n';
+    csvContent += summaryRows.map(row => row.join(',')).join('\n');
+    csvContent += '\n\n# Weekly Details\n';
+    csvContent += weeklyHeaders.join(',') + '\n';
+    
+    // Add weekly details for each SKU
+    selectedVelocityData.forEach(sku => {
+      const weeklyData = groupByWeek(sku.dailyTimeline, sku.bdiSku);
+      const sortedWeeks = weeklyData.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
+      const filteredWeeks = weeksToShow === 999 ? sortedWeeks : sortedWeeks.slice(0, weeksToShow);
+      
+      filteredWeeks.reverse().forEach((week, idx) => {
+        csvContent += [
+          idx === 0 ? sku.bdiSku : '',
+          idx === 0 ? `(${sku.dailyVelocity.toFixed(1)}/day)` : '',
+          week.weekLabel,
+          week.units,
+          `$${week.grossRevenue.toFixed(2)}`,
+          `$${week.netRevenue.toFixed(2)}`
+        ].join(',') + '\n';
+      });
+      csvContent += '\n';
+    });
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sales-velocity-data-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   // Group daily data into weeks
@@ -448,7 +520,7 @@ export default function SalesVelocityPage() {
               </p>
             </div>
             
-            {/* Week Range Selector & Download */}
+            {/* Week Range Selector & Export Buttons */}
             <div className="flex items-center gap-2 flex-wrap">
               <label className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">Show:</label>
               <select
@@ -472,7 +544,17 @@ export default function SalesVelocityPage() {
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Download PNG</span>
+                <span className="hidden sm:inline">Chart PNG</span>
+              </Button>
+              
+              <Button
+                onClick={exportDataAsCSV}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <FileDown className="h-4 w-4" />
+                <span className="hidden sm:inline">Export CSV</span>
               </Button>
             </div>
           </div>
@@ -625,6 +707,104 @@ export default function SalesVelocityPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Data Table */}
+      {!loading && velocityData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Sales Data Table</CardTitle>
+            <p className="text-sm text-gray-600">Detailed metrics for selected SKUs</p>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-semibold">SKU</th>
+                    <th className="text-right p-3 font-semibold">Daily Velocity</th>
+                    <th className="text-right p-3 font-semibold">Total Units</th>
+                    <th className="text-right p-3 font-semibold">Gross Revenue</th>
+                    <th className="text-right p-3 font-semibold">Net Revenue</th>
+                    <th className="text-right p-3 font-semibold">Days Active</th>
+                    <th className="text-center p-3 font-semibold">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {velocityData.filter(sku => selectedSkus.has(sku.bdiSku)).map(sku => {
+                    const isExpanded = expandedSkus.has(sku.bdiSku);
+                    const weeklyData = groupByWeek(sku.dailyTimeline, sku.bdiSku);
+                    const sortedWeeks = weeklyData.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
+                    const filteredWeeks = weeksToShow === 999 ? sortedWeeks : sortedWeeks.slice(0, weeksToShow);
+                    
+                    return (
+                      <React.Fragment key={sku.bdiSku}>
+                        <tr className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-medium">{sku.bdiSku}</td>
+                          <td 
+                            className="p-3 text-right font-semibold"
+                            style={{
+                              color: sku.dailyVelocity < 10 ? '#ef4444' : sku.dailyVelocity < 15 ? '#eab308' : '#22c55e'
+                            }}
+                          >
+                            {sku.dailyVelocity.toFixed(1)}/day
+                          </td>
+                          <td className="p-3 text-right">{sku.totalUnits.toLocaleString()}</td>
+                          <td className="p-3 text-right">${sku.totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                          <td className="p-3 text-right">${sku.totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                          <td className="p-3 text-right">{sku.daysActive}</td>
+                          <td className="p-3 text-center">
+                            <Button
+                              onClick={() => toggleExpanded(sku.bdiSku)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={7} className="p-0">
+                              <div className="bg-gray-50 p-4">
+                                <h4 className="font-semibold text-sm mb-3">Weekly Breakdown for {sku.bdiSku}</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="border-b border-gray-300">
+                                        <th className="text-left p-2 font-semibold">Week</th>
+                                        <th className="text-right p-2 font-semibold">Units</th>
+                                        <th className="text-right p-2 font-semibold">Gross Revenue</th>
+                                        <th className="text-right p-2 font-semibold">Net Revenue</th>
+                                        <th className="text-right p-2 font-semibold">Fees</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {filteredWeeks.reverse().map(week => (
+                                        <tr key={week.weekLabel} className="border-b border-gray-200">
+                                          <td className="p-2">{week.weekLabel}</td>
+                                          <td className="p-2 text-right">{week.units}</td>
+                                          <td className="p-2 text-right">${week.grossRevenue.toFixed(2)}</td>
+                                          <td className="p-2 text-right">${week.netRevenue.toFixed(2)}</td>
+                                          <td className="p-2 text-right">${(week.grossRevenue - week.netRevenue).toFixed(2)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Loading State */}
       {loading && (
