@@ -12,12 +12,14 @@ export async function GET(request: NextRequest) {
     // Step 1: Get ALL sales data with daily breakdown
     console.log('[Sales Velocity] Step 1: Fetching all Amazon sales by date and SKU...');
     
+    // Count DISTINCT orders to avoid counting duplicate line items per order
+    // Amazon creates multiple line items per order (item, shipping, fees, etc.)
     const dailySales = await db
       .select({
         bdiSku: amazonFinancialLineItems.bdiSku,
         amazonSku: amazonFinancialLineItems.amazonSku,
         date: sql<string>`DATE(${amazonFinancialLineItems.postedDate})::text`,
-        units: sql<number>`SUM(${amazonFinancialLineItems.quantity})::int`,  // Sum actual quantity (units sold)
+        units: sql<number>`COUNT(DISTINCT ${amazonFinancialLineItems.orderId})::int`,  // Count unique orders (1 order = 1 unit)
         grossRevenue: sql<number>`SUM(${amazonFinancialLineItems.itemPrice})`,  // Total revenue (before fees)
         netRevenue: sql<number>`SUM(${amazonFinancialLineItems.netRevenue})`,  // Net revenue (after fees)
       })
