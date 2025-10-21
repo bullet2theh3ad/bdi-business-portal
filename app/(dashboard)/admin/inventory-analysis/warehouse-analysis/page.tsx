@@ -7,15 +7,15 @@ import WarehouseSummaryContent from '@/components/WarehouseSummaryContent';
 
 function WarehouseAnalysisContent() {
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto p-2 sm:p-4 space-y-4 sm:space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <SemanticBDIIcon semantic="chart" size={32} />
-            Warehouse Analysis
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <SemanticBDIIcon semantic="chart" size={24} className="sm:w-8 sm:h-8" />
+            <span>Warehouse Analysis</span>
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-1 sm:mt-2 text-xs sm:text-sm">
             Complete inventory overview across all warehouses with advanced analytics
           </p>
         </div>
@@ -23,12 +23,12 @@ function WarehouseAnalysisContent() {
 
       {/* Main Content - Warehouse Summary */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <SemanticBDIIcon semantic="inventory_items" size={20} />
-            Warehouse Inventory Summary
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <SemanticBDIIcon semantic="inventory_items" size={16} className="sm:w-5 sm:h-5" />
+            <span>Warehouse Inventory Summary</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
             Real-time inventory data from EMG and CATV warehouses
           </CardDescription>
         </CardHeader>

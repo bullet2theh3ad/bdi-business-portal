@@ -573,28 +573,30 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-2">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2 h-auto">
           <TabsTrigger 
             value="overview"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white text-xs sm:text-sm px-2 py-2"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger 
             value="emg"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white text-xs sm:text-sm px-2 py-2"
           >
-            EMG Warehouse
+            <span className="hidden sm:inline">EMG Warehouse</span>
+            <span className="inline sm:hidden">EMG</span>
           </TabsTrigger>
           <TabsTrigger 
             value="catv"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white text-xs sm:text-sm px-2 py-2"
           >
-            CATV Warehouse
+            <span className="hidden sm:inline">CATV Warehouse</span>
+            <span className="inline sm:hidden">CATV</span>
           </TabsTrigger>
           <TabsTrigger 
             value="amazon"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white text-xs sm:text-sm px-2 py-2"
           >
             Amazon
           </TabsTrigger>
@@ -783,68 +785,70 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Warehouse Model</th>
-                        <th className="text-left p-2">BDI SKU</th>
-                        <th className="text-left p-2">Description</th>
-                        <th className="text-right p-2">On Hand</th>
-                        <th className="text-right p-2">Unit Cost</th>
-                        <th className="text-right p-2">Total Value</th>
-                        <th className="text-right p-2">Location</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {summaryData.emg.allSkus.map((item: any, index) => (
-                        <tr 
-                          key={index} 
-                          className={`border-b hover:bg-gray-50 transition-colors ${
-                            item.hasCost ? 'bg-green-50/30' : ''
-                          }`}
-                        >
-                          <td className="p-2 font-medium font-mono text-xs">{item.model}</td>
-                          <td className="p-2">
-                            {item.bdiSku ? (
-                              <span className={`font-semibold px-2 py-1 rounded text-xs ${
-                                item.mappingStatus === 'mapped' 
-                                  ? 'text-green-700 bg-green-100' 
-                                  : 'text-blue-700 bg-blue-100'
-                              }`}>
-                                {item.bdiSku}
-                              </span>
-                            ) : item.mappingStatus === 'no_mapping' ? (
-                              <span className="text-xs text-gray-400 italic">no mappings</span>
-                            ) : (
-                              <span className="text-xs text-orange-500 italic">no SKU in DB</span>
-                            )}
-                          </td>
-                          <td className="p-2 text-muted-foreground text-xs">{item.description}</td>
-                          <td className="p-2 text-right font-medium">{formatNumber(item.qtyOnHand)}</td>
-                          <td className="p-2 text-right">
-                            {item.hasCost ? (
-                              <span className="text-green-700 font-semibold">
-                                ${item.standardCost.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="text-orange-500 text-xs italic">no cost</span>
-                            )}
-                          </td>
-                          <td className="p-2 text-right">
-                            {item.hasCost ? (
-                              <span className="text-blue-700 font-bold">
-                                ${formatNumber(Math.round(item.totalValue))}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </td>
-                          <td className="p-2 text-right text-muted-foreground text-xs">{item.location}</td>
+                <div className="overflow-x-auto -mx-2 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="w-full text-xs sm:text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-2 sm:p-3 sticky left-0 bg-gray-50 z-10">Model</th>
+                          <th className="text-left p-2 sm:p-3 hidden md:table-cell">BDI SKU</th>
+                          <th className="text-left p-2 sm:p-3 hidden lg:table-cell">Description</th>
+                          <th className="text-right p-2 sm:p-3 whitespace-nowrap">On Hand</th>
+                          <th className="text-right p-2 sm:p-3 hidden md:table-cell whitespace-nowrap">Cost</th>
+                          <th className="text-right p-2 sm:p-3 whitespace-nowrap">Value</th>
+                          <th className="text-right p-2 sm:p-3 hidden sm:table-cell">Location</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {summaryData.emg.allSkus.map((item: any, index) => (
+                          <tr 
+                            key={index} 
+                            className={`border-b hover:bg-gray-50 transition-colors ${
+                              item.hasCost ? 'bg-green-50/30' : ''
+                            }`}
+                          >
+                            <td className="p-2 sm:p-3 font-medium font-mono text-xs sticky left-0 bg-white">{item.model}</td>
+                            <td className="p-2 sm:p-3 hidden md:table-cell">
+                              {item.bdiSku ? (
+                                <span className={`font-semibold px-2 py-1 rounded text-xs ${
+                                  item.mappingStatus === 'mapped' 
+                                    ? 'text-green-700 bg-green-100' 
+                                    : 'text-blue-700 bg-blue-100'
+                                }`}>
+                                  {item.bdiSku}
+                                </span>
+                              ) : item.mappingStatus === 'no_mapping' ? (
+                                <span className="text-xs text-gray-400 italic">no map</span>
+                              ) : (
+                                <span className="text-xs text-orange-500 italic">no SKU</span>
+                              )}
+                            </td>
+                            <td className="p-2 sm:p-3 text-muted-foreground text-xs hidden lg:table-cell">{item.description}</td>
+                            <td className="p-2 sm:p-3 text-right font-medium">{formatNumber(item.qtyOnHand)}</td>
+                            <td className="p-2 sm:p-3 text-right hidden md:table-cell">
+                              {item.hasCost ? (
+                                <span className="text-green-700 font-semibold">
+                                  ${item.standardCost.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-orange-500 text-xs italic">no cost</span>
+                              )}
+                            </td>
+                            <td className="p-2 sm:p-3 text-right">
+                              {item.hasCost ? (
+                                <span className="text-blue-700 font-bold">
+                                  ${formatNumber(Math.round(item.totalValue))}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="p-2 sm:p-3 text-right text-muted-foreground text-xs hidden sm:table-cell">{item.location}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -898,70 +902,72 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   </CardContent>
                 </Card>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Warehouse Model</th>
-                        <th className="text-left p-2">BDI SKU</th>
-                        <th className="text-right p-2">Total Units</th>
-                        <th className="text-right p-2">WIP</th>
-                        <th className="text-right p-2">RMA</th>
-                        <th className="text-right p-2">Outflow</th>
-                        <th className="text-right p-2">Unit Cost</th>
-                        <th className="text-right p-2">Total Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {summaryData.catv.allSkus.map((item: any, index) => (
-                        <tr 
-                          key={index} 
-                          className={`border-b hover:bg-gray-50 transition-colors ${
-                            item.hasCost ? 'bg-green-50/30' : ''
-                          }`}
-                        >
-                          <td className="p-2 font-medium font-mono text-xs">{item.sku}</td>
-                          <td className="p-2">
-                            {item.bdiSku ? (
-                              <span className={`font-semibold px-2 py-1 rounded text-xs ${
-                                item.mappingStatus === 'mapped' 
-                                  ? 'text-green-700 bg-green-100' 
-                                  : 'text-blue-700 bg-blue-100'
-                              }`}>
-                                {item.bdiSku}
-                              </span>
-                            ) : item.mappingStatus === 'no_mapping' ? (
-                              <span className="text-xs text-gray-400 italic">no mappings</span>
-                            ) : (
-                              <span className="text-xs text-orange-500 italic">no SKU in DB</span>
-                            )}
-                          </td>
-                          <td className="p-2 text-right font-medium">{formatNumber(item.totalUnits)}</td>
-                          <td className="p-2 text-right">{formatNumber(item.stages.WIP || 0)}</td>
-                          <td className="p-2 text-right">{formatNumber(item.stages.RMA || 0)}</td>
-                          <td className="p-2 text-right">{formatNumber(item.stages.Outflow || 0)}</td>
-                          <td className="p-2 text-right">
-                            {item.hasCost ? (
-                              <span className="text-green-700 font-semibold">
-                                ${item.standardCost.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="text-orange-500 text-xs italic">no cost</span>
-                            )}
-                          </td>
-                          <td className="p-2 text-right">
-                            {item.hasCost ? (
-                              <span className="text-blue-700 font-bold">
-                                ${formatNumber(Math.round(item.totalValue))}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </td>
+                <div className="overflow-x-auto -mx-2 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="w-full text-xs sm:text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-2 sm:p-3 sticky left-0 bg-gray-50 z-10">Model</th>
+                          <th className="text-left p-2 sm:p-3 hidden md:table-cell">BDI SKU</th>
+                          <th className="text-right p-2 sm:p-3 whitespace-nowrap">Total</th>
+                          <th className="text-right p-2 sm:p-3 hidden sm:table-cell">WIP</th>
+                          <th className="text-right p-2 sm:p-3 hidden sm:table-cell">RMA</th>
+                          <th className="text-right p-2 sm:p-3 hidden lg:table-cell">Outflow</th>
+                          <th className="text-right p-2 sm:p-3 hidden md:table-cell whitespace-nowrap">Cost</th>
+                          <th className="text-right p-2 sm:p-3 whitespace-nowrap">Value</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {summaryData.catv.allSkus.map((item: any, index) => (
+                          <tr 
+                            key={index} 
+                            className={`border-b hover:bg-gray-50 transition-colors ${
+                              item.hasCost ? 'bg-green-50/30' : ''
+                            }`}
+                          >
+                            <td className="p-2 sm:p-3 font-medium font-mono text-xs sticky left-0 bg-white">{item.sku}</td>
+                            <td className="p-2 sm:p-3 hidden md:table-cell">
+                              {item.bdiSku ? (
+                                <span className={`font-semibold px-2 py-1 rounded text-xs ${
+                                  item.mappingStatus === 'mapped' 
+                                    ? 'text-green-700 bg-green-100' 
+                                    : 'text-blue-700 bg-blue-100'
+                                }`}>
+                                  {item.bdiSku}
+                                </span>
+                              ) : item.mappingStatus === 'no_mapping' ? (
+                                <span className="text-xs text-gray-400 italic">no map</span>
+                              ) : (
+                                <span className="text-xs text-orange-500 italic">no SKU</span>
+                              )}
+                            </td>
+                            <td className="p-2 sm:p-3 text-right font-medium">{formatNumber(item.totalUnits)}</td>
+                            <td className="p-2 sm:p-3 text-right hidden sm:table-cell">{formatNumber(item.stages.WIP || 0)}</td>
+                            <td className="p-2 sm:p-3 text-right hidden sm:table-cell">{formatNumber(item.stages.RMA || 0)}</td>
+                            <td className="p-2 sm:p-3 text-right hidden lg:table-cell">{formatNumber(item.stages.Outflow || 0)}</td>
+                            <td className="p-2 sm:p-3 text-right hidden md:table-cell">
+                              {item.hasCost ? (
+                                <span className="text-green-700 font-semibold">
+                                  ${item.standardCost.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-orange-500 text-xs italic">no cost</span>
+                              )}
+                            </td>
+                            <td className="p-2 sm:p-3 text-right">
+                              {item.hasCost ? (
+                                <span className="text-blue-700 font-bold">
+                                  ${formatNumber(Math.round(item.totalValue))}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -971,29 +977,32 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
         <TabsContent value="amazon" className="space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold">
                     A
                   </div>
-                  Amazon FBA Inventory
+                  <span className="text-base sm:text-lg">Amazon FBA Inventory</span>
                 </CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="default"
                     size="sm"
                     disabled={fetchingFromAmazon || uploading}
                     onClick={handleFetchFromAmazon}
+                    className="flex-1 sm:flex-none"
                   >
                     {fetchingFromAmazon ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Fetching...
+                        <span className="hidden sm:inline">Fetching...</span>
+                        <span className="inline sm:hidden">Fetching</span>
                       </>
                     ) : (
                       <>
-                        <Cloud className="h-4 w-4 mr-2" />
-                        Fetch from Amazon
+                        <Cloud className="h-4 w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Fetch from Amazon</span>
+                        <span className="inline sm:hidden">Fetch</span>
                       </>
                     )}
                   </Button>
@@ -1005,23 +1014,26 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                     disabled={uploading || fetchingFromAmazon}
                     className="hidden"
                   />
-                  <label htmlFor="amazon-upload">
+                  <label htmlFor="amazon-upload" className="flex-1 sm:flex-none">
                     <Button
                       variant="outline"
                       size="sm"
                       disabled={uploading || fetchingFromAmazon}
                       asChild
+                      className="w-full"
                     >
                       <span className="cursor-pointer">
                         {uploading ? (
                           <>
                             <Clock className="h-4 w-4 mr-2 animate-spin" />
-                            Uploading...
+                            <span className="hidden sm:inline">Uploading...</span>
+                            <span className="inline sm:hidden">Upload</span>
                           </>
                         ) : (
                           <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload CSV
+                            <Upload className="h-4 w-4 mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Upload CSV</span>
+                            <span className="inline sm:hidden">CSV</span>
                           </>
                         )}
                       </span>
@@ -1128,68 +1140,70 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   )}
 
                   {/* SKU Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Amazon SKU</th>
-                          <th className="text-left p-2">BDI SKU</th>
-                          <th className="text-left p-2">ASIN</th>
-                          <th className="text-right p-2">Fulfillable</th>
-                          <th className="text-right p-2">Reserved</th>
-                          <th className="text-right p-2">Unsellable</th>
-                          <th className="text-right p-2">Inbound</th>
-                          <th className="text-right p-2">Unit Cost</th>
-                          <th className="text-right p-2">Total Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summaryData.amazon.allSkus.map((item: any, index) => (
-                          <tr 
-                            key={index} 
-                            className={`border-b hover:bg-gray-50 ${item.hasCost ? 'bg-green-50/30' : ''}`}
-                          >
-                            <td className="p-2 font-medium">{item.sku}</td>
-                            <td className="p-2">
-                              {item.bdiSku && item.mappingStatus === 'mapped' ? (
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                                  {item.bdiSku}
-                                </Badge>
-                              ) : item.bdiSku && item.mappingStatus === 'direct_match' ? (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-                                  {item.bdiSku}
-                                </Badge>
-                              ) : item.mappingStatus === 'no_mapping' ? (
-                                <span className="text-gray-400 italic text-xs">no mappings</span>
-                              ) : (
-                                <span className="text-orange-500 italic text-xs">no SKU in DB</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-gray-600">{item.asin || '—'}</td>
-                            <td className="p-2 text-right font-medium">{formatNumber(item.fulfillableQuantity)}</td>
-                            <td className="p-2 text-right text-gray-600">{formatNumber(item.reservedQuantity)}</td>
-                            <td className="p-2 text-right text-orange-600">{formatNumber(item.unsellableQuantity)}</td>
-                            <td className="p-2 text-right text-blue-600">{formatNumber(item.inboundQuantity)}</td>
-                            <td className="p-2 text-right">
-                              {item.hasCost ? (
-                                <span className="text-green-600 font-medium">${item.standardCost.toFixed(2)}</span>
-                              ) : (
-                                <span className="text-orange-500 italic text-xs">no cost</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-right">
-                              {item.hasCost ? (
-                                <span className="text-blue-700 font-bold">
-                                  ${formatNumber(Math.round(item.totalValue))}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                            </td>
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <table className="w-full text-xs sm:text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left p-2 sm:p-3 sticky left-0 bg-gray-50 z-10">Amazon SKU</th>
+                            <th className="text-left p-2 sm:p-3 hidden md:table-cell">BDI SKU</th>
+                            <th className="text-left p-2 sm:p-3 hidden lg:table-cell">ASIN</th>
+                            <th className="text-right p-2 sm:p-3 whitespace-nowrap">Fulfill.</th>
+                            <th className="text-right p-2 sm:p-3 hidden sm:table-cell whitespace-nowrap">Reserved</th>
+                            <th className="text-right p-2 sm:p-3 hidden lg:table-cell whitespace-nowrap">Unsell.</th>
+                            <th className="text-right p-2 sm:p-3 whitespace-nowrap">Inbound</th>
+                            <th className="text-right p-2 sm:p-3 hidden md:table-cell whitespace-nowrap">Cost</th>
+                            <th className="text-right p-2 sm:p-3 whitespace-nowrap">Value</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {summaryData.amazon.allSkus.map((item: any, index) => (
+                            <tr 
+                              key={index} 
+                              className={`border-b hover:bg-gray-50 ${item.hasCost ? 'bg-green-50/30' : ''}`}
+                            >
+                              <td className="p-2 sm:p-3 font-medium sticky left-0 bg-white text-xs sm:text-sm">{item.sku}</td>
+                              <td className="p-2 sm:p-3 hidden md:table-cell">
+                                {item.bdiSku && item.mappingStatus === 'mapped' ? (
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
+                                    {item.bdiSku}
+                                  </Badge>
+                                ) : item.bdiSku && item.mappingStatus === 'direct_match' ? (
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-xs">
+                                    {item.bdiSku}
+                                  </Badge>
+                                ) : item.mappingStatus === 'no_mapping' ? (
+                                  <span className="text-gray-400 italic text-xs">no map</span>
+                                ) : (
+                                  <span className="text-orange-500 italic text-xs">no SKU</span>
+                                )}
+                              </td>
+                              <td className="p-2 sm:p-3 text-gray-600 text-xs hidden lg:table-cell">{item.asin || '—'}</td>
+                              <td className="p-2 sm:p-3 text-right font-medium">{formatNumber(item.fulfillableQuantity)}</td>
+                              <td className="p-2 sm:p-3 text-right text-gray-600 hidden sm:table-cell">{formatNumber(item.reservedQuantity)}</td>
+                              <td className="p-2 sm:p-3 text-right text-orange-600 hidden lg:table-cell">{formatNumber(item.unsellableQuantity)}</td>
+                              <td className="p-2 sm:p-3 text-right text-blue-600">{formatNumber(item.inboundQuantity)}</td>
+                              <td className="p-2 sm:p-3 text-right hidden md:table-cell">
+                                {item.hasCost ? (
+                                  <span className="text-green-600 font-medium">${item.standardCost.toFixed(2)}</span>
+                                ) : (
+                                  <span className="text-orange-500 italic text-xs">no cost</span>
+                                )}
+                              </td>
+                              <td className="p-2 sm:p-3 text-right">
+                                {item.hasCost ? (
+                                  <span className="text-blue-700 font-bold">
+                                    ${formatNumber(Math.round(item.totalValue))}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
