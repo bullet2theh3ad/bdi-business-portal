@@ -118,6 +118,28 @@ export default function SalesVelocityPage() {
         backgroundColor: '#ffffff',
         scale: 2, // Higher quality
         logging: false,
+        ignoreElements: (element) => {
+          // Skip elements that might have unsupported colors
+          return false;
+        },
+        onclone: (clonedDoc) => {
+          // Fix any oklch colors in the cloned document
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach((el: any) => {
+            const computed = window.getComputedStyle(el);
+            
+            // Replace oklch colors with fallback colors
+            if (computed.backgroundColor && computed.backgroundColor.includes('oklch')) {
+              el.style.backgroundColor = '#ffffff';
+            }
+            if (computed.color && computed.color.includes('oklch')) {
+              el.style.color = '#000000';
+            }
+            if (computed.borderColor && computed.borderColor.includes('oklch')) {
+              el.style.borderColor = '#e5e7eb';
+            }
+          });
+        }
       });
 
       // Convert to PNG and download
@@ -135,6 +157,7 @@ export default function SalesVelocityPage() {
       });
     } catch (error) {
       console.error('Error downloading chart:', error);
+      alert('Failed to download chart. Please try again.');
     }
   }
 
