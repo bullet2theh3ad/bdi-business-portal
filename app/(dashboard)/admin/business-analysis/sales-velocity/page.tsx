@@ -118,10 +118,8 @@ export default function SalesVelocityPage() {
         backgroundColor: '#ffffff',
         scale: 2, // Higher quality
         logging: false,
-        windowWidth: chartRef.current.scrollWidth + 40, // Add extra width for padding
-        windowHeight: chartRef.current.scrollHeight + 40, // Add extra height for padding
-        x: -20, // Offset to center the content
-        y: -20, // Offset to center the content
+        useCORS: true,
+        allowTaint: true,
         ignoreElements: (element) => {
           // Skip elements that might have unsupported colors
           return false;
@@ -147,7 +145,8 @@ export default function SalesVelocityPage() {
           // Add padding to the captured element
           const targetElement = clonedDoc.querySelector('[data-chart-content]');
           if (targetElement) {
-            (targetElement as HTMLElement).style.padding = '20px';
+            (targetElement as HTMLElement).style.padding = '30px';
+            (targetElement as HTMLElement).style.boxSizing = 'content-box';
           }
         }
       });
