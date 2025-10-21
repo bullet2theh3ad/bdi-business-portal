@@ -184,19 +184,42 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Get ALL WIP units for CATV data (using pagination to bypass 1000-row limit)
-    console.log('📦 Fetching all WIP units in batches...');
+    // Get the most recent import batch ID to avoid accumulating old data
+    console.log('📦 Finding most recent WIP import...');
+    const { data: latestImport } = await supabaseService
+      .from('warehouse_wip_imports')
+      .select('id')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (!latestImport) {
+      console.log('⚠️  No completed WIP imports found');
+    } else {
+      console.log(`✅ Using most recent import batch: ${latestImport.id}`);
+    }
+
+    // Get WIP units ONLY from the most recent import (using pagination to bypass 1000-row limit)
+    console.log('📦 Fetching WIP units from latest import in batches...');
     const BATCH_SIZE = 1000; // Supabase max rows per request
     let allWipUnits: any[] = [];
     let offset = 0;
     let hasMore = true;
 
     while (hasMore) {
-      const { data: batch, error } = await supabaseService
+      let query = supabaseService
         .from('warehouse_wip_units')
         .select('*')
         .range(offset, offset + BATCH_SIZE - 1)
         .order('received_date', { ascending: false });
+      
+      // Filter by most recent import batch if available
+      if (latestImport) {
+        query = query.eq('import_batch_id', latestImport.id);
+      }
+      
+      const { data: batch, error } = await query;
       
       if (error) {
         console.error('Error fetching WIP units batch:', error);
