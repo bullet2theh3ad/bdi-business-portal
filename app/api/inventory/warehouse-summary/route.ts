@@ -309,10 +309,9 @@ export async function GET(request: NextRequest) {
       avgAging: (wipUnits || []).reduce((sum: number, unit: any) => sum + (unit.aging_days || 0), 0) / (wipUnits?.length || 1),
     };
 
-    // Top EMG SKUs by quantity (will be updated with cost data later)
-    const topEmgSkus = emgInventory
+    // ALL EMG SKUs sorted by quantity (will be updated with cost data later)
+    const allEmgSkus = emgInventory
       .sort((a, b) => (b.qtyOnHand || 0) - (a.qtyOnHand || 0))
-      .slice(0, 10)
       .map(item => ({
         model: item.model,
         description: item.description,
@@ -323,10 +322,9 @@ export async function GET(request: NextRequest) {
         standardCost: 0, // Will be updated below
       }));
 
-    // Top CATV SKUs by WIP units (will be updated with cost data later)
-    const topCatvSkus = Object.entries(catvWipTotals.bySku)
+    // ALL CATV SKUs sorted by total units (will be updated with cost data later)
+    const allCatvSkus = Object.entries(catvWipTotals.bySku)
       .sort(([, a], [, b]) => (b as number) - (a as number))
-      .slice(0, 10)
       .map(([sku, count]) => ({
         sku,
         totalUnits: count,
@@ -408,8 +406,8 @@ export async function GET(request: NextRequest) {
       };
     };
     
-    // Update EMG top SKUs with BDI SKU mapping and cost data
-    topEmgSkus.forEach(item => {
+    // Update ALL EMG SKUs with BDI SKU mapping and cost data
+    allEmgSkus.forEach(item => {
       if (item.model) {
         const mappingData = getBdiSkuAndCost(item.model);
         item.hasCost = mappingData.hasCost;
@@ -420,8 +418,8 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Update CATV top SKUs with BDI SKU mapping and cost data
-    topCatvSkus.forEach(item => {
+    // Update ALL CATV SKUs with BDI SKU mapping and cost data
+    allCatvSkus.forEach(item => {
       if (item.sku) {
         const mappingData = getBdiSkuAndCost(item.sku);
         item.hasCost = mappingData.hasCost;
@@ -472,7 +470,8 @@ export async function GET(request: NextRequest) {
         emg: {
           totals: emgTotals,
           inventory: emgInventory,
-          topSkus: topEmgSkus,
+          allSkus: allEmgSkus, // All SKUs with mapping and cost data
+          topSkus: allEmgSkus.slice(0, 10), // Top 10 for charts (backward compatibility)
           lastUpdated: emgInventory.length > 0 ? emgInventory[0].lastUpdated : null,
           inventoryValue: {
             totalValue: emgTotalValue,
@@ -487,7 +486,8 @@ export async function GET(request: NextRequest) {
           metrics: catvMetrics,
           inventory: catvInventory,
           wipSummary: wipUnits || [],
-          topSkus: topCatvSkus,
+          allSkus: allCatvSkus, // All SKUs with mapping and cost data
+          topSkus: allCatvSkus.slice(0, 10), // Top 10 for charts (backward compatibility)
           lastUpdated: catvInventory.length > 0 ? catvInventory[0].lastUpdated : null,
           inventoryValue: {
             totalValue: catvTotalValue,

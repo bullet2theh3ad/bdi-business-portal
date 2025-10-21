@@ -37,6 +37,18 @@ interface WarehouseSummaryData {
       qtyBackorder: number;
       netStock: number;
     }>;
+    allSkus: Array<{
+      model: string;
+      description: string;
+      location: string;
+      qtyOnHand: number;
+      netStock: number;
+      hasCost: boolean;
+      standardCost: number;
+      bdiSku?: string;
+      mappingStatus?: 'mapped' | 'no_mapping' | 'no_sku';
+      totalValue: number;
+    }>;
     topSkus: Array<{
       model: string;
       description: string;
@@ -72,6 +84,16 @@ interface WarehouseSummaryData {
       outflow: number;
       avgAging: number;
     };
+    allSkus: Array<{
+      sku: string;
+      totalUnits: number;
+      stages: Record<string, number>;
+      hasCost: boolean;
+      standardCost: number;
+      bdiSku?: string;
+      mappingStatus?: 'mapped' | 'no_mapping' | 'no_sku';
+      totalValue: number;
+    }>;
     topSkus: Array<{
       sku: string;
       totalUnits: number;
@@ -551,7 +573,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                       </tr>
                     </thead>
                     <tbody>
-                      {summaryData.emg.topSkus.map((item: any, index) => (
+                      {summaryData.emg.allSkus.map((item: any, index) => (
                         <tr 
                           key={index} 
                           className={`border-b hover:bg-gray-50 transition-colors ${
@@ -663,7 +685,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                       </tr>
                     </thead>
                     <tbody>
-                      {summaryData.catv.topSkus.map((item: any, index) => (
+                      {summaryData.catv.allSkus.map((item: any, index) => (
                         <tr 
                           key={index} 
                           className={`border-b hover:bg-gray-50 transition-colors ${
