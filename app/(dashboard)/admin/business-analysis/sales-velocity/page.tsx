@@ -399,14 +399,19 @@ export default function SalesVelocityPage() {
                 return (
                   <div key={sku.bdiSku} className="border-b last:border-b-0 relative">
                     {/* Custom SKU Label with Units/Day */}
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[70px] text-right pr-2">
-                      <div className="font-bold text-xs leading-tight">{sku.bdiSku}</div>
-                      <div className="font-bold text-[10px] text-gray-600 leading-tight">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[150px] text-right pr-3 flex items-center justify-end gap-2">
+                      <div className="font-bold text-xs leading-tight whitespace-nowrap">{sku.bdiSku}</div>
+                      <div 
+                        className="font-bold text-xs leading-tight whitespace-nowrap"
+                        style={{
+                          color: sku.dailyVelocity < 10 ? '#ef4444' : sku.dailyVelocity < 15 ? '#eab308' : '#22c55e'
+                        }}
+                      >
                         ({sku.dailyVelocity.toFixed(1)}/day)
                       </div>
                     </div>
                     <ResponsiveContainer width="100%" height={60}>
-                      <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 80 }}>
+                      <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 160 }}>
                         <XAxis
                           type="category"
                           dataKey="weekLabel"
@@ -440,7 +445,7 @@ export default function SalesVelocityPage() {
               })}
               
               {/* Custom Week Labels - Full Control */}
-              <div className="flex items-center" style={{ marginLeft: '80px' }}>
+              <div className="flex items-center" style={{ marginLeft: '160px' }}>
                 <div className="flex-1 flex justify-between px-2">
                   {globalWeekLabels.map((weekLabel, idx) => {
                     // Show every other label for 26+ weeks to avoid crowding
