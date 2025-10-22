@@ -103,10 +103,15 @@ export async function POST(request: NextRequest) {
       console.log(`   ✓ Full sync: last 30 days`);
     }
 
-    const endDate = today;
+    // We want to sync up to today, but request through tomorrow to capture all of today's data
+    // Amazon has a reporting delay - requesting only through "today" often misses today's transactions
+    const endDate = today; // What we're logically syncing to (for record keeping)
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const apiEndDate = tomorrow; // What we request from Amazon API (to ensure we get all of today)
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
     console.log(`   📊 Sync period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]} (${daysDiff} days)`);
+    console.log(`   🔍 API request period: ${startDate.toISOString().split('T')[0]} to ${apiEndDate.toISOString().split('T')[0]} (requesting +1 day to capture today's data)`);
 
     // If no new data to sync (delta mode only), return early
     if (daysDiff <= 0 && syncType === 'delta') {
@@ -155,7 +160,8 @@ export async function POST(request: NextRequest) {
     console.log('   ✓ Check sync status via sync record ID');
 
     // Start background sync (don't await!)
-    runBackgroundSync(syncRecord.id, startDate, endDate, startTime).catch(err => {
+    // Pass apiEndDate (tomorrow) to ensure we get all of today's data
+    runBackgroundSync(syncRecord.id, startDate, apiEndDate, startTime).catch(err => {
       console.error('❌ Background sync failed:', err);
     });
 
