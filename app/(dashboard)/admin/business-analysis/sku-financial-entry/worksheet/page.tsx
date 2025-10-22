@@ -632,11 +632,11 @@ function SKUWorksheetPageContent() {
               {/* Sales Channel */}
               <div className="space-y-2">
                 <Label htmlFor="channel-select">Sales Channel *</Label>
-                {!isCustomChannel ? (
+                {!isCustomChannel && !worksheetData.channel.startsWith('Custom:') ? (
                   <Select
                     value={worksheetData.channel}
                     onValueChange={(value) => {
-                      if (value === 'custom_d2c' || value === 'custom_b2c') {
+                      if (value === 'custom_d2c' || value === 'custom_b2b') {
                         setIsCustomChannel(true);
                         setCustomChannelName('');
                         setWorksheetData(prev => ({ ...prev, channel: '' }));
@@ -663,7 +663,7 @@ function SKUWorksheetPageContent() {
                       ))}
                     </SelectContent>
                   </Select>
-                ) : (
+                ) : isCustomChannel ? (
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <Input
@@ -672,7 +672,7 @@ function SKUWorksheetPageContent() {
                         onChange={(e) => {
                           const value = e.target.value;
                           setCustomChannelName(value);
-                          setWorksheetData(prev => ({ ...prev, channel: value }));
+                          setWorksheetData(prev => ({ ...prev, channel: `Custom: ${value}` }));
                         }}
                         onFocus={(e) => e.target.select()}
                         autoFocus
@@ -694,6 +694,31 @@ function SKUWorksheetPageContent() {
                     {customChannelName && (
                       <p className="text-sm text-green-600">✓ Custom channel: {customChannelName}</p>
                     )}
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <div className="flex-1 px-3 py-2 border rounded-md bg-gray-50">
+                      {worksheetData.channel}
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setIsCustomChannel(true);
+                        setCustomChannelName(worksheetData.channel.replace('Custom: ', ''));
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setWorksheetData(prev => ({ ...prev, channel: '' }));
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
               </div>
