@@ -142,6 +142,8 @@ export default function AmazonFinancialDataPage() {
   const [password, setPassword] = useState('');
   const [dbDateRange, setDbDateRange] = useState<DBDateRange | null>(null);
   const [backfilling, setBackfilling] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string>('');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -160,6 +162,45 @@ export default function AmazonFinancialDataPage() {
       }
     } catch (error) {
       console.error('Error loading DB date range:', error);
+    }
+  }
+
+  async function handleSyncTransactions() {
+    setSyncing(true);
+    setSyncStatus('Starting sync from Amazon...');
+    
+    try {
+      const response = await fetch('/api/amazon/financial-transactions/sync', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSyncStatus(`Sync started! Processing ${data.daysSynced} days of data...`);
+        
+        // Wait a few seconds, then refresh
+        setTimeout(async () => {
+          setSyncStatus('Refreshing data...');
+          await loadFinancialData();
+          await loadDBDateRange();
+          setSyncStatus('Sync complete! ✅');
+          
+          // Clear status after 3 seconds
+          setTimeout(() => {
+            setSyncStatus('');
+          }, 3000);
+        }, 5000); // Wait 5 seconds for background sync to process
+      } else {
+        setSyncStatus(`Error: ${data.error || 'Sync failed'}`);
+        setTimeout(() => setSyncStatus(''), 5000);
+      }
+    } catch (error: any) {
+      console.error('Error syncing transactions:', error);
+      setSyncStatus(`Error: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -226,7 +267,11 @@ export default function AmazonFinancialDataPage() {
   }
 
   function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse date string directly to avoid timezone conversion issues
+    // Format: "2025-10-22" -> "Oct 22, 2025"
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // Create date in local timezone
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -658,11 +703,27 @@ export default function AmazonFinancialDataPage() {
                 Last updated: {lastRefresh.toLocaleString()}
               </p>
             )}
+            {syncStatus && (
+              <p className="text-xs font-medium text-blue-600 mt-1 flex items-center gap-1">
+                {syncing && <Loader2 className="h-3 w-3 animate-spin" />}
+                {syncStatus}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <Button onClick={loadFinancialData} disabled={loading} className="flex-1 sm:flex-none">
+            <Button 
+              onClick={handleSyncTransactions} 
+              disabled={syncing || loading} 
+              className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+            >
+              <Database className={`h-4 w-4 sm:mr-2 ${syncing ? 'animate-pulse' : ''}`} />
+              <span className="hidden sm:inline">Sync from Amazon</span>
+              <span className="sm:hidden">Sync</span>
+            </Button>
+            <Button onClick={loadFinancialData} disabled={loading || syncing} className="flex-1 sm:flex-none" variant="outline">
               <RefreshCw className={`h-4 w-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="hidden sm:inline">Refresh View</span>
+              <span className="sm:hidden">Refresh</span>
             </Button>
             <Button 
               variant="outline"

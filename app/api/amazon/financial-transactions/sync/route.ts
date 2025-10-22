@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
-import { amazonFinancialTransactionSyncs, amazonFinancialTransactions, skuMappings, productSkus, users } from '@/lib/db/schema';
+import { amazonFinancialTransactionSyncs, amazonFinancialTransactions, amazonFinancialLineItems, skuMappings, productSkus, users } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { AmazonSPAPIService, FinancialEventsParser } from '@/lib/services/amazon-sp-api';
 import { getAmazonCredentials } from '@/lib/services/amazon-sp-api/config';
@@ -413,6 +413,186 @@ async function runBackgroundSync(
     console.log(`   ⏱️  Duration: ${durationSeconds}s`);
     console.log(`   📦 Transactions stored: ${transactionsToInsert.length}`);
     console.log(`   🏷️  SKUs processed: ${skusProcessed.size}`);
+
+    // =====================================================
+    // STEP 8: Migrate New Data to Legacy Table
+    // =====================================================
+    console.log('📤 Step 6: Migrating new transactions to amazon_financial_line_items...');
+    
+    if (transactionsToInsert.length > 0) {
+      // Get the transactions we just inserted (by syncId)
+      const newTransactions = await db
+        .select()
+        .from(amazonFinancialTransactions)
+        .where(eq(amazonFinancialTransactions.syncId, syncId));
+      
+      console.log(`   📊 Found ${newTransactions.length} transactions to migrate`);
+      
+      // DEBUG: Log date range of transactions
+      const dates = newTransactions.map(t => t.postedDate).filter(Boolean);
+      if (dates.length > 0) {
+        const minDate = new Date(Math.min(...dates.map(d => new Date(d!).getTime())));
+        const maxDate = new Date(Math.max(...dates.map(d => new Date(d!).getTime())));
+        console.log(`   📅 Transaction date range: ${minDate.toISOString().split('T')[0]} to ${maxDate.toISOString().split('T')[0]}`);
+        
+        // Sort transactions by date (newest first) and show the most recent ones
+        const sortedByDate = [...newTransactions].sort((a, b) => {
+          const dateA = a.postedDate ? new Date(a.postedDate).getTime() : 0;
+          const dateB = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+          return dateB - dateA; // Descending (newest first)
+        });
+        
+        console.log(`   📋 MOST RECENT transactions (showing last 10):`);
+        sortedByDate.slice(0, 10).forEach(txn => {
+          const fullDateTime = txn.postedDate ? txn.postedDate.toISOString() : 'N/A';
+          console.log(`      - Order ${txn.orderId}: ${fullDateTime} | ${txn.sku} | Qty: ${txn.quantity}`);
+        });
+        
+        console.log(`   📋 OLDEST transactions (showing first 5 for comparison):`);
+        sortedByDate.slice(-5).forEach(txn => {
+          const fullDateTime = txn.postedDate ? txn.postedDate.toISOString() : 'N/A';
+          console.log(`      - Order ${txn.orderId}: ${fullDateTime} | ${txn.sku} | Qty: ${txn.quantity}`);
+        });
+      }
+      
+      // =====================================================
+      // CONSOLIDATE DUPLICATE TRANSACTIONS
+      // =====================================================
+      // Group by orderId + sku + postedDate and sum all amounts
+      // This prevents duplicate line items from tax/charge/refund events
+      console.log(`   🔄 Consolidating duplicate transactions...`);
+      
+      const consolidatedMap = new Map<string, typeof newTransactions[0]>();
+      
+      newTransactions.forEach(txn => {
+        const key = `${txn.orderId}_${txn.sku}_${txn.postedDate?.toISOString()}`;
+        
+        if (consolidatedMap.has(key)) {
+          // Merge with existing record - sum all monetary values
+          const existing = consolidatedMap.get(key)!;
+          existing.quantity = (existing.quantity || 0) + (txn.quantity || 0);
+          existing.itemPrice = String((Number(existing.itemPrice) || 0) + (Number(txn.itemPrice) || 0));
+          existing.shippingPrice = String((Number(existing.shippingPrice) || 0) + (Number(txn.shippingPrice) || 0));
+          existing.giftWrapPrice = String((Number(existing.giftWrapPrice) || 0) + (Number(txn.giftWrapPrice) || 0));
+          existing.itemPromotion = String((Number(existing.itemPromotion) || 0) + (Number(txn.itemPromotion) || 0));
+          existing.shippingPromotion = String((Number(existing.shippingPromotion) || 0) + (Number(txn.shippingPromotion) || 0));
+          existing.itemTax = String((Number(existing.itemTax) || 0) + (Number(txn.itemTax) || 0));
+          existing.shippingTax = String((Number(existing.shippingTax) || 0) + (Number(txn.shippingTax) || 0));
+          existing.giftWrapTax = String((Number(existing.giftWrapTax) || 0) + (Number(txn.giftWrapTax) || 0));
+          existing.commission = String((Number(existing.commission) || 0) + (Number(txn.commission) || 0));
+          existing.fbaFees = String((Number(existing.fbaFees) || 0) + (Number(txn.fbaFees) || 0));
+          existing.otherTransactionFees = String((Number(existing.otherTransactionFees) || 0) + (Number(txn.otherTransactionFees) || 0));
+          existing.totalFees = String((Number(existing.totalFees) || 0) + (Number(txn.totalFees) || 0));
+          existing.grossRevenue = String((Number(existing.grossRevenue) || 0) + (Number(txn.grossRevenue) || 0));
+          existing.netRevenue = String((Number(existing.netRevenue) || 0) + (Number(txn.netRevenue) || 0));
+          existing.totalTax = String((Number(existing.totalTax) || 0) + (Number(txn.totalTax) || 0));
+        } else {
+          // First occurrence - add to map
+          consolidatedMap.set(key, { ...txn });
+        }
+      });
+      
+      const consolidatedTransactions = Array.from(consolidatedMap.values());
+      console.log(`   ✓ Consolidated from ${newTransactions.length} to ${consolidatedTransactions.length} unique records`);
+      
+      // Convert to line items format
+      const lineItemsToInsert = consolidatedTransactions.map((txn) => ({
+        orderId: txn.orderId || 'UNKNOWN',
+        postedDate: txn.postedDate || new Date(),
+        transactionType: txn.transactionType,
+        amazonSku: txn.sku, // Map 'sku' to 'amazonSku'
+        asin: txn.asin,
+        bdiSku: txn.sku, // Use same SKU (already mapped)
+        productName: txn.productName,
+        quantity: txn.quantity || 0,
+        unitPrice: txn.unitPrice?.toString() || '0',
+        itemPrice: txn.itemPrice?.toString() || '0',
+        shippingPrice: txn.shippingPrice?.toString() || '0',
+        giftWrapPrice: txn.giftWrapPrice?.toString() || '0',
+        itemPromotion: txn.itemPromotion?.toString() || '0',
+        shippingPromotion: txn.shippingPromotion?.toString() || '0',
+        itemTax: txn.itemTax?.toString() || '0',
+        shippingTax: txn.shippingTax?.toString() || '0',
+        giftWrapTax: txn.giftWrapTax?.toString() || '0',
+        commission: txn.commission?.toString() || '0',
+        fbaFees: txn.fbaFees?.toString() || '0',
+        otherFees: txn.otherTransactionFees?.toString() || '0',
+        totalFees: txn.totalFees?.toString() || '0',
+        grossRevenue: txn.grossRevenue?.toString() || '0',
+        netRevenue: txn.netRevenue?.toString() || '0',
+        totalTax: txn.totalTax?.toString() || '0',
+        marketplaceId: txn.marketplaceId,
+        currencyCode: txn.currencyCode,
+        rawEvent: txn.rawEvent,
+      }));
+      
+      // Filter out duplicates before inserting
+      console.log(`   🔍 Checking for existing records...`);
+      
+      const existingRecords = await db
+        .select({
+          orderId: amazonFinancialLineItems.orderId,
+          postedDate: amazonFinancialLineItems.postedDate,
+          amazonSku: amazonFinancialLineItems.amazonSku,
+        })
+        .from(amazonFinancialLineItems);
+      
+      // Create a Set of unique keys for fast lookup
+      const existingKeys = new Set(
+        existingRecords.map(r => 
+          `${r.orderId}_${r.postedDate?.toISOString()}_${r.amazonSku}`
+        )
+      );
+      
+      // Filter out records that already exist
+      const newRecordsOnly = lineItemsToInsert.filter(item => {
+        const key = `${item.orderId}_${item.postedDate?.toISOString()}_${item.amazonSku}`;
+        return !existingKeys.has(key);
+      });
+      
+      const duplicatesSkipped = lineItemsToInsert.length - newRecordsOnly.length;
+      
+      if (duplicatesSkipped > 0) {
+        console.log(`   ⚠️  Skipped ${duplicatesSkipped} duplicate records`);
+      }
+      
+      console.log(`   📊 ${newRecordsOnly.length} new records to insert`);
+      
+      // DEBUG: Show dates of new records being inserted
+      if (newRecordsOnly.length > 0) {
+        const newDates = newRecordsOnly.map(r => r.postedDate).filter(Boolean);
+        if (newDates.length > 0) {
+          const minNewDate = new Date(Math.min(...newDates.map(d => new Date(d!).getTime())));
+          const maxNewDate = new Date(Math.max(...newDates.map(d => new Date(d!).getTime())));
+          console.log(`   📅 NEW records date range: ${minNewDate.toISOString().split('T')[0]} to ${maxNewDate.toISOString().split('T')[0]}`);
+          
+          // Show the new records
+          console.log(`   📋 New records being inserted:`);
+          newRecordsOnly.forEach(rec => {
+            console.log(`      - Order ${rec.orderId}: ${rec.postedDate.toISOString().split('T')[0]} | ${rec.amazonSku} | Qty: ${rec.quantity}`);
+          });
+        }
+      }
+      
+      // Insert only new records in batches
+      const batchSize = 100;
+      let migratedCount = 0;
+      
+      for (let i = 0; i < newRecordsOnly.length; i += batchSize) {
+        const batch = newRecordsOnly.slice(i, i + batchSize);
+        
+        try {
+          await db.insert(amazonFinancialLineItems).values(batch);
+          migratedCount += batch.length;
+          console.log(`   ✓ Migrated batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(newRecordsOnly.length / batchSize)}`);
+        } catch (insertError: any) {
+          console.error(`   ❌ Error migrating batch:`, insertError);
+          throw insertError; // Re-throw to be caught by outer try-catch
+        }
+      }
+      
+      console.log(`   ✅ Migration complete: ${migratedCount} new records added (${duplicatesSkipped} duplicates skipped)`);
+    }
 
   } catch (error: any) {
     console.error('❌ Background sync error:', error);

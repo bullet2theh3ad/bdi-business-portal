@@ -49,6 +49,10 @@ export async function GET() {
     const formattedEarliestDate = formatDate(earliestDate);
     const formattedLatestDate = formatDate(latestDate);
 
+    console.log(`[Date Range API] Raw dates from DB: ${earliestDate} to ${latestDate}`);
+    console.log(`[Date Range API] Formatted dates: ${formattedEarliestDate} to ${formattedLatestDate}`);
+    console.log(`[Date Range API] Total records: ${totalRecords}`);
+
     // Check for gaps in the data (dates with no records)
     const gapCheck = await db
       .select({
