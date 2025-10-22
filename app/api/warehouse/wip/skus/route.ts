@@ -44,31 +44,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get distinct SKUs (model_number field) from WIP units
-    let query = supabaseService
-      .from('warehouse_wip_units')
-      .select('model_number');
-
-    if (importBatchId) {
-      query = query.eq('import_batch_id', importBatchId);
-    }
-
-    const { data: units, error } = await query;
-
-    if (error) {
-      console.error('❌ Query error:', error);
-      throw error;
-    }
-
-    // Extract unique SKUs and sort them
-    const skuSet = new Set<string>();
-    units?.forEach((unit: any) => {
-      if (unit.model_number) {
-        skuSet.add(unit.model_number);
-      }
+    // Use database-level DISTINCT to get all unique SKUs efficiently
+    // This avoids the 1000 row limit and processes at the database level
+    let query = supabaseService.rpc('get_warehouse_wip_distinct_skus', {
+      batch_id: importBatchId || null
     });
 
-    const skuList = Array.from(skuSet).sort();
+    const { data: skuData, error } = await query;
+
+    if (error) {
+      console.error('❌ RPC error:', error);
+      // Fallback to manual method if RPC doesn't exist
+      console.log('📊 Falling back to manual SKU extraction...');
+      
+      let fallbackQuery = supabaseService
+        .from('warehouse_wip_units')
+        .select('model_number');
+
+      if (importBatchId) {
+        fallbackQuery = fallbackQuery.eq('import_batch_id', importBatchId);
+      }
+
+      // Remove limit to get all records
+      const { data: units, error: fallbackError } = await fallbackQuery.limit(50000);
+
+      if (fallbackError) {
+        throw fallbackError;
+      }
+
+      // Extract unique SKUs
+      const skuSet = new Set<string>();
+      units?.forEach((unit: any) => {
+        if (unit.model_number) {
+          skuSet.add(unit.model_number);
+        }
+      });
+
+      const skuList = Array.from(skuSet).sort();
+      console.log(`📊 Distinct SKUs from WIP data (fallback): ${skuList.length}`, skuList);
+      
+      return NextResponse.json({ skus: skuList });
+    }
+
+    // Extract SKU values from RPC result
+    const skuList = (skuData?.map((s: any) => s.model_number) || [])
+      .filter((sku: string) => sku !== null && sku !== '')
+      .sort();
 
     console.log(`📊 Distinct SKUs from WIP data: ${skuList.length}`, skuList);
 
