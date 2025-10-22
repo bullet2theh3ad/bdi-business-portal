@@ -608,9 +608,16 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
             {/* EMG Warehouse Card */}
             <Card className="border-blue-200">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
-                <CardTitle className="flex items-center text-blue-800">
-                  <Warehouse className="h-6 w-6 mr-2" />
-                  EMG Warehouse
+                <CardTitle className="flex items-center justify-between text-blue-800">
+                  <div className="flex items-center">
+                    <Warehouse className="h-6 w-6 mr-2" />
+                    EMG Warehouse
+                  </div>
+                  {(summaryData.emg as any).lastUpdated && (
+                    <span className="text-xs font-normal text-blue-600">
+                      Updated: {new Date((summaryData.emg as any).lastUpdated).toLocaleDateString()}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -654,9 +661,16 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
             {/* CATV Warehouse Card */}
             <Card className="border-green-200">
               <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
-                <CardTitle className="flex items-center text-green-800">
-                  <Warehouse className="h-6 w-6 mr-2" />
-                  CATV Warehouse
+                <CardTitle className="flex items-center justify-between text-green-800">
+                  <div className="flex items-center">
+                    <Warehouse className="h-6 w-6 mr-2" />
+                    CATV Warehouse
+                  </div>
+                  {(summaryData.catv as any).lastUpdated && (
+                    <span className="text-xs font-normal text-green-600">
+                      Updated: {new Date((summaryData.catv as any).lastUpdated).toLocaleDateString()}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -982,7 +996,14 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   <div className="h-8 w-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold">
                     A
                   </div>
-                  <span className="text-base sm:text-lg">Amazon FBA Inventory</span>
+                  <div className="flex flex-col">
+                    <span className="text-base sm:text-lg">Amazon FBA Inventory</span>
+                    {(summaryData.amazon as any).lastUpdated && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        Updated: {new Date((summaryData.amazon as any).lastUpdated).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button

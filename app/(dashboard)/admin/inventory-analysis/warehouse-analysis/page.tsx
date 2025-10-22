@@ -16,7 +16,7 @@ function WarehouseAnalysisContent() {
             <span>Warehouse Analysis</span>
           </h1>
           <p className="text-muted-foreground mt-1 sm:mt-2 text-xs sm:text-sm">
-            Complete inventory overview across all warehouses with advanced analytics
+            Comprehensive inventory overview across all warehouses
           </p>
         </div>
       </div>
@@ -29,7 +29,7 @@ function WarehouseAnalysisContent() {
             <span>Warehouse Inventory Summary</span>
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm">
-            Real-time inventory data from EMG and CATV warehouses
+            Inventory data from BDI warehouse locations
           </CardDescription>
         </CardHeader>
         <CardContent>
