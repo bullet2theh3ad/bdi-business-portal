@@ -96,6 +96,11 @@ export default function WarehouseWIPDashboard() {
     fetcher
   );
 
+  const { data: skusData } = useSWR(
+    `/api/warehouse/wip/skus?${importBatchId ? `importBatchId=${importBatchId}` : ''}`,
+    fetcher
+  );
+
   const clearFilters = () => {
     setImportBatchId('');
     setSku('');
@@ -397,11 +402,19 @@ export default function WarehouseWIPDashboard() {
 
             <div className="space-y-2">
               <Label>SKU</Label>
-              <Input
-                placeholder="Filter by SKU..."
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-              />
+              <Select value={sku || 'all'} onValueChange={(val) => setSku(val === 'all' ? '' : val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All SKUs" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All SKUs</SelectItem>
+                  {skusData?.skus?.map((skuItem: string) => (
+                    <SelectItem key={skuItem} value={skuItem}>
+                      {skuItem}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
