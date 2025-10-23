@@ -374,6 +374,7 @@ export default function SalesForecastsPage() {
         'Forecast ID': forecast.id,
         'SKU': forecast.sku?.sku || 'Unknown',
         'SKU Name': forecast.sku?.name || 'Unknown',
+        'Manufacturer': forecast.sku?.mfg || '',
         'Delivery Week': forecast.deliveryWeek,
         'Quantity': forecast.quantity,
         'Shipping Preference': forecast.shippingPreference || 'Not specified',
