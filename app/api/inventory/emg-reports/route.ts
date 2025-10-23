@@ -151,16 +151,45 @@ export async function GET(request: NextRequest) {
       console.log(`🔍 After fuzzy matching: ${currentInventory.length} current items, ${inventoryHistory.length} history items`);
     }
 
+    // Filter out items with zero inventory and sort by total quantity
+    const filteredInventory = currentInventory
+      .filter(item => {
+        const totalQty = (item.qtyOnHand || 0) + (item.qtyAllocated || 0) + (item.qtyBackorder || 0);
+        return totalQty > 0; // Only show items with actual inventory
+      })
+      .sort((a, b) => {
+        const aTotal = (a.qtyOnHand || 0) + (a.qtyAllocated || 0) + (a.qtyBackorder || 0);
+        const bTotal = (b.qtyOnHand || 0) + (b.qtyAllocated || 0) + (b.qtyBackorder || 0);
+        return bTotal - aTotal; // Sort by total quantity descending
+      });
+
+    console.log(`📊 EMG Inventory: ${currentInventory.length} total items, ${filteredInventory.length} with inventory`);
+    
+    // DEBUG: Check if MT7711-10 is in the filtered results
+    const mt7711Item = filteredInventory.find(item => item.model === 'MT7711-10');
+    if (mt7711Item) {
+      console.log(`🔍 DEBUG: MT7711-10 found in filtered inventory:`, {
+        model: mt7711Item.model,
+        qtyOnHand: mt7711Item.qtyOnHand,
+        qtyAllocated: mt7711Item.qtyAllocated,
+        qtyBackorder: mt7711Item.qtyBackorder,
+        totalQty: (mt7711Item.qtyOnHand || 0) + (mt7711Item.qtyAllocated || 0) + (mt7711Item.qtyBackorder || 0),
+        position: filteredInventory.findIndex(item => item.model === 'MT7711-10') + 1
+      });
+    } else {
+      console.log(`🔍 DEBUG: MT7711-10 NOT found in filtered inventory`);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        currentInventory,
+        currentInventory: filteredInventory,
         history: inventoryHistory,
         summary: {
-          totalSkus: currentInventory.length,
-          totalOnHand: currentInventory.reduce((sum, item) => sum + (item.qtyOnHand || 0), 0),
-          totalAllocated: currentInventory.reduce((sum, item) => sum + (item.qtyAllocated || 0), 0),
-          totalBackorder: currentInventory.reduce((sum, item) => sum + (item.qtyBackorder || 0), 0),
+          totalSkus: filteredInventory.length,
+          totalOnHand: filteredInventory.reduce((sum, item) => sum + (item.qtyOnHand || 0), 0),
+          totalAllocated: filteredInventory.reduce((sum, item) => sum + (item.qtyAllocated || 0), 0),
+          totalBackorder: filteredInventory.reduce((sum, item) => sum + (item.qtyBackorder || 0), 0),
         }
       }
     });
@@ -366,6 +395,18 @@ export async function POST(request: NextRequest) {
           console.log(`📦 Row ${i + 1} extracted data for ${skuKey}:`, extractedData);
         }
 
+        // DEBUG: Track MT7711-10 specifically
+        if (extractedData.model === 'MT7711-10' || extractedData.upc === 'MT7711-10') {
+          console.log(`🔍 DEBUG: Found MT7711-10 in CSV row ${i + 1}:`, {
+            model: extractedData.model,
+            upc: extractedData.upc,
+            qtyOnHand: extractedData.qtyOnHand,
+            qtyAllocated: extractedData.qtyAllocated,
+            netStock: extractedData.netStock,
+            skuKey: skuKey
+          });
+        }
+
         // Build additional data from remaining columns
         const additionalData: any = {};
         const mappedColumns = Object.values(columnMapping);
@@ -427,6 +468,19 @@ export async function POST(request: NextRequest) {
           });
 
           updatedRecords++;
+
+          // DEBUG: Track MT7711-10 database update
+          if (extractedData.model === 'MT7711-10' || extractedData.upc === 'MT7711-10') {
+            console.log(`🔍 DEBUG: MT7711-10 updated in database:`, {
+              id: existingRecord.id,
+              model: extractedData.model,
+              qtyOnHand: extractedData.qtyOnHand,
+              qtyAllocated: extractedData.qtyAllocated,
+              netStock: extractedData.netStock,
+              qtyChange: qtyChange,
+              changeType: changeType
+            });
+          }
         } else {
           // Create new record
           const [newRecord] = await db.insert(emgInventoryTracking).values({
@@ -460,6 +514,17 @@ export async function POST(request: NextRequest) {
           });
 
           newRecords++;
+
+          // DEBUG: Track MT7711-10 database insertion
+          if (extractedData.model === 'MT7711-10' || extractedData.upc === 'MT7711-10') {
+            console.log(`🔍 DEBUG: MT7711-10 inserted into database:`, {
+              id: newRecord.id,
+              model: newRecord.model,
+              qtyOnHand: newRecord.qtyOnHand,
+              qtyAllocated: newRecord.qtyAllocated,
+              netStock: newRecord.netStock
+            });
+          }
         }
 
         processedRecords.push({

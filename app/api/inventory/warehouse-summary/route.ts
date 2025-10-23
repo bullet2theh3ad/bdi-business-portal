@@ -322,6 +322,18 @@ export async function GET(request: NextRequest) {
         standardCost: 0, // Will be updated below
       }));
 
+    // DEBUG: Check if MT7711-10 is in the EMG inventory
+    const mt7711Item = emgInventory.find(item => item.model === 'MT7711-10');
+    if (mt7711Item) {
+      console.log(`[Warehouse Summary] DEBUG: Found MT7711-10 in EMG inventory:`, {
+        model: mt7711Item.model,
+        qtyOnHand: mt7711Item.qtyOnHand,
+        description: mt7711Item.description
+      });
+    } else {
+      console.log(`[Warehouse Summary] DEBUG: MT7711-10 NOT found in EMG inventory`);
+    }
+
     // ALL CATV SKUs sorted by total units (will be updated with cost data later)
     const allCatvSkus = Object.entries(catvWipTotals.bySku)
       .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -421,6 +433,18 @@ export async function GET(request: NextRequest) {
         (item as any).bdiSku = mappingData.bdiSku;
         (item as any).mappingStatus = mappingData.mappingStatus;
         (item as any).totalValue = (item.qtyOnHand || 0) * mappingData.standardCost;
+        
+        // DEBUG: Track MT7711-10 mapping
+        if (item.model === 'MT7711-10') {
+          console.log(`[Warehouse Summary] DEBUG: MT7711-10 mapping result:`, {
+            model: item.model,
+            qtyOnHand: item.qtyOnHand,
+            bdiSku: mappingData.bdiSku,
+            hasCost: mappingData.hasCost,
+            standardCost: mappingData.standardCost,
+            totalValue: (item as any).totalValue
+          });
+        }
       }
     });
     
@@ -565,6 +589,20 @@ export async function GET(request: NextRequest) {
       }
     } else {
       console.log('[Warehouse Summary] No Amazon inventory imports found');
+    }
+
+    // DEBUG: Check if MT7711-10 is in the final response
+    const mt7711InResponse = allEmgSkus.find(item => item.model === 'MT7711-10');
+    if (mt7711InResponse) {
+      console.log(`[Warehouse Summary] DEBUG: MT7711-10 in final response:`, {
+        model: mt7711InResponse.model,
+        qtyOnHand: mt7711InResponse.qtyOnHand,
+        hasCost: mt7711InResponse.hasCost,
+        standardCost: mt7711InResponse.standardCost,
+        bdiSku: (mt7711InResponse as any).bdiSku
+      });
+    } else {
+      console.log(`[Warehouse Summary] DEBUG: MT7711-10 NOT in final response`);
     }
 
     return NextResponse.json({

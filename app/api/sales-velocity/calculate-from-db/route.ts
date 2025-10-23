@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           ot.*,
           COALESCE(ps.sku, ot.amazon_sku) as bdi_sku
         FROM order_totals ot
-        LEFT JOIN ${skuMappings} sm ON ot.amazon_sku = sm.external_identifier AND sm.channel = 'amazon_seller_sku'
+        LEFT JOIN ${skuMappings} sm ON ot.amazon_sku = sm.external_identifier
         LEFT JOIN ${productSkus} ps ON sm.internal_sku_id = ps.id
       )
       SELECT 
