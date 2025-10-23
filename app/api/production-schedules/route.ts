@@ -1,0 +1,153 @@
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db/drizzle';
+import { productionSchedules, productSkus, shipments, purchaseOrders, users } from '@/lib/db/schema';
+import { createServerClient } from '@supabase/ssr';
+import { eq, desc, and, isNull } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+
+// GET - List all production schedules
+export async function GET(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch all production schedules with related data
+    const schedules = await db
+      .select({
+        id: productionSchedules.id,
+        skuId: productionSchedules.skuId,
+        shipmentId: productionSchedules.shipmentId,
+        purchaseOrderId: productionSchedules.purchaseOrderId,
+        quantity: productionSchedules.quantity,
+        materialArrivalDate: productionSchedules.materialArrivalDate,
+        smtDate: productionSchedules.smtDate,
+        dipDate: productionSchedules.dipDate,
+        atpBeginDate: productionSchedules.atpBeginDate,
+        atpEndDate: productionSchedules.atpEndDate,
+        obaDate: productionSchedules.obaDate,
+        exwDate: productionSchedules.exwDate,
+        notes: productionSchedules.notes,
+        status: productionSchedules.status,
+        createdBy: productionSchedules.createdBy,
+        createdAt: productionSchedules.createdAt,
+        updatedAt: productionSchedules.updatedAt,
+        // SKU data
+        sku: productSkus,
+      })
+      .from(productionSchedules)
+      .leftJoin(productSkus, eq(productionSchedules.skuId, productSkus.id))
+      .where(isNull(productionSchedules.deletedAt))
+      .orderBy(desc(productionSchedules.createdAt));
+
+    return NextResponse.json(schedules);
+  } catch (error) {
+    console.error('Error fetching production schedules:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch production schedules' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Create a new production schedule
+export async function POST(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      skuId,
+      shipmentId,
+      purchaseOrderId,
+      quantity,
+      materialArrivalDate,
+      smtDate,
+      dipDate,
+      atpBeginDate,
+      atpEndDate,
+      obaDate,
+      exwDate,
+      notes,
+      status,
+    } = body;
+
+    // Validate required fields
+    if (!skuId || quantity === undefined) {
+      return NextResponse.json(
+        { error: 'SKU and quantity are required' },
+        { status: 400 }
+      );
+    }
+
+    // Create the production schedule
+    const [newSchedule] = await db
+      .insert(productionSchedules)
+      .values({
+        skuId,
+        shipmentId: shipmentId || null,
+        purchaseOrderId: purchaseOrderId || null,
+        quantity,
+        materialArrivalDate: materialArrivalDate || null,
+        smtDate: smtDate || null,
+        dipDate: dipDate || null,
+        atpBeginDate: atpBeginDate || null,
+        atpEndDate: atpEndDate || null,
+        obaDate: obaDate || null,
+        exwDate: exwDate || null,
+        notes: notes || null,
+        status: status || 'draft',
+        createdBy: user.id,
+      })
+      .returning();
+
+    return NextResponse.json(newSchedule, { status: 201 });
+  } catch (error) {
+    console.error('Error creating production schedule:', error);
+    return NextResponse.json(
+      { error: 'Failed to create production schedule' },
+      { status: 500 }
+    );
+  }
+}
+

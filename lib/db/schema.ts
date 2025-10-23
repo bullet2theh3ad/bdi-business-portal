@@ -1995,3 +1995,40 @@ export const amazonFinancialSummaries = pgTable('amazon_financial_summaries', {
 
 export type AmazonFinancialSummary = typeof amazonFinancialSummaries.$inferSelect;
 export type NewAmazonFinancialSummary = typeof amazonFinancialSummaries.$inferInsert;
+
+// ===== PRODUCTION SCHEDULES =====
+export const productionSchedules = pgTable('production_schedules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // SKU reference
+  skuId: uuid('sku_id').notNull().references(() => productSkus.id, { onDelete: 'cascade' }),
+  
+  // Optional references to shipment and purchase order
+  shipmentId: uuid('shipment_id').references(() => shipments.id, { onDelete: 'set null' }),
+  purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'set null' }),
+  
+  // Quantity for this production schedule
+  quantity: integer('quantity').notNull().default(0),
+  
+  // Manufacturing milestone dates (from CPFR CSV export)
+  materialArrivalDate: date('material_arrival_date'),
+  smtDate: date('smt_date'),
+  dipDate: date('dip_date'),
+  atpBeginDate: date('atp_begin_date'),
+  atpEndDate: date('atp_end_date'),
+  obaDate: date('oba_date'),
+  exwDate: date('exw_date'),
+  
+  // Notes and metadata
+  notes: text('notes'),
+  status: varchar('status', { length: 50 }).default('draft'), // draft, confirmed, in_progress, completed, cancelled
+  
+  // Tracking
+  createdBy: uuid('created_by').references(() => users.authId, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export type ProductionSchedule = typeof productionSchedules.$inferSelect;
+export type NewProductionSchedule = typeof productionSchedules.$inferInsert;

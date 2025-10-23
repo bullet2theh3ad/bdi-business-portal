@@ -272,6 +272,19 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         ],
       },
       {
+        title: 'Product Analysis',
+        icon: 'supply',
+        requiresRole: ['super_admin'],
+        requiresFeatureFlag: canAccessBusinessAnalysis,
+        children: [
+          {
+            title: 'Production Schedules',
+            href: '/product-analysis/production-schedules',
+            icon: 'calendar',
+          },
+        ],
+      },
+      {
         title: 'Business Analysis',
         icon: 'analytics',
         requiresRole: ['super_admin'],
