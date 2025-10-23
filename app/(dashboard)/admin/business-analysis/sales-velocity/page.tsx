@@ -812,6 +812,18 @@ export default function SalesVelocityPage() {
                     const sortedWeeks = weeklyData.sort((a, b) => b.weekLabel.localeCompare(a.weekLabel));
                     const filteredWeeks = weeksToShow === 999 ? sortedWeeks : sortedWeeks.slice(0, weeksToShow);
                     
+                    // Calculate totals for the filtered period
+                    const filteredUnits = filteredWeeks.reduce((sum, week) => sum + week.units, 0);
+                    const filteredGrossRevenue = filteredWeeks.reduce((sum, week) => sum + week.grossRevenue, 0);
+                    const filteredNetRevenue = filteredWeeks.reduce((sum, week) => sum + week.netRevenue, 0);
+                    
+                    // Calculate days in the filtered period
+                    const allDates = new Set<string>();
+                    filteredWeeks.forEach(week => {
+                      week.dates.forEach(date => allDates.add(date));
+                    });
+                    const filteredDays = allDates.size;
+                    
                     return (
                       <React.Fragment key={sku.bdiSku}>
                         <tr className="border-b hover:bg-gray-50">
@@ -825,7 +837,7 @@ export default function SalesVelocityPage() {
                             <span className="hidden sm:inline">{calculateVelocityForPeriod(sku).toFixed(1)}/day</span>
                             <span className="inline sm:hidden">{calculateVelocityForPeriod(sku).toFixed(1)}/d</span>
                           </td>
-                          <td className="p-2 sm:p-3 text-right hidden sm:table-cell">{sku.totalUnits.toLocaleString()}</td>
+                          <td className="p-2 sm:p-3 text-right hidden sm:table-cell">{filteredUnits.toLocaleString()}</td>
                           <td className="p-2 sm:p-3 text-right text-xs sm:text-sm">
                             {(() => {
                               const warehouseQty = warehouseInventory[sku.bdiSku] || 0;
@@ -849,9 +861,9 @@ export default function SalesVelocityPage() {
                               );
                             })()}
                           </td>
-                          <td className="p-2 sm:p-3 text-right hidden md:table-cell">${sku.totalGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                          <td className="p-2 sm:p-3 text-right hidden lg:table-cell">${sku.totalNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                          <td className="p-2 sm:p-3 text-right hidden lg:table-cell">{sku.daysActive}</td>
+                          <td className="p-2 sm:p-3 text-right hidden md:table-cell">${filteredGrossRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                          <td className="p-2 sm:p-3 text-right hidden lg:table-cell">${filteredNetRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                          <td className="p-2 sm:p-3 text-right hidden lg:table-cell">{filteredDays}</td>
                           <td className="p-2 sm:p-3 text-center">
                             <Button
                               onClick={() => toggleExpanded(sku.bdiSku)}
