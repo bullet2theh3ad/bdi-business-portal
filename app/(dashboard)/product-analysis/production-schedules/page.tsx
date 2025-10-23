@@ -99,9 +99,12 @@ export default function ProductionSchedulesPage() {
     } else {
       setFilteredShipments([]);
     }
-    // Clear selected shipments when SKU changes
-    setSelectedShipments([]);
-  }, [skuShipments]);
+    // Only clear selected shipments when SKU changes if NOT editing
+    // (editing mode pre-loads selected shipments in handleEdit)
+    if (!editingSchedule) {
+      setSelectedShipments([]);
+    }
+  }, [skuShipments, editingSchedule]);
 
   // Handle shipment selection
   const toggleShipmentSelection = (shipmentId: string) => {
