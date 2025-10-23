@@ -18,7 +18,7 @@ import { db } from '@/lib/db/drizzle';
 import { 
   salesVelocityCalculations, 
   salesVelocityMetrics,
-  amazonFinancialTransactions,
+  amazonFinancialLineItems,
 } from '@/lib/db/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 
@@ -400,16 +400,16 @@ async function readSalesDataFromDB(
   date30DaysAgo: Date,
   date7DaysAgo: Date
 ): Promise<SKUSalesData[]> {
-  console.log('📖 Reading sales data from amazon_financial_transactions table...');
+  console.log('📖 Reading sales data from amazon_financial_line_items table...');
   
   // Query all transactions in the period
   const transactions = await db
     .select()
-    .from(amazonFinancialTransactions)
+    .from(amazonFinancialLineItems)
     .where(
       and(
-        gte(amazonFinancialTransactions.postedDate, periodStart),
-        lte(amazonFinancialTransactions.postedDate, periodEnd)
+        gte(amazonFinancialLineItems.postedDate, periodStart),
+        lte(amazonFinancialLineItems.postedDate, periodEnd)
       )
     );
 
@@ -419,11 +419,11 @@ async function readSalesDataFromDB(
   const skuMap = new Map<string, SKUSalesData>();
 
   for (const txn of transactions) {
-    if (!txn.sku) continue;
+    if (!txn.amazonSku) continue;
 
-    if (!skuMap.has(txn.sku)) {
-      skuMap.set(txn.sku, {
-        sku: txn.sku,
+    if (!skuMap.has(txn.amazonSku)) {
+      skuMap.set(txn.amazonSku, {
+        sku: txn.amazonSku,
         asin: txn.asin || undefined,
         productName: txn.productName || undefined,
         totalUnitsSold: 0,
@@ -441,7 +441,7 @@ async function readSalesDataFromDB(
       });
     }
 
-    const skuData = skuMap.get(txn.sku)!;
+    const skuData = skuMap.get(txn.amazonSku)!;
     const txnDate = txn.postedDate ? new Date(txn.postedDate) : null;
 
     // Only count 'sale' transactions (not refunds) for velocity

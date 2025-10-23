@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { amazonFinancialTransactions, productSkus, skuMappings } from '@/lib/db/schema';
+import { amazonFinancialLineItems, productSkus, skuMappings } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
@@ -22,19 +22,19 @@ export async function GET(request: NextRequest) {
     const dailySales = await db.execute(sql`
       WITH order_totals AS (
         SELECT 
-          ${amazonFinancialTransactions.sku} as amazon_sku,
-          DATE(${amazonFinancialTransactions.postedDate}) as sale_date,
-          ${amazonFinancialTransactions.orderId} as order_id,
-          MAX(${amazonFinancialTransactions.itemPrice}) as item_price,
-          MAX(${amazonFinancialTransactions.netRevenue}) as net_revenue
-        FROM ${amazonFinancialTransactions}
-        WHERE ${amazonFinancialTransactions.sku} IS NOT NULL 
-          AND ${amazonFinancialTransactions.transactionType} = 'sale'
-          AND ${amazonFinancialTransactions.quantity} > 0
+          ${amazonFinancialLineItems.amazonSku} as amazon_sku,
+          DATE(${amazonFinancialLineItems.postedDate}) as sale_date,
+          ${amazonFinancialLineItems.orderId} as order_id,
+          MAX(${amazonFinancialLineItems.itemPrice}) as item_price,
+          MAX(${amazonFinancialLineItems.netRevenue}) as net_revenue
+        FROM ${amazonFinancialLineItems}
+        WHERE ${amazonFinancialLineItems.amazonSku} IS NOT NULL 
+          AND ${amazonFinancialLineItems.transactionType} = 'sale'
+          AND ${amazonFinancialLineItems.quantity} > 0
         GROUP BY 
-          ${amazonFinancialTransactions.sku},
-          DATE(${amazonFinancialTransactions.postedDate}),
-          ${amazonFinancialTransactions.orderId}
+          ${amazonFinancialLineItems.amazonSku},
+          DATE(${amazonFinancialLineItems.postedDate}),
+          ${amazonFinancialLineItems.orderId}
       ),
       mapped_skus AS (
         SELECT 
