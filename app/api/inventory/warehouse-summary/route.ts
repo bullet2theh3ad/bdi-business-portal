@@ -147,6 +147,8 @@ export async function GET(request: NextRequest) {
       .from(emgInventoryTracking)
       .orderBy(desc(emgInventoryTracking.uploadDate));
 
+    // Get the most recent EMG file upload date (will be done after supabaseService is created)
+
     // Apply fuzzy matching filter for partner organizations
     if (!isBDIUser && skuPrefixes.length > 0) {
       emgInventory = emgInventory.filter((item: any) => {
@@ -171,6 +173,8 @@ export async function GET(request: NextRequest) {
       .from(catvInventoryTracking)
       .orderBy(desc(catvInventoryTracking.uploadDate));
 
+    // Get the most recent CATV file upload date (will be done after supabaseService is created)
+
     // Get CATV WIP Units Summary (from WIP flow table)
     const { createClient } = require('@supabase/supabase-js');
     const supabaseService = createClient(
@@ -189,6 +193,23 @@ export async function GET(request: NextRequest) {
     const { data: latestImport } = await supabaseService
       .from('warehouse_wip_imports')
       .select('id')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Get the most recent EMG file upload date (use last_updated from tracking table)
+    const { data: latestEmgUpload } = await supabaseService
+      .from('emg_inventory_tracking')
+      .select('last_updated')
+      .order('last_updated', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Get the most recent CATV file upload date from WIP imports (this is the correct table)
+    const { data: latestCatvUpload } = await supabaseService
+      .from('warehouse_wip_imports')
+      .select('completed_at')
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
       .limit(1)
@@ -613,7 +634,7 @@ export async function GET(request: NextRequest) {
           inventory: emgInventory,
           allSkus: allEmgSkus, // All SKUs with mapping and cost data
           topSkus: allEmgSkus.slice(0, 10), // Top 10 for charts (backward compatibility)
-          lastUpdated: emgInventory.length > 0 ? emgInventory[0].lastUpdated : null,
+          lastUpdated: latestEmgUpload?.last_updated || (emgInventory.length > 0 ? emgInventory[0].lastUpdated : null),
           inventoryValue: {
             totalValue: emgTotalValue,
             skusWithCost: emgSkusWithCost,
@@ -629,7 +650,7 @@ export async function GET(request: NextRequest) {
           wipSummary: wipUnits || [],
           allSkus: allCatvSkus, // All SKUs with mapping and cost data
           topSkus: allCatvSkus.slice(0, 10), // Top 10 for charts (backward compatibility)
-          lastUpdated: catvInventory.length > 0 ? catvInventory[0].lastUpdated : null,
+          lastUpdated: latestCatvUpload?.completed_at || (catvInventory.length > 0 ? catvInventory[0].lastUpdated : null),
           inventoryValue: {
             totalValue: catvTotalValue,
             skusWithCost: catvSkusWithCost,
@@ -655,8 +676,8 @@ export async function GET(request: NextRequest) {
           totalSkus: emgTotals.totalSkus + Object.keys(catvWipTotals.bySku).length + allAmazonSkus.length,
           totalUnits: emgTotals.totalOnHand + catvMetrics.activeWip + allAmazonSkus.reduce((sum, item) => sum + item.fulfillableQuantity, 0),
           lastUpdated: Math.max(
-            emgInventory.length > 0 ? new Date(emgInventory[0].lastUpdated || 0).getTime() : 0,
-            catvInventory.length > 0 ? new Date(catvInventory[0].lastUpdated || 0).getTime() : 0,
+            latestEmgUpload?.last_updated ? new Date(latestEmgUpload.last_updated).getTime() : 0,
+            latestCatvUpload?.completed_at ? new Date(latestCatvUpload.completed_at).getTime() : 0,
             latestAmazonImport ? new Date(latestAmazonImport.completed_at || 0).getTime() : 0
           ),
         }

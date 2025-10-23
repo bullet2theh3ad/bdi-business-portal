@@ -460,7 +460,9 @@ export default function WarehousesPage() {
         const fileInput = document.getElementById('emg-file-upload') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
       } else {
-        alert(`Upload failed: ${result.error}`);
+        // Use the detailed message if available, otherwise fall back to error
+        const errorMessage = result.message || result.error || 'Upload failed';
+        alert(`Upload failed: ${errorMessage}`);
       }
     } catch (error) {
       console.error('EMG upload error:', error);
@@ -2174,7 +2176,9 @@ export default function WarehousesPage() {
                         mutateCatvInventory(); // Refresh stored data
                         alert('CATV file uploaded successfully!');
                       } else {
-                        alert(`Upload failed: ${result.error || 'Unknown error'}`);
+                        // Use the detailed message if available, otherwise fall back to error
+                        const errorMessage = result.message || result.error || 'Unknown error';
+                        alert(`Upload failed: ${errorMessage}`);
                       }
                     } catch (error) {
                       console.error('CATV upload error:', error);

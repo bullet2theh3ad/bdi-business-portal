@@ -131,7 +131,9 @@ export default function WarehouseWIPDashboard() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Upload failed');
+        // Use the detailed message if available, otherwise fall back to error
+        const errorMessage = data.message || data.error || 'Upload failed';
+        throw new Error(errorMessage);
       }
 
       setUploadSuccess(true);

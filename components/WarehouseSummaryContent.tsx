@@ -619,7 +619,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                         Updated: {new Date((summaryData.emg as any).lastUpdated).toLocaleDateString()}
                       </span>
                     )}
-                    <span className="text-xs text-blue-500 font-medium">updated daily</span>
+                    <span className="text-xs text-blue-500 font-medium">updates: daily</span>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -675,7 +675,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                         Updated: {new Date((summaryData.catv as any).lastUpdated).toLocaleDateString()}
                       </span>
                     )}
-                    <span className="text-xs text-green-500 font-medium">updated Sunday 02:00 Eastern Time</span>
+                    <span className="text-xs text-green-500 font-medium">updates: Sunday 02:00 Eastern Time</span>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -734,7 +734,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                         Updated: {new Date((summaryData.amazon as any).lastUpdated).toLocaleDateString()}
                       </span>
                     )}
-                    <span className="text-xs text-orange-500 font-medium">updated daily</span>
+                    <span className="text-xs text-orange-500 font-medium">updates: daily</span>
                   </div>
                 </CardTitle>
               </CardHeader>

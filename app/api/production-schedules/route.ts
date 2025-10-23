@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { productionSchedules, productionScheduleShipments, productSkus, shipments, purchaseOrders, users, forecasts } from '@/lib/db/schema';
+import { productionSchedules, productionScheduleShipments, productSkus, shipments, purchaseOrders, users } from '@/lib/db/schema';
 import { createServerClient } from '@supabase/ssr';
 import { eq, desc, and, isNull, inArray } from 'drizzle-orm';
 import { cookies } from 'next/headers';
@@ -77,16 +77,9 @@ export async function GET(request: Request) {
           requestedDeliveryDate: shipments.requestedDeliveryDate,
           priority: shipments.priority,
         },
-        forecast: {
-          id: forecasts.id,
-          quantity: forecasts.quantity,
-          period: forecasts.period,
-          status: forecasts.status,
-        }
       })
       .from(productionScheduleShipments)
       .leftJoin(shipments, eq(productionScheduleShipments.shipmentId, shipments.id))
-      .leftJoin(forecasts, eq(shipments.forecastId, forecasts.id))
         .where(inArray(productionScheduleShipments.productionScheduleId, scheduleIds));
     }
 
