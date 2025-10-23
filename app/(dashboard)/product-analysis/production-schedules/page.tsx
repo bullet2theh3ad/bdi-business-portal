@@ -767,43 +767,43 @@ export default function ProductionSchedulesPage() {
                 {schedule.materialArrivalDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">Material Arrival:</span>
-                    <span className="font-medium">{new Date(schedule.materialArrivalDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.materialArrivalDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
                 {schedule.smtDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">SMT:</span>
-                    <span className="font-medium">{new Date(schedule.smtDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.smtDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
                 {schedule.dipDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">DIP:</span>
-                    <span className="font-medium">{new Date(schedule.dipDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.dipDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
                 {schedule.atpBeginDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">ATP Begin:</span>
-                    <span className="font-medium">{new Date(schedule.atpBeginDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.atpBeginDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
                 {schedule.atpEndDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">ATP End:</span>
-                    <span className="font-medium">{new Date(schedule.atpEndDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.atpEndDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
                 {schedule.obaDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">OBA:</span>
-                    <span className="font-medium">{new Date(schedule.obaDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.obaDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
                 {schedule.exwDate && (
                   <div className="text-xs flex justify-between">
                     <span className="text-gray-600">EXW:</span>
-                    <span className="font-medium">{new Date(schedule.exwDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(schedule.exwDate + 'T00:00:00').toLocaleDateString()}</span>
                   </div>
                 )}
               </div>
