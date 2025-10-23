@@ -2003,8 +2003,7 @@ export const productionSchedules = pgTable('production_schedules', {
   // SKU reference
   skuId: uuid('sku_id').notNull().references(() => productSkus.id, { onDelete: 'cascade' }),
   
-  // Optional references to shipment and purchase order
-  shipmentId: uuid('shipment_id').references(() => shipments.id, { onDelete: 'set null' }),
+  // Optional reference to purchase order (shipments now handled via junction table)
   purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'set null' }),
   
   // Quantity for this production schedule
@@ -2032,3 +2031,17 @@ export const productionSchedules = pgTable('production_schedules', {
 
 export type ProductionSchedule = typeof productionSchedules.$inferSelect;
 export type NewProductionSchedule = typeof productionSchedules.$inferInsert;
+
+// ===== PRODUCTION SCHEDULE SHIPMENTS JUNCTION TABLE =====
+export const productionScheduleShipments = pgTable('production_schedule_shipments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  productionScheduleId: uuid('production_schedule_id').notNull().references(() => productionSchedules.id, { onDelete: 'cascade' }),
+  shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate associations
+  uniqueAssociation: unique('unique_production_schedule_shipment').on(table.productionScheduleId, table.shipmentId),
+}));
+
+export type ProductionScheduleShipment = typeof productionScheduleShipments.$inferSelect;
+export type NewProductionScheduleShipment = typeof productionScheduleShipments.$inferInsert;

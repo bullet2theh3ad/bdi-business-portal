@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { productionSchedules, productSkus, shipments, purchaseOrders, users } from '@/lib/db/schema';
+import { productionSchedules, productionScheduleShipments, productSkus, shipments, purchaseOrders, users } from '@/lib/db/schema';
 import { createServerClient } from '@supabase/ssr';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 import { cookies } from 'next/headers';
@@ -36,7 +36,6 @@ export async function GET(request: Request) {
       .select({
         id: productionSchedules.id,
         skuId: productionSchedules.skuId,
-        shipmentId: productionSchedules.shipmentId,
         purchaseOrderId: productionSchedules.purchaseOrderId,
         quantity: productionSchedules.quantity,
         materialArrivalDate: productionSchedules.materialArrivalDate,
@@ -98,7 +97,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       skuId,
-      shipmentId,
+      shipmentIds, // Changed from shipmentId to shipmentIds array
       purchaseOrderId,
       quantity,
       materialArrivalDate,
@@ -125,7 +124,6 @@ export async function POST(request: Request) {
       .insert(productionSchedules)
       .values({
         skuId,
-        shipmentId: shipmentId || null,
         purchaseOrderId: purchaseOrderId || null,
         quantity,
         materialArrivalDate: materialArrivalDate || null,
@@ -140,6 +138,16 @@ export async function POST(request: Request) {
         createdBy: user.id,
       })
       .returning();
+
+    // Create shipment associations if provided
+    if (shipmentIds && Array.isArray(shipmentIds) && shipmentIds.length > 0) {
+      const shipmentAssociations = shipmentIds.map((shipmentId: string) => ({
+        productionScheduleId: newSchedule.id,
+        shipmentId,
+      }));
+
+      await db.insert(productionScheduleShipments).values(shipmentAssociations);
+    }
 
     return NextResponse.json(newSchedule, { status: 201 });
   } catch (error) {

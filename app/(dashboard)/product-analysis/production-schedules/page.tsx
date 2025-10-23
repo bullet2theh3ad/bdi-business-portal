@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import useSWR from 'swr';
 import { Calendar, Package, TrendingUp, Plus, Search, SortAsc, Factory, Truck, FileText, Edit, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -62,7 +63,6 @@ export default function ProductionSchedulesPage() {
   // Form state
   const [formData, setFormData] = useState({
     skuId: '',
-    shipmentId: '',
     purchaseOrderId: '',
     quantity: 0,
     materialArrivalDate: '',
@@ -76,11 +76,52 @@ export default function ProductionSchedulesPage() {
     status: 'draft',
   });
 
+  // Multi-shipment state
+  const [selectedShipments, setSelectedShipments] = useState<string[]>([]);
+  const [filteredShipments, setFilteredShipments] = useState<any[]>([]);
+
   // Fetch data
   const { data: schedules, mutate } = useSWR<ProductionSchedule[]>('/api/production-schedules', fetcher);
   const { data: skus } = useSWR('/api/admin/skus', fetcher);
-  const { data: shipments } = useSWR('/api/cpfr/shipments', fetcher);
+  const { data: shipments } = useSWR('/api/production-schedules/shipments', fetcher);
   const { data: purchaseOrders } = useSWR('/api/cpfr/purchase-orders', fetcher);
+
+  // Fetch filtered shipments when SKU is selected
+  const { data: skuShipments } = useSWR(
+    formData.skuId ? `/api/production-schedules/shipments?skuId=${formData.skuId}` : null,
+    fetcher
+  );
+
+  // Update filtered shipments when SKU changes
+  React.useEffect(() => {
+    if (skuShipments) {
+      setFilteredShipments(skuShipments);
+    } else {
+      setFilteredShipments([]);
+    }
+    // Clear selected shipments when SKU changes
+    setSelectedShipments([]);
+  }, [skuShipments]);
+
+  // Handle shipment selection
+  const toggleShipmentSelection = (shipmentId: string) => {
+    setSelectedShipments(prev => 
+      prev.includes(shipmentId) 
+        ? prev.filter(id => id !== shipmentId)
+        : [...prev, shipmentId]
+    );
+  };
+
+  // Remove shipment from selection
+  const removeShipment = (shipmentId: string) => {
+    setSelectedShipments(prev => prev.filter(id => id !== shipmentId));
+  };
+
+  // Calculate total selected shipment quantity
+  const totalSelectedQuantity = selectedShipments.reduce((total, shipmentId) => {
+    const shipment = filteredShipments.find(s => s.id === shipmentId);
+    return total + (shipment?.forecast?.quantity || 0);
+  }, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +137,10 @@ export default function ProductionSchedulesPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          shipmentIds: selectedShipments,
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to save production schedule');
@@ -134,7 +178,6 @@ export default function ProductionSchedulesPage() {
     setEditingSchedule(schedule);
     setFormData({
       skuId: schedule.skuId,
-      shipmentId: schedule.shipmentId || '',
       purchaseOrderId: schedule.purchaseOrderId || '',
       quantity: schedule.quantity,
       materialArrivalDate: schedule.materialArrivalDate || '',
@@ -153,7 +196,6 @@ export default function ProductionSchedulesPage() {
   const resetForm = () => {
     setFormData({
       skuId: '',
-      shipmentId: '',
       purchaseOrderId: '',
       quantity: 0,
       materialArrivalDate: '',
@@ -166,6 +208,8 @@ export default function ProductionSchedulesPage() {
       notes: '',
       status: 'draft',
     });
+    setSelectedShipments([]);
+    setFilteredShipments([]);
   };
 
   // Filter and sort schedules
@@ -269,8 +313,12 @@ export default function ProductionSchedulesPage() {
                     <Input
                       id="quantity"
                       type="number"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
+                      value={formData.quantity || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const numValue = value === '' ? 0 : parseInt(value) || 0;
+                        setFormData({ ...formData, quantity: numValue });
+                      }}
                       required
                       min="0"
                       className="text-base h-12"
@@ -279,48 +327,128 @@ export default function ProductionSchedulesPage() {
                 </div>
               </div>
 
-              {/* Shipment and PO Connections */}
+              {/* Shipment Selection - Only show if SKU is selected */}
+              {formData.skuId && (
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-4">Available Shipments for Selected SKU</h3>
+                  
+                  {filteredShipments.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      {filteredShipments.map((shipment: any) => (
+                        <Card 
+                          key={shipment.id}
+                          className={`cursor-pointer transition-all hover:shadow-md ${
+                            selectedShipments.includes(shipment.id) 
+                              ? 'border-purple-500 bg-purple-50' 
+                              : 'border-gray-200 hover:border-purple-300'
+                          }`}
+                          onClick={() => toggleShipmentSelection(shipment.id)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm mb-2">
+                                  {shipment.sku?.name || 'Unknown Product'}
+                                </div>
+                                <div className="flex gap-2 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {shipment.forecast?.quantity || 0} units
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {shipment.forecast?.delivery_week || 'No date'}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {shipment.shippingMethod || 'Standard'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="ml-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedShipments.includes(shipment.id)}
+                                  onChange={() => {}} // Handled by card onClick
+                                  className="h-4 w-4 text-purple-600"
+                                />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                      <p>No shipments found for this SKU</p>
+                    </div>
+                  )}
+
+                  {/* Selected Shipments Summary */}
+                  {selectedShipments.length > 0 && (
+                    <div className="bg-white p-4 rounded-lg border">
+                      <h4 className="font-semibold mb-3">Selected Shipments ({selectedShipments.length})</h4>
+                      <div className="space-y-2">
+                        {selectedShipments.map((shipmentId: string) => {
+                          const shipment = filteredShipments.find(s => s.id === shipmentId);
+                          return (
+                            <div key={shipmentId} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                              <span className="text-sm">
+                                {shipment?.displayName || shipment?.sku?.name || 'Unknown Shipment'}
+                              </span>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeShipment(shipmentId);
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="flex justify-between text-sm">
+                          <span>Total Selected Quantity:</span>
+                          <span className="font-semibold">{totalSelectedQuantity.toLocaleString()} units</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Production Quantity:</span>
+                          <span className="font-semibold">{formData.quantity.toLocaleString()} units</span>
+                        </div>
+                        {totalSelectedQuantity !== formData.quantity && (
+                          <div className="text-xs text-amber-600 mt-1">
+                            ⚠️ Selected shipment quantity ({totalSelectedQuantity}) differs from production quantity ({formData.quantity})
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Purchase Order Connection */}
               <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-lg mb-4">Shipment and PO Connections</h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="shipmentId" className="text-base font-semibold">Shipment</Label>
-                    <Select
-                      value={formData.shipmentId || 'none'}
-                      onValueChange={(value) => setFormData({ ...formData, shipmentId: value === 'none' ? '' : value })}
-                    >
-                      <SelectTrigger className="text-base h-12">
-                        <SelectValue placeholder="Select Shipment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {Array.isArray(shipments) && shipments.map((shipment: any) => (
-                          <SelectItem key={shipment.id} value={shipment.id}>
-                            {shipment.bdi_reference || shipment.shipment_number || shipment.id} - {shipment.status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="purchaseOrderId" className="text-base font-semibold">Purchase Order (Optional)</Label>
-                    <Select
-                      value={formData.purchaseOrderId || 'none'}
-                      onValueChange={(value) => setFormData({ ...formData, purchaseOrderId: value === 'none' ? '' : value })}
-                    >
-                      <SelectTrigger className="text-base h-12">
-                        <SelectValue placeholder="Select Purchase Order" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {purchaseOrders?.map((po: any) => (
-                          <SelectItem key={po.id} value={po.id}>
-                            {po.purchaseOrderNumber} - {po.status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <h3 className="font-semibold text-lg mb-4">Purchase Order Connection</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="purchaseOrderId" className="text-base font-semibold">Purchase Order (Optional)</Label>
+                  <Select
+                    value={formData.purchaseOrderId || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, purchaseOrderId: value === 'none' ? '' : value })}
+                  >
+                    <SelectTrigger className="text-base h-12">
+                      <SelectValue placeholder="Select Purchase Order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {purchaseOrders?.map((po: any) => (
+                        <SelectItem key={po.id} value={po.id}>
+                          {po.purchaseOrderNumber} - {po.status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

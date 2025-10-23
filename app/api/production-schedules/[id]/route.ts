@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { productionSchedules } from '@/lib/db/schema';
+import { productionSchedules, productionScheduleShipments } from '@/lib/db/schema';
 import { createServerClient } from '@supabase/ssr';
 import { eq, and, isNull } from 'drizzle-orm';
 import { cookies } from 'next/headers';
@@ -95,7 +95,7 @@ export async function PUT(
     const body = await request.json();
     const {
       skuId,
-      shipmentId,
+      shipmentIds, // Changed from shipmentId to shipmentIds array
       purchaseOrderId,
       quantity,
       materialArrivalDate,
@@ -113,7 +113,6 @@ export async function PUT(
       .update(productionSchedules)
       .set({
         skuId,
-        shipmentId: shipmentId || null,
         purchaseOrderId: purchaseOrderId || null,
         quantity,
         materialArrivalDate: materialArrivalDate || null,
@@ -134,6 +133,22 @@ export async function PUT(
         )
       )
       .returning();
+
+    // Update shipment associations
+    // First, delete existing associations
+    await db
+      .delete(productionScheduleShipments)
+      .where(eq(productionScheduleShipments.productionScheduleId, id));
+
+    // Then, create new associations if provided
+    if (shipmentIds && Array.isArray(shipmentIds) && shipmentIds.length > 0) {
+      const shipmentAssociations = shipmentIds.map((shipmentId: string) => ({
+        productionScheduleId: id,
+        shipmentId,
+      }));
+
+      await db.insert(productionScheduleShipments).values(shipmentAssociations);
+    }
 
     if (!updatedSchedule) {
       return NextResponse.json(

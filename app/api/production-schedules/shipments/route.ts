@@ -4,6 +4,9 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const skuId = searchParams.get('skuId');
+    
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,15 +31,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get shipments with their related forecast and SKU data
-    const { data: shipmentsData, error: shipmentsError } = await supabase
+    let query = supabase
       .from('shipments')
       .select(`
         id,
-        bdi_reference,
-        requested_quantity,
+        shipment_number,
         status,
-        estimated_ship_date,
-        requested_delivery_date,
+        estimated_departure,
+        estimated_arrival,
+        shipping_method,
         sales_forecasts!inner(
           id,
           sku_id,
@@ -53,6 +56,13 @@ export async function GET(request: NextRequest) {
       `)
       .order('created_at', { ascending: false });
 
+    // Filter by SKU if provided
+    if (skuId) {
+      query = query.eq('sales_forecasts.sku_id', skuId);
+    }
+
+    const { data: shipmentsData, error: shipmentsError } = await query;
+
     if (shipmentsError) {
       console.error('Error fetching shipments with forecast data:', shipmentsError);
       return NextResponse.json({ error: 'Failed to fetch shipments' }, { status: 500 });
@@ -61,17 +71,17 @@ export async function GET(request: NextRequest) {
     // Transform the data to make it easier to work with
     const transformedShipments = (shipmentsData || []).map((shipment: any) => ({
       id: shipment.id,
-      bdiReference: shipment.bdi_reference,
-      requestedQuantity: shipment.requested_quantity,
+      shipmentNumber: shipment.shipment_number,
       status: shipment.status,
-      estimatedShipDate: shipment.estimated_ship_date,
-      requestedDeliveryDate: shipment.requested_delivery_date,
+      estimatedDeparture: shipment.estimated_departure,
+      estimatedArrival: shipment.estimated_arrival,
+      shippingMethod: shipment.shipping_method,
       forecast: shipment.sales_forecasts,
       sku: shipment.sales_forecasts?.product_skus,
       // Create a human-readable display string like: "Motorola Q15 WIFI 7 Router, Single-pack - 1,020 units - 2025-W43 - AIR_14_DAYS"
       displayName: shipment.sales_forecasts?.product_skus?.name 
-        ? `${shipment.sales_forecasts.product_skus.name} - ${shipment.requested_quantity} units - ${shipment.sales_forecasts.delivery_week} - ${shipment.sales_forecasts.shipping_preference || 'STANDARD'}`
-        : shipment.bdi_reference || shipment.id
+        ? `${shipment.sales_forecasts.product_skus.name} - ${shipment.sales_forecasts.quantity} units - ${shipment.sales_forecasts.delivery_week} - ${shipment.shipping_method || 'STANDARD'}`
+        : shipment.shipment_number || shipment.id
     }));
 
     return NextResponse.json(transformedShipments);
