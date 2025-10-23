@@ -375,6 +375,13 @@ export default function SalesForecastsPage() {
         'SKU': forecast.sku?.sku || 'Unknown',
         'SKU Name': forecast.sku?.name || 'Unknown',
         'Manufacturer': forecast.sku?.mfg || '',
+        'Material Arrival': '', // To be populated later
+        'SMT': '', // To be populated later
+        'DIP': '', // To be populated later
+        'ATP Begin': '', // To be populated later
+        'ATP End': '', // To be populated later
+        'OBA': '', // To be populated later
+        'EXW': '', // To be populated later
         'Delivery Week': forecast.deliveryWeek,
         'Quantity': forecast.quantity,
         'Shipping Preference': forecast.shippingPreference || 'Not specified',
