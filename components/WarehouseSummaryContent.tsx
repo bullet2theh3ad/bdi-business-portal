@@ -604,7 +604,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
 
         <TabsContent value="overview" className="space-y-6">
           {/* Warehouse Comparison */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* EMG Warehouse Card */}
             <Card className="border-blue-200">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
@@ -613,11 +613,14 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                     <Warehouse className="h-6 w-6 mr-2" />
                     EMG Warehouse
                   </div>
-                  {(summaryData.emg as any).lastUpdated && (
-                    <span className="text-xs font-normal text-blue-600">
-                      Updated: {new Date((summaryData.emg as any).lastUpdated).toLocaleDateString()}
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end">
+                    {(summaryData.emg as any).lastUpdated && (
+                      <span className="text-xs font-normal text-blue-600">
+                        Updated: {new Date((summaryData.emg as any).lastUpdated).toLocaleDateString()}
+                      </span>
+                    )}
+                    <span className="text-xs text-blue-500 font-medium">updated daily</span>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -666,11 +669,14 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                     <Warehouse className="h-6 w-6 mr-2" />
                     CATV Warehouse
                   </div>
-                  {(summaryData.catv as any).lastUpdated && (
-                    <span className="text-xs font-normal text-green-600">
-                      Updated: {new Date((summaryData.catv as any).lastUpdated).toLocaleDateString()}
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end">
+                    {(summaryData.catv as any).lastUpdated && (
+                      <span className="text-xs font-normal text-green-600">
+                        Updated: {new Date((summaryData.catv as any).lastUpdated).toLocaleDateString()}
+                      </span>
+                    )}
+                    <span className="text-xs text-green-500 font-medium">updated Sunday 02:00 Eastern Time</span>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -708,6 +714,62 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                     </Badge>
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
                       Out: {formatNumber(summaryData.catv.metrics.outflow)}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Amazon Warehouse Card */}
+            <Card className="border-orange-200">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
+                <CardTitle className="flex items-center justify-between text-orange-800">
+                  <div className="flex items-center">
+                    <Cloud className="h-6 w-6 mr-2" />
+                    Amazon FBA
+                  </div>
+                  <div className="flex flex-col items-end">
+                    {(summaryData.amazon as any).lastUpdated && (
+                      <span className="text-xs font-normal text-orange-600">
+                        Updated: {new Date((summaryData.amazon as any).lastUpdated).toLocaleDateString()}
+                      </span>
+                    )}
+                    <span className="text-xs text-orange-500 font-medium">updated daily</span>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-orange-600">{formatNumber(summaryData.amazon?.totalSkus || 0)}</p>
+                      <p className="text-sm text-muted-foreground">SKUs</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-orange-600">{formatNumber(summaryData.amazon?.totalUnits || 0)}</p>
+                      <p className="text-sm text-muted-foreground">Total Units</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Fulfillable</span>
+                      <span className="font-medium">{formatNumber(summaryData.amazon?.allSkus?.reduce((sum: number, item: any) => sum + (item.fulfillableQuantity || 0), 0) || 0)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-orange-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${Math.min(((summaryData.amazon?.allSkus?.reduce((sum: number, item: any) => sum + (item.fulfillableQuantity || 0), 0) || 0) / (summaryData.amazon?.totalUnits || 1)) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                      Reserved: {formatNumber(summaryData.amazon?.allSkus?.reduce((sum: number, item: any) => sum + (item.reservedQuantity || 0), 0) || 0)}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Inbound: {formatNumber(summaryData.amazon?.allSkus?.reduce((sum: number, item: any) => sum + (item.inboundQuantity || 0), 0) || 0)}
                     </Badge>
                   </div>
                 </div>
