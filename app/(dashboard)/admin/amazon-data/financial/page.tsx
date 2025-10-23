@@ -347,7 +347,12 @@ export default function AmazonFinancialDataPage() {
           allSKUs: data.allSKUs || [],
           feeBreakdown: data.feeBreakdown || []
         });
-        setLastRefresh(new Date());
+        // Use the last transaction date from the database if available
+        if (data.lastTransactionDate) {
+          setLastRefresh(new Date(data.lastTransactionDate));
+        } else {
+          setLastRefresh(new Date());
+        }
       } else {
         setError(data.error || 'Failed to load financial data');
       }
@@ -696,11 +701,11 @@ export default function AmazonFinancialDataPage() {
               <span>Amazon Financial Data</span>
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
-              Real-time transaction data from Amazon SP-API
+              Amazon transaction data
             </p>
             {lastRefresh && (
               <p className="text-xs text-gray-500 mt-1">
-                Last updated: {lastRefresh.toLocaleString()}
+                Last transaction: {lastRefresh.toLocaleString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
               </p>
             )}
             {syncStatus && (

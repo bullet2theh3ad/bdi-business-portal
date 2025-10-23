@@ -166,6 +166,17 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Financial Data] Retrieved ${dbLineItems.length} line items from database`);
     
+    // Get the most recent transaction date from the database
+    const latestTransaction = await db
+      .select({
+        latestDate: sql<string>`MAX(posted_date)`,
+      })
+      .from(amazonFinancialLineItems)
+      .execute();
+    
+    const lastTransactionDate = latestTransaction[0]?.latestDate || null;
+    console.log(`[Financial Data] Last transaction date in DB: ${lastTransactionDate}`);
+    
     // =====================================================
     // CALCULATE SUMMARY FROM DB OR API
     // =====================================================
@@ -664,6 +675,7 @@ export async function POST(request: NextRequest) {
     const response: any = {
       success: true,
       dateRange: { start: startDate, end: endDate },
+      lastTransactionDate: lastTransactionDate,
       performance: {
         durationSeconds: Number(duration),
         recordsPerSecond: Number((orderIds.length / Number(duration)).toFixed(2)),
