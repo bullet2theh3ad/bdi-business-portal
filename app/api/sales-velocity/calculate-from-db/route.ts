@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { amazonFinancialLineItems, productSkus } from '@/lib/db/schema';
+import { amazonFinancialTransactions, productSkus, skuMappings } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
@@ -22,21 +22,27 @@ export async function GET(request: NextRequest) {
     const dailySales = await db.execute(sql`
       WITH order_totals AS (
         SELECT 
-          ${amazonFinancialLineItems.bdiSku} as bdi_sku,
-          ${amazonFinancialLineItems.amazonSku} as amazon_sku,
-          DATE(${amazonFinancialLineItems.postedDate}) as sale_date,
-          ${amazonFinancialLineItems.orderId} as order_id,
-          MAX(${amazonFinancialLineItems.itemPrice}) as item_price,
-          MAX(${amazonFinancialLineItems.netRevenue}) as net_revenue
-        FROM ${amazonFinancialLineItems}
-        WHERE ${amazonFinancialLineItems.bdiSku} IS NOT NULL 
-          AND ${amazonFinancialLineItems.transactionType} = 'sale'
-          AND ${amazonFinancialLineItems.quantity} > 0
+          ${amazonFinancialTransactions.sku} as amazon_sku,
+          DATE(${amazonFinancialTransactions.postedDate}) as sale_date,
+          ${amazonFinancialTransactions.orderId} as order_id,
+          MAX(${amazonFinancialTransactions.itemPrice}) as item_price,
+          MAX(${amazonFinancialTransactions.netRevenue}) as net_revenue
+        FROM ${amazonFinancialTransactions}
+        WHERE ${amazonFinancialTransactions.sku} IS NOT NULL 
+          AND ${amazonFinancialTransactions.transactionType} = 'sale'
+          AND ${amazonFinancialTransactions.quantity} > 0
         GROUP BY 
-          ${amazonFinancialLineItems.bdiSku},
-          ${amazonFinancialLineItems.amazonSku},
-          DATE(${amazonFinancialLineItems.postedDate}),
-          ${amazonFinancialLineItems.orderId}
+          ${amazonFinancialTransactions.sku},
+          DATE(${amazonFinancialTransactions.postedDate}),
+          ${amazonFinancialTransactions.orderId}
+      ),
+      mapped_skus AS (
+        SELECT 
+          ot.*,
+          COALESCE(ps.sku, ot.amazon_sku) as bdi_sku
+        FROM order_totals ot
+        LEFT JOIN ${skuMappings} sm ON ot.amazon_sku = sm.external_identifier AND sm.channel = 'amazon_seller_sku'
+        LEFT JOIN ${productSkus} ps ON sm.internal_sku_id = ps.id
       )
       SELECT 
         bdi_sku as "bdiSku",
@@ -45,7 +51,7 @@ export async function GET(request: NextRequest) {
         COUNT(*)::int as "units",
         SUM(item_price)::numeric as "grossRevenue",
         SUM(net_revenue)::numeric as "netRevenue"
-      FROM order_totals
+      FROM mapped_skus
       GROUP BY bdi_sku, amazon_sku, sale_date
       ORDER BY bdi_sku, sale_date
     `);
@@ -66,6 +72,18 @@ export async function GET(request: NextRequest) {
     dailySalesData.slice(0, 5).forEach(item => {
       console.log(`   ${item.date} | ${item.bdiSku} | ${item.amazonSku} | units: ${item.units} | gross: ${item.grossRevenue} | net: ${item.netRevenue}`);
     });
+
+    // DEBUG: Check specifically for MQ20-D80W-U
+    const mq20D80WUData = dailySalesData.filter(item => item.bdiSku === 'MQ20-D80W-U');
+    console.log(`[Sales Velocity] 🔍 MQ20-D80W-U data points: ${mq20D80WUData.length}`);
+    if (mq20D80WUData.length > 0) {
+      console.log('[Sales Velocity] ✅ MQ20-D80W-U found in sales data!');
+      mq20D80WUData.forEach(item => {
+        console.log(`   ${item.date} | ${item.bdiSku} | ${item.amazonSku} | units: ${item.units} | gross: ${item.grossRevenue} | net: ${item.netRevenue}`);
+      });
+    } else {
+      console.log('[Sales Velocity] ⚠️ MQ20-D80W-U not found in daily sales data');
+    }
 
     // Step 2: Group by BDI SKU and build daily timeline
     console.log('[Sales Velocity] Step 2: Grouping by BDI SKU...');
@@ -141,6 +159,14 @@ export async function GET(request: NextRequest) {
     velocityData.slice(0, 3).forEach((sku, i) => {
       console.log(`[Sales Velocity]   ${i + 1}. ${sku.bdiSku}: ${sku.dailyVelocity} units/day`);
     });
+
+    // DEBUG: Check if MQ20-D80W-U is in the final results
+    const mq20D80WUInResults = velocityData.find(sku => sku.bdiSku === 'MQ20-D80W-U');
+    if (mq20D80WUInResults) {
+      console.log(`[Sales Velocity] ✅ MQ20-D80W-U found in results: ${mq20D80WUInResults.totalUnits} units, ${mq20D80WUInResults.dailyVelocity} units/day`);
+    } else {
+      console.log(`[Sales Velocity] ⚠️ MQ20-D80W-U NOT found in final velocity results`);
+    }
 
     return NextResponse.json({
       success: true,
