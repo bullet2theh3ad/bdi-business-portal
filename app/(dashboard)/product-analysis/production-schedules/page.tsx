@@ -669,11 +669,19 @@ export default function ProductionSchedulesPage() {
                   <CardDescription className="mt-1">
                     {schedule.sku?.name || 'Unknown Product'}
                   </CardDescription>
-                  {/* Production Schedule Reference Number */}
-                  <div className="mt-2">
+                  {/* Badges in a horizontal row */}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                       {(schedule as any).referenceNumber || 'PS-XXXX-0000'}
                     </span>
+                    {schedule.sku?.mfg && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {schedule.sku.mfg}
+                      </span>
+                    )}
+                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
+                      {schedule.status}
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -692,16 +700,6 @@ export default function ProductionSchedulesPage() {
                     <Trash2 className="h-4 w-4 text-red-600" />
                   </Button>
                 </div>
-              </div>
-              {schedule.sku?.mfg && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {schedule.sku.mfg}
-                  </span>
-                </div>
-              )}
-              <div className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
-                {schedule.status}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">

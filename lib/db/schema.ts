@@ -915,14 +915,13 @@ export const shipments = pgTable('shipments', {
   shippingOrganizationCode: varchar('shipping_organization_code', { length: 10 }),
   
   // Shipment Details
-  requestedQuantity: integer('requested_quantity').notNull(),
   unitsPerCarton: integer('units_per_carton').default(5),
   priority: varchar('priority', { length: 20 }).default('standard'), // standard, expedited, urgent
   incoterms: varchar('incoterms', { length: 10 }).default('EXW'), // EXW, FOB, CIF, DDP
   
   // Reference Numbers
+  shipmentNumber: varchar('shipment_number', { length: 100 }).notNull(),
   shipperReference: varchar('shipper_reference', { length: 100 }),
-  bdiReference: varchar('bdi_reference', { length: 100 }),
   
   // Dates
   estimatedShipDate: date('estimated_ship_date'),
@@ -946,6 +945,22 @@ export const shipments = pgTable('shipments', {
   
   // Audit Fields
   createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Shipment Line Items - stores quantity and details for each SKU in a shipment
+export const shipmentLineItems = pgTable('shipment_line_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  skuId: uuid('sku_id').notNull().references(() => productSkus.id),
+  quantity: integer('quantity').notNull(),
+  palletCount: integer('pallet_count').notNull(),
+  weightKg: numeric('weight_kg').notNull(),
+  volumeM3: numeric('volume_m3').notNull(),
+  htsCode: varchar('hts_code', { length: 20 }),
+  unitValue: numeric('unit_value').notNull(),
+  totalValue: numeric('total_value').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
