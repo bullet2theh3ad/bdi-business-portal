@@ -263,16 +263,16 @@ export default function ProductionSchedulesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
-            <Factory className="h-8 w-8 text-white" />
+            <Factory className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Production Schedules</h1>
-            <p className="text-gray-600">Manage manufacturing timelines and milestones</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Production Schedules</h1>
+            <p className="text-sm sm:text-base text-gray-600">Manage manufacturing timelines and milestones</p>
           </div>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={(open) => {
@@ -283,26 +283,28 @@ export default function ProductionSchedulesPage() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              New Schedule
+              <span className="hidden sm:inline">New Schedule</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 rounded-none overflow-y-auto">
-            <DialogHeader className="px-8 pt-8 pb-4 border-b bg-gradient-to-r from-purple-50 to-pink-50">
-              <DialogTitle className="text-3xl font-bold">
+          <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 rounded-none flex flex-col">
+            <DialogHeader className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 border-b bg-gradient-to-r from-purple-50 to-pink-50 flex-shrink-0">
+              <DialogTitle className="text-xl sm:text-2xl lg:text-3xl font-bold">
                 {editingSchedule ? 'Edit Production Schedule' : 'Create Production Schedule'}
               </DialogTitle>
-              <DialogDescription className="text-base">
+              <DialogDescription className="text-sm sm:text-base">
                 Enter the production timeline and milestones for this SKU
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-8 p-8">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+              <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 pb-32">
               {/* SKU Selection & Basic Info */}
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-lg mb-4">Basic Information</h3>
-                <div className="grid grid-cols-4 gap-6">
-                  <div className="col-span-2 space-y-2">
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+                <h3 className="font-semibold text-base sm:text-lg mb-4">Basic Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="sm:col-span-2 space-y-2">
                     <Label htmlFor="skuId" className="text-base font-semibold">SKU *</Label>
                     <Select
                       value={formData.skuId}
@@ -342,11 +344,11 @@ export default function ProductionSchedulesPage() {
 
               {/* Shipment Selection - Only show if SKU is selected */}
               {formData.skuId && (
-                <div className="bg-blue-50 p-6 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-4">Available Shipments for Selected SKU</h3>
+                <div className="bg-blue-50 p-4 sm:p-6 rounded-lg">
+                  <h3 className="font-semibold text-base sm:text-lg mb-4">Available Shipments for Selected SKU</h3>
                   
                   {filteredShipments.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                       {filteredShipments.map((shipment: any) => (
                         <Card 
                           key={shipment.id}
@@ -466,16 +468,16 @@ export default function ProductionSchedulesPage() {
               </div>
 
               {/* Manufacturing Milestone Dates - Timeline Flow */}
-              <div className="border-t pt-6">
-                <h3 className="font-semibold text-xl mb-6 flex items-center gap-2">
-                  <Calendar className="h-6 w-6 text-purple-600" />
+              <div className="border-t pt-4 sm:pt-6">
+                <h3 className="font-semibold text-lg sm:text-xl mb-4 sm:mb-6 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                   Manufacturing Timeline
                 </h3>
                 
                 {/* Timeline Flow - Left to Right */}
                 <div className="space-y-6">
                   {/* Row 1: Material → SMT → DIP */}
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="materialArrivalDate" className="text-base font-semibold">
                         1. Material Arrival
@@ -515,7 +517,7 @@ export default function ProductionSchedulesPage() {
                   </div>
 
                   {/* Row 2: ATP Begin → ATP End → OBA */}
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="atpBeginDate" className="text-base font-semibold">
                         4. ATP Begin
@@ -558,7 +560,7 @@ export default function ProductionSchedulesPage() {
                   </div>
 
                   {/* Row 3: EXW → Status */}
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="exwDate" className="text-base font-semibold">
                         7. EXW
@@ -595,7 +597,7 @@ export default function ProductionSchedulesPage() {
               </div>
 
               {/* Notes */}
-              <div className="space-y-2 bg-gray-50 p-6 rounded-lg">
+              <div className="space-y-2 bg-gray-50 p-4 sm:p-6 rounded-lg">
                 <Label htmlFor="notes" className="text-base font-semibold">Notes</Label>
                 <Textarea
                   id="notes"
@@ -603,12 +605,13 @@ export default function ProductionSchedulesPage() {
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={4}
                   placeholder="Add any additional notes or comments..."
-                  className="text-base"
+                  className="text-sm sm:text-base"
                 />
               </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-4 pt-6 border-t sticky bottom-0 bg-white px-8 py-6 -mx-8 -mb-8">
+              </div>
+              {/* Actions - Fixed Footer */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 border-t bg-white px-4 sm:px-8 py-4 sm:py-6 sticky bottom-0 shadow-lg">
                 <Button
                   type="button"
                   variant="outline"
@@ -617,14 +620,14 @@ export default function ProductionSchedulesPage() {
                     setEditingSchedule(null);
                     resetForm();
                   }}
-                  className="h-12 px-8 text-base"
+                  className="h-10 sm:h-12 px-6 sm:px-8 text-sm sm:text-base w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 h-12 px-8 text-base"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 h-10 sm:h-12 px-6 sm:px-8 text-sm sm:text-base w-full sm:w-auto"
                 >
                   {isSubmitting ? 'Saving...' : editingSchedule ? 'Update Schedule' : 'Create Schedule'}
                 </Button>
@@ -635,18 +638,18 @@ export default function ProductionSchedulesPage() {
       </div>
 
       {/* Filters and Sort */}
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by reference number, SKU, manufacturer, shipment, or PO..."
+            placeholder="Search by reference number, SKU..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
         <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-48">
             <SortAsc className="h-4 w-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
