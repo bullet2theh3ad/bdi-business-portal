@@ -2000,6 +2000,9 @@ export type NewAmazonFinancialSummary = typeof amazonFinancialSummaries.$inferIn
 export const productionSchedules = pgTable('production_schedules', {
   id: uuid('id').primaryKey().defaultRandom(),
   
+  // Human-readable reference number (e.g., PS-2024-0001)
+  referenceNumber: varchar('reference_number', { length: 20 }),
+  
   // SKU reference
   skuId: uuid('sku_id').notNull().references(() => productSkus.id, { onDelete: 'cascade' }),
   

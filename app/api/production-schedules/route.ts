@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import { productionSchedules, productionScheduleShipments, productSkus, shipments, purchaseOrders, users } from '@/lib/db/schema';
+import { productionSchedules, productionScheduleShipments, productSkus, shipments, purchaseOrders, users, forecasts } from '@/lib/db/schema';
 import { createServerClient } from '@supabase/ssr';
-import { eq, desc, and, isNull } from 'drizzle-orm';
+import { eq, desc, and, isNull, inArray } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
 // GET - List all production schedules
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
     const schedules = await db
       .select({
         id: productionSchedules.id,
+        referenceNumber: productionSchedules.referenceNumber,
         skuId: productionSchedules.skuId,
         purchaseOrderId: productionSchedules.purchaseOrderId,
         quantity: productionSchedules.quantity,
@@ -58,7 +59,56 @@ export async function GET(request: Request) {
       .where(isNull(productionSchedules.deletedAt))
       .orderBy(desc(productionSchedules.createdAt));
 
-    return NextResponse.json(schedules);
+    // Fetch associated shipments for each production schedule
+    const scheduleIds = schedules.map(s => s.id);
+    let associatedShipments: any[] = [];
+    
+    if (scheduleIds.length > 0) {
+      associatedShipments = await db
+        .select({
+          productionScheduleId: productionScheduleShipments.productionScheduleId,
+          shipmentId: productionScheduleShipments.shipmentId,
+        shipment: {
+          id: shipments.id,
+          bdiReference: shipments.bdiReference,
+          shipperReference: shipments.shipperReference,
+          status: shipments.status,
+          estimatedShipDate: shipments.estimatedShipDate,
+          requestedDeliveryDate: shipments.requestedDeliveryDate,
+          priority: shipments.priority,
+        },
+        forecast: {
+          id: forecasts.id,
+          quantity: forecasts.quantity,
+          period: forecasts.period,
+          status: forecasts.status,
+        }
+      })
+      .from(productionScheduleShipments)
+      .leftJoin(shipments, eq(productionScheduleShipments.shipmentId, shipments.id))
+      .leftJoin(forecasts, eq(shipments.forecastId, forecasts.id))
+        .where(inArray(productionScheduleShipments.productionScheduleId, scheduleIds));
+    }
+
+    // Group shipments by production schedule
+    const shipmentsBySchedule = associatedShipments.reduce((acc, item) => {
+      const scheduleId = item.productionScheduleId;
+      if (!acc[scheduleId]) {
+        acc[scheduleId] = [];
+      }
+      acc[scheduleId].push(item);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Add shipment data to each schedule
+    const schedulesWithShipments = schedules.map(schedule => ({
+      ...schedule,
+      shipments: shipmentsBySchedule[schedule.id] || [],
+      totalShipmentQuantity: (shipmentsBySchedule[schedule.id] || [])
+        .reduce((total: number, item: any) => total + (item.forecast?.quantity || 0), 0)
+    }));
+
+    return NextResponse.json(schedulesWithShipments);
   } catch (error) {
     console.error('Error fetching production schedules:', error);
     return NextResponse.json(

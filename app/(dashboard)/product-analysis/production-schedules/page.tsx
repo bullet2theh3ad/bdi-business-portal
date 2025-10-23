@@ -174,7 +174,7 @@ export default function ProductionSchedulesPage() {
     }
   };
 
-  const handleEdit = (schedule: ProductionSchedule) => {
+  const handleEdit = (schedule: any) => {
     setEditingSchedule(schedule);
     setFormData({
       skuId: schedule.skuId,
@@ -190,6 +190,15 @@ export default function ProductionSchedulesPage() {
       notes: schedule.notes || '',
       status: schedule.status,
     });
+    
+    // Load existing shipments for this production schedule
+    if (schedule.shipments && schedule.shipments.length > 0) {
+      const existingShipmentIds = schedule.shipments.map((s: any) => s.shipmentId);
+      setSelectedShipments(existingShipmentIds);
+    } else {
+      setSelectedShipments([]);
+    }
+    
     setShowCreateDialog(true);
   };
 
@@ -217,6 +226,7 @@ export default function ProductionSchedulesPage() {
     .filter((schedule) => {
       const searchLower = searchTerm.toLowerCase();
       return (
+        (schedule as any).referenceNumber?.toLowerCase().includes(searchLower) ||
         schedule.sku?.sku?.toLowerCase().includes(searchLower) ||
         schedule.sku?.name?.toLowerCase().includes(searchLower) ||
         schedule.sku?.mfg?.toLowerCase().includes(searchLower)
@@ -626,7 +636,7 @@ export default function ProductionSchedulesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by SKU, manufacturer, shipment, or PO..."
+            placeholder="Search by reference number, SKU, manufacturer, shipment, or PO..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -659,6 +669,12 @@ export default function ProductionSchedulesPage() {
                   <CardDescription className="mt-1">
                     {schedule.sku?.name || 'Unknown Product'}
                   </CardDescription>
+                  {/* Production Schedule Reference Number */}
+                  <div className="mt-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      {(schedule as any).referenceNumber || 'PS-XXXX-0000'}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -689,18 +705,54 @@ export default function ProductionSchedulesPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Quantity */}
+              {/* Production Quantity */}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Quantity:</span>
+                <span className="text-gray-600">Production Quantity:</span>
                 <span className="font-semibold">{schedule.quantity.toLocaleString()} units</span>
               </div>
 
-              {/* Linked Shipment/PO IDs */}
-              {schedule.shipmentId && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Truck className="h-4 w-4 text-blue-600" />
-                  <span className="text-gray-600">Shipment ID:</span>
-                  <span className="font-medium text-xs">{schedule.shipmentId.slice(0, 8)}...</span>
+              {/* Shipment Quantity */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Shipment Quantity:</span>
+                <span className="font-semibold text-blue-600">
+                  {(schedule as any).totalShipmentQuantity?.toLocaleString() || '0'} units
+                </span>
+              </div>
+
+              {/* Shipment Count */}
+              {(schedule as any).shipments?.length > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Associated Shipments:</span>
+                  <span className="font-semibold text-purple-600">
+                    {(schedule as any).shipments.length} shipment{(schedule as any).shipments.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+
+              {/* Associated Shipments Display */}
+              {(schedule as any).shipments?.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Truck className="h-4 w-4 text-blue-600" />
+                    <span className="text-gray-600">Shipments:</span>
+                  </div>
+                  <div className="ml-6 space-y-1">
+                    {(schedule as any).shipments.slice(0, 3).map((shipment: any, index: number) => (
+                      <div key={index} className="text-xs flex justify-between">
+                        <span className="text-gray-600">
+                          {shipment.shipment?.bdiReference || shipment.shipment?.shipperReference || shipment.shipmentId?.slice(0, 8) || 'Unknown'}
+                        </span>
+                        <span className="font-medium text-blue-600">
+                          {shipment.forecast?.quantity || shipment.shipment?.requestedQuantity || 0} units
+                        </span>
+                      </div>
+                    ))}
+                    {(schedule as any).shipments.length > 3 && (
+                      <div className="text-xs text-gray-500">
+                        +{(schedule as any).shipments.length - 3} more shipment{(schedule as any).shipments.length - 3 !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               {schedule.purchaseOrderId && (
