@@ -279,12 +279,12 @@ export default function ProductionSchedulesPage() {
                 </div>
               </div>
 
-              {/* Optional References */}
+              {/* Shipment and PO Connections */}
               <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-lg mb-4">Optional References</h3>
+                <h3 className="font-semibold text-lg mb-4">Shipment and PO Connections</h3>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="shipmentId" className="text-base font-semibold">Shipment (Optional)</Label>
+                    <Label htmlFor="shipmentId" className="text-base font-semibold">Shipment</Label>
                     <Select
                       value={formData.shipmentId || 'none'}
                       onValueChange={(value) => setFormData({ ...formData, shipmentId: value === 'none' ? '' : value })}
@@ -294,9 +294,9 @@ export default function ProductionSchedulesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {shipments?.map((shipment: any) => (
+                        {Array.isArray(shipments) && shipments.map((shipment: any) => (
                           <SelectItem key={shipment.id} value={shipment.id}>
-                            {shipment.bdiReference || shipment.id} - {shipment.status}
+                            {shipment.bdi_reference || shipment.shipment_number || shipment.id} - {shipment.status}
                           </SelectItem>
                         ))}
                       </SelectContent>
