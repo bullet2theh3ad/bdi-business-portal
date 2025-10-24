@@ -71,12 +71,12 @@ export default function RMAAnalyticsPage() {
         {/* Import Batch Filter */}
         {importsData?.imports && importsData.imports.length > 0 && (
           <div className="w-full sm:w-64">
-            <Select value={importBatchId} onValueChange={setImportBatchId}>
+            <Select value={importBatchId || 'latest'} onValueChange={(val) => setImportBatchId(val === 'latest' ? '' : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="All Imports (Latest)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Imports (Latest)</SelectItem>
+                <SelectItem value="latest">All Imports (Latest)</SelectItem>
                 {importsData.imports.map((imp: any) => (
                   <SelectItem key={imp.id} value={imp.id}>
                     {new Date(imp.completed_at).toLocaleDateString()} - {imp.file_name}
