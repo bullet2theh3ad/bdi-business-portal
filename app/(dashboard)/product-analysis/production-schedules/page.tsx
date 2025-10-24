@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
-import { Calendar, Package, TrendingUp, Plus, Search, SortAsc, Factory, Truck, FileText, Edit, Trash2, X } from 'lucide-react';
+import { Calendar, Package, TrendingUp, Plus, Search, SortAsc, Factory, Truck, FileText, Edit, Trash2, X, Grid3x3, List, Download } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +59,7 @@ export default function ProductionSchedulesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -222,6 +223,71 @@ export default function ProductionSchedulesPage() {
     });
     setSelectedShipments([]);
     setFilteredShipments([]);
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    if (!filteredAndSortedSchedules || filteredAndSortedSchedules.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      'Reference Number',
+      'SKU',
+      'Product Name',
+      'Manufacturer',
+      'Quantity',
+      'Shipment Quantity',
+      'Status',
+      'Material Arrival',
+      'SMT Date',
+      'DIP Date',
+      'ATP Begin',
+      'ATP End',
+      'OBA Date',
+      'EXW Date',
+      'Notes'
+    ];
+
+    // Create CSV rows
+    const rows = filteredAndSortedSchedules.map((schedule: any) => [
+      schedule.referenceNumber || '',
+      schedule.sku?.sku || '',
+      schedule.sku?.name || '',
+      schedule.sku?.mfg || '',
+      schedule.quantity || 0,
+      schedule.shipmentQuantity || 0,
+      schedule.status || '',
+      schedule.materialArrivalDate || '',
+      schedule.smtDate || '',
+      schedule.dipDate || '',
+      schedule.atpBeginDate || '',
+      schedule.atpEndDate || '',
+      schedule.obaDate || '',
+      schedule.exwDate || '',
+      (schedule.notes || '').replace(/,/g, ';').replace(/\n/g, ' ')
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row: any[]) => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `production-schedules-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Filter and sort schedules
@@ -659,12 +725,47 @@ export default function ProductionSchedulesPage() {
             <SelectItem value="manufacturer">Sort by Manufacturer</SelectItem>
           </SelectContent>
         </Select>
+        
+        {/* View Toggle */}
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+            className="gap-2"
+          >
+            <Grid3x3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Grid</span>
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+            className="gap-2"
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">List</span>
+          </Button>
+        </div>
+
+        {/* Export Button */}
+        <Button
+          onClick={exportToCSV}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={filteredAndSortedSchedules.length === 0}
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Export CSV</span>
+          <span className="sm:hidden">Export</span>
+        </Button>
       </div>
 
-      {/* Production Schedule Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Production Schedule Cards/List */}
+      <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
         {filteredAndSortedSchedules.map((schedule) => (
-          <Card key={schedule.id} className="hover:shadow-lg transition-shadow">
+          <Card key={schedule.id} className={`hover:shadow-lg transition-shadow ${viewMode === 'list' ? 'flex flex-col sm:flex-row' : ''}`}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
