@@ -94,6 +94,11 @@ export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
         
         // Use RMA column if available, otherwise fall back to source detection
         const isRma = isRmaFromColumn || isRmaFromSource;
+        
+        // Debug RMA detection for first few rows
+        if (index < 5 || isRma) {
+          console.log(`🔍 Row ${index + 2}: Serial=${serialNumber}, Model=${modelNumber}, RMA/Seed Stock=${rmaValue}, isRma=${isRma}`);
+        }
         const isCatvIntake = sourceLower.includes('catv');
         
         // Parse dates
@@ -147,7 +152,17 @@ export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
     // Filter out null entries
     const validUnits = units.filter(u => u !== null) as Partial<WIPUnit>[];
     
+    // Count RMA units for debugging
+    const rmaUnits = validUnits.filter(u => u.isRma);
+    const rmaByModel = rmaUnits.reduce((acc, unit) => {
+      const model = unit.modelNumber || 'Unknown';
+      acc[model] = (acc[model] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
     console.log(`✅ Successfully parsed ${validUnits.length} units from Raw Data`);
+    console.log(`🔴 RMA Units Found: ${rmaUnits.length} total`);
+    console.log(`📊 RMA Units by Model:`, rmaByModel);
     return validUnits;
     
   } catch (error) {

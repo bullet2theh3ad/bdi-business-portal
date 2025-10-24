@@ -322,7 +322,7 @@ export default function WarehouseWIPDashboard() {
                 />
               </div>
               <Button
-                onClick={handleFileUpload}
+                onClick={() => handleFileUpload(false)}
                 disabled={!file || uploading}
                 className="gap-2"
               >
