@@ -18,7 +18,10 @@ import {
   Truck,
   Eye,
   Landmark,
-  Wallet
+  Wallet,
+  FileSearch,
+  BookOpen,
+  Layers
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -117,6 +120,27 @@ const dataCategories: DataCategory[] = [
     color: 'slate',
     description: 'View all QuickBooks bill payments'
   },
+  {
+    title: 'Estimates',
+    icon: <FileSearch className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/estimates',
+    color: 'violet',
+    description: 'View all QuickBooks estimates/quotes'
+  },
+  {
+    title: 'Journal Entries',
+    icon: <BookOpen className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/journal-entries',
+    color: 'amber',
+    description: 'View all QuickBooks journal entries'
+  },
+  {
+    title: 'Accounts',
+    icon: <Layers className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/accounts',
+    color: 'lime',
+    description: 'View Chart of Accounts'
+  },
 ];
 
 const colorClasses: Record<string, { bg: string; text: string; hover: string; border: string }> = {
@@ -127,6 +151,9 @@ const colorClasses: Record<string, { bg: string; text: string; hover: string; bo
   orange: { bg: 'bg-orange-50', text: 'text-orange-700', hover: 'hover:bg-orange-100', border: 'border-orange-200' },
   teal: { bg: 'bg-teal-50', text: 'text-teal-700', hover: 'hover:bg-teal-100', border: 'border-teal-200' },
   indigo: { bg: 'bg-indigo-50', text: 'text-indigo-700', hover: 'hover:bg-indigo-100', border: 'border-indigo-200' },
+  violet: { bg: 'bg-violet-50', text: 'text-violet-700', hover: 'hover:bg-violet-100', border: 'border-violet-200' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-700', hover: 'hover:bg-amber-100', border: 'border-amber-200' },
+  lime: { bg: 'bg-lime-50', text: 'text-lime-700', hover: 'hover:bg-lime-100', border: 'border-lime-200' },
   pink: { bg: 'bg-pink-50', text: 'text-pink-700', hover: 'hover:bg-pink-100', border: 'border-pink-200' },
   yellow: { bg: 'bg-yellow-50', text: 'text-yellow-700', hover: 'hover:bg-yellow-100', border: 'border-yellow-200' },
   cyan: { bg: 'bg-cyan-50', text: 'text-cyan-700', hover: 'hover:bg-cyan-100', border: 'border-cyan-200' },

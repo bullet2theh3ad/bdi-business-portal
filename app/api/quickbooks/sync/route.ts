@@ -1651,16 +1651,310 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${billPaymentCount} bill payments (${billPaymentsCreated} created, ${billPaymentsUpdated} updated)`);
 
+      // =============================================
+      // Phase 14: Estimates Sync
+      // =============================================
+      console.log('📥 Fetching estimates from QuickBooks...');
+      let allEstimates: any[] = [];
+      startPosition = 1;
+      const maxEstimatesPerQuery = 1000;
+      let estimatesFetched = 0;
+      let estimateCount = 0;
+      let estimatesCreated = 0;
+      let estimatesUpdated = 0;
+
+      while (true) {
+        const estimatesQuery = `SELECT * FROM Estimate ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxEstimatesPerQuery}`;
+        
+        const estimatesResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(estimatesQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!estimatesResponse.ok) {
+          console.error('QuickBooks API Error fetching estimates');
+          break;
+        }
+
+        const estimatesData = await estimatesResponse.json();
+        const estimatesBatch = estimatesData?.QueryResponse?.Estimate || [];
+        
+        if (estimatesBatch.length === 0) break;
+        
+        allEstimates = allEstimates.concat(estimatesBatch);
+        estimatesFetched += estimatesBatch.length;
+        
+        if (estimatesBatch.length < maxEstimatesPerQuery) break;
+        startPosition += maxEstimatesPerQuery;
+      }
+
+      console.log(`📦 Fetched ${estimatesFetched} estimates from QuickBooks`);
+
+      for (const estimate of allEstimates) {
+        try {
+          const estimateData = {
+            connection_id: connection.id,
+            qb_estimate_id: estimate.Id,
+            qb_sync_token: estimate.SyncToken,
+            qb_doc_number: estimate.DocNumber || null,
+            qb_customer_id: estimate.CustomerRef?.value || null,
+            customer_name: estimate.CustomerRef?.name || null,
+            txn_date: estimate.TxnDate || null,
+            expiration_date: estimate.ExpirationDate || null,
+            accepted_date: estimate.AcceptedDate || null,
+            total_amount: estimate.TotalAmt || 0,
+            currency_code: estimate.CurrencyRef?.value || 'USD',
+            status: estimate.TxnStatus || null,
+            email_status: estimate.EmailStatus || null,
+            print_status: estimate.PrintStatus || null,
+            bill_email: estimate.BillEmail?.Address || null,
+            billing_address: estimate.BillAddr ? JSON.stringify(estimate.BillAddr) : null,
+            shipping_address: estimate.ShipAddr ? JSON.stringify(estimate.ShipAddr) : null,
+            customer_memo: estimate.CustomerMemo?.value || null,
+            private_note: estimate.PrivateNote || null,
+            line_items: estimate.Line ? JSON.stringify(estimate.Line) : null,
+            full_data: estimate,
+            qb_created_at: estimate.MetaData?.CreateTime || null,
+            qb_updated_at: estimate.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_estimates')
+            .upsert(estimateData, {
+              onConflict: 'connection_id,qb_estimate_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting estimate ${estimate.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            estimatesCreated++;
+          } else {
+            estimatesUpdated++;
+          }
+
+          estimateCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting estimate ${estimate.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${estimateCount} estimates (${estimatesCreated} created, ${estimatesUpdated} updated)`);
+
+      // =============================================
+      // Phase 15: Journal Entries Sync
+      // =============================================
+      console.log('📥 Fetching journal entries from QuickBooks...');
+      let allJournalEntries: any[] = [];
+      startPosition = 1;
+      const maxJournalEntriesPerQuery = 1000;
+      let journalEntriesFetched = 0;
+      let journalEntryCount = 0;
+      let journalEntriesCreated = 0;
+      let journalEntriesUpdated = 0;
+
+      while (true) {
+        const journalEntriesQuery = `SELECT * FROM JournalEntry ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxJournalEntriesPerQuery}`;
+        
+        const journalEntriesResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(journalEntriesQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!journalEntriesResponse.ok) {
+          console.error('QuickBooks API Error fetching journal entries');
+          break;
+        }
+
+        const journalEntriesData = await journalEntriesResponse.json();
+        const journalEntriesBatch = journalEntriesData?.QueryResponse?.JournalEntry || [];
+        
+        if (journalEntriesBatch.length === 0) break;
+        
+        allJournalEntries = allJournalEntries.concat(journalEntriesBatch);
+        journalEntriesFetched += journalEntriesBatch.length;
+        
+        if (journalEntriesBatch.length < maxJournalEntriesPerQuery) break;
+        startPosition += maxJournalEntriesPerQuery;
+      }
+
+      console.log(`📦 Fetched ${journalEntriesFetched} journal entries from QuickBooks`);
+
+      for (const journalEntry of allJournalEntries) {
+        try {
+          const journalEntryData = {
+            connection_id: connection.id,
+            qb_journal_entry_id: journalEntry.Id,
+            qb_sync_token: journalEntry.SyncToken,
+            qb_doc_number: journalEntry.DocNumber || null,
+            txn_date: journalEntry.TxnDate || null,
+            total_amount: journalEntry.TotalAmt || 0,
+            currency_code: journalEntry.CurrencyRef?.value || 'USD',
+            adjustment: journalEntry.Adjustment || false,
+            private_note: journalEntry.PrivateNote || null,
+            line_items: journalEntry.Line ? JSON.stringify(journalEntry.Line) : null,
+            full_data: journalEntry,
+            qb_created_at: journalEntry.MetaData?.CreateTime || null,
+            qb_updated_at: journalEntry.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_journal_entries')
+            .upsert(journalEntryData, {
+              onConflict: 'connection_id,qb_journal_entry_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting journal entry ${journalEntry.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            journalEntriesCreated++;
+          } else {
+            journalEntriesUpdated++;
+          }
+
+          journalEntryCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting journal entry ${journalEntry.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${journalEntryCount} journal entries (${journalEntriesCreated} created, ${journalEntriesUpdated} updated)`);
+
+      // =============================================
+      // Phase 16: Accounts Sync (Chart of Accounts)
+      // =============================================
+      console.log('📥 Fetching accounts from QuickBooks...');
+      let allAccounts: any[] = [];
+      startPosition = 1;
+      const maxAccountsPerQuery = 1000;
+      let accountsFetched = 0;
+      let accountCount = 0;
+      let accountsCreated = 0;
+      let accountsUpdated = 0;
+
+      while (true) {
+        // Get both active and inactive accounts
+        let accountsQuery = 'SELECT * FROM Account WHERE Active IN (true, false)';
+        if (deltaQuery) {
+          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
+          accountsQuery += ` ${deltaCondition}`;
+        }
+        accountsQuery += ` STARTPOSITION ${startPosition} MAXRESULTS ${maxAccountsPerQuery}`;
+        
+        const accountsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(accountsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!accountsResponse.ok) {
+          console.error('QuickBooks API Error fetching accounts');
+          break;
+        }
+
+        const accountsData = await accountsResponse.json();
+        const accountsBatch = accountsData?.QueryResponse?.Account || [];
+        
+        if (accountsBatch.length === 0) break;
+        
+        allAccounts = allAccounts.concat(accountsBatch);
+        accountsFetched += accountsBatch.length;
+        
+        if (accountsBatch.length < maxAccountsPerQuery) break;
+        startPosition += maxAccountsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${accountsFetched} accounts from QuickBooks`);
+
+      for (const account of allAccounts) {
+        try {
+          const accountData = {
+            connection_id: connection.id,
+            qb_account_id: account.Id,
+            qb_sync_token: account.SyncToken,
+            name: account.Name,
+            fully_qualified_name: account.FullyQualifiedName || null,
+            account_number: account.AcctNum || null,
+            account_type: account.AccountType || null,
+            account_sub_type: account.AccountSubType || null,
+            classification: account.Classification || null,
+            parent_ref: account.ParentRef?.value || null,
+            sub_account: account.SubAccount || false,
+            account_level: account.Level || 0,
+            current_balance: account.CurrentBalance || 0,
+            current_balance_with_sub_accounts: account.CurrentBalanceWithSubAccounts || 0,
+            currency_code: account.CurrencyRef?.value || 'USD',
+            is_active: account.Active !== false,
+            description: account.Description || null,
+            tax_code_ref: account.TaxCodeRef?.value || null,
+            full_data: account,
+            qb_created_at: account.MetaData?.CreateTime || null,
+            qb_updated_at: account.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_accounts')
+            .upsert(accountData, {
+              onConflict: 'connection_id,qb_account_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting account ${account.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            accountsCreated++;
+          } else {
+            accountsUpdated++;
+          }
+
+          accountCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting account ${account.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${accountCount} accounts (${accountsCreated} created, ${accountsUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + expenseEntityCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + expenseEntityCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount + estimateCount + journalEntryCount + accountCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched + salesReceiptsFetched + creditMemosFetched + posFetched,
-            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated + salesReceiptsCreated + creditMemosCreated + posCreated,
-            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated + salesReceiptsUpdated + creditMemosUpdated + posUpdated,
+            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched + salesReceiptsFetched + creditMemosFetched + posFetched + depositsFetched + billPaymentsFetched + estimatesFetched + journalEntriesFetched + accountsFetched,
+            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated + salesReceiptsCreated + creditMemosCreated + posCreated + depositsCreated + billPaymentsCreated + estimatesCreated + journalEntriesCreated + accountsCreated,
+            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated + salesReceiptsUpdated + creditMemosUpdated + posUpdated + depositsUpdated + billPaymentsUpdated + estimatesUpdated + journalEntriesUpdated + accountsUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -1761,6 +2055,31 @@ export async function POST(request: NextRequest) {
             fetched: posFetched,
             created: posCreated,
             updated: posUpdated,
+          },
+          deposits: {
+            fetched: depositsFetched,
+            created: depositsCreated,
+            updated: depositsUpdated,
+          },
+          billPayments: {
+            fetched: billPaymentsFetched,
+            created: billPaymentsCreated,
+            updated: billPaymentsUpdated,
+          },
+          estimates: {
+            fetched: estimatesFetched,
+            created: estimatesCreated,
+            updated: estimatesUpdated,
+          },
+          journalEntries: {
+            fetched: journalEntriesFetched,
+            created: journalEntriesCreated,
+            updated: journalEntriesUpdated,
+          },
+          accounts: {
+            fetched: accountsFetched,
+            created: accountsCreated,
+            updated: accountsUpdated,
           },
         },
       });
