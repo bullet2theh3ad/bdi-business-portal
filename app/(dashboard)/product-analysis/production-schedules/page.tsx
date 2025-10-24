@@ -933,15 +933,15 @@ export default function ProductionSchedulesPage() {
           {filteredAndSortedSchedules.map((schedule) => (
             <Card key={schedule.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-3 sm:p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 sm:gap-6">
                   {/* PS Reference Number */}
-                  <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-800">
+                  <div className="flex-shrink-0 w-24 sm:w-28">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-800 whitespace-nowrap">
                       {(schedule as any).referenceNumber || 'PS-XXXX-0000'}
                     </span>
                   </div>
 
-                  {/* SKU */}
+                  {/* SKU & Product Name */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-purple-600 flex-shrink-0" />
@@ -957,38 +957,37 @@ export default function ProductionSchedulesPage() {
                   </div>
 
                   {/* Manufacturer */}
-                  {schedule.sku?.mfg && (
-                    <div className="hidden md:block flex-shrink-0">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                  <div className="hidden lg:flex flex-shrink-0 w-20">
+                    {schedule.sku?.mfg && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 whitespace-nowrap">
                         {schedule.sku.mfg}
                       </span>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Quantity */}
-                  <div className="flex-shrink-0">
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {schedule.quantity.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500">units</p>
-                    </div>
+                  <div className="flex-shrink-0 w-20 sm:w-24 text-right">
+                    <p className="text-base font-bold text-gray-900">
+                      {schedule.quantity.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">units</p>
                   </div>
 
                   {/* Status */}
-                  <div className="hidden sm:block flex-shrink-0">
-                    <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
-                      {schedule.status}
+                  <div className="hidden sm:flex flex-shrink-0 w-28 justify-center">
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(schedule.status)}`}>
+                      {schedule.status.replace('_', ' ')}
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => handleEdit(schedule)}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 hover:bg-purple-50"
+                      title="Edit"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -997,6 +996,7 @@ export default function ProductionSchedulesPage() {
                       variant="ghost"
                       onClick={() => handleDelete(schedule.id)}
                       className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
