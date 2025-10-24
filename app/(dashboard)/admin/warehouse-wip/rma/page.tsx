@@ -5,11 +5,13 @@ import useSWR from 'swr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Package,
   AlertTriangle,
   TrendingUp,
   Loader2,
+  Download,
 } from 'lucide-react';
 import {
   BarChart,
@@ -31,6 +33,39 @@ const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e'
 
 export default function RMAAnalyticsPage() {
   const [importBatchId, setImportBatchId] = useState<string>('');
+
+  // Export RMA inventory to CSV
+  const exportToCSV = () => {
+    if (!rmaData?.bySku || rmaData.bySku.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['SKU', 'Quantity'];
+    const rows = rmaData.bySku.map((item: any) => [
+      item.sku,
+      item.count
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row: any[]) => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `rma-inventory-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Fetch RMA data
   const { data: rmaData, isLoading } = useSWR(
@@ -196,8 +231,23 @@ export default function RMAAnalyticsPage() {
       {/* RMA Units by SKU Table */}
       <Card>
         <CardHeader>
-          <CardTitle>RMA Inventory Levels by SKU</CardTitle>
-          <CardDescription>Detailed breakdown of RMA units per SKU</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>RMA Inventory Levels by SKU</CardTitle>
+              <CardDescription>Detailed breakdown of RMA units per SKU</CardDescription>
+            </div>
+            {bySku.length > 0 && (
+              <Button
+                onClick={exportToCSV}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {bySku.length > 0 ? (

@@ -136,14 +136,15 @@ export default function WarehouseWIPDashboard() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Check if it's a duplicate file error
+        // Check if it's a duplicate file error (expected, user-friendly)
         if (response.status === 409 && data.existingImportId) {
           setDuplicateImportId(data.existingImportId);
-          const errorMessage = data.message || data.error || 'Upload failed';
-          throw new Error(errorMessage);
+          setUploadError(data.message || data.error || 'Duplicate file detected');
+          setUploading(false);
+          return; // Exit gracefully without throwing
         }
         
-        // Use the detailed message if available, otherwise fall back to error
+        // For other errors, throw to be caught below
         const errorMessage = data.message || data.error || 'Upload failed';
         throw new Error(errorMessage);
       }
@@ -157,7 +158,8 @@ export default function WarehouseWIPDashboard() {
         window.location.reload();
       }, 1500);
     } catch (error: any) {
-      console.error('Upload error:', error);
+      // Only log unexpected errors to console
+      console.error('❌ Unexpected upload error:', error);
       setUploadError(error.message || 'Failed to upload file');
     } finally {
       setUploading(false);
