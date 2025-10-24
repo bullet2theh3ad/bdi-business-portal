@@ -763,9 +763,11 @@ export default function ProductionSchedulesPage() {
       </div>
 
       {/* Production Schedule Cards/List */}
-      <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-        {filteredAndSortedSchedules.map((schedule) => (
-          <Card key={schedule.id} className={`hover:shadow-lg transition-shadow ${viewMode === 'list' ? 'flex flex-col sm:flex-row' : ''}`}>
+      {viewMode === 'grid' ? (
+        // Grid View - Full cards with all details
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAndSortedSchedules.map((schedule) => (
+            <Card key={schedule.id} className="hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -925,6 +927,86 @@ export default function ProductionSchedulesPage() {
           </Card>
         ))}
       </div>
+      ) : (
+        // List View - Compact table-like rows
+        <div className="space-y-2">
+          {filteredAndSortedSchedules.map((schedule) => (
+            <Card key={schedule.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  {/* PS Reference Number */}
+                  <div className="flex-shrink-0">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-800">
+                      {(schedule as any).referenceNumber || 'PS-XXXX-0000'}
+                    </span>
+                  </div>
+
+                  {/* SKU */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {schedule.sku?.sku || 'Unknown SKU'}
+                        </p>
+                        <p className="text-xs text-gray-600 truncate">
+                          {schedule.sku?.name || 'Unknown Product'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Manufacturer */}
+                  {schedule.sku?.mfg && (
+                    <div className="hidden md:block flex-shrink-0">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                        {schedule.sku.mfg}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Quantity */}
+                  <div className="flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {schedule.quantity.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">units</p>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="hidden sm:block flex-shrink-0">
+                    <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
+                      {schedule.status}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEdit(schedule)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(schedule.id)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
       {filteredAndSortedSchedules.length === 0 && (
