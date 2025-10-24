@@ -54,6 +54,10 @@ export default function QuickBooksIntegrationPage() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Sync logs for debugging
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  
   // Date range options
   const [dateRange, setDateRange] = useState<'60' | '30' | 'custom'>('60');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -131,8 +135,15 @@ export default function QuickBooksIntegrationPage() {
     try {
       setSyncing(true);
       setError(null);
+      setSyncLogs([]);
+      setShowLogs(true);
       
-      console.log(`Starting ${mode} sync...`);
+      const addLog = (message: string) => {
+        const timestamp = new Date().toLocaleTimeString();
+        setSyncLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+      };
+      
+      addLog(`🚀 Starting ${mode.toUpperCase()} sync...`);
       
       const response = await fetch('/api/quickbooks/sync', {
         method: 'POST',
@@ -144,17 +155,44 @@ export default function QuickBooksIntegrationPage() {
         }),
       });
 
+      addLog(`📡 API Response Status: ${response.status} ${response.statusText}`);
+
       if (response.ok) {
         const data = await response.json();
-        const syncTypeLabel = data.syncType === 'full' ? '🔄 FULL SYNC' : '⚡ DELTA SYNC';
-        alert(`${syncTypeLabel} completed! Synced ${data.totalRecords} records.\n\nCustomers: ${data.details.customers.fetched}\nInvoices: ${data.details.invoices.fetched}\nVendors: ${data.details.vendors.fetched}\nExpenses: ${data.details.expenses.fetched}\nItems/Products: ${data.details.items.fetched}\nPayments: ${data.details.payments.fetched}\nBills: ${data.details.bills.fetched}\nSales Receipts: ${data.details.salesReceipts.fetched}\nCredit Memos: ${data.details.creditMemos.fetched}\nPurchase Orders: ${data.details.purchaseOrders.fetched}\n\n✅ Next sync will automatically use Delta Sync (only changed records)`);
+        addLog(`✅ Sync completed successfully!`);
+        addLog(`📊 Total Records: ${data.totalRecords}`);
+        addLog(`📋 Details:`);
+        addLog(`  - Customers: ${data.details.customers.fetched} fetched, ${data.details.customers.created} created, ${data.details.customers.updated} updated`);
+        addLog(`  - Invoices: ${data.details.invoices.fetched} fetched, ${data.details.invoices.created} created, ${data.details.invoices.updated} updated`);
+        addLog(`  - Vendors: ${data.details.vendors.fetched} fetched, ${data.details.vendors.created} created, ${data.details.vendors.updated} updated`);
+        addLog(`  - Expenses: ${data.details.expenses.fetched} fetched, ${data.details.expenses.created} created, ${data.details.expenses.updated} updated`);
+        addLog(`  - Items: ${data.details.items.fetched} fetched, ${data.details.items.created} created, ${data.details.items.updated} updated`);
+        addLog(`  - Payments: ${data.details.payments.fetched} fetched, ${data.details.payments.created} created, ${data.details.payments.updated} updated`);
+        addLog(`  - Bills: ${data.details.bills.fetched} fetched, ${data.details.bills.created} created, ${data.details.bills.updated} updated`);
+        addLog(`  - Sales Receipts: ${data.details.salesReceipts.fetched} fetched, ${data.details.salesReceipts.created} created, ${data.details.salesReceipts.updated} updated`);
+        addLog(`  - Credit Memos: ${data.details.creditMemos.fetched} fetched, ${data.details.creditMemos.created} created, ${data.details.creditMemos.updated} updated`);
+        addLog(`  - Purchase Orders: ${data.details.purchaseOrders.fetched} fetched, ${data.details.purchaseOrders.created} created, ${data.details.purchaseOrders.updated} updated`);
+        addLog(`  - Deposits: ${data.details.deposits.fetched} fetched, ${data.details.deposits.created} created, ${data.details.deposits.updated} updated`);
+        addLog(`  - Bill Payments: ${data.details.billPayments.fetched} fetched, ${data.details.billPayments.created} created, ${data.details.billPayments.updated} updated`);
+        addLog(`  - Estimates: ${data.details.estimates.fetched} fetched, ${data.details.estimates.created} created, ${data.details.estimates.updated} updated`);
+        addLog(`  - Journal Entries: ${data.details.journalEntries.fetched} fetched, ${data.details.journalEntries.created} created, ${data.details.journalEntries.updated} updated`);
+        addLog(`  - Accounts: ${data.details.accounts.fetched} fetched, ${data.details.accounts.created} created, ${data.details.accounts.updated} updated`);
+        addLog(`  - Vendor Credits: ${data.details.vendorCredits.fetched} fetched, ${data.details.vendorCredits.created} created, ${data.details.vendorCredits.updated} updated`);
+        addLog(`  - Refund Receipts: ${data.details.refundReceipts.fetched} fetched, ${data.details.refundReceipts.created} created, ${data.details.refundReceipts.updated} updated`);
+        addLog(`  - Transfers: ${data.details.transfers.fetched} fetched, ${data.details.transfers.created} created, ${data.details.transfers.updated} updated`);
+        addLog(`  - Classes: ${data.details.classes.fetched} fetched, ${data.details.classes.created} created, ${data.details.classes.updated} updated`);
+        addLog(`  - Terms: ${data.details.terms.fetched} fetched, ${data.details.terms.created} created, ${data.details.terms.updated} updated`);
+        
         await loadConnection();
         await loadSyncStats();
       } else {
-        throw new Error('Sync failed');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        addLog(`❌ Sync failed: ${errorData.error || response.statusText}`);
+        throw new Error(errorData.error || 'Sync failed');
       }
     } catch (err) {
       console.error('Error syncing:', err);
+      setSyncLogs(prev => [...prev, `❌ ERROR: ${(err as Error).message}`]);
       setError('Failed to sync data from QuickBooks');
     } finally {
       setSyncing(false);
@@ -426,6 +464,38 @@ export default function QuickBooksIntegrationPage() {
                   Disconnect
                 </Button>
               </div>
+
+              {/* Sync Logs Viewer */}
+              {syncLogs.length > 0 && (
+                <div className="mt-6 border rounded-lg overflow-hidden">
+                  <div 
+                    className="bg-gray-100 px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-gray-200"
+                    onClick={() => setShowLogs(!showLogs)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">🔍 Sync Logs</span>
+                      {syncing && <Loader2 className="h-4 w-4 animate-spin" />}
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {showLogs ? '▼ Hide' : '▶ Show'} ({syncLogs.length} entries)
+                    </span>
+                  </div>
+                  {showLogs && (
+                    <div className="bg-black text-green-400 p-4 font-mono text-xs max-h-96 overflow-y-auto">
+                      {syncLogs.map((log, index) => (
+                        <div key={index} className="mb-1">
+                          {log}
+                        </div>
+                      ))}
+                      {syncing && (
+                        <div className="mt-2 text-yellow-400 animate-pulse">
+                          ⏳ Sync in progress...
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
