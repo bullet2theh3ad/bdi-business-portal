@@ -84,9 +84,16 @@ export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
         const wipValue = row['WIP (1/0)'] ?? row['WIP'] ?? row['WIP (1/0) '] ?? row['WIP(1/0)'];
         const isWip = wipValue === 1 || wipValue === '1' || wipValue === true || wipValue === 'Yes' || wipValue === 'yes';
         
-        // Detect flags from source (handle null/undefined)
+        // Handle RMA field (new column in Excel)
+        const rmaValue = row['RMA'] ?? row['RMA (1/0)'] ?? row['RMA(1/0)'];
+        const isRmaFromColumn = rmaValue === 1 || rmaValue === '1' || rmaValue === true || rmaValue === 'Yes' || rmaValue === 'yes';
+        
+        // Detect flags from source (handle null/undefined) - fallback if RMA column not present
         const sourceLower = (source || '').toLowerCase();
-        const isRma = sourceLower.includes('rma');
+        const isRmaFromSource = sourceLower.includes('rma');
+        
+        // Use RMA column if available, otherwise fall back to source detection
+        const isRma = isRmaFromColumn || isRmaFromSource;
         const isCatvIntake = sourceLower.includes('catv');
         
         // Parse dates

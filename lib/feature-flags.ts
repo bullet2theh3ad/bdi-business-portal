@@ -22,6 +22,7 @@ export const BUSINESS_ANALYSIS_WHITELIST = [
   'sjin@boundlessdevices.com',
   'hmitchem@boundlessdevices.com',
   'jeskelson@boundlessdevices.com',
+  'amartinez@boundlessdevices.com',
 ];
 
 export function canAccessBusinessAnalysis(userEmail: string | null | undefined): boolean {

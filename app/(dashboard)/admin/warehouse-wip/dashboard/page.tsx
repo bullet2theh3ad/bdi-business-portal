@@ -449,7 +449,7 @@ export default function WarehouseWIPDashboard() {
       </Card>
 
       {/* Story Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex flex-col space-y-1">
@@ -483,24 +483,6 @@ export default function WarehouseWIPDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{metricsData?.wip?.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">In progress</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex flex-col space-y-1">
-              <CardTitle className="text-sm font-medium">RMA</CardTitle>
-              {filterLabel && (
-                <span className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
-                  {filterLabel.replace(/^\s*\(/, '').replace(/\)$/, '')}
-                </span>
-              )}
-            </div>
-            <AlertCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metricsData?.rma?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Returns</p>
           </CardContent>
         </Card>
 
@@ -604,6 +586,7 @@ export default function WarehouseWIPDashboard() {
                     <th className="h-12 px-4 text-left align-middle font-medium">SKU</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Source</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Stage</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium">RMA Inventory</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Received</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Aging</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Outflow</th>
@@ -612,7 +595,7 @@ export default function WarehouseWIPDashboard() {
                 <tbody>
                   {unitsData?.units?.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="h-24 text-center text-muted-foreground">
+                      <td colSpan={8} className="h-24 text-center text-muted-foreground">
                         No units found
                       </td>
                     </tr>
@@ -635,6 +618,17 @@ export default function WarehouseWIPDashboard() {
                             }`}
                           >
                             {unit.stage}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              unit.is_rma
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {unit.is_rma ? 'YES' : 'NO'}
                           </span>
                         </td>
                         <td className="p-4 text-sm">
