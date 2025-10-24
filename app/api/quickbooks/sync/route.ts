@@ -1945,16 +1945,490 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Synced ${accountCount} accounts (${accountsCreated} created, ${accountsUpdated} updated)`);
 
+      // =============================================
+      // Phase 17: Vendor Credits Sync
+      // =============================================
+      console.log('📥 Fetching vendor credits from QuickBooks...');
+      let allVendorCredits: any[] = [];
+      startPosition = 1;
+      const maxVendorCreditsPerQuery = 1000;
+      let vendorCreditsFetched = 0;
+      let vendorCreditCount = 0;
+      let vendorCreditsCreated = 0;
+      let vendorCreditsUpdated = 0;
+
+      while (true) {
+        const vendorCreditsQuery = `SELECT * FROM VendorCredit ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxVendorCreditsPerQuery}`;
+        
+        const vendorCreditsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(vendorCreditsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!vendorCreditsResponse.ok) {
+          console.error('QuickBooks API Error fetching vendor credits');
+          break;
+        }
+
+        const vendorCreditsData = await vendorCreditsResponse.json();
+        const vendorCreditsBatch = vendorCreditsData?.QueryResponse?.VendorCredit || [];
+        
+        if (vendorCreditsBatch.length === 0) break;
+        
+        allVendorCredits = allVendorCredits.concat(vendorCreditsBatch);
+        vendorCreditsFetched += vendorCreditsBatch.length;
+        
+        if (vendorCreditsBatch.length < maxVendorCreditsPerQuery) break;
+        startPosition += maxVendorCreditsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${vendorCreditsFetched} vendor credits from QuickBooks`);
+
+      for (const vendorCredit of allVendorCredits) {
+        try {
+          const vendorCreditData = {
+            connection_id: connection.id,
+            qb_vendor_credit_id: vendorCredit.Id,
+            qb_sync_token: vendorCredit.SyncToken,
+            qb_doc_number: vendorCredit.DocNumber || null,
+            qb_vendor_id: vendorCredit.VendorRef?.value || null,
+            vendor_name: vendorCredit.VendorRef?.name || null,
+            txn_date: vendorCredit.TxnDate || null,
+            total_amount: vendorCredit.TotalAmt || 0,
+            remaining_credit: vendorCredit.Balance || 0,
+            currency_code: vendorCredit.CurrencyRef?.value || 'USD',
+            ap_account_ref: vendorCredit.APAccountRef?.value || null,
+            memo: vendorCredit.Memo || null,
+            private_note: vendorCredit.PrivateNote || null,
+            line_items: vendorCredit.Line ? JSON.stringify(vendorCredit.Line) : null,
+            full_data: vendorCredit,
+            qb_created_at: vendorCredit.MetaData?.CreateTime || null,
+            qb_updated_at: vendorCredit.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_vendor_credits')
+            .upsert(vendorCreditData, {
+              onConflict: 'connection_id,qb_vendor_credit_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting vendor credit ${vendorCredit.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            vendorCreditsCreated++;
+          } else {
+            vendorCreditsUpdated++;
+          }
+
+          vendorCreditCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting vendor credit ${vendorCredit.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${vendorCreditCount} vendor credits (${vendorCreditsCreated} created, ${vendorCreditsUpdated} updated)`);
+
+      // =============================================
+      // Phase 18: Refund Receipts Sync
+      // =============================================
+      console.log('📥 Fetching refund receipts from QuickBooks...');
+      let allRefundReceipts: any[] = [];
+      startPosition = 1;
+      const maxRefundReceiptsPerQuery = 1000;
+      let refundReceiptsFetched = 0;
+      let refundReceiptCount = 0;
+      let refundReceiptsCreated = 0;
+      let refundReceiptsUpdated = 0;
+
+      while (true) {
+        const refundReceiptsQuery = `SELECT * FROM RefundReceipt ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxRefundReceiptsPerQuery}`;
+        
+        const refundReceiptsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(refundReceiptsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!refundReceiptsResponse.ok) {
+          console.error('QuickBooks API Error fetching refund receipts');
+          break;
+        }
+
+        const refundReceiptsData = await refundReceiptsResponse.json();
+        const refundReceiptsBatch = refundReceiptsData?.QueryResponse?.RefundReceipt || [];
+        
+        if (refundReceiptsBatch.length === 0) break;
+        
+        allRefundReceipts = allRefundReceipts.concat(refundReceiptsBatch);
+        refundReceiptsFetched += refundReceiptsBatch.length;
+        
+        if (refundReceiptsBatch.length < maxRefundReceiptsPerQuery) break;
+        startPosition += maxRefundReceiptsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${refundReceiptsFetched} refund receipts from QuickBooks`);
+
+      for (const refundReceipt of allRefundReceipts) {
+        try {
+          const refundReceiptData = {
+            connection_id: connection.id,
+            qb_refund_receipt_id: refundReceipt.Id,
+            qb_sync_token: refundReceipt.SyncToken,
+            qb_doc_number: refundReceipt.DocNumber || null,
+            qb_customer_id: refundReceipt.CustomerRef?.value || null,
+            customer_name: refundReceipt.CustomerRef?.name || null,
+            txn_date: refundReceipt.TxnDate || null,
+            total_amount: refundReceipt.TotalAmt || 0,
+            currency_code: refundReceipt.CurrencyRef?.value || 'USD',
+            payment_method_ref: refundReceipt.PaymentMethodRef?.value || null,
+            payment_ref_number: refundReceipt.PaymentRefNum || null,
+            deposit_to_account_ref: refundReceipt.DepositToAccountRef?.value || null,
+            bill_email: refundReceipt.BillEmail?.Address || null,
+            billing_address: refundReceipt.BillAddr ? JSON.stringify(refundReceipt.BillAddr) : null,
+            customer_memo: refundReceipt.CustomerMemo?.value || null,
+            private_note: refundReceipt.PrivateNote || null,
+            line_items: refundReceipt.Line ? JSON.stringify(refundReceipt.Line) : null,
+            full_data: refundReceipt,
+            qb_created_at: refundReceipt.MetaData?.CreateTime || null,
+            qb_updated_at: refundReceipt.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_refund_receipts')
+            .upsert(refundReceiptData, {
+              onConflict: 'connection_id,qb_refund_receipt_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting refund receipt ${refundReceipt.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            refundReceiptsCreated++;
+          } else {
+            refundReceiptsUpdated++;
+          }
+
+          refundReceiptCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting refund receipt ${refundReceipt.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${refundReceiptCount} refund receipts (${refundReceiptsCreated} created, ${refundReceiptsUpdated} updated)`);
+
+      // =============================================
+      // Phase 19: Transfers Sync
+      // =============================================
+      console.log('📥 Fetching transfers from QuickBooks...');
+      let allTransfers: any[] = [];
+      startPosition = 1;
+      const maxTransfersPerQuery = 1000;
+      let transfersFetched = 0;
+      let transferCount = 0;
+      let transfersCreated = 0;
+      let transfersUpdated = 0;
+
+      while (true) {
+        const transfersQuery = `SELECT * FROM Transfer ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxTransfersPerQuery}`;
+        
+        const transfersResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(transfersQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!transfersResponse.ok) {
+          console.error('QuickBooks API Error fetching transfers');
+          break;
+        }
+
+        const transfersData = await transfersResponse.json();
+        const transfersBatch = transfersData?.QueryResponse?.Transfer || [];
+        
+        if (transfersBatch.length === 0) break;
+        
+        allTransfers = allTransfers.concat(transfersBatch);
+        transfersFetched += transfersBatch.length;
+        
+        if (transfersBatch.length < maxTransfersPerQuery) break;
+        startPosition += maxTransfersPerQuery;
+      }
+
+      console.log(`📦 Fetched ${transfersFetched} transfers from QuickBooks`);
+
+      for (const transfer of allTransfers) {
+        try {
+          const transferData = {
+            connection_id: connection.id,
+            qb_transfer_id: transfer.Id,
+            qb_sync_token: transfer.SyncToken,
+            txn_date: transfer.TxnDate || null,
+            amount: transfer.Amount || 0,
+            from_account_ref: transfer.FromAccountRef?.value || null,
+            from_account_name: transfer.FromAccountRef?.name || null,
+            to_account_ref: transfer.ToAccountRef?.value || null,
+            to_account_name: transfer.ToAccountRef?.name || null,
+            private_note: transfer.PrivateNote || null,
+            full_data: transfer,
+            qb_created_at: transfer.MetaData?.CreateTime || null,
+            qb_updated_at: transfer.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_transfers')
+            .upsert(transferData, {
+              onConflict: 'connection_id,qb_transfer_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting transfer ${transfer.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            transfersCreated++;
+          } else {
+            transfersUpdated++;
+          }
+
+          transferCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting transfer ${transfer.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${transferCount} transfers (${transfersCreated} created, ${transfersUpdated} updated)`);
+
+      // =============================================
+      // Phase 20: Classes Sync
+      // =============================================
+      console.log('📥 Fetching classes from QuickBooks...');
+      let allClasses: any[] = [];
+      startPosition = 1;
+      const maxClassesPerQuery = 1000;
+      let classesFetched = 0;
+      let classCount = 0;
+      let classesCreated = 0;
+      let classesUpdated = 0;
+
+      while (true) {
+        // Get both active and inactive classes
+        let classesQuery = 'SELECT * FROM Class WHERE Active IN (true, false)';
+        if (deltaQuery) {
+          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
+          classesQuery += ` ${deltaCondition}`;
+        }
+        classesQuery += ` STARTPOSITION ${startPosition} MAXRESULTS ${maxClassesPerQuery}`;
+        
+        const classesResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(classesQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!classesResponse.ok) {
+          console.error('QuickBooks API Error fetching classes');
+          break;
+        }
+
+        const classesData = await classesResponse.json();
+        const classesBatch = classesData?.QueryResponse?.Class || [];
+        
+        if (classesBatch.length === 0) break;
+        
+        allClasses = allClasses.concat(classesBatch);
+        classesFetched += classesBatch.length;
+        
+        if (classesBatch.length < maxClassesPerQuery) break;
+        startPosition += maxClassesPerQuery;
+      }
+
+      console.log(`📦 Fetched ${classesFetched} classes from QuickBooks`);
+
+      for (const qbClass of allClasses) {
+        try {
+          const classData = {
+            connection_id: connection.id,
+            qb_class_id: qbClass.Id,
+            qb_sync_token: qbClass.SyncToken,
+            name: qbClass.Name,
+            fully_qualified_name: qbClass.FullyQualifiedName || null,
+            parent_ref: qbClass.ParentRef?.value || null,
+            sub_class: qbClass.SubClass || false,
+            class_level: qbClass.Level || 0,
+            is_active: qbClass.Active !== false,
+            full_data: qbClass,
+            qb_created_at: qbClass.MetaData?.CreateTime || null,
+            qb_updated_at: qbClass.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_classes')
+            .upsert(classData, {
+              onConflict: 'connection_id,qb_class_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting class ${qbClass.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            classesCreated++;
+          } else {
+            classesUpdated++;
+          }
+
+          classCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting class ${qbClass.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${classCount} classes (${classesCreated} created, ${classesUpdated} updated)`);
+
+      // =============================================
+      // Phase 21: Terms Sync
+      // =============================================
+      console.log('📥 Fetching terms from QuickBooks...');
+      let allTerms: any[] = [];
+      startPosition = 1;
+      const maxTermsPerQuery = 1000;
+      let termsFetched = 0;
+      let termCount = 0;
+      let termsCreated = 0;
+      let termsUpdated = 0;
+
+      while (true) {
+        // Get both active and inactive terms
+        let termsQuery = 'SELECT * FROM Term WHERE Active IN (true, false)';
+        if (deltaQuery) {
+          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
+          termsQuery += ` ${deltaCondition}`;
+        }
+        termsQuery += ` STARTPOSITION ${startPosition} MAXRESULTS ${maxTermsPerQuery}`;
+        
+        const termsResponse = await fetch(
+          `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(termsQuery)}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${connection.access_token}`,
+            },
+          }
+        );
+
+        if (!termsResponse.ok) {
+          console.error('QuickBooks API Error fetching terms');
+          break;
+        }
+
+        const termsData = await termsResponse.json();
+        const termsBatch = termsData?.QueryResponse?.Term || [];
+        
+        if (termsBatch.length === 0) break;
+        
+        allTerms = allTerms.concat(termsBatch);
+        termsFetched += termsBatch.length;
+        
+        if (termsBatch.length < maxTermsPerQuery) break;
+        startPosition += maxTermsPerQuery;
+      }
+
+      console.log(`📦 Fetched ${termsFetched} terms from QuickBooks`);
+
+      for (const term of allTerms) {
+        try {
+          const termData = {
+            connection_id: connection.id,
+            qb_term_id: term.Id,
+            qb_sync_token: term.SyncToken,
+            name: term.Name,
+            type: term.Type || null,
+            due_days: term.DueDays || null,
+            discount_days: term.DiscountDays || null,
+            discount_percent: term.DiscountPercent || null,
+            day_of_month_due: term.DayOfMonthDue || null,
+            due_next_month_days: term.DueNextMonthDays || null,
+            discount_day_of_month: term.DiscountDayOfMonth || null,
+            is_active: term.Active !== false,
+            full_data: term,
+            qb_created_at: term.MetaData?.CreateTime || null,
+            qb_updated_at: term.MetaData?.LastUpdatedTime || null,
+          };
+
+          const { error: upsertError, data: upsertData } = await supabaseService
+            .from('quickbooks_terms')
+            .upsert(termData, {
+              onConflict: 'connection_id,qb_term_id',
+              ignoreDuplicates: false,
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`❌ Error upserting term ${term.Id}:`, upsertError);
+            continue;
+          }
+
+          const wasCreated = upsertData && upsertData.length > 0;
+          if (wasCreated) {
+            termsCreated++;
+          } else {
+            termsUpdated++;
+          }
+
+          termCount++;
+        } catch (err: any) {
+          console.error(`❌ Error upserting term ${term.Id}:`, err);
+        }
+      }
+
+      console.log(`✅ Synced ${termCount} terms (${termsCreated} created, ${termsUpdated} updated)`);
+
       // Update sync log as completed
-      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + expenseEntityCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount + estimateCount + journalEntryCount + accountCount;
+      const totalRecords = customerCount + invoiceCount + vendorCount + expenseCount + expenseEntityCount + itemCount + paymentCount + billCount + salesReceiptCount + creditMemoCount + poCount + depositCount + billPaymentCount + estimateCount + journalEntryCount + accountCount + vendorCreditCount + refundReceiptCount + transferCount + classCount + termCount;
       if (syncLog) {
         await supabase
           .from('quickbooks_sync_log')
           .update({
             status: 'completed',
-            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched + salesReceiptsFetched + creditMemosFetched + posFetched + depositsFetched + billPaymentsFetched + estimatesFetched + journalEntriesFetched + accountsFetched,
-            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated + salesReceiptsCreated + creditMemosCreated + posCreated + depositsCreated + billPaymentsCreated + estimatesCreated + journalEntriesCreated + accountsCreated,
-            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated + salesReceiptsUpdated + creditMemosUpdated + posUpdated + depositsUpdated + billPaymentsUpdated + estimatesUpdated + journalEntriesUpdated + accountsUpdated,
+            records_fetched: customersFetched + invoicesFetched + vendorsFetched + expensesFetched + itemsFetched + paymentsFetched + billsFetched + salesReceiptsFetched + creditMemosFetched + posFetched + depositsFetched + billPaymentsFetched + estimatesFetched + journalEntriesFetched + accountsFetched + vendorCreditsFetched + refundReceiptsFetched + transfersFetched + classesFetched + termsFetched,
+            records_created: customersCreated + invoicesCreated + vendorsCreated + expensesCreated + itemsCreated + paymentsCreated + billsCreated + salesReceiptsCreated + creditMemosCreated + posCreated + depositsCreated + billPaymentsCreated + estimatesCreated + journalEntriesCreated + accountsCreated + vendorCreditsCreated + refundReceiptsCreated + transfersCreated + classesCreated + termsCreated,
+            records_updated: customersUpdated + invoicesUpdated + vendorsUpdated + expensesUpdated + itemsUpdated + paymentsUpdated + billsUpdated + salesReceiptsUpdated + creditMemosUpdated + posUpdated + depositsUpdated + billPaymentsUpdated + estimatesUpdated + journalEntriesUpdated + accountsUpdated + vendorCreditsUpdated + refundReceiptsUpdated + transfersUpdated + classesUpdated + termsUpdated,
             completed_at: new Date().toISOString(),
           })
           .eq('id', syncLog.id);
@@ -2080,6 +2554,31 @@ export async function POST(request: NextRequest) {
             fetched: accountsFetched,
             created: accountsCreated,
             updated: accountsUpdated,
+          },
+          vendorCredits: {
+            fetched: vendorCreditsFetched,
+            created: vendorCreditsCreated,
+            updated: vendorCreditsUpdated,
+          },
+          refundReceipts: {
+            fetched: refundReceiptsFetched,
+            created: refundReceiptsCreated,
+            updated: refundReceiptsUpdated,
+          },
+          transfers: {
+            fetched: transfersFetched,
+            created: transfersCreated,
+            updated: transfersUpdated,
+          },
+          classes: {
+            fetched: classesFetched,
+            created: classesCreated,
+            updated: classesUpdated,
+          },
+          terms: {
+            fetched: termsFetched,
+            created: termsCreated,
+            updated: termsUpdated,
           },
         },
       });

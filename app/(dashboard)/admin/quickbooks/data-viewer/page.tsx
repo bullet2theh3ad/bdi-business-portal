@@ -21,7 +21,11 @@ import {
   Wallet,
   FileSearch,
   BookOpen,
-  Layers
+  Layers,
+  RotateCcw,
+  ArrowLeftRight,
+  FolderTree,
+  Calendar
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -141,6 +145,41 @@ const dataCategories: DataCategory[] = [
     color: 'lime',
     description: 'View Chart of Accounts'
   },
+  {
+    title: 'Vendor Credits',
+    icon: <RotateCcw className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/vendor-credits',
+    color: 'rose',
+    description: 'View vendor credits and returns'
+  },
+  {
+    title: 'Refund Receipts',
+    icon: <RotateCcw className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/refund-receipts',
+    color: 'fuchsia',
+    description: 'View customer refunds issued'
+  },
+  {
+    title: 'Transfers',
+    icon: <ArrowLeftRight className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/transfers',
+    color: 'sky',
+    description: 'View transfers between accounts'
+  },
+  {
+    title: 'Classes',
+    icon: <FolderTree className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/classes',
+    color: 'stone',
+    description: 'View classes/departments'
+  },
+  {
+    title: 'Terms',
+    icon: <Calendar className="h-6 w-6" />,
+    endpoint: '/api/quickbooks/terms',
+    color: 'zinc',
+    description: 'View payment terms'
+  },
 ];
 
 const colorClasses: Record<string, { bg: string; text: string; hover: string; border: string }> = {
@@ -159,6 +198,11 @@ const colorClasses: Record<string, { bg: string; text: string; hover: string; bo
   cyan: { bg: 'bg-cyan-50', text: 'text-cyan-700', hover: 'hover:bg-cyan-100', border: 'border-cyan-200' },
   emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', hover: 'hover:bg-emerald-100', border: 'border-emerald-200' },
   slate: { bg: 'bg-slate-50', text: 'text-slate-700', hover: 'hover:bg-slate-100', border: 'border-slate-200' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-700', hover: 'hover:bg-rose-100', border: 'border-rose-200' },
+  fuchsia: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', hover: 'hover:bg-fuchsia-100', border: 'border-fuchsia-200' },
+  sky: { bg: 'bg-sky-50', text: 'text-sky-700', hover: 'hover:bg-sky-100', border: 'border-sky-200' },
+  stone: { bg: 'bg-stone-50', text: 'text-stone-700', hover: 'hover:bg-stone-100', border: 'border-stone-200' },
+  zinc: { bg: 'bg-zinc-50', text: 'text-zinc-700', hover: 'hover:bg-zinc-100', border: 'border-zinc-200' },
 };
 
 export default function QuickBooksDataViewer() {

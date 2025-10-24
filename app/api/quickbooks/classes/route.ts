@@ -1,0 +1,61 @@
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { canAccessQuickBooks } from '@/lib/feature-flags';
+
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check feature flag access
+    if (!canAccessQuickBooks(user.email)) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
+
+    // Fetch classes from database
+    const { data: classes, error } = await supabase
+      .from('quickbooks_classes')
+      .select('*')
+      .order('fully_qualified_name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching classes:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch classes' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(classes || []);
+  } catch (error) {
+    console.error('Error in GET /api/quickbooks/classes:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
