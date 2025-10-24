@@ -2245,13 +2245,9 @@ export async function POST(request: NextRequest) {
       let classesUpdated = 0;
 
       while (true) {
-        // Get both active and inactive classes
-        let classesQuery = 'SELECT * FROM Class WHERE Active IN (true, false)';
-        if (deltaQuery) {
-          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
-          classesQuery += ` ${deltaCondition}`;
-        }
-        classesQuery += ` STARTPOSITION ${startPosition} MAXRESULTS ${maxClassesPerQuery}`;
+        // Get all classes (active and inactive)
+        const classesQuery = `SELECT * FROM Class ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxClassesPerQuery}`;
+        console.log(`Class Query (page ${Math.ceil(startPosition / maxClassesPerQuery)}):`, classesQuery);
         
         const classesResponse = await fetch(
           `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(classesQuery)}`,
@@ -2264,14 +2260,24 @@ export async function POST(request: NextRequest) {
         );
 
         if (!classesResponse.ok) {
-          console.error('QuickBooks API Error fetching classes');
+          const errorText = await classesResponse.text();
+          console.error('❌ QuickBooks API Error fetching classes:', {
+            status: classesResponse.status,
+            statusText: classesResponse.statusText,
+            error: errorText
+          });
           break;
         }
 
         const classesData = await classesResponse.json();
         const classesBatch = classesData?.QueryResponse?.Class || [];
         
-        if (classesBatch.length === 0) break;
+        console.log(`📄 Page ${Math.ceil(startPosition / maxClassesPerQuery)}: Fetched ${classesBatch.length} classes`);
+        
+        if (classesBatch.length === 0) {
+          console.log('✅ No more classes to fetch');
+          break;
+        }
         
         allClasses = allClasses.concat(classesBatch);
         classesFetched += classesBatch.length;
@@ -2340,13 +2346,9 @@ export async function POST(request: NextRequest) {
       let termsUpdated = 0;
 
       while (true) {
-        // Get both active and inactive terms
-        let termsQuery = 'SELECT * FROM Term WHERE Active IN (true, false)';
-        if (deltaQuery) {
-          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
-          termsQuery += ` ${deltaCondition}`;
-        }
-        termsQuery += ` STARTPOSITION ${startPosition} MAXRESULTS ${maxTermsPerQuery}`;
+        // Get all terms (active and inactive)
+        const termsQuery = `SELECT * FROM Term ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxTermsPerQuery}`;
+        console.log(`Term Query (page ${Math.ceil(startPosition / maxTermsPerQuery)}):`, termsQuery);
         
         const termsResponse = await fetch(
           `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(termsQuery)}`,
@@ -2359,14 +2361,24 @@ export async function POST(request: NextRequest) {
         );
 
         if (!termsResponse.ok) {
-          console.error('QuickBooks API Error fetching terms');
+          const errorText = await termsResponse.text();
+          console.error('❌ QuickBooks API Error fetching terms:', {
+            status: termsResponse.status,
+            statusText: termsResponse.statusText,
+            error: errorText
+          });
           break;
         }
 
         const termsData = await termsResponse.json();
         const termsBatch = termsData?.QueryResponse?.Term || [];
         
-        if (termsBatch.length === 0) break;
+        console.log(`📄 Page ${Math.ceil(startPosition / maxTermsPerQuery)}: Fetched ${termsBatch.length} terms`);
+        
+        if (termsBatch.length === 0) {
+          console.log('✅ No more terms to fetch');
+          break;
+        }
         
         allTerms = allTerms.concat(termsBatch);
         termsFetched += termsBatch.length;
