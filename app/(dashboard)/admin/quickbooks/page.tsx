@@ -161,6 +161,33 @@ export default function QuickBooksIntegrationPage() {
         const data = await response.json();
         addLog(`✅ Sync completed successfully!`);
         addLog(`📊 Total Records: ${data.totalRecords}`);
+        
+        // Show API responses if available
+        if (data.apiResponses && Object.keys(data.apiResponses).length > 0) {
+          addLog(`🌐 API Response Codes:`);
+          Object.entries(data.apiResponses).forEach(([entity, response]: [string, any]) => {
+            if (response.error) {
+              addLog(`  ❌ ${entity}: ${response.status} ${response.statusText} - ${response.error}`);
+            } else {
+              addLog(`  ✅ ${entity}: ${response.status} ${response.statusText}`);
+            }
+          });
+        }
+        
+        // Show upsert errors if any
+        if (data.upsertErrors && Object.keys(data.upsertErrors).length > 0) {
+          addLog(`⚠️  Database Upsert Errors:`);
+          Object.entries(data.upsertErrors).forEach(([entity, errors]: [string, any]) => {
+            addLog(`  ❌ ${entity}: ${errors.length} errors`);
+            errors.slice(0, 3).forEach((error: string) => {
+              addLog(`     - ${error}`);
+            });
+            if (errors.length > 3) {
+              addLog(`     ... and ${errors.length - 3} more errors`);
+            }
+          });
+        }
+        
         addLog(`📋 Details:`);
         addLog(`  - Customers: ${data.details.customers.fetched} fetched, ${data.details.customers.created} created, ${data.details.customers.updated} updated`);
         addLog(`  - Invoices: ${data.details.invoices.fetched} fetched, ${data.details.invoices.created} created, ${data.details.invoices.updated} updated`);

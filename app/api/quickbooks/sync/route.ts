@@ -112,6 +112,12 @@ export async function POST(request: NextRequest) {
       ? 'https://quickbooks.api.intuit.com'
       : 'https://sandbox-quickbooks.api.intuit.com';
 
+    // Track API responses for debugging
+    const apiResponses: Record<string, { status: number; statusText: string; error?: string }> = {};
+    
+    // Track upsert errors for debugging
+    const upsertErrors: Record<string, string[]> = {};
+
     let customerCount = 0;
     let customersFetched = 0;
     let customersCreated = 0;
@@ -1932,6 +1938,9 @@ export async function POST(request: NextRequest) {
             .select('id');
 
           if (upsertError) {
+            const errorMsg = `Account ${account.Id} (${account.Name}): ${upsertError.message || JSON.stringify(upsertError)}`;
+            if (!upsertErrors['Accounts']) upsertErrors['Accounts'] = [];
+            upsertErrors['Accounts'].push(errorMsg);
             console.error(`❌ Error upserting account ${account.Id}:`, upsertError);
             continue;
           }
@@ -1945,6 +1954,9 @@ export async function POST(request: NextRequest) {
 
           accountCount++;
         } catch (err: any) {
+          const errorMsg = `Account ${account.Id}: ${err.message || JSON.stringify(err)}`;
+          if (!upsertErrors['Accounts']) upsertErrors['Accounts'] = [];
+          upsertErrors['Accounts'].push(errorMsg);
           console.error(`❌ Error upserting account ${account.Id}:`, err);
         }
       }
@@ -2261,6 +2273,11 @@ export async function POST(request: NextRequest) {
 
         if (!classesResponse.ok) {
           const errorText = await classesResponse.text();
+          apiResponses['Classes'] = {
+            status: classesResponse.status,
+            statusText: classesResponse.statusText,
+            error: errorText
+          };
           console.error('❌ QuickBooks API Error fetching classes:', {
             status: classesResponse.status,
             statusText: classesResponse.statusText,
@@ -2268,6 +2285,11 @@ export async function POST(request: NextRequest) {
           });
           break;
         }
+
+        apiResponses['Classes'] = {
+          status: classesResponse.status,
+          statusText: classesResponse.statusText
+        };
 
         const classesData = await classesResponse.json();
         const classesBatch = classesData?.QueryResponse?.Class || [];
@@ -2497,6 +2519,8 @@ export async function POST(request: NextRequest) {
         syncType: actualSyncType,
         nextSyncWillBeDelta: true,
         totalRecords: totalRecords,
+        apiResponses: apiResponses,
+        upsertErrors: upsertErrors,
         details: {
           customers: {
             fetched: customersFetched,
