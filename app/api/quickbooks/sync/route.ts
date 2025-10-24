@@ -1854,13 +1854,9 @@ export async function POST(request: NextRequest) {
       let accountsUpdated = 0;
 
       while (true) {
-        // Get both active and inactive accounts
-        let accountsQuery = 'SELECT * FROM Account WHERE Active IN (true, false)';
-        if (deltaQuery) {
-          const deltaCondition = deltaQuery.replace('WHERE', 'AND');
-          accountsQuery += ` ${deltaCondition}`;
-        }
-        accountsQuery += ` STARTPOSITION ${startPosition} MAXRESULTS ${maxAccountsPerQuery}`;
+        // Get all accounts (active and inactive)
+        const accountsQuery = `SELECT * FROM Account ${deltaQuery} STARTPOSITION ${startPosition} MAXRESULTS ${maxAccountsPerQuery}`;
+        console.log(`Account Query (page ${Math.ceil(startPosition / maxAccountsPerQuery)}):`, accountsQuery);
         
         const accountsResponse = await fetch(
           `${apiBaseUrl}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(accountsQuery)}`,
@@ -1873,14 +1869,24 @@ export async function POST(request: NextRequest) {
         );
 
         if (!accountsResponse.ok) {
-          console.error('QuickBooks API Error fetching accounts');
+          const errorText = await accountsResponse.text();
+          console.error('❌ QuickBooks API Error fetching accounts:', {
+            status: accountsResponse.status,
+            statusText: accountsResponse.statusText,
+            error: errorText
+          });
           break;
         }
 
         const accountsData = await accountsResponse.json();
         const accountsBatch = accountsData?.QueryResponse?.Account || [];
         
-        if (accountsBatch.length === 0) break;
+        console.log(`📄 Page ${Math.ceil(startPosition / maxAccountsPerQuery)}: Fetched ${accountsBatch.length} accounts`);
+        
+        if (accountsBatch.length === 0) {
+          console.log('✅ No more accounts to fetch');
+          break;
+        }
         
         allAccounts = allAccounts.concat(accountsBatch);
         accountsFetched += accountsBatch.length;
