@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const shouldReplace = formData.get('replace') === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -87,17 +88,29 @@ export async function POST(request: NextRequest) {
       .eq('status', 'completed')
       .maybeSingle();
 
-    if (existingImport) {
+    if (existingImport && !shouldReplace) {
       const completedDate = new Date(existingImport.completed_at).toLocaleString();
       console.warn(`⚠️  File "${fileName}" was already imported at ${completedDate}`);
       return NextResponse.json(
         { 
           error: 'Duplicate file',
-          message: `This file "${fileName}" has already been imported on ${completedDate}. Please delete the previous import first, or rename your file.`,
+          message: `This file "${fileName}" has already been imported on ${completedDate}. Would you like to replace it?`,
           existingImportId: existingImport.id
         },
         { status: 409 } // 409 Conflict
       );
+    }
+    
+    // If replacing, delete the existing import first
+    if (existingImport && shouldReplace) {
+      console.log(`🔄 Replacing existing import: ${existingImport.id}`);
+      // The deletion will cascade to warehouse_wip_units and warehouse_wip_weekly_summary
+      // due to the ON DELETE CASCADE foreign key constraints
+      await supabaseService
+        .from('warehouse_wip_imports')
+        .delete()
+        .eq('id', existingImport.id);
+      console.log(`✅ Previous import deleted successfully`);
     }
 
     // Create import batch record

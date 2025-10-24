@@ -51,6 +51,7 @@ export default function WarehouseWIPDashboard() {
   const [uploadError, setUploadError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [duplicateImportId, setDuplicateImportId] = useState<string | null>(null);
 
   // Export modal
   const [showExportModal, setShowExportModal] = useState(false);
@@ -112,16 +113,20 @@ export default function WarehouseWIPDashboard() {
   const hasFilters = importBatchId || sku || source || search || selectedStage;
 
   // Handle file upload
-  const handleFileUpload = async () => {
+  const handleFileUpload = async (forceReplace = false) => {
     if (!file) return;
 
     setUploading(true);
     setUploadError('');
     setUploadSuccess(false);
+    setDuplicateImportId(null);
 
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (forceReplace) {
+        formData.append('replace', 'true');
+      }
 
       const response = await fetch('/api/warehouse/wip/import', {
         method: 'POST',
@@ -131,6 +136,13 @@ export default function WarehouseWIPDashboard() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Check if it's a duplicate file error
+        if (response.status === 409 && data.existingImportId) {
+          setDuplicateImportId(data.existingImportId);
+          const errorMessage = data.message || data.error || 'Upload failed';
+          throw new Error(errorMessage);
+        }
+        
         // Use the detailed message if available, otherwise fall back to error
         const errorMessage = data.message || data.error || 'Upload failed';
         throw new Error(errorMessage);
@@ -138,6 +150,7 @@ export default function WarehouseWIPDashboard() {
 
       setUploadSuccess(true);
       setFile(null);
+      setDuplicateImportId(null);
       
       // Refresh data
       setTimeout(() => {
@@ -334,8 +347,46 @@ export default function WarehouseWIPDashboard() {
               </div>
             )}
             {uploadError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                ❌ {uploadError}
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-md">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-amber-900 font-medium mb-2">
+                      {uploadError}
+                    </p>
+                    {duplicateImportId && (
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setUploadError('');
+                            setDuplicateImportId(null);
+                            setFile(null);
+                          }}
+                          className="text-xs"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleFileUpload(true)}
+                          disabled={uploading}
+                          className="text-xs bg-amber-600 hover:bg-amber-700"
+                        >
+                          {uploading ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              Replacing...
+                            </>
+                          ) : (
+                            'Replace Previous Import'
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

@@ -85,7 +85,7 @@ export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
         const isWip = wipValue === 1 || wipValue === '1' || wipValue === true || wipValue === 'Yes' || wipValue === 'yes';
         
         // Handle RMA field (new column in Excel)
-        const rmaValue = row['RMA'] ?? row['RMA (1/0)'] ?? row['RMA(1/0)'];
+        const rmaValue = row['RMA/Seed Stock'] ?? row['RMA'] ?? row['RMA (1/0)'] ?? row['RMA(1/0)'];
         const isRmaFromColumn = rmaValue === 1 || rmaValue === '1' || rmaValue === true || rmaValue === 'Yes' || rmaValue === 'yes';
         
         // Detect flags from source (handle null/undefined) - fallback if RMA column not present
