@@ -420,10 +420,17 @@ export default function SalesForecastsPage() {
         ...dataToDownload.map(row => 
           headers.map(header => {
             const value = (row as any)[header];
-            // Escape commas and quotes in CSV
-            return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
-              ? `"${value.replace(/"/g, '""')}"` 
-              : value;
+            // Properly escape CSV values: handle quotes, commas, and newlines
+            if (typeof value === 'string') {
+              // Replace newlines with spaces to prevent row breaks
+              const cleanValue = value.replace(/[\r\n]+/g, ' ').trim();
+              // Wrap in quotes if contains comma, quote, or originally had newlines
+              if (cleanValue.includes(',') || cleanValue.includes('"') || value.includes('\n') || value.includes('\r')) {
+                return `"${cleanValue.replace(/"/g, '""')}"`;
+              }
+              return cleanValue;
+            }
+            return value;
           }).join(',')
         )
       ].join('\n');

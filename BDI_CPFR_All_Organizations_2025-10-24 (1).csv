@@ -1,0 +1,100 @@
+Forecast ID,SKU,SKU Name,Manufacturer,Material Arrival,SMT,DIP,ATP Begin,ATP End,OBA,EXW,Delivery Week,Quantity,Shipping Preference,Sales Signal,Factory Signal,Shipping Signal,Notes,Created Date,Created By,Organization
+bd3d5692-4a67-4b32-8e9c-2ff0f9975297,MNB1525-30B-U,Motorola B15 Cable Modem,CBN,,,,,,,,2026-W32,10002,SEA_ASIA_US_WEST,confirmed,unknown,unknown,,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+dcec7355-75e9-4381-a798-e84dbd860b3e,MNB1525-30B-U,Motorola B15 Cable Modem,CBN,,,,,,,,2026-W16,5001,SEA_ASIA_US_WEST,confirmed,unknown,unknown,,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+55c8d1c2-1cf9-47a8-86b3-4fd9bda98c94,MNP1526-30W-U-U,Motorola P15 Mobile Hotspot,ATL,,,,,,,,2026-W41,2000,ZERO_LAG_CUSTOM,confirmed,unknown,unknown,Additional intake for P15 launch in the US. DTC and Retail Channels only. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+1db3cac7-8dfd-4ed5-b610-28e058503fc8,MNP1526-30W-U-U,Motorola P15 Mobile Hotspot,ATL,,,,,,,,2026-W37,2000,Sea Freight,confirmed,unknown,unknown,Additional intake for P15 launch in the US. DTC and Retail Channels only. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+d6e21452-348b-42ec-b44f-c472f234fa44,MNP1526-30W-U-U,Motorola P15 Mobile Hotspot,ATL,,,,,,,,2026-W29,2000,Sea Freight,confirmed,unknown,unknown,Additional intake for P15 launch in the US. DTC and Retail Channels only. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+598b52a4-096a-40d6-942a-b2dabfab5218,MNP1526-30W-U-U,Motorola P15 Mobile Hotspot,ATL,,,,,,,,2026-W09,2000,Sea Freight,confirmed,unknown,unknown,Initial intake for P15 launch in the US. DTC and Retail Channels only. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+7e552629-7920-40eb-91fc-f5a160a12219,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W39,8000,Sea Freight,confirmed,unknown,unknown,Q3 Additional Intake for Walmart and Mass US Retail. Ready for wk38 resets at all retail,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+3a28c3a0-e5ed-4759-8677-563cf4500cb5,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W39,21000,Sea Freight,confirmed,unknown,unknown,Q3 Additional Intake for Walmart and Mass US Retail. Ready for wk38 resets at all retail,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+145768ef-9a49-4f7a-8525-ecd148bfd32c,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W39,16000,Sea Freight,confirmed,unknown,unknown,Q3 Additional Intake for Walmart and Mass US Retail. Ready for wk38 resets at all retail,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+1de3b72a-2f12-4faf-896d-fc9f32510d3a,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W32,8000,Sea Freight,confirmed,unknown,unknown,,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+37700a0e-1de9-4206-ba16-46fcebd69d67,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W32,21000,Sea Freight,confirmed,unknown,unknown,Q3 Additional Intake for Walmart and Mass US Retail. Ready for wk38 resets at all retail,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+f6350691-9ae2-4930-9277-d9cef8a562c7,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W32,16000,Sea Freight,confirmed,unknown,unknown,Q3 Additional Intake for Walmart and Mass US Retail. Ready for wk38 resets at all retail,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+32f23134-b62d-475e-aeaa-d34762ee1e3d,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W24,4000,Sea Freight,confirmed,unknown,unknown,Q3 Intake for Walmart and Mass US Retail. Intake planning to commence in late July and running through August and September ready for wk38 resets. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+e432487c-6217-4fe1-8649-072790e3ea5f,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W24,9999,Sea Freight,confirmed,unknown,unknown,Q3 Intake for Walmart and Mass US Retail. Intake planning to commence in late July and running through August and September ready for wk38 resets. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+84571c71-710a-43b9-b621-d57219b24c54,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W24,8000,Sea Freight,confirmed,unknown,unknown,Q3 Intake for Walmart and Mass US Retail. Intake planning to commence in late July and running through August and September ready for wk38 resets. ,10/19/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+6ca6b854-19fa-46c9-b071-1618be5b3d76,MNQ1525-M30W-E,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W22,1700,ZERO_LAG_CUSTOM,submitted,unknown,unknown,"Draft forecast, 3rd Q2 Tekpoint intake to cover all EU customers. 1700 pcs of the single pack. FOB Collect Terms Vietnam by end May 2026. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+59df6887-651e-49dd-9357-dff350117552,MNQ1525-D30W-E,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W22,1900,ZERO_LAG_CUSTOM,submitted,unknown,unknown,"Draft forecast, 3rd Q2 Tekpoint intake to cover all EU customers. 1900 pcs of the single pack. FOB Collect Terms Vietnam by end May 2026. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+bc5b9efb-1a24-42db-a142-e62bf383e2e4,MNQ1525-30W-E,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W22,4200,ZERO_LAG_CUSTOM,submitted,reviewing,unknown,"Draft forecast, 3rd Q2 Tekpoint intake to cover all EU customers. 4200 pcs of the single pack. FOB Collect Terms Vietnam by end May 2026. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+de33cb04-0b24-495a-8d61-3948c93e699e,MNQ1525-M30W-E,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W09,600,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,"Draft forecast, 2nd Tekpoint intake to cover all EU customers. 1000 pcs of the single pack. FOB Collect Terms Vietnam by end February. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+5d0fe3d3-c6c8-4607-888e-2c5712c72952,MNQ1525-D30W-E,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W09,1200,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,"Draft forecast, 2nd Tekpoint intake to cover all EU customers. 1000 pcs of the single pack. FOB Collect Terms Vietnam by end February. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+79479872-89b1-419e-bb2e-6c05efe52bce,MNQ1525-30W-E,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W09,800,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,"Draft forecast, 2nd Tekpoint intake to cover all EU customers. 2200 pcs of the single pack. FOB Collect Terms Vietnam by end February. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+c60bd42f-7a40-44c9-abab-546035b99d68,MNQ1525-30W-E,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2025-W47,5000,ZERO_LAG_SAME_DAY,confirmed,reviewing,unknown,"Draft forecast, initial Tekpoint intake to cover all EU customers. 1700 pcs of the single pack, due to be ordered by October 1st. FOB Collect Terms Vietnam by end October. 
+[2025-10-19] SALES → confirmed: Agreed with customer, purchase order for 5,000 units will be inbound shortly. Target wk 47 for collection. Subject to confirmation from MTN. ",9/25/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+722650e4-5639-4e4e-8afe-e9ec65b506a1,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W30,2070,ZERO_LAG_CUSTOM,submitted,unknown,unknown,For Walmart ,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+a9d8f60b-0d1e-4210-a86a-7e79823bda53,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W30,2070,ZERO_LAG_CUSTOM,submitted,unknown,unknown,,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+e77437d1-61fb-44d8-a58b-72eadacfae91,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W30,2760,ZERO_LAG_CUSTOM,submitted,unknown,unknown,For Walmart ,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+45e7c776-e886-49d1-8198-e3c850eab046,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W22,3000,ZERO_LAG_CUSTOM,submitted,unknown,unknown,"Q2 intake for summer sales. US Direct channels, including HSN. ",9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+beb16673-ee6f-4f2e-be82-f2163c6e488e,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W22,3000,ZERO_LAG_CUSTOM,submitted,unknown,unknown,"Q2 intake for summer sales. US Direct channels, including HSN. ",9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+31038856-c309-4069-a3e3-1792c08eddae,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W22,4000,ZERO_LAG_CUSTOM,submitted,unknown,unknown,"Q2 intake for summer sales. US Direct channels, including HSN. ",9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+73f66e7b-3c42-4262-9c34-91c56467503e,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W15,3000,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,Intake exclusively for Walmart,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+a6e89088-547c-4cd9-91c4-b35d79353ced,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W15,8000,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,Intake exclusively for Walmart,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+6de5c0d1-bc86-43fa-83f9-1e4718cf1928,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W15,5000,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,Intake exclusively for Walmart,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+c385caf9-f969-4fb5-b368-6e85f5b4b12f,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,,,,,,,,2026-W09,2500,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,"Intake for US Q15 Single Packs in February, replenish stock levels for US channels including HSN.",9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+8dbc0b4c-b5ff-48a5-9c26-b8ba00a0ca90,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,,,,,,,,2026-W09,3750,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,"Intake for US Q15 Single Packs in February, replenish stock levels for US channels including HSN.",9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+4b9f9ab2-68e5-4226-a84c-e30de006f257,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,,,,,,,,2026-W09,5000,ZERO_LAG_CUSTOM,confirmed,reviewing,unknown,"Intake for US Q15 Single Packs in February, replenish stock levels for US channels including HSN.",9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+180fdca4-aabd-47c5-a274-f742f17ce44e,MNQ1525-30W-U,"Motorola Q15 WIFI 7 Router, Single-pack",MTN,2025-10-18,2025-10-25,2025-10-26,2025-10-27,2025-10-29,2025-11-05,2025-11-06,2025-W48,525,Sea Freight,confirmed,reviewing,unknown,,9/24/2025,7fbf113f-728e-43c8-b068-2f3b43cdac47,BDI (All Data)
+7440a225-b18f-4d47-b076-513e8bec714b,MNQ1525-M30W-U,"Motorola Q15 WIFI 7 Router, Three-pack",MTN,2025-11-20,2025-11-22,2025-11-23,2025-11-28,2025-11-30,2025-12-02,2025-12-03,2025-W48,428,SEA_ASIA_US_WEST,confirmed,reviewing,unknown,,9/22/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
+f69734a7-2dcb-47aa-9caa-7ec0411ffd0c,MNQ1525-D30W-U,"Motorola Q15 WIFI 7 Router, Dual-pack",MTN,2025-11-20,2025-11-22,2025-11-23,2025-11-24,2025-11-25,2025-11-27,2025-11-29,2025-W48,1647,SEA_ASIA_US_WEST,confirmed,reviewing,unknown,,9/22/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
+bbdba907-9861-472f-ab70-d8dc88250bd8,MNQ1525-30W-U-(HSN),"Motorola Q15 WIFI 7 Router, Single-pack",MTN,2025-10-18,2025-10-25,2025-10-26,2025-11-03,2025-11-05,2025-11-05,2025-11-06,2025-W48,4080,SEA_ASIA_US_WEST,confirmed,confirmed,unknown,"[2025-09-21] TRANSIT → pending: Via SEA
+[2025-10-03] TRANSIT → pending: Matson requested and Hot Shot requested
+[2025-10-09] FACTORY → reviewing: updated by JJOLM today
+[2025-10-09] FACTORY → reviewing: updated by JJOLM today
+[2025-10-09] TRANSIT → pending: CARRIER 1
+MAERSK
+V/V
+MISSOURI EXPRESS V.
+POR
+HAIPHONG, VIET NAM
+ETD
+POL
+HAIPHONG, VIET NAM
+ETD
+09/Nov/2025
+Via Port
+NINGBO, CHINA
+ETD
+17/Nov/2025
+POD
+LOS ANGELES, CA
+ETA
+02/Dec/2025
+PLD
+CHICAGO, IL
+ETA
+12/Dec/2025
+Delivery
+CHICAGO, IL
+ETA
+15/Dec/2025
+[2025-10-14] FACTORY → confirmed: Updated EXW 
+SMT 10.22, DIP 10.23, PCK 10/27, OBA 10.28
+[2025-10-20] TRANSIT → pending: MSK – 260571792 (1x40HC/ HPH-USCHI via USLAX) – ETD 9/NOV – PO: MT-EY20250710A – HBL: HP25TA0097",9/20/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
+2d9f0119-a9ca-4885-aedc-ea4e89cb22de,MNB1223-30B-U-(LEG),Motorola B12 Cable Modem,BDI,,,,,,,,2025-W38,9536,ZERO_LAG_SAME_DAY,confirmed,confirmed,unknown,[2025-09-23] FACTORY → confirmed: this was dispatched in sections from EMG
+[2025-09-23] TRANSIT → submitted: this shipment time is not perfect as this is internal EMG to Issoy LCL
+[2025-09-27] WAREHOUSE → completed: confirmation via mail and sync by Dariush,9/15/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
+b46aaae0-93eb-4144-b399-0c48e824c5c0,MNB1525-30B-U,Motorola B15 Cable Modem,CBN,,,,,,,2025-11-14,2025-W47,4800,SEA_ASIA_US_WEST,confirmed,reviewing,unknown,[2025-10-10] FACTORY → reviewing: Awaiting update from CBN and Project team,9/6/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
+c7de7309-9e51-4dff-8077-1deaef7245ff,MNB1525-30B-U,Motorola B15 Cable Modem,CBN,,,,,,,2025-10-31,2025-W43,200,AIR_14_DAYS,confirmed,reviewing,unknown,"[2025-10-10] FACTORY → reviewing: Need CBN to confirm EXW based on new FW
+[2025-10-17] SALES → submitted: CBN BOSS Overview
+[2025-10-17] FACTORY → reviewing: CBN moving to this date; Still in reviewing due to FW upgrade,",9/6/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
+e292507c-a611-45f3-bf40-ee3dbbf2f0cf,MNQ1525-30W-U-(HSN),"Motorola Q15 WIFI 7 Router, Single-pack",MTN,2025-09-24,2025-09-29,2025-10-30,2025-10-02,2025-10-03,2025-10-06,2025-10-11,2025-W43,1020,AIR_14_DAYS,confirmed,confirmed,unknown,"This is a hand-carry/track case for HSN launch - initial factory output
+[2025-09-09] FACTORY → pending: Waiting production
+[2025-09-21] TRANSIT → pending: expedite
+[2025-09-21] SALES → submitted: Need no later EXW Oct 8
+[2025-09-21] FACTORY → reviewing: Given urgent need, factory can expedite one day
+[2025-09-21] FACTORY → reviewing: Back to Factory date
+[2025-09-21] TRANSIT → pending: Expedite via ORD (AIR)
+[2025-09-21] TRANSIT → pending: Need this to be expedited
+[2025-09-21] FACTORY → reviewing: Need to check this today at Jim Meeting
+[2025-09-21] WAREHOUSE → unknown: must be no later than 10/16
+[2025-09-21] FACTORY → reviewing: Plan B
+[2025-10-02] FACTORY → reviewing: Still confirming 
+[2025-10-03] FACTORY → reviewing: Holiday, Oct 1 through 8 - production is ging well and is under control.
+[2025-10-06] WAREHOUSE → unknown: Need to setup EMG
+[2025-10-10] TRANSIT → pending: Security audit approved
+[2025-10-11] TRANSIT → submitted: HAN to ORD in process - CBP informed of inbound flight
+
+FLight: K4601
+[2025-10-12] TRANSIT → confirmed: Consigned in ORD 19:00 Oct 111, 2025
+[2025-10-13] WAREHOUSE → pending: OL and EMG set for Noon, Oct 14",9/5/2025,18a29c7a-3778-4ea9-a36b-eefabb93d1a3,BDI (All Data)
