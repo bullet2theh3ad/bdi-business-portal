@@ -76,6 +76,7 @@ export default function SalesForecastsPage() {
   });
   const { data: purchaseOrders } = useSWR<PurchaseOrder[]>('/api/cpfr/purchase-orders', fetcher);
   const { data: inventoryData } = useSWR('/api/cpfr/inventory/availability', fetcher);
+  const { data: productionSchedules } = useSWR('/api/production-schedules', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSku, setSelectedSku] = useState<ProductSku | null>(null);
@@ -370,29 +371,47 @@ export default function SalesForecastsPage() {
       const isBDI = orgCode === 'BDI';
       
       // Prepare data for download using available properties
-      const dataToDownload = forecastsArray.map(forecast => ({
-        'Forecast ID': forecast.id,
-        'SKU': forecast.sku?.sku || 'Unknown',
-        'SKU Name': forecast.sku?.name || 'Unknown',
-        'Manufacturer': forecast.sku?.mfg || '',
-        'Material Arrival': '', // To be populated later
-        'SMT': '', // To be populated later
-        'DIP': '', // To be populated later
-        'ATP Begin': '', // To be populated later
-        'ATP End': '', // To be populated later
-        'OBA': '', // To be populated later
-        'EXW': '', // To be populated later
-        'Delivery Week': forecast.deliveryWeek,
-        'Quantity': forecast.quantity,
-        'Shipping Preference': forecast.shippingPreference || 'Not specified',
-        'Sales Signal': forecast.salesSignal,
-        'Factory Signal': forecast.factorySignal,
-        'Shipping Signal': forecast.shippingSignal,
-        'Notes': forecast.notes || '',
-        'Created Date': forecast.createdAt ? new Date(forecast.createdAt).toLocaleDateString() : '',
-        'Created By': forecast.createdBy,
-        'Organization': isBDI ? 'BDI (All Data)' : orgCode
-      }));
+      const dataToDownload = forecastsArray.map(forecast => {
+        // Find matching production schedule via shipment linkage
+        // A forecast should only have production schedule dates if:
+        // 1. The forecast has a shipment (shipment.forecastId === forecast.id)
+        // 2. That shipment is linked to a production schedule (via production_schedule_shipments)
+        let matchingSchedule = null;
+        
+        if (productionSchedules && Array.isArray(productionSchedules)) {
+          matchingSchedule = productionSchedules.find((ps: any) => {
+            // Check if this production schedule has any shipments linked to this forecast
+            return ps.shipments?.some((shipmentLink: any) => {
+              // The shipment's forecastId should match this forecast's ID
+              return shipmentLink.shipment?.forecastId === forecast.id;
+            });
+          });
+        }
+
+        return {
+          'Forecast ID': forecast.id,
+          'SKU': forecast.sku?.sku || 'Unknown',
+          'SKU Name': forecast.sku?.name || 'Unknown',
+          'Manufacturer': forecast.sku?.mfg || '',
+          'Material Arrival': matchingSchedule?.materialArrivalDate || '',
+          'SMT': matchingSchedule?.smtDate || '',
+          'DIP': matchingSchedule?.dipDate || '',
+          'ATP Begin': matchingSchedule?.atpBeginDate || '',
+          'ATP End': matchingSchedule?.atpEndDate || '',
+          'OBA': matchingSchedule?.obaDate || '',
+          'EXW': matchingSchedule?.exwDate || '',
+          'Delivery Week': forecast.deliveryWeek,
+          'Quantity': forecast.quantity,
+          'Shipping Preference': forecast.shippingPreference || 'Not specified',
+          'Sales Signal': forecast.salesSignal,
+          'Factory Signal': forecast.factorySignal,
+          'Shipping Signal': forecast.shippingSignal,
+          'Notes': forecast.notes || '',
+          'Created Date': forecast.createdAt ? new Date(forecast.createdAt).toLocaleDateString() : '',
+          'Created By': forecast.createdBy,
+          'Organization': isBDI ? 'BDI (All Data)' : orgCode
+        };
+      });
 
       // Convert to CSV
       const headers = Object.keys(dataToDownload[0] || {});

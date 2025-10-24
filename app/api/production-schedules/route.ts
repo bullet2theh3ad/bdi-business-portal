@@ -84,6 +84,7 @@ export async function GET(request: Request) {
           const shipmentsWithQuantities = await db.execute(sql`
             SELECT 
               s.id as shipment_id,
+              s.forecast_id,
               s.shipment_number,
               s.shipper_reference,
               s.status,
@@ -104,6 +105,7 @@ export async function GET(request: Request) {
             return {
               productionScheduleId: assoc.productionScheduleId,
               shipmentId: assoc.shipmentId,
+              forecastId: shipmentDetails?.forecast_id,
               shipmentNumber: shipmentDetails?.shipment_number,
               shipmentShipperReference: shipmentDetails?.shipper_reference,
               shipmentStatus: shipmentDetails?.status,
@@ -130,6 +132,7 @@ export async function GET(request: Request) {
       acc[scheduleId].push({
         shipmentId: item.shipmentId,
         shipment: {
+          forecastId: item.forecastId,
           shipmentNumber: item.shipmentNumber,
           shipperReference: item.shipmentShipperReference,
           status: item.shipmentStatus,
