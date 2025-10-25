@@ -522,8 +522,32 @@ export async function GET(request: NextRequest) {
       }
     });
     
+    // Calculate RMA inventory value
+    let rmaTotalValue = 0;
+    let rmaSkusWithCost = 0;
+    let rmaSkusWithoutCost = 0;
+    
+    // Count RMA units by SKU
+    const rmaBySku: Record<string, number> = {};
+    (wipUnits || []).forEach((unit: any) => {
+      if (unit.stage === 'RMA' && unit.model_number) {
+        rmaBySku[unit.model_number] = (rmaBySku[unit.model_number] || 0) + 1;
+      }
+    });
+    
+    Object.entries(rmaBySku).forEach(([sku, count]) => {
+      const mappingData = getBdiSkuAndCost(sku);
+      if (mappingData.hasCost) {
+        rmaTotalValue += (count as number) * mappingData.standardCost;
+        rmaSkusWithCost++;
+      } else {
+        rmaSkusWithoutCost++;
+      }
+    });
+    
     console.log(`[Warehouse Summary] EMG Value: $${emgTotalValue.toFixed(2)} (${emgSkusWithCost} SKUs with cost, ${emgSkusWithoutCost} without)`);
-    console.log(`[Warehouse Summary] CATV Value: $${catvTotalValue.toFixed(2)} (${catvSkusWithCost} SKUs with cost, ${catvSkusWithoutCost} without)`);
+    console.log(`[Warehouse Summary] CATV WIP Value: $${catvTotalValue.toFixed(2)} (${catvSkusWithCost} SKUs with cost, ${catvSkusWithoutCost} without)`);
+    console.log(`[Warehouse Summary] CATV RMA Value: $${rmaTotalValue.toFixed(2)} (${rmaSkusWithCost} SKUs with cost, ${rmaSkusWithoutCost} without)`);
 
     // =====================================================
     // FETCH AMAZON INVENTORY DATA
@@ -656,6 +680,12 @@ export async function GET(request: NextRequest) {
             skusWithCost: catvSkusWithCost,
             skusWithoutCost: catvSkusWithoutCost,
             hasCostData: catvSkusWithCost > 0,
+          },
+          rmaInventoryValue: {
+            totalValue: rmaTotalValue,
+            skusWithCost: rmaSkusWithCost,
+            skusWithoutCost: rmaSkusWithoutCost,
+            hasCostData: rmaSkusWithCost > 0,
           },
         },
         amazon: {

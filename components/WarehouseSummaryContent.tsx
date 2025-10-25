@@ -109,6 +109,12 @@ interface WarehouseSummaryData {
       skusWithoutCost: number;
       hasCostData: boolean;
     };
+    rmaInventoryValue: {
+      totalValue: number;
+      skusWithCost: number;
+      skusWithoutCost: number;
+      hasCostData: boolean;
+    };
   };
   amazon: {
     allSkus: Array<{
@@ -716,6 +722,21 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                       Out: {formatNumber(summaryData.catv.metrics.outflow)}
                     </Badge>
                   </div>
+
+                  {/* RMA Inventory Value */}
+                  {summaryData.catv.rmaInventoryValue.hasCostData && summaryData.catv.metrics.rma > 0 && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">RMA Units Value:</span>
+                        <span className="text-sm font-bold text-orange-600">
+                          ${formatNumber(Math.round(summaryData.catv.rmaInventoryValue.totalValue))}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {summaryData.catv.metrics.rma.toLocaleString()} RMA units
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -949,7 +970,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                   </div>
                   <div className="text-center p-4 bg-orange-50 rounded-lg">
                     <p className="text-2xl font-bold text-orange-600">{formatNumber(summaryData.catv.metrics.rma)}</p>
-                    <p className="text-sm text-muted-foreground">RMA</p>
+                    <p className="text-sm text-muted-foreground">RMA Units</p>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
                     <p className="text-2xl font-bold text-purple-600">{formatNumber(summaryData.catv.metrics.outflow)}</p>
@@ -960,6 +981,42 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
                     <p className="text-sm text-muted-foreground">Avg. Aging (days)</p>
                   </div>
                 </div>
+
+                {/* RMA Inventory Value Card */}
+                {summaryData.catv.rmaInventoryValue.hasCostData && summaryData.catv.metrics.rma > 0 && (
+                  <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-white">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center justify-between">
+                        <span>RMA Units Inventory Value</span>
+                        <Badge variant="outline" className="bg-orange-100 text-orange-800">
+                          {summaryData.catv.metrics.rma.toLocaleString()} units
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-3xl font-bold text-orange-600">
+                            ${formatNumber(Math.round(summaryData.catv.rmaInventoryValue.totalValue))}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">Total RMA inventory value</p>
+                        </div>
+                        <div className="pt-3 border-t border-orange-200">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">SKUs with cost data:</span>
+                            <span className="font-medium text-green-600">{summaryData.catv.rmaInventoryValue.skusWithCost}</span>
+                          </div>
+                          {summaryData.catv.rmaInventoryValue.skusWithoutCost > 0 && (
+                            <div className="flex justify-between text-sm mt-1">
+                              <span className="text-muted-foreground">SKUs without cost:</span>
+                              <span className="font-medium text-orange-600">{summaryData.catv.rmaInventoryValue.skusWithoutCost}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* WIP by Source */}
                 <Card>

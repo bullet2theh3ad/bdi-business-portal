@@ -39,3 +39,4 @@ FROM users
 WHERE role = 'super_admin'
 ORDER BY created_at DESC;
 
+
