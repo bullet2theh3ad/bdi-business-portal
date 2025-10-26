@@ -2063,3 +2063,116 @@ export const productionScheduleShipments = pgTable('production_schedule_shipment
 
 export type ProductionScheduleShipment = typeof productionScheduleShipments.$inferSelect;
 export type NewProductionScheduleShipment = typeof productionScheduleShipments.$inferInsert;
+
+// ===== NOTIFICATIONS SYSTEM =====
+
+// Notification types enum
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'system',        // System messages
+  'order',         // Order updates
+  'shipment',      // Shipment updates
+  'rma',           // RMA updates
+  'cpfr',          // CPFR/forecast updates
+  'user',          // User-related notifications
+  'alert',         // Urgent alerts
+  'message',       // Direct messages/WhatsApp
+]);
+
+// Notification channels enum
+export const notificationChannelEnum = pgEnum('notification_channel', [
+  'portal',        // In-app notification
+  'email',         // Email notification
+  'whatsapp',      // WhatsApp notification
+  'sms',           // SMS notification
+]);
+
+// Notifications table
+export const notifications = pgTable('notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Recipient
+  userId: uuid('user_id').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  
+  // Notification Details
+  type: varchar('type', { length: 50 }).notNull().default('system'),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  
+  // Delivery Channels (tracks which channels were used)
+  channels: jsonb('channels').notNull().default(['portal']), // ['portal', 'email', 'whatsapp']
+  
+  // Metadata
+  priority: varchar('priority', { length: 20 }).default('normal'), // low, normal, high, urgent
+  category: varchar('category', { length: 50 }), // For grouping/filtering
+  
+  // Links and Actions
+  actionUrl: varchar('action_url', { length: 500 }), // URL to navigate when clicked
+  actionLabel: varchar('action_label', { length: 100 }), // Button text
+  
+  // References to related entities
+  relatedEntityType: varchar('related_entity_type', { length: 50 }), // 'purchase_order', 'shipment', 'rma', etc.
+  relatedEntityId: uuid('related_entity_id'), // ID of the related entity
+  
+  // Status tracking
+  isRead: boolean('is_read').default(false),
+  readAt: timestamp('read_at'),
+  
+  // Delivery status per channel
+  deliveryStatus: jsonb('delivery_status').default({}), // { portal: 'delivered', email: 'sent', whatsapp: 'failed' }
+  
+  // WhatsApp specific fields
+  whatsappMessageId: varchar('whatsapp_message_id', { length: 255 }), // Twilio message SID
+  whatsappStatus: varchar('whatsapp_status', { length: 50 }), // sent, delivered, read, failed
+  whatsappErrorCode: varchar('whatsapp_error_code', { length: 50 }),
+  whatsappErrorMessage: text('whatsapp_error_message'),
+  
+  // Metadata
+  metadata: jsonb('metadata'), // Additional flexible data
+  
+  // Timestamps
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at'), // Optional expiration
+  
+  // Soft delete
+  deletedAt: timestamp('deleted_at'),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+
+// WhatsApp Configuration (settings for WhatsApp integration)
+export const whatsappConfig = pgTable('whatsapp_config', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Organization-specific config (null = global/default)
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Twilio Credentials (encrypted in production)
+  twilioAccountSid: text('twilio_account_sid'),
+  twilioAuthToken: text('twilio_auth_token'),
+  twilioWhatsappNumber: varchar('twilio_whatsapp_number', { length: 50 }), // e.g., whatsapp:+14155238886
+  
+  // Feature Flags
+  isEnabled: boolean('is_enabled').default(false),
+  enabledForNotificationTypes: jsonb('enabled_for_notification_types').default(['order', 'shipment', 'rma', 'alert']),
+  
+  // Message Templates (pre-approved by WhatsApp)
+  templates: jsonb('templates').default({}), // { order_shipped: { template_id: 'xxx', variables: [...] } }
+  
+  // Rate Limiting
+  dailyMessageLimit: integer('daily_message_limit').default(1000),
+  messagesUsedToday: integer('messages_used_today').default(0),
+  lastResetDate: date('last_reset_date').defaultNow(),
+  
+  // Webhook Configuration
+  webhookUrl: varchar('webhook_url', { length: 500 }), // For receiving status updates
+  webhookSecret: varchar('webhook_secret', { length: 255 }),
+  
+  // Metadata
+  createdBy: uuid('created_by').references(() => users.authId, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type WhatsappConfig = typeof whatsappConfig.$inferSelect;
+export type NewWhatsappConfig = typeof whatsappConfig.$inferInsert;

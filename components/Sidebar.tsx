@@ -25,6 +25,7 @@ interface NavItem {
   requiresBDI?: boolean; // Only show for BDI organization users
   requiresNonBDI?: boolean; // Only show for non-BDI organization users
   requiresFeatureFlag?: (email: string) => boolean; // Custom feature flag check
+  requiresEmail?: string; // Restrict to specific email address
 }
 
 // 🌍 DYNAMIC: Navigation items will be created inside component for translations
@@ -139,6 +140,14 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
         title: tn('users', 'Users'), // 🌍 TRANSLATED
         href: '/admin/users',
         icon: 'users',
+      },
+      {
+        title: tn('whatsappSettings', 'WhatsApp Settings'), // 🌍 TRANSLATED
+        href: '/admin/whatsapp-settings',
+        icon: 'connect',
+        requiresRole: ['super_admin'], // Super Admin only - sensitive credentials & system-wide
+        requiresBDI: true, // BDI-only feature
+        requiresEmail: 'scistulli@boundlessdevices.com', // Restricted to specific user only
       },
       {
         title: tn('policies', 'Policies'), // 🌍 TRANSLATED
@@ -429,6 +438,11 @@ export function Sidebar({ className }: SidebarProps) {
 
     // Check feature flag (email-based whitelist)
     if (item.requiresFeatureFlag && !item.requiresFeatureFlag(user?.email || '')) {
+      return null;
+    }
+
+    // Check if item requires specific email address
+    if (item.requiresEmail && user?.email !== item.requiresEmail) {
       return null;
     }
 

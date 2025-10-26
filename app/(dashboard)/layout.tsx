@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import VersionDisplay from '@/components/VersionDisplay';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { NotificationBell } from '@/components/NotificationBell';
 import { getUserLocale } from '@/lib/i18n/simple-translator';
 import useSWR from 'swr';
 import { User } from '@/lib/db/schema';
@@ -98,6 +99,9 @@ export default function DashboardLayout({
                 
                 {/* Version Display */}
                 <VersionDisplay />
+                
+                {/* Notifications Bell */}
+                <NotificationBell />
                 
                 <UserMenu />
               </div>
