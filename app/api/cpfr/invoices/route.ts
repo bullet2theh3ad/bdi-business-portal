@@ -299,12 +299,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Creating Invoice with data:', body);
 
+    // Helper function to safely parse dates
+    const parseDate = (dateValue: any): Date | null => {
+      if (!dateValue) return null;
+      if (dateValue instanceof Date) return dateValue;
+      if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
+      
+      try {
+        const parsed = new Date(dateValue);
+        if (isNaN(parsed.getTime())) return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    };
+
     // Insert invoice into database with all new fields
     const invoiceData: any = {
         invoiceNumber: body.invoiceNumber || body.poNumber, // Support both new and old field names
         customerName: body.customerName || body.supplierName, // Support both new and old field names
-        invoiceDate: body.invoiceDate || body.orderDate, // Pass string directly, let Drizzle handle conversion
-        requestedDeliveryWeek: body.requestedDeliveryWeek && body.requestedDeliveryWeek.trim() !== '' ? body.requestedDeliveryWeek : null,
+        invoiceDate: parseDate(body.invoiceDate || body.orderDate), // Safely parse date
+        requestedDeliveryWeek: parseDate(body.requestedDeliveryWeek),
         status: body.status || 'draft', // Use provided status or default to 'draft'
         terms: body.terms,
         incoterms: body.incoterms,
@@ -315,7 +330,7 @@ export async function POST(request: NextRequest) {
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
         shipToAddress: body.shipToAddress || null,
-        shipDate: body.shipDate && body.shipDate.trim() !== '' ? body.shipDate : null,
+        shipDate: body.shipDate && body.shipDate.trim() !== '' ? body.shipDate : null, // Keep as string for date type
         // NEW FIELDS: Bank information
         bankName: body.bankName || null,
         bankAccountNumber: body.bankAccountNumber || null,

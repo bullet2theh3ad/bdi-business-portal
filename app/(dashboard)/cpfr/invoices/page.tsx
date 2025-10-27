@@ -60,6 +60,21 @@ interface Invoice {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+// ✅ Utility function to format dates in local timezone (no UTC conversion)
+const formatDateForInput = (dateValue: any): string => {
+  if (!dateValue) return new Date().toISOString().split('T')[0];
+  
+  const date = new Date(dateValue);
+  if (isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
+  
+  // Format in local timezone (YYYY-MM-DD) without converting to UTC
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+
 export default function InvoicesPage() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -811,7 +826,7 @@ export default function InvoicesPage() {
                                     setGeneratedInvoice({
                                       invoiceNumber: invoice.invoiceNumber,
                                       customerName: invoice.customerName,
-                                      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                      invoiceDate: formatDateForInput(invoice.invoiceDate),
                                       requestedDeliveryWeek: invoice.requestedDeliveryWeek,
                                       status: 'draft', // Reset to draft for revision
                                       terms: invoice.terms,
@@ -902,7 +917,7 @@ export default function InvoicesPage() {
                                     setGeneratedInvoice({
                                       invoiceNumber: invoice.invoiceNumber,
                                       customerName: invoice.customerName,
-                                      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                      invoiceDate: formatDateForInput(invoice.invoiceDate),
                                       requestedDeliveryWeek: invoice.requestedDeliveryWeek,
                                       status: invoice.status,
                                       terms: invoice.terms,
@@ -935,7 +950,7 @@ export default function InvoicesPage() {
                                     setGeneratedInvoice({
                                       invoiceNumber: invoice.invoiceNumber,
                                       customerName: invoice.customerName,
-                                      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                      invoiceDate: formatDateForInput(invoice.invoiceDate),
                                       requestedDeliveryWeek: invoice.requestedDeliveryWeek,
                                       status: invoice.status,
                                       terms: invoice.terms,
@@ -983,7 +998,7 @@ export default function InvoicesPage() {
                                 setGeneratedInvoice({
                                   invoiceNumber: invoice.invoiceNumber || '',
                                   customerName: invoice.customerName || '',
-                                  invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                  invoiceDate: formatDateForInput(invoice.invoiceDate),
                                   requestedDeliveryWeek: invoice.requestedDeliveryWeek || '',
                                   status: invoice.status || 'draft',
                                   terms: invoice.terms || '',
@@ -2244,7 +2259,7 @@ export default function InvoicesPage() {
                               setGeneratedInvoice({
                                 invoiceNumber: existingInvoice.invoiceNumber || '',
                                 customerName: existingInvoice.customerName || '',
-                                invoiceDate: existingInvoice.invoiceDate ? new Date(existingInvoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                invoiceDate: formatDateForInput(existingInvoice.invoiceDate),
                                 requestedDeliveryWeek: existingInvoice.requestedDeliveryWeek || '',
                                 status: existingInvoice.status || 'draft',
                                 terms: existingInvoice.terms || '',
