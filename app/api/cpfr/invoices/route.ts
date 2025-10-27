@@ -399,9 +399,21 @@ export async function POST(request: NextRequest) {
       invoice: newInvoice
     });
 
-  } catch (error) {
-    console.error('Error creating invoice:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('❌ Error creating invoice:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
+    
+    // Return more detailed error info in development
+    return NextResponse.json({ 
+      error: 'Failed to create invoice',
+      details: error.message || 'Internal server error',
+      code: error.code
+    }, { status: 500 });
   }
 }
 
