@@ -299,16 +299,42 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Creating Invoice with data:', body);
 
-    // Helper function to safely parse dates
-    const parseDate = (dateValue: any): Date | null => {
+    // Helper function to parse dates for PostgreSQL timestamp fields
+    // Drizzle PgTimestamp expects Date objects, not strings
+    const parseTimestampField = (dateValue: any): Date | null => {
       if (!dateValue) return null;
-      if (dateValue instanceof Date) return dateValue;
       if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
       
       try {
-        const parsed = new Date(dateValue);
-        if (isNaN(parsed.getTime())) return null;
-        return parsed;
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return null;
+        return date; // Return Date object for timestamp fields
+      } catch {
+        return null;
+      }
+    };
+
+    // Helper function to parse dates for PostgreSQL date fields
+    // Drizzle PgDate accepts YYYY-MM-DD strings
+    const parseDateField = (dateValue: any): string | null => {
+      if (!dateValue) return null;
+      if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
+      
+      try {
+        // If already in YYYY-MM-DD format, return as-is
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          return dateValue;
+        }
+        
+        // Otherwise parse and format in local timezone
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return null;
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
       } catch {
         return null;
       }
@@ -318,8 +344,8 @@ export async function POST(request: NextRequest) {
     const invoiceData: any = {
         invoiceNumber: body.invoiceNumber || body.poNumber, // Support both new and old field names
         customerName: body.customerName || body.supplierName, // Support both new and old field names
-        invoiceDate: parseDate(body.invoiceDate || body.orderDate), // Safely parse date
-        requestedDeliveryWeek: parseDate(body.requestedDeliveryWeek),
+        invoiceDate: parseTimestampField(body.invoiceDate || body.orderDate), // timestamp → Date object
+        requestedDeliveryWeek: parseTimestampField(body.requestedDeliveryWeek), // timestamp → Date object
         status: body.status || 'draft', // Use provided status or default to 'draft'
         terms: body.terms,
         incoterms: body.incoterms,
@@ -330,7 +356,7 @@ export async function POST(request: NextRequest) {
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
         shipToAddress: body.shipToAddress || null,
-        shipDate: body.shipDate && body.shipDate.trim() !== '' ? body.shipDate : null, // Keep as string for date type
+        shipDate: parseDateField(body.shipDate), // date → YYYY-MM-DD string
         // NEW FIELDS: Bank information
         bankName: body.bankName || null,
         bankAccountNumber: body.bankAccountNumber || null,

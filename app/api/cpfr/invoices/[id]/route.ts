@@ -183,22 +183,53 @@ export async function PUT(
       }
     } else {
       // Full invoice update - update all fields
-      // Helper function to safely convert to Date
-      const toDateOrNull = (value: any) => {
-        if (!value) return null;
-        if (typeof value === 'string' && value.trim() !== '') {
-          const date = new Date(value);
-          return isNaN(date.getTime()) ? null : date;
+      // Helper function to safely parse dates for PostgreSQL
+      // For timestamp fields: returns Date object (Drizzle PgTimestamp expects Date objects)
+      // For date fields: returns YYYY-MM-DD string (Drizzle PgDate accepts strings)
+      const parseTimestampField = (dateValue: any): Date | null => {
+        if (!dateValue) return null;
+        if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
+        
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) return null;
+          
+          // Return Date object for timestamp fields
+          return date;
+        } catch {
+          return null;
         }
-        if (value instanceof Date) return value;
-        return null;
+      };
+
+      const parseDateField = (dateValue: any): string | null => {
+        if (!dateValue) return null;
+        if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
+        
+        try {
+          // If already in YYYY-MM-DD format, return as-is
+          if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+            return dateValue;
+          }
+          
+          // Otherwise parse and format in local timezone
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) return null;
+          
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          
+          return `${year}-${month}-${day}`;
+        } catch {
+          return null;
+        }
       };
 
       updateData = {
         invoiceNumber: body.invoiceNumber || body.poNumber,
         customerName: body.customerName || body.supplierName,
-        invoiceDate: body.invoiceDate || body.orderDate, // Pass string directly, let Drizzle handle conversion
-        requestedDeliveryWeek: toDateOrNull(body.requestedDeliveryWeek),
+        invoiceDate: parseTimestampField(body.invoiceDate || body.orderDate), // timestamp → Date object
+        requestedDeliveryWeek: parseTimestampField(body.requestedDeliveryWeek), // timestamp → Date object
         status: body.status || 'draft',
         terms: body.terms,
         incoterms: body.incoterms,
@@ -208,7 +239,7 @@ export async function PUT(
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
         shipToAddress: body.shipToAddress || null,
-        shipDate: toDateOrNull(body.shipDate),
+        shipDate: parseDateField(body.shipDate), // date → YYYY-MM-DD string
         // NEW FIELDS: Bank information
         bankName: body.bankName || null,
         bankAccountNumber: body.bankAccountNumber || null,

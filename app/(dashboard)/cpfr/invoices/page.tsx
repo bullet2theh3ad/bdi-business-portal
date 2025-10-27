@@ -75,6 +75,27 @@ const formatDateForInput = (dateValue: any): string => {
   return `${year}-${month}-${day}`;
 };
 
+// ✅ Utility function to display dates without timezone shifts (MM/DD/YYYY)
+const formatDateForDisplay = (dateValue: any): string => {
+  if (!dateValue) return '';
+  
+  // If it's already in YYYY-MM-DD format, parse it directly
+  if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+    const [year, month, day] = dateValue.split('T')[0].split('-');
+    return `${month}/${day}/${year}`;
+  }
+  
+  // Otherwise create date and format in local timezone
+  const date = new Date(dateValue);
+  if (isNaN(date.getTime())) return '';
+  
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  
+  return `${month}/${day}/${year}`;
+};
+
 export default function InvoicesPage() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -1191,11 +1212,11 @@ export default function InvoicesPage() {
                         </div>
                         <div>
                           <span className="text-gray-500">Invoice Date:</span>
-                          <p className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
+                          <p className="font-medium">{formatDateForDisplay(invoice.invoiceDate)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Delivery Week:</span>
-                          <p className="font-medium">{invoice.shipDate ? new Date(invoice.shipDate).toLocaleDateString() : invoice.requestedDeliveryWeek || 'Not set'}</p>
+                          <p className="font-medium">{invoice.shipDate ? formatDateForDisplay(invoice.shipDate) : invoice.requestedDeliveryWeek || 'Not set'}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Terms:</span>
@@ -3097,7 +3118,7 @@ export default function InvoicesPage() {
                           <div>
                             <h3 className="font-semibold text-gray-900 mb-1 text-sm">Shipping info</h3>
                             <div className="text-xs text-gray-700">
-                              <div><span className="font-medium">Ship date:</span> {shipDate ? new Date(shipDate).toLocaleDateString() : 'TBD'}</div>
+                              <div><span className="font-medium">Ship date:</span> {shipDate ? formatDateForDisplay(shipDate) : 'TBD'}</div>
                             </div>
                           </div>
                           <div>
@@ -3105,8 +3126,8 @@ export default function InvoicesPage() {
                             <div className="text-xs text-gray-700">
                               <div><span className="font-medium">Invoice no.:</span> {generatedInvoice.invoiceNumber.replace('INV-', '')}</div>
                               <div><span className="font-medium">Terms:</span> {generatedInvoice.terms}</div>
-                              <div><span className="font-medium">Invoice date:</span> {new Date(generatedInvoice.invoiceDate).toLocaleDateString()}</div>
-                              <div><span className="font-medium">Due date:</span> {shipDate ? new Date(shipDate).toLocaleDateString() : 'Not set'}</div>
+                              <div><span className="font-medium">Invoice date:</span> {formatDateForDisplay(generatedInvoice.invoiceDate)}</div>
+                              <div><span className="font-medium">Due date:</span> {shipDate ? formatDateForDisplay(shipDate) : 'Not set'}</div>
                             </div>
                           </div>
                         </div>
