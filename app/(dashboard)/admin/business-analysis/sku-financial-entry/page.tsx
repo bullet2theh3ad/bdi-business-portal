@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calculator, FolderOpen, Edit, Trash2, Search, Copy } from 'lucide-react';
+import { Calculator, FolderOpen, Edit, Trash2, Search, Copy, Grid3x3, List } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -29,6 +29,7 @@ export default function SKUFinancialEntryPage() {
   const router = useRouter();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [skuFilter, setSkuFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
@@ -202,6 +203,19 @@ export default function SKUFinancialEntryPage() {
            channel.toLowerCase().includes('b2b');
   };
 
+  // Helper to abbreviate channel name
+  const abbreviateChannel = (channel: string): string => {
+    if (channel.toLowerCase().includes('amazon')) return 'AMZ';
+    if (channel.toLowerCase().includes('shopify')) return 'Shopify';
+    if (channel.toLowerCase().includes('best buy')) return 'Best Buy';
+    if (channel.toLowerCase().includes('costco')) return 'Costco';
+    if (channel.toLowerCase().includes('walmart')) return 'Walmart';
+    if (channel.toLowerCase().includes('tekpoint')) return 'Tekpoint';
+    if (channel.toLowerCase().includes('emg')) return 'EMG';
+    if (channel.length > 15) return channel.substring(0, 15) + '...';
+    return channel;
+  };
+
   // Get unique values for filters
   const uniqueSkus = Array.from(new Set(scenarios.map(s => s.skuName))).sort();
   const uniqueChannels = Array.from(new Set(scenarios.map(s => s.channel))).sort();
@@ -243,8 +257,8 @@ export default function SKUFinancialEntryPage() {
         <p className="text-sm sm:text-base text-gray-600">Create and manage SKU financial scenarios with detailed cost analysis</p>
       </div>
 
-      {/* Action Button */}
-      <div className="mb-6">
+      {/* Action Button and View Toggle */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center">
         <Button 
           onClick={handleNewWorksheet}
           className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
@@ -252,6 +266,30 @@ export default function SKUFinancialEntryPage() {
           <Calculator className="w-4 h-4 mr-2" />
           New SKU Worksheet
         </Button>
+
+        {/* View Toggle */}
+        {scenarios.length > 0 && (
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="flex-1 sm:flex-initial gap-2"
+            >
+              <Grid3x3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Grid</span>
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="flex-1 sm:flex-initial gap-2"
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">List</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -427,94 +465,215 @@ export default function SKUFinancialEntryPage() {
         </Card>
       )}
 
-      {/* Scenarios Grid */}
+      {/* Scenarios Display */}
       {!isLoading && filteredScenarios.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-800">
             Saved Scenarios ({filteredScenarios.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredScenarios.map((scenario) => (
-              <Card key={scenario.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle 
-                    className="text-sm sm:text-base leading-tight truncate" 
-                    title={scenario.scenarioName}
+
+          {/* Grid View */}
+          {viewMode === 'grid' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredScenarios.map((scenario) => (
+                <Card key={scenario.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle 
+                      className="text-sm sm:text-base leading-tight truncate" 
+                      title={scenario.scenarioName}
+                    >
+                      {scenario.scenarioName}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-1.5 text-xs sm:text-sm mb-4">
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-600 flex-shrink-0">SKU:</span>
+                        <span className="font-semibold text-gray-900 break-all text-right">{scenario.skuName}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-600 flex-shrink-0">Channel:</span>
+                        <span className="font-medium text-gray-800 break-words text-right">{scenario.channel}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-600 flex-shrink-0">Country:</span>
+                        <span className="font-medium text-gray-800">{scenario.countryCode}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-600 flex-shrink-0">ASP:</span>
+                        <span className="font-semibold text-green-600">${parseFloat(scenario.asp).toFixed(2)}</span>
+                      </div>
+                      {scenario.grossProfit && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-600 flex-shrink-0">GP:</span>
+                          <span className="font-semibold text-blue-600">${parseFloat(scenario.grossProfit).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {scenario.grossMarginPercent && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-600 flex-shrink-0">GP %:</span>
+                          <span className="font-semibold text-purple-600">{parseFloat(scenario.grossMarginPercent).toFixed(2)}%</span>
+                        </div>
+                      )}
+                      {scenario.description && (
+                        <div className="mt-2 pt-2 border-t">
+                          <p className="text-xs text-gray-500 italic line-clamp-2 break-words">{scenario.description}</p>
+                        </div>
+                      )}
+                      <div className="mt-2 pt-2 border-t text-xs text-gray-400">
+                        Updated: {new Date(scenario.updatedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleEdit(scenario.id)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm"
+                        size="sm"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => handleDuplicateClick(scenario.id, scenario.scenarioName, scenario.description)}
+                        variant="outline"
+                        className="border-green-300 text-green-600 hover:bg-green-50"
+                        size="sm"
+                        title="Duplicate scenario"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteClick(scenario.id, scenario.scenarioName)}
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        size="sm"
+                        title="Delete scenario"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* List View */}
+          {viewMode === 'list' && (
+            <div className="bg-white border rounded-lg overflow-hidden">
+              {/* Header - Hidden on mobile */}
+              <div className="hidden md:grid md:grid-cols-12 gap-2 px-4 py-3 bg-gray-50 border-b text-xs font-semibold text-gray-600">
+                <div className="col-span-3">Scenario Name</div>
+                <div className="col-span-2">SKU</div>
+                <div className="col-span-2">Channel</div>
+                <div className="col-span-1 text-right">ASP</div>
+                <div className="col-span-1 text-right">GP</div>
+                <div className="col-span-1 text-right">GP%</div>
+                <div className="col-span-2 text-right">Actions</div>
+              </div>
+
+              {/* List Items */}
+              <div className="divide-y">
+                {filteredScenarios.map((scenario) => (
+                  <div 
+                    key={scenario.id} 
+                    className="grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3 hover:bg-gray-50 transition-colors items-center text-sm"
                   >
-                    {scenario.scenarioName}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1.5 text-xs sm:text-sm mb-4">
-                    <div className="flex justify-between gap-2">
-                      <span className="text-gray-600 flex-shrink-0">SKU:</span>
-                      <span className="font-semibold text-gray-900 break-all text-right">{scenario.skuName}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-gray-600 flex-shrink-0">Channel:</span>
-                      <span className="font-medium text-gray-800 break-words text-right">{scenario.channel}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-gray-600 flex-shrink-0">Country:</span>
-                      <span className="font-medium text-gray-800">{scenario.countryCode}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-gray-600 flex-shrink-0">ASP:</span>
-                      <span className="font-semibold text-green-600">${parseFloat(scenario.asp).toFixed(2)}</span>
-                    </div>
-                    {scenario.grossProfit && (
-                      <div className="flex justify-between gap-2">
-                        <span className="text-gray-600 flex-shrink-0">GP:</span>
-                        <span className="font-semibold text-blue-600">${parseFloat(scenario.grossProfit).toFixed(2)}</span>
+                    {/* Mobile layout */}
+                    <div className="col-span-1 md:col-span-3">
+                      <div 
+                        className="font-medium text-gray-900 truncate cursor-help" 
+                        title={scenario.scenarioName}
+                      >
+                        {scenario.scenarioName.length > 40 
+                          ? scenario.scenarioName.substring(0, 40) + '...' 
+                          : scenario.scenarioName}
                       </div>
-                    )}
-                    {scenario.grossMarginPercent && (
-                      <div className="flex justify-between gap-2">
-                        <span className="text-gray-600 flex-shrink-0">GP %:</span>
-                        <span className="font-semibold text-purple-600">{parseFloat(scenario.grossMarginPercent).toFixed(1)}%</span>
+                      <div className="md:hidden text-xs text-gray-500 mt-1">
+                        {scenario.skuName} • {abbreviateChannel(scenario.channel)}
                       </div>
-                    )}
-                    {scenario.description && (
-                      <div className="mt-2 pt-2 border-t">
-                        <p className="text-xs text-gray-500 italic line-clamp-2 break-words">{scenario.description}</p>
+                    </div>
+
+                    {/* Desktop columns */}
+                    <div className="hidden md:block md:col-span-2 text-gray-700">
+                      {scenario.skuName}
+                    </div>
+
+                    <div className="hidden md:block md:col-span-2">
+                      <span 
+                        className="text-gray-700 cursor-help" 
+                        title={scenario.channel}
+                      >
+                        {abbreviateChannel(scenario.channel)}
+                      </span>
+                    </div>
+
+                    <div className="hidden md:block md:col-span-1 text-right text-green-600 font-medium">
+                      ${parseFloat(scenario.asp).toFixed(2)}
+                    </div>
+
+                    <div className="hidden md:block md:col-span-1 text-right text-blue-600 font-medium">
+                      {scenario.grossProfit ? `$${parseFloat(scenario.grossProfit).toFixed(2)}` : '-'}
+                    </div>
+
+                    <div className="hidden md:block md:col-span-1 text-right text-purple-600 font-medium">
+                      {scenario.grossMarginPercent ? `${parseFloat(scenario.grossMarginPercent).toFixed(2)}%` : '-'}
+                    </div>
+
+                    {/* Mobile stats row */}
+                    <div className="md:hidden flex gap-4 text-xs mt-2">
+                      <div>
+                        <span className="text-gray-500">ASP: </span>
+                        <span className="text-green-600 font-medium">${parseFloat(scenario.asp).toFixed(2)}</span>
                       </div>
-                    )}
-                    <div className="mt-2 pt-2 border-t text-xs text-gray-400">
-                      Updated: {new Date(scenario.updatedAt).toLocaleDateString()}
+                      {scenario.grossProfit && (
+                        <div>
+                          <span className="text-gray-500">GP: </span>
+                          <span className="text-blue-600 font-medium">${parseFloat(scenario.grossProfit).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {scenario.grossMarginPercent && (
+                        <div>
+                          <span className="text-gray-500">GP%: </span>
+                          <span className="text-purple-600 font-medium">{parseFloat(scenario.grossMarginPercent).toFixed(2)}%</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-1 md:col-span-2 flex gap-2 justify-end mt-3 md:mt-0">
+                      <Button
+                        onClick={() => handleEdit(scenario.id)}
+                        className="bg-blue-600 hover:bg-blue-700 flex-1 md:flex-initial"
+                        size="sm"
+                      >
+                        <Edit className="w-3 h-3 md:mr-1" />
+                        <span className="hidden md:inline">Edit</span>
+                      </Button>
+                      <Button
+                        onClick={() => handleDuplicateClick(scenario.id, scenario.scenarioName, scenario.description)}
+                        variant="outline"
+                        className="border-green-300 text-green-600 hover:bg-green-50"
+                        size="sm"
+                        title="Duplicate scenario"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteClick(scenario.id, scenario.scenarioName)}
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        size="sm"
+                        title="Delete scenario"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleEdit(scenario.id)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm"
-                      size="sm"
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => handleDuplicateClick(scenario.id, scenario.scenarioName, scenario.description)}
-                      variant="outline"
-                      className="border-green-300 text-green-600 hover:bg-green-50"
-                      size="sm"
-                      title="Duplicate scenario"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      onClick={() => handleDeleteClick(scenario.id, scenario.scenarioName)}
-                      variant="outline"
-                      className="border-red-300 text-red-600 hover:bg-red-50"
-                      size="sm"
-                      title="Delete scenario"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

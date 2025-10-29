@@ -775,7 +775,7 @@ function SKUWorksheetPageContent() {
                     step="0.01"
                     placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.asp || ''}
+                    value={worksheetData.asp ?? ''}
                     onChange={(e) => {
                       const newAsp = parseFloat(e.target.value) || 0;
                       setWorksheetData(prev => ({ ...prev, asp: newAsp }));
@@ -808,9 +808,9 @@ function SKUWorksheetPageContent() {
                       id="fba-fee-percent"
                       type="number"
                       step="0.01"
-                      placeholder="8"
+                      placeholder="0"
                       className="pr-7"
-                      value={worksheetData.fbaFeePercent || ''}
+                      value={worksheetData.fbaFeePercent ?? ''}
                       onChange={(e) => syncFbaFee(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -827,7 +827,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.fbaFeeAmount || ''}
+                      value={worksheetData.fbaFeeAmount ?? ''}
                       onChange={(e) => syncFbaFee(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -847,9 +847,9 @@ function SKUWorksheetPageContent() {
                       id="amazon-referral-percent"
                       type="number"
                       step="0.01"
-                      placeholder="8"
+                      placeholder="0"
                       className="pr-7"
-                      value={worksheetData.amazonReferralFeePercent || ''}
+                      value={worksheetData.amazonReferralFeePercent ?? ''}
                       onChange={(e) => syncAmazonReferralFee(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -866,7 +866,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.amazonReferralFeeAmount || ''}
+                      value={worksheetData.amazonReferralFeeAmount ?? ''}
                       onChange={(e) => syncAmazonReferralFee(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -886,9 +886,9 @@ function SKUWorksheetPageContent() {
                       id="acos-percent"
                       type="number"
                       step="0.01"
-                      placeholder="8"
+                      placeholder="0"
                       className="pr-7"
-                      value={worksheetData.acosPercent || ''}
+                      value={worksheetData.acosPercent ?? ''}
                       onChange={(e) => syncAcos(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -905,7 +905,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.acosAmount || ''}
+                      value={worksheetData.acosAmount ?? ''}
                       onChange={(e) => syncAcos(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -952,7 +952,7 @@ function SKUWorksheetPageContent() {
                         step="0.01"
                         placeholder="0"
                         className="pr-7"
-                        value={item.percent || ''}
+                        value={item.percent ?? ''}
                         onChange={(e) => {
                           const newItems = [...worksheetData.otherFeesAndAdvertising];
                           const percent = parseFloat(e.target.value) || 0;
@@ -972,7 +972,7 @@ function SKUWorksheetPageContent() {
                           step="0.01"
                           placeholder="0.00"
                           className="pl-7"
-                          value={item.value || ''}
+                          value={item.value ?? ''}
                           onChange={(e) => {
                             const newItems = [...worksheetData.otherFeesAndAdvertising];
                             const value = parseFloat(e.target.value) || 0;
@@ -1037,9 +1037,9 @@ function SKUWorksheetPageContent() {
                       id="motorola-royalties-percent"
                       type="number"
                       step="0.01"
-                      placeholder="5"
+                      placeholder="0"
                       className="pr-7"
-                      value={worksheetData.motorolaRoyaltiesPercent || ''}
+                      value={worksheetData.motorolaRoyaltiesPercent ?? ''}
                       onChange={(e) => syncMotorolaRoyalties(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1056,7 +1056,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.motorolaRoyaltiesAmount || ''}
+                      value={worksheetData.motorolaRoyaltiesAmount ?? ''}
                       onChange={(e) => syncMotorolaRoyalties(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1076,9 +1076,9 @@ function SKUWorksheetPageContent() {
                     id="rtv-freight"
                     type="number"
                     step="0.01"
-                    placeholder="0.80"
+                    placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.rtvFreightAssumptions || ''}
+                    value={worksheetData.rtvFreightAssumptions ?? ''}
                     onChange={(e) => setWorksheetData(prev => ({ ...prev, rtvFreightAssumptions: parseFloat(e.target.value) || 0 }))}
                     onFocus={(e) => e.target.select()}
                   />
@@ -1094,9 +1094,9 @@ function SKUWorksheetPageContent() {
                     id="rtv-repair"
                     type="number"
                     step="0.01"
-                    placeholder="2.93"
+                    placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.rtvRepairCosts || ''}
+                    value={worksheetData.rtvRepairCosts ?? ''}
                     onChange={(e) => setWorksheetData(prev => ({ ...prev, rtvRepairCosts: parseFloat(e.target.value) || 0 }))}
                     onFocus={(e) => e.target.select()}
                   />
@@ -1114,7 +1114,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0"
                       className="pr-7"
-                      value={worksheetData.doaCreditsPercent || ''}
+                      value={worksheetData.doaCreditsPercent ?? ''}
                       onChange={(e) => syncDoaCredits(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1131,7 +1131,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.doaCreditsAmount || ''}
+                      value={worksheetData.doaCreditsAmount ?? ''}
                       onChange={(e) => syncDoaCredits(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1153,7 +1153,7 @@ function SKUWorksheetPageContent() {
                     step="0.01"
                     placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.invoiceFactoringNet || ''}
+                    value={worksheetData.invoiceFactoringNet ?? ''}
                     onChange={(e) => setWorksheetData(prev => ({ ...prev, invoiceFactoringNet: parseFloat(e.target.value) || 0 }))}
                     onFocus={(e) => e.target.select()}
                   />
@@ -1171,7 +1171,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0"
                       className="pr-7"
-                      value={worksheetData.salesCommissionsPercent || ''}
+                      value={worksheetData.salesCommissionsPercent ?? ''}
                       onChange={(e) => syncSalesCommissions(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1188,7 +1188,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.salesCommissionsAmount || ''}
+                      value={worksheetData.salesCommissionsAmount ?? ''}
                       onChange={(e) => syncSalesCommissions(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1242,7 +1242,7 @@ function SKUWorksheetPageContent() {
                         step="0.01"
                         placeholder="0.00"
                         className="pl-7"
-                        value={item.value || ''}
+                        value={item.value ?? ''}
                         onChange={(e) => {
                           const newItems = [...worksheetData.otherFrontendCosts];
                           newItems[index].value = parseFloat(e.target.value) || 0;
@@ -1293,7 +1293,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0"
                       className="pr-7"
-                      value={worksheetData.importDutiesPercent || ''}
+                      value={worksheetData.importDutiesPercent ?? ''}
                       onChange={(e) => syncImportDuties(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1310,7 +1310,7 @@ function SKUWorksheetPageContent() {
                       step="0.01"
                       placeholder="0.00"
                       className="pl-7"
-                      value={worksheetData.importDutiesAmount || ''}
+                      value={worksheetData.importDutiesAmount ?? ''}
                       onChange={(e) => syncImportDuties(undefined, parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                     />
@@ -1332,7 +1332,7 @@ function SKUWorksheetPageContent() {
                     step="0.01"
                     placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.exWorksStandard || ''}
+                    value={worksheetData.exWorksStandard ?? ''}
                     onChange={(e) => {
                       const newValue = parseFloat(e.target.value) || 0;
                       setWorksheetData(prev => ({ ...prev, exWorksStandard: newValue }));
@@ -1357,7 +1357,7 @@ function SKUWorksheetPageContent() {
                     step="0.01"
                     placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.importShippingSea || ''}
+                    value={worksheetData.importShippingSea ?? ''}
                     onChange={(e) => setWorksheetData(prev => ({ ...prev, importShippingSea: parseFloat(e.target.value) || 0 }))}
                     onFocus={(e) => e.target.select()}
                   />
@@ -1373,9 +1373,9 @@ function SKUWorksheetPageContent() {
                     id="gryphon"
                     type="number"
                     step="0.01"
-                    placeholder="2.50"
+                    placeholder="0.00"
                     className="pl-7"
-                    value={worksheetData.gryphonSoftware || ''}
+                    value={worksheetData.gryphonSoftware ?? ''}
                     onChange={(e) => setWorksheetData(prev => ({ ...prev, gryphonSoftware: parseFloat(e.target.value) || 0 }))}
                     onFocus={(e) => e.target.select()}
                   />
@@ -1418,7 +1418,7 @@ function SKUWorksheetPageContent() {
                         step="0.01"
                         placeholder="0.00"
                         className="pl-7"
-                        value={item.value || ''}
+                        value={item.value ?? ''}
                         onChange={(e) => {
                           const newItems = [...worksheetData.otherLandedCosts];
                           newItems[index].value = parseFloat(e.target.value) || 0;
