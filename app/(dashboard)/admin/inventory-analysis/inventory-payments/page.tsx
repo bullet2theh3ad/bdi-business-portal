@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Plus, Calendar, Package, Trash2, Edit, Save, X, TruckIcon } from 'lucide-react';
+import { DollarSign, Plus, Calendar, Package, Trash2, Edit, Save, X, TruckIcon, Eye, EyeOff, Check } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PurchaseOrder {
@@ -33,6 +33,7 @@ interface PaymentLineItem {
   date: string;
   reference: string; // PO or Shipment number
   referenceType: 'po' | 'shipment' | 'other';
+  isPaid: boolean;
 }
 
 interface PaymentPlan {
@@ -51,6 +52,7 @@ export default function InventoryPaymentsPage() {
   const [currentPlan, setCurrentPlan] = useState<PaymentPlan | null>(null);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(true);
 
   // Load POs and Shipments for reference
   useEffect(() => {
@@ -126,6 +128,7 @@ export default function InventoryPaymentsPage() {
       date: new Date().toISOString().split('T')[0],
       reference: '',
       referenceType: 'other',
+      isPaid: false,
     };
 
     setCurrentPlan({
@@ -191,6 +194,36 @@ export default function InventoryPaymentsPage() {
 
   const totals = calculateTotals();
 
+  // Calculate payment positions on timeline
+  const getTimelineData = () => {
+    if (!currentPlan || currentPlan.lineItems.length === 0) return null;
+
+    const sortedItems = [...currentPlan.lineItems]
+      .filter(item => item.date)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (sortedItems.length === 0) return null;
+
+    const minDate = new Date(sortedItems[0].date);
+    const maxDate = new Date(sortedItems[sortedItems.length - 1].date);
+    const dateRange = maxDate.getTime() - minDate.getTime();
+    const dayRange = dateRange / (1000 * 60 * 60 * 24);
+
+    // Position each payment as a percentage along the timeline
+    const positions = sortedItems.map(item => {
+      const itemDate = new Date(item.date);
+      const position = dateRange === 0 ? 50 : ((itemDate.getTime() - minDate.getTime()) / dateRange) * 100;
+      return {
+        ...item,
+        position: Math.max(5, Math.min(95, position)), // Keep within 5-95% range for visibility
+      };
+    });
+
+    return { positions, minDate, maxDate, dayRange };
+  };
+
+  const timelineData = getTimelineData();
+
   return (
     <div className="p-6 max-w-[1800px] mx-auto">
       {/* Page Header */}
@@ -206,7 +239,28 @@ export default function InventoryPaymentsPage() {
             className="fixed top-16 right-[26px] sm:right-[34px] z-50 w-[420px] sm:w-[520px] bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-300 rounded-lg shadow-lg backdrop-blur-sm bg-opacity-95 p-4"
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-lg">Payment Plan Summary</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="font-semibold text-lg">Payment Plan Summary</h3>
+                <Button
+                  onClick={() => setShowTimeline(!showTimeline)}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  title={showTimeline ? 'Hide Timeline' : 'Show Timeline'}
+                >
+                  {showTimeline ? (
+                    <>
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Hide
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3 w-3 mr-1" />
+                      Show
+                    </>
+                  )}
+                </Button>
+              </div>
               <span className="text-sm font-mono bg-blue-100 px-3 py-1 rounded">{currentPlan.planNumber}</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -232,93 +286,95 @@ export default function InventoryPaymentsPage() {
               </div>
             )}
           </div>
-          {/* Spacer */}
-          <div className="h-32 sm:h-36 mb-6"></div>
+
+          {/* Payment Timeline Visualization */}
+          {showTimeline && timelineData && timelineData.positions.length > 0 && (
+            <div
+              className="fixed top-[280px] left-4 right-4 z-40 bg-white border-2 border-gray-300 rounded-lg shadow-lg p-6"
+              style={{ maxWidth: 'calc(100% - 32px)' }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="font-semibold text-base text-gray-700">Payment Timeline</h4>
+                <div className="text-xs text-gray-500">
+                  {timelineData.dayRange === 0 ? 'Same day' : `${Math.ceil(timelineData.dayRange)} days`}
+                </div>
+              </div>
+
+              {/* Timeline Bar */}
+              <div className="relative h-28 bg-gradient-to-r from-blue-100 via-gray-100 to-green-100 rounded-lg pt-8 pb-4">
+                {/* Date markers - at TOP to avoid being blocked by bubbles */}
+                <div className="absolute top-2 left-3 text-xs text-gray-700 font-semibold">
+                  {timelineData.minDate.toLocaleDateString()}
+                </div>
+                <div className="absolute top-2 right-3 text-xs text-gray-700 font-semibold">
+                  {timelineData.maxDate.toLocaleDateString()}
+                </div>
+
+                {/* Payment bubbles */}
+                {timelineData.positions.map((payment, index) => {
+                  const amount = parseFloat(payment.amount.toString() || '0');
+                  const maxAmount = Math.max(...timelineData.positions.map(p => parseFloat(p.amount.toString() || '0')));
+                  const bubbleSize = maxAmount === 0 ? 40 : Math.max(30, Math.min(60, (amount / maxAmount) * 60));
+                  
+                  // Color based on isPaid status
+                  const color = payment.isPaid 
+                    ? 'bg-green-500' // Paid = Green
+                    : amount < 0 
+                      ? 'bg-red-500' // Negative unpaid = Red
+                      : 'bg-yellow-400'; // Unpaid = Yellow
+
+                  return (
+                    <div
+                      key={payment.id}
+                      className="absolute group"
+                      style={{ 
+                        left: `${payment.position}%`, 
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)'
+                      }}
+                    >
+                      {/* Bubble */}
+                      <div
+                        className={`${color} rounded-full shadow-lg cursor-pointer transition-all hover:scale-110 flex items-center justify-center`}
+                        style={{
+                          width: `${bubbleSize}px`,
+                          height: `${bubbleSize}px`,
+                        }}
+                      >
+                        <span className="text-white text-xs font-bold">
+                          ${amount >= 1000 ? `${(amount / 1000).toFixed(0)}k` : amount.toFixed(0)}
+                        </span>
+                      </div>
+
+                      {/* Date label under bubble */}
+                      <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-[10px] text-gray-700 font-medium whitespace-nowrap">
+                        {new Date(payment.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+                      </div>
+
+                      {/* Tooltip on hover */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-50">
+                        <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
+                          <div className="font-semibold">{payment.description || 'Payment'}</div>
+                          <div className="text-green-300">${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                          <div className="text-gray-400">{new Date(payment.date).toLocaleDateString()}</div>
+                          {payment.reference && (
+                            <div className="text-blue-300 text-[10px] mt-1">Ref: {payment.reference}</div>
+                          )}
+                        </div>
+                        {/* Arrow */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Spacer - adjust based on timeline visibility */}
+          <div className={showTimeline && timelineData?.positions.length ? 'h-[420px] mb-6' : 'h-32 sm:h-36 mb-6'}></div>
         </>
       )}
-
-      {/* Reference Windows: POs and Shipments */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Purchase Orders Reference */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Purchase Orders Reference
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px]">
-              {isLoading ? (
-                <div className="text-center text-gray-500 py-8">Loading POs...</div>
-              ) : purchaseOrders.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">No purchase orders found</div>
-              ) : (
-                <div className="space-y-2">
-                  {purchaseOrders.map((po) => (
-                    <div
-                      key={po.poNumber}
-                      className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-semibold text-sm">{po.poNumber}</div>
-                          <div className="text-xs text-gray-600">{po.supplier}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-sm">${po.totalAmount.toLocaleString()}</div>
-                          <div className="text-xs text-gray-500">{po.createdAt}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Shipments Reference */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TruckIcon className="h-5 w-5" />
-              Shipments Reference
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px]">
-              {isLoading ? (
-                <div className="text-center text-gray-500 py-8">Loading shipments...</div>
-              ) : shipments.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">No shipments found</div>
-              ) : (
-                <div className="space-y-2">
-                  {shipments.map((ship) => (
-                    <div
-                      key={ship.id}
-                      className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-semibold text-sm">{ship.shipmentNumber}</div>
-                          <div className="text-xs text-gray-600">
-                            Qty: {ship.totalQuantity || 'N/A'} • {ship.status}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-600">ETD: {ship.estimatedDeparture || 'N/A'}</div>
-                          <div className="text-xs text-gray-600">ETA: {ship.estimatedArrival || 'N/A'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Payment Plan Editor */}
       {currentPlan ? (
@@ -360,18 +416,19 @@ export default function InventoryPaymentsPage() {
               <div className="space-y-2">
                 {/* Header */}
                 <div className="grid grid-cols-12 gap-2 pb-2 border-b font-semibold text-sm text-gray-600">
-                  <div className="col-span-3">Description</div>
+                  <div className="col-span-2">Description</div>
                   <div className="col-span-2">Amount ($)</div>
                   <div className="col-span-2">Date</div>
                   <div className="col-span-2">Reference Type</div>
                   <div className="col-span-2">Reference #</div>
+                  <div className="col-span-1">Status</div>
                   <div className="col-span-1">Actions</div>
                 </div>
 
                 {/* Line Items */}
                 {currentPlan.lineItems.map((line) => (
                   <div key={line.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b">
-                    <div className="col-span-3">
+                    <div className="col-span-2">
                       <Input
                         value={line.description}
                         onChange={(e) => updateLineItem(line.id, 'description', e.target.value)}
@@ -419,6 +476,21 @@ export default function InventoryPaymentsPage() {
                         placeholder="PO-123 or SHP-456"
                         className="h-9"
                       />
+                    </div>
+                    <div className="col-span-1">
+                      <Button
+                        variant={line.isPaid ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateLineItem(line.id, 'isPaid', !line.isPaid)}
+                        className={`h-9 w-full ${line.isPaid ? "bg-green-600 hover:bg-green-700 text-white" : "border-yellow-500 text-yellow-700 hover:bg-yellow-50"}`}
+                        title={line.isPaid ? "Mark as Not Paid" : "Mark as Paid"}
+                      >
+                        {line.isPaid ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <DollarSign className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                     <div className="col-span-1">
                       <Button
