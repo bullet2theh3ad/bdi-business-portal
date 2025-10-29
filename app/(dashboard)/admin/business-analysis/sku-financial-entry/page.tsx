@@ -506,13 +506,19 @@ export default function SKUFinancialEntryPage() {
                       {scenario.grossProfit && (
                         <div className="flex justify-between gap-2">
                           <span className="text-gray-600 flex-shrink-0">GP:</span>
-                          <span className="font-semibold text-blue-600">${parseFloat(scenario.grossProfit).toFixed(2)}</span>
+                          <span className={`font-semibold ${
+                            parseFloat(scenario.grossProfit) >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>${parseFloat(scenario.grossProfit).toFixed(2)}</span>
                         </div>
                       )}
                       {scenario.grossMarginPercent && (
                         <div className="flex justify-between gap-2">
                           <span className="text-gray-600 flex-shrink-0">GP %:</span>
-                          <span className="font-semibold text-purple-600">{parseFloat(scenario.grossMarginPercent).toFixed(2)}%</span>
+                          <span className={`font-semibold ${
+                            parseFloat(scenario.grossMarginPercent) <= 0 ? 'text-red-600' : 
+                            parseFloat(scenario.grossMarginPercent) <= 10 ? 'text-yellow-600' : 
+                            'text-green-600'
+                          }`}>{parseFloat(scenario.grossMarginPercent).toFixed(2)}%</span>
                         </div>
                       )}
                       {scenario.description && (
@@ -612,11 +618,18 @@ export default function SKUFinancialEntryPage() {
                       ${parseFloat(scenario.asp).toFixed(2)}
                     </div>
 
-                    <div className="hidden md:block md:col-span-1 text-right text-blue-600 font-medium">
+                    <div className={`hidden md:block md:col-span-1 text-right font-medium ${
+                      scenario.grossProfit && parseFloat(scenario.grossProfit) >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
                       {scenario.grossProfit ? `$${parseFloat(scenario.grossProfit).toFixed(2)}` : '-'}
                     </div>
 
-                    <div className="hidden md:block md:col-span-1 text-right text-purple-600 font-medium">
+                    <div className={`hidden md:block md:col-span-1 text-right font-medium ${
+                      !scenario.grossMarginPercent ? 'text-gray-400' :
+                      parseFloat(scenario.grossMarginPercent) <= 0 ? 'text-red-600' : 
+                      parseFloat(scenario.grossMarginPercent) <= 10 ? 'text-yellow-600' : 
+                      'text-green-600'
+                    }`}>
                       {scenario.grossMarginPercent ? `${parseFloat(scenario.grossMarginPercent).toFixed(2)}%` : '-'}
                     </div>
 
@@ -629,13 +642,19 @@ export default function SKUFinancialEntryPage() {
                       {scenario.grossProfit && (
                         <div>
                           <span className="text-gray-500">GP: </span>
-                          <span className="text-blue-600 font-medium">${parseFloat(scenario.grossProfit).toFixed(2)}</span>
+                          <span className={`font-medium ${
+                            parseFloat(scenario.grossProfit) >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>${parseFloat(scenario.grossProfit).toFixed(2)}</span>
                         </div>
                       )}
                       {scenario.grossMarginPercent && (
                         <div>
                           <span className="text-gray-500">GP%: </span>
-                          <span className="text-purple-600 font-medium">{parseFloat(scenario.grossMarginPercent).toFixed(2)}%</span>
+                          <span className={`font-medium ${
+                            parseFloat(scenario.grossMarginPercent) <= 0 ? 'text-red-600' : 
+                            parseFloat(scenario.grossMarginPercent) <= 10 ? 'text-yellow-600' : 
+                            'text-green-600'
+                          }`}>{parseFloat(scenario.grossMarginPercent).toFixed(2)}%</span>
                         </div>
                       )}
                     </div>

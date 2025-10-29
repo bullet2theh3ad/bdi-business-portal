@@ -595,6 +595,47 @@ function SKUWorksheetPageContent() {
         </Button>
       </div>
 
+      {/* Fixed Profitability Summary - Stays at top while scrolling, right-aligned */}
+      <div className="fixed top-16 right-[26px] sm:right-[34px] z-50 w-[420px] sm:w-[480px]">
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg shadow-xl backdrop-blur-md bg-opacity-98">
+          <div className="px-4 py-2 sm:px-5 sm:py-3">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="text-xs text-gray-600">
+                <span className="font-semibold">Profitability:</span>
+                <span className="text-[10px] text-gray-500 ml-1">Updates as you enter data</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6">
+              {/* Gross Profit */}
+              <div className="text-center flex-1">
+                <div className="text-xs font-medium text-gray-600 mb-0.5 whitespace-nowrap">Gross Profit</div>
+                <div className={`text-xl sm:text-2xl font-bold ${
+                  calculateGrossProfit() >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  ${calculateGrossProfit().toFixed(2)}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-10 bg-gray-300"></div>
+
+              {/* Gross Margin */}
+              <div className="text-center flex-1">
+                <div className="text-xs font-medium text-gray-600 mb-0.5 whitespace-nowrap">Gross Margin %</div>
+                <div className={`text-xl sm:text-2xl font-bold ${
+                  calculateGrossMargin() <= 0 ? 'text-red-600' : 
+                  calculateGrossMargin() <= 10 ? 'text-yellow-600' : 
+                  'text-green-600'
+                }`}>
+                  {calculateGrossMargin().toFixed(2)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-6">
         {/* Section 1: SKU Selection & Pricing */}
         <Card className="border-2 border-blue-200">
@@ -776,6 +817,7 @@ function SKUWorksheetPageContent() {
                     placeholder="0.00"
                     className="pl-7"
                     value={worksheetData.asp ?? ''}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => {
                       const newAsp = parseFloat(e.target.value) || 0;
                       setWorksheetData(prev => ({ ...prev, asp: newAsp }));
@@ -784,7 +826,6 @@ function SKUWorksheetPageContent() {
                       syncAmazonReferralFee(worksheetData.amazonReferralFeePercent);
                       syncAcos(worksheetData.acosPercent);
                     }}
-                    onFocus={(e) => e.target.select()}
                   />
                 </div>
               </div>
@@ -1460,11 +1501,17 @@ function SKUWorksheetPageContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="text-center">
                 <Label className="text-sm font-medium text-gray-600">Gross Profit</Label>
-                <p className="text-3xl font-bold text-green-600">${calculateGrossProfit().toFixed(2)}</p>
+                <p className={`text-3xl font-bold ${
+                  calculateGrossProfit() >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>${calculateGrossProfit().toFixed(2)}</p>
               </div>
               <div className="text-center">
                 <Label className="text-sm font-medium text-gray-600">Gross Margin</Label>
-                <p className="text-3xl font-bold text-green-600">{calculateGrossMargin().toFixed(2)}%</p>
+                <p className={`text-3xl font-bold ${
+                  calculateGrossMargin() <= 0 ? 'text-red-600' : 
+                  calculateGrossMargin() <= 10 ? 'text-yellow-600' : 
+                  'text-green-600'
+                }`}>{calculateGrossMargin().toFixed(2)}%</p>
               </div>
             </div>
             <p className="text-sm text-gray-500 mt-4 text-center">
