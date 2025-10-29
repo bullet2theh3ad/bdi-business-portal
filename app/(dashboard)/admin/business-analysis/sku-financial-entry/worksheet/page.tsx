@@ -545,6 +545,50 @@ function SKUWorksheetPageContent() {
     return 0;
   };
 
+  // Calculate GM% from target GP (for display in reverse mode)
+  const getCalculatedGMFromGP = () => {
+    if (targetGP <= 0) return 0;
+    const asp = calculateRequiredASPFromGP(targetGP);
+    if (asp <= 0) return 0;
+    
+    // Calculate net sales at this ASP
+    const totalFeePercent = (
+      worksheetData.fbaFeePercent +
+      worksheetData.amazonReferralFeePercent +
+      worksheetData.acosPercent
+    ) / 100;
+    const otherFeesPercent = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => {
+      return sum + (item.percent || 0);
+    }, 0) / 100;
+    const totalPercentOfASP = totalFeePercent + otherFeesPercent;
+    const netSales = asp * (1 - totalPercentOfASP);
+    
+    // GM% = (GP / Net Sales) * 100
+    return netSales > 0 ? (targetGP / netSales) * 100 : 0;
+  };
+
+  // Calculate GP$ from target GM% (for display in reverse mode)
+  const getCalculatedGPFromGM = () => {
+    if (targetGM <= 0) return 0;
+    const asp = calculateRequiredASPFromGM(targetGM);
+    if (asp <= 0) return 0;
+    
+    // Calculate net sales at this ASP
+    const totalFeePercent = (
+      worksheetData.fbaFeePercent +
+      worksheetData.amazonReferralFeePercent +
+      worksheetData.acosPercent
+    ) / 100;
+    const otherFeesPercent = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => {
+      return sum + (item.percent || 0);
+    }, 0) / 100;
+    const totalPercentOfASP = totalFeePercent + otherFeesPercent;
+    const netSales = asp * (1 - totalPercentOfASP);
+    
+    // GP = (GM% / 100) * Net Sales
+    return (targetGM / 100) * netSales;
+  };
+
   // Apply calculated ASP to worksheet
   const applyCalculatedASP = () => {
     const calculatedASP = getCalculatedASP();
@@ -770,6 +814,11 @@ function SKUWorksheetPageContent() {
                       className="h-8 text-sm"
                       placeholder="0.00"
                     />
+                    {targetGP > 0 && (
+                      <div className="text-[10px] text-blue-600 mt-0.5">
+                        = {getCalculatedGMFromGP().toFixed(2)}% GM
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="targetGM" className="text-[10px] text-gray-600">Target GM (%)</Label>
@@ -785,13 +834,18 @@ function SKUWorksheetPageContent() {
                       className="h-8 text-sm"
                       placeholder="0.00"
                     />
+                    {targetGM > 0 && (
+                      <div className="text-[10px] text-blue-600 mt-0.5">
+                        = ${getCalculatedGPFromGM().toFixed(2)} GP
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Calculated ASP Display */}
                 <div className="bg-white/50 rounded p-2 border border-blue-300">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-600">Required ASP:</span>
+                    <span className="text-xs font-medium text-gray-600">Updated ASP:</span>
                     <span className="text-2xl font-bold text-blue-600">
                       ${getCalculatedASP().toFixed(2)}
                     </span>
@@ -808,7 +862,7 @@ function SKUWorksheetPageContent() {
                 </div>
 
                 <p className="text-[10px] text-gray-500 italic">
-                  Enter either Target GP or Target GM% to calculate required ASP
+                  Enter either Target GP or Target GM% to calculate updated ASP
                 </p>
               </div>
             )}
