@@ -452,6 +452,23 @@ export default function InventoryPaymentsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  const today = new Date();
+                  const start = new Date(today);
+                  start.setDate(today.getDate() - (3 * 7)); // 3 weeks back
+                  const end = new Date(today);
+                  end.setDate(today.getDate() + (13 * 7)); // 13 weeks forward
+                  
+                  setStartDate(start.toISOString().split('T')[0]);
+                  setEndDate(end.toISOString().split('T')[0]);
+                }}
+                className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 font-semibold"
+              >
+                13-Week
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
                   const allDates = paymentPlans
                     .flatMap(plan => plan.lineItems.map(item => item.date))
                     .filter(d => d)
