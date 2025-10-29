@@ -170,6 +170,11 @@ function SKUWorksheetPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Reverse mode state (for calculating ASP from target GP/GM)
+  const [reverseMode, setReverseMode] = useState(false);
+  const [targetGP, setTargetGP] = useState<number>(0);
+  const [targetGM, setTargetGM] = useState<number>(0);
+
   // Load available SKUs
   useEffect(() => {
     async function loadSKUs() {
@@ -468,6 +473,90 @@ function SKUWorksheetPageContent() {
     return netSales > 0 ? (calculateGrossProfit() / netSales) * 100 : 0;
   };
 
+  // REVERSE CALCULATIONS - Calculate required ASP from target GP or GM%
+  
+  // Calculate required ASP to achieve target Gross Profit (dollars)
+  const calculateRequiredASPFromGP = (targetGrossProfit: number) => {
+    const totalFrontendCosts = calculateTotalFrontendCosts();
+    const landedDDP = calculateLandedDDP();
+    
+    // Calculate total marketplace fees (as percentages of ASP)
+    const totalFeePercent = (
+      worksheetData.fbaFeePercent +
+      worksheetData.amazonReferralFeePercent +
+      worksheetData.acosPercent
+    ) / 100;
+    
+    // Calculate total "Other Fees & Advertising" percentages
+    const otherFeesPercent = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => {
+      return sum + (item.percent || 0);
+    }, 0) / 100;
+    
+    const totalPercentOfASP = totalFeePercent + otherFeesPercent;
+    
+    // ASP = (Target GP + Total Frontend Costs + Landed DDP) / (1 - Total Fee %)
+    // This accounts for fees that are calculated as % of ASP
+    const requiredASP = (targetGrossProfit + totalFrontendCosts + landedDDP) / (1 - totalPercentOfASP);
+    
+    return requiredASP > 0 ? requiredASP : 0;
+  };
+
+  // Calculate required ASP to achieve target Gross Margin % 
+  const calculateRequiredASPFromGM = (targetGrossMarginPercent: number) => {
+    const totalFrontendCosts = calculateTotalFrontendCosts();
+    const landedDDP = calculateLandedDDP();
+    
+    // Calculate total marketplace fees (as percentages of ASP)
+    const totalFeePercent = (
+      worksheetData.fbaFeePercent +
+      worksheetData.amazonReferralFeePercent +
+      worksheetData.acosPercent
+    ) / 100;
+    
+    // Calculate total "Other Fees & Advertising" percentages
+    const otherFeesPercent = worksheetData.otherFeesAndAdvertising.reduce((sum, item) => {
+      return sum + (item.percent || 0);
+    }, 0) / 100;
+    
+    const totalPercentOfASP = totalFeePercent + otherFeesPercent;
+    
+    // GM% = (GP / Net Sales) * 100
+    // GP = Net Sales - Total Frontend Costs - Landed DDP
+    // Net Sales = ASP * (1 - totalPercentOfASP)
+    // So: GM% = ((ASP * (1 - totalPercentOfASP) - Total Frontend Costs - Landed DDP) / (ASP * (1 - totalPercentOfASP))) * 100
+    // Solving for ASP:
+    // ASP = (Total Frontend Costs + Landed DDP) / ((1 - totalPercentOfASP) * (1 - GM%/100))
+    
+    const targetGMDecimal = targetGrossMarginPercent / 100;
+    const denominator = (1 - totalPercentOfASP) * (1 - targetGMDecimal);
+    
+    const requiredASP = denominator > 0 ? (totalFrontendCosts + landedDDP) / denominator : 0;
+    
+    return requiredASP > 0 ? requiredASP : 0;
+  };
+
+  // Get the calculated ASP based on which target is set
+  const getCalculatedASP = () => {
+    if (targetGP > 0) {
+      return calculateRequiredASPFromGP(targetGP);
+    } else if (targetGM > 0) {
+      return calculateRequiredASPFromGM(targetGM);
+    }
+    return 0;
+  };
+
+  // Apply calculated ASP to worksheet
+  const applyCalculatedASP = () => {
+    const calculatedASP = getCalculatedASP();
+    if (calculatedASP > 0) {
+      setWorksheetData(prev => ({ ...prev, asp: calculatedASP }));
+      // Switch back to normal mode after applying
+      setReverseMode(false);
+      setTargetGP(0);
+      setTargetGM(0);
+    }
+  };
+
   const handleSave = () => {
     // Validate required fields
     if (!worksheetData.skuName) {
@@ -596,42 +685,133 @@ function SKUWorksheetPageContent() {
       </div>
 
       {/* Fixed Profitability Summary - Stays at top while scrolling, right-aligned */}
-      <div className="fixed top-16 right-[26px] sm:right-[34px] z-50 w-[420px] sm:w-[480px]">
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg shadow-xl backdrop-blur-md bg-opacity-98">
+      <div className="fixed top-16 right-[26px] sm:right-[34px] z-50 w-[420px] sm:w-[520px]">
+        <div className={`${
+          reverseMode 
+            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400' 
+            : 'bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300'
+        } rounded-lg shadow-xl backdrop-blur-md bg-opacity-98 transition-all duration-300`}>
           <div className="px-4 py-2 sm:px-5 sm:py-3">
+            {/* Header with Mode Toggle */}
             <div className="flex items-center justify-between gap-3 mb-2">
               <div className="text-xs text-gray-600">
-                <span className="font-semibold">Profitability:</span>
-                <span className="text-[10px] text-gray-500 ml-1">Updates as you enter data</span>
+                <span className="font-semibold">{reverseMode ? 'Reverse Calculator' : 'Profitability'}:</span>
+                <span className="text-[10px] text-gray-500 ml-1">
+                  {reverseMode ? 'Set target to find required ASP' : 'Updates as you enter data'}
+                </span>
               </div>
+              <Button
+                onClick={() => {
+                  setReverseMode(!reverseMode);
+                  if (!reverseMode) {
+                    // Switching to reverse mode, initialize with current values
+                    setTargetGP(calculateGrossProfit());
+                    setTargetGM(0);
+                  } else {
+                    // Switching back to normal mode
+                    setTargetGP(0);
+                    setTargetGM(0);
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="text-[10px] h-6 px-2"
+              >
+                {reverseMode ? '← Normal' : 'Reverse →'}
+              </Button>
             </div>
             
-            <div className="flex items-center gap-6">
-              {/* Gross Profit */}
-              <div className="text-center flex-1">
-                <div className="text-xs font-medium text-gray-600 mb-0.5 whitespace-nowrap">Gross Profit</div>
-                <div className={`text-xl sm:text-2xl font-bold ${
-                  calculateGrossProfit() >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  ${calculateGrossProfit().toFixed(2)}
+            {/* Normal Mode */}
+            {!reverseMode && (
+              <div className="flex items-center gap-6">
+                {/* Gross Profit */}
+                <div className="text-center flex-1">
+                  <div className="text-xs font-medium text-gray-600 mb-0.5 whitespace-nowrap">Gross Profit</div>
+                  <div className={`text-xl sm:text-2xl font-bold ${
+                    calculateGrossProfit() >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    ${calculateGrossProfit().toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="w-px h-10 bg-gray-300"></div>
+
+                {/* Gross Margin */}
+                <div className="text-center flex-1">
+                  <div className="text-xs font-medium text-gray-600 mb-0.5 whitespace-nowrap">Gross Margin %</div>
+                  <div className={`text-xl sm:text-2xl font-bold ${
+                    calculateGrossMargin() <= 0 ? 'text-red-600' : 
+                    calculateGrossMargin() <= 10 ? 'text-yellow-600' : 
+                    'text-green-600'
+                  }`}>
+                    {calculateGrossMargin().toFixed(2)}%
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Divider */}
-              <div className="w-px h-10 bg-gray-300"></div>
-
-              {/* Gross Margin */}
-              <div className="text-center flex-1">
-                <div className="text-xs font-medium text-gray-600 mb-0.5 whitespace-nowrap">Gross Margin %</div>
-                <div className={`text-xl sm:text-2xl font-bold ${
-                  calculateGrossMargin() <= 0 ? 'text-red-600' : 
-                  calculateGrossMargin() <= 10 ? 'text-yellow-600' : 
-                  'text-green-600'
-                }`}>
-                  {calculateGrossMargin().toFixed(2)}%
+            {/* Reverse Mode */}
+            {reverseMode && (
+              <div className="space-y-3">
+                {/* Target Inputs */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="targetGP" className="text-[10px] text-gray-600">Target GP ($)</Label>
+                    <Input
+                      id="targetGP"
+                      type="number"
+                      step="0.01"
+                      value={targetGP || ''}
+                      onChange={(e) => {
+                        setTargetGP(parseFloat(e.target.value) || 0);
+                        setTargetGM(0); // Clear other target
+                      }}
+                      className="h-8 text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="targetGM" className="text-[10px] text-gray-600">Target GM (%)</Label>
+                    <Input
+                      id="targetGM"
+                      type="number"
+                      step="0.01"
+                      value={targetGM || ''}
+                      onChange={(e) => {
+                        setTargetGM(parseFloat(e.target.value) || 0);
+                        setTargetGP(0); // Clear other target
+                      }}
+                      className="h-8 text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
+
+                {/* Calculated ASP Display */}
+                <div className="bg-white/50 rounded p-2 border border-blue-300">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-600">Required ASP:</span>
+                    <span className="text-2xl font-bold text-blue-600">
+                      ${getCalculatedASP().toFixed(2)}
+                    </span>
+                  </div>
+                  {(targetGP > 0 || targetGM > 0) && getCalculatedASP() > 0 && (
+                    <Button
+                      onClick={applyCalculatedASP}
+                      size="sm"
+                      className="w-full mt-2 h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                    >
+                      ✓ Apply to Worksheet
+                    </Button>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-gray-500 italic">
+                  Enter either Target GP or Target GM% to calculate required ASP
+                </p>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
