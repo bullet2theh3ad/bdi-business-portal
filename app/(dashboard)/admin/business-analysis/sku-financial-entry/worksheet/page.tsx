@@ -24,7 +24,7 @@ interface SKUWorksheetData {
   amazonReferralFeeAmount: number;
   acosPercent: number;
   acosAmount: number;
-  otherFeesAndAdvertising: { label: string; value: number }[]; // Dynamic line items for fees
+  otherFeesAndAdvertising: { label: string; percent: number; value: number }[]; // Dynamic line items with % and $
   
   // Less Frontend Section
   motorolaRoyaltiesPercent: number;
@@ -129,19 +129,19 @@ function SKUWorksheetPageContent() {
     
     // Top Section
     asp: 0,
-    fbaFeePercent: 8,
+    fbaFeePercent: 0,
     fbaFeeAmount: 0,
-    amazonReferralFeePercent: 8,
+    amazonReferralFeePercent: 0,
     amazonReferralFeeAmount: 0,
-    acosPercent: 8,
+    acosPercent: 0,
     acosAmount: 0,
     otherFeesAndAdvertising: [],
     
     // Less Frontend Section
-    motorolaRoyaltiesPercent: 5,
+    motorolaRoyaltiesPercent: 0,
     motorolaRoyaltiesAmount: 0,
-    rtvFreightAssumptions: 0.80,
-    rtvRepairCosts: 2.93,
+    rtvFreightAssumptions: 0,
+    rtvRepairCosts: 0,
     doaCreditsPercent: 0,
     doaCreditsAmount: 0,
     invoiceFactoringNet: 0,
@@ -154,7 +154,7 @@ function SKUWorksheetPageContent() {
     importDutiesAmount: 0,
     exWorksStandard: 0,
     importShippingSea: 0,
-    gryphonSoftware: 2.50,
+    gryphonSoftware: 0,
     otherLandedCosts: [],
   });
 
@@ -220,6 +220,27 @@ function SKUWorksheetPageContent() {
     }
   }, [worksheetData.asp, worksheetData.fbaFeeAmount, worksheetData.amazonReferralFeeAmount, worksheetData.acosAmount, worksheetData.otherFeesAndAdvertising, worksheetData.doaCreditsPercent]);
 
+  // Recalculate Other Fees & Advertising amounts when ASP changes
+  useEffect(() => {
+    const needsUpdate = worksheetData.otherFeesAndAdvertising.some(item => {
+      if (item.percent > 0) {
+        const expectedValue = (worksheetData.asp * item.percent) / 100;
+        return Math.abs(expectedValue - item.value) > 0.01;
+      }
+      return false;
+    });
+
+    if (needsUpdate) {
+      setWorksheetData(prev => ({
+        ...prev,
+        otherFeesAndAdvertising: prev.otherFeesAndAdvertising.map(item => ({
+          ...item,
+          value: item.percent > 0 ? (prev.asp * item.percent) / 100 : item.value
+        }))
+      }));
+    }
+  }, [worksheetData.asp]);
+
   // Load existing scenario if editing
   useEffect(() => {
     if (scenarioId) {
@@ -235,7 +256,7 @@ function SKUWorksheetPageContent() {
         const { scenario } = await response.json();
         console.log('Loaded scenario:', scenario);
         
-        // Map API response to worksheet data
+        // Map API response to worksheet data - preserve exact values when editing
         setWorksheetData({
           skuName: scenario.skuName || '',
           channel: scenario.channel || '',
@@ -243,19 +264,19 @@ function SKUWorksheetPageContent() {
           
           // Top Section
           asp: parseFloat(scenario.asp) || 0,
-          fbaFeePercent: parseFloat(scenario.fbaFeePercent) || 8,
+          fbaFeePercent: parseFloat(scenario.fbaFeePercent) || 0,
           fbaFeeAmount: parseFloat(scenario.fbaFeeAmount) || 0,
-          amazonReferralFeePercent: parseFloat(scenario.amazonReferralFeePercent) || 8,
+          amazonReferralFeePercent: parseFloat(scenario.amazonReferralFeePercent) || 0,
           amazonReferralFeeAmount: parseFloat(scenario.amazonReferralFeeAmount) || 0,
-          acosPercent: parseFloat(scenario.acosPercent) || 8,
+          acosPercent: parseFloat(scenario.acosPercent) || 0,
           acosAmount: parseFloat(scenario.acosAmount) || 0,
           otherFeesAndAdvertising: scenario.otherFeesAndAdvertising || [],
           
           // Less Frontend Section
-          motorolaRoyaltiesPercent: parseFloat(scenario.motorolaRoyaltiesPercent) || 5,
+          motorolaRoyaltiesPercent: parseFloat(scenario.motorolaRoyaltiesPercent) || 0,
           motorolaRoyaltiesAmount: parseFloat(scenario.motorolaRoyaltiesAmount) || 0,
-          rtvFreightAssumptions: parseFloat(scenario.rtvFreightAssumptions) || 0.80,
-          rtvRepairCosts: parseFloat(scenario.rtvRepairCosts) || 2.93,
+          rtvFreightAssumptions: parseFloat(scenario.rtvFreightAssumptions) || 0,
+          rtvRepairCosts: parseFloat(scenario.rtvRepairCosts) || 0,
           doaCreditsPercent: parseFloat(scenario.doaCreditsPercent) || 0,
           doaCreditsAmount: parseFloat(scenario.doaCreditsAmount) || 0,
           invoiceFactoringNet: parseFloat(scenario.invoiceFactoringNet) || 0,
@@ -268,7 +289,7 @@ function SKUWorksheetPageContent() {
           importDutiesAmount: parseFloat(scenario.importDutiesAmount) || 0,
           exWorksStandard: parseFloat(scenario.exWorksStandard) || 0,
           importShippingSea: parseFloat(scenario.importShippingSea) || 0,
-          gryphonSoftware: parseFloat(scenario.gryphonSoftware) || 2.50,
+          gryphonSoftware: parseFloat(scenario.gryphonSoftware) || 0,
           otherLandedCosts: scenario.otherLandedCosts || [],
         });
         
@@ -906,7 +927,7 @@ function SKUWorksheetPageContent() {
                     onClick={() => {
                       setWorksheetData(prev => ({
                         ...prev,
-                        otherFeesAndAdvertising: [...prev.otherFeesAndAdvertising, { label: '', value: 0 }]
+                        otherFeesAndAdvertising: [...prev.otherFeesAndAdvertising, { label: '', percent: 0, value: 0 }]
                       }));
                     }}
                   >
@@ -915,46 +936,70 @@ function SKUWorksheetPageContent() {
                   </Button>
                 </div>
                 {worksheetData.otherFeesAndAdvertising.map((item, index) => (
-                  <div key={index} className="flex gap-2 items-center">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-start">
                     <Input
-                      placeholder="Fee name (e.g., Shopify Fee)"
+                      placeholder="Fee name (e.g., DA)"
                       value={item.label}
                       onChange={(e) => {
                         const newItems = [...worksheetData.otherFeesAndAdvertising];
                         newItems[index].label = e.target.value;
                         setWorksheetData(prev => ({ ...prev, otherFeesAndAdvertising: newItems }));
                       }}
-                      className="flex-1"
                     />
-                    <div className="relative w-32">
-                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <div className="relative">
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="0.00"
-                        className="pl-7"
-                        value={item.value || ''}
+                        placeholder="0"
+                        className="pr-7"
+                        value={item.percent || ''}
                         onChange={(e) => {
                           const newItems = [...worksheetData.otherFeesAndAdvertising];
-                          newItems[index].value = parseFloat(e.target.value) || 0;
+                          const percent = parseFloat(e.target.value) || 0;
+                          newItems[index].percent = percent;
+                          newItems[index].value = (worksheetData.asp * percent) / 100;
                           setWorksheetData(prev => ({ ...prev, otherFeesAndAdvertising: newItems }));
                         }}
                         onFocus={(e) => e.target.select()}
                       />
+                      <span className="absolute right-3 top-2.5 text-gray-500">%</span>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setWorksheetData(prev => ({
-                          ...prev,
-                          otherFeesAndAdvertising: prev.otherFeesAndAdvertising.filter((_, i) => i !== index)
-                        }));
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          className="pl-7"
+                          value={item.value || ''}
+                          onChange={(e) => {
+                            const newItems = [...worksheetData.otherFeesAndAdvertising];
+                            const value = parseFloat(e.target.value) || 0;
+                            newItems[index].value = value;
+                            newItems[index].percent = worksheetData.asp > 0 ? (value / worksheetData.asp) * 100 : 0;
+                            setWorksheetData(prev => ({ ...prev, otherFeesAndAdvertising: newItems }));
+                          }}
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setWorksheetData(prev => ({
+                            ...prev,
+                            otherFeesAndAdvertising: prev.otherFeesAndAdvertising.filter((_, i) => i !== index)
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                    <div className="text-sm text-gray-500 italic col-span-full md:col-span-3">
+                      Enter either % or $ - the other will auto-calculate
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1419,7 +1464,7 @@ function SKUWorksheetPageContent() {
               </div>
               <div className="text-center">
                 <Label className="text-sm font-medium text-gray-600">Gross Margin</Label>
-                <p className="text-3xl font-bold text-green-600">{calculateGrossMargin().toFixed(0)}%</p>
+                <p className="text-3xl font-bold text-green-600">{calculateGrossMargin().toFixed(2)}%</p>
               </div>
             </div>
             <p className="text-sm text-gray-500 mt-4 text-center">
