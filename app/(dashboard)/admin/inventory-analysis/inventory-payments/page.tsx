@@ -75,7 +75,7 @@ export default function InventoryPaymentsPage() {
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [availablePOs, setAvailablePOs] = useState<{poNumber: string; supplier: string; totalAmount: number}[]>([]);
+  const [availablePOs, setAvailablePOs] = useState<{poNumber: string; supplier: string; totalAmount: number; createdAt: string}[]>([]);
 
   // Manual payment form state
   const [manualForm, setManualForm] = useState({
@@ -114,6 +114,7 @@ export default function InventoryPaymentsPage() {
             poNumber: po.poNumber,
             supplier: po.supplierName || 'Unknown Supplier',
             totalAmount: parseFloat(po.totalAmount || '0'),
+            createdAt: po.createdAt ? new Date(po.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           })) || [];
           setAvailablePOs(pos);
         }
@@ -162,6 +163,12 @@ export default function InventoryPaymentsPage() {
   // Handle template selection in builder
   const handleTemplateSelect = (templateId: string) => {
     setBuilderForm({ ...builderForm, selectedTemplate: templateId });
+    
+    // If custom is selected, clear milestones and let user build their own
+    if (templateId === 'custom') {
+      setCustomMilestones([]);
+      return;
+    }
     
     const template = PAYMENT_TEMPLATES.find(t => t.id === templateId);
     if (!template || !builderForm.totalAmount || !builderForm.startDate) return;
@@ -410,7 +417,7 @@ export default function InventoryPaymentsPage() {
               <h3 className="font-semibold text-sm text-gray-700">Step 1: PO Details</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="builderPoNumber">PO Number *</Label>
+                  <Label htmlFor="builderPoNumber" className="mb-2 block">PO Number *</Label>
                   <Select
                     value={builderForm.poNumber}
                     onValueChange={(value) => {
@@ -420,6 +427,7 @@ export default function InventoryPaymentsPage() {
                         poNumber: value,
                         supplier: selectedPO?.supplier || '',
                         totalAmount: selectedPO?.totalAmount.toString() || '',
+                        startDate: selectedPO?.createdAt || '',
                       });
                     }}
                   >
@@ -436,7 +444,7 @@ export default function InventoryPaymentsPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="builderSupplier">Supplier (Auto-filled)</Label>
+                  <Label htmlFor="builderSupplier" className="mb-2 block">Supplier (Auto-filled)</Label>
                   <Input
                     id="builderSupplier"
                     value={builderForm.supplier}
@@ -449,7 +457,7 @@ export default function InventoryPaymentsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="builderAmount">Total PO Amount (Auto-filled)</Label>
+                  <Label htmlFor="builderAmount" className="mb-2 block">Total PO Amount (Auto-filled)</Label>
                   <Input
                     id="builderAmount"
                     type="number"
@@ -462,12 +470,14 @@ export default function InventoryPaymentsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="builderStartDate">Start Date *</Label>
+                  <Label htmlFor="builderStartDate" className="mb-2 block">PO Creation Date (Auto-filled)</Label>
                   <Input
                     id="builderStartDate"
                     type="date"
                     value={builderForm.startDate}
                     onChange={(e) => setBuilderForm({ ...builderForm, startDate: e.target.value })}
+                    disabled
+                    className="bg-gray-50"
                   />
                 </div>
               </div>
@@ -476,33 +486,171 @@ export default function InventoryPaymentsPage() {
             {/* Step 2: Select Template */}
             <div className="space-y-4">
               <h3 className="font-semibold text-sm text-gray-700">Step 2: Select Payment Template</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {PAYMENT_TEMPLATES.map(template => (
-                  <div
-                    key={template.id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                      builderForm.selectedTemplate === template.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleTemplateSelect(template.id)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold">{template.name}</h4>
-                        <p className="text-sm text-gray-600">{template.description}</p>
-                        <div className="flex gap-2 mt-2">
-                          {template.milestones.map((m, i) => (
-                            <span key={i} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              {m.percentage}% @ {m.offsetWeeks}w
-                            </span>
-                          ))}
+              <div>
+                <Label htmlFor="paymentTemplate" className="mb-2 block">Payment Template *</Label>
+                <Select
+                  value={builderForm.selectedTemplate}
+                  onValueChange={(value) => handleTemplateSelect(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a payment template...">
+                      {builderForm.selectedTemplate && (
+                        <span className="font-medium">
+                          {builderForm.selectedTemplate === 'custom' 
+                            ? '✏️ Custom Payment Schedule' 
+                            : PAYMENT_TEMPLATES.find(t => t.id === builderForm.selectedTemplate)?.name}
+                        </span>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="w-[600px]">
+                    {PAYMENT_TEMPLATES.map(template => (
+                      <SelectItem key={template.id} value={template.id} className="py-3">
+                        <div className="flex flex-col gap-2 py-1">
+                          <div className="font-semibold text-base">{template.name}</div>
+                          <div className="text-sm text-gray-600">{template.description}</div>
+                          <div className="flex gap-2 flex-wrap mt-1">
+                            {template.milestones.map((m, i) => (
+                              <span key={i} className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-md font-medium">
+                                {m.percentage}% @ {m.offsetWeeks}w
+                              </span>
+                            ))}
+                          </div>
                         </div>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom" className="py-3 border-t-2 border-gray-200">
+                      <div className="flex flex-col gap-2 py-1">
+                        <div className="font-semibold text-base">✏️ Custom</div>
+                        <div className="text-sm text-gray-600">Create your own payment schedule</div>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Milestones Editor (for any selected template) */}
+              {builderForm.selectedTemplate && (
+                <div className="border rounded-lg p-4 bg-gray-50 space-y-3 mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-sm">
+                      {builderForm.selectedTemplate === 'custom' ? 'Custom Payment Milestones' : 'Payment Schedule (Editable)'}
+                    </h4>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setCustomMilestones([
+                          ...customMilestones,
+                          {
+                            label: '',
+                            percentage: 0,
+                            offsetWeeks: 0,
+                            amount: 0,
+                            date: builderForm.startDate,
+                          },
+                        ]);
+                      }}
+                    >
+                      + Add Milestone
+                    </Button>
+                  </div>
+                  {customMilestones.map((milestone, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-3">
+                        <Label className="text-xs">Label</Label>
+                        <Input
+                          value={milestone.label}
+                          onChange={(e) => {
+                            const updated = [...customMilestones];
+                            updated[index].label = e.target.value;
+                            setCustomMilestones(updated);
+                          }}
+                          placeholder="e.g. Deposit"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Percent %</Label>
+                        <Input
+                          type="number"
+                          value={milestone.percentage || ''}
+                          onChange={(e) => {
+                            const updated = [...customMilestones];
+                            const percent = parseFloat(e.target.value) || 0;
+                            updated[index].percentage = percent;
+                            const total = parseFloat(builderForm.totalAmount) || 0;
+                            updated[index].amount = (total * percent) / 100;
+                            setCustomMilestones(updated);
+                          }}
+                          placeholder="30"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Amount $</Label>
+                        <Input
+                          type="number"
+                          value={milestone.amount || ''}
+                          onChange={(e) => {
+                            const updated = [...customMilestones];
+                            updated[index].amount = parseFloat(e.target.value) || 0;
+                            setCustomMilestones(updated);
+                          }}
+                          placeholder="15000"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Weeks</Label>
+                        <Input
+                          type="number"
+                          value={milestone.offsetWeeks || ''}
+                          onChange={(e) => {
+                            const updated = [...customMilestones];
+                            updated[index].offsetWeeks = parseInt(e.target.value) || 0;
+                            if (builderForm.startDate) {
+                              const startDate = new Date(builderForm.startDate);
+                              startDate.setDate(startDate.getDate() + (updated[index].offsetWeeks * 7));
+                              updated[index].date = startDate.toISOString().split('T')[0];
+                            }
+                            setCustomMilestones(updated);
+                          }}
+                          placeholder="0"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Date</Label>
+                        <Input
+                          type="date"
+                          value={milestone.date}
+                          onChange={(e) => {
+                            const updated = [...customMilestones];
+                            updated[index].date = e.target.value;
+                            setCustomMilestones(updated);
+                          }}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setCustomMilestones(customMilestones.filter((_, i) => i !== index));
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          ✕
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Step 3: Preview Payment Schedule */}
