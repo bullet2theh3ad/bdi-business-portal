@@ -32,6 +32,45 @@ export default function InventoryPaymentsPage() {
   const [currentPlan, setCurrentPlan] = useState<PaymentPlan | null>(null);
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
   const [showTimeline, setShowTimeline] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load payment plans from database on mount
+  useEffect(() => {
+    loadPaymentPlans();
+  }, []);
+
+  const loadPaymentPlans = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/inventory-payments');
+      if (response.ok) {
+        const data = await response.json();
+        // Transform database format to frontend format
+        const transformedPlans = data.map((plan: any) => ({
+          id: plan.id.toString(),
+          planNumber: plan.planNumber,
+          name: plan.name,
+          status: plan.status,
+          createdAt: plan.createdAt,
+          lineItems: plan.lineItems.map((item: any) => ({
+            id: item.id.toString(),
+            description: item.description || '',
+            amount: parseFloat(item.amount),
+            date: item.paymentDate,
+            reference: item.reference || '',
+            referenceType: item.referenceType,
+            isPaid: item.isPaid,
+          })),
+        }));
+        setPaymentPlans(transformedPlans);
+      }
+    } catch (error) {
+      console.error('Failed to load payment plans:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Generate new plan number
   const generatePlanNumber = () => {
@@ -59,19 +98,53 @@ export default function InventoryPaymentsPage() {
   };
 
   // Save plan
-  const savePlan = () => {
-    if (!currentPlan) return;
+  const savePlan = async () => {
+    if (!currentPlan || isSaving) return;
 
-    const existingIndex = paymentPlans.findIndex(p => p.id === currentPlan.id);
-    if (existingIndex >= 0) {
-      const updated = [...paymentPlans];
-      updated[existingIndex] = currentPlan;
-      setPaymentPlans(updated);
-    } else {
-      setPaymentPlans([...paymentPlans, currentPlan]);
+    try {
+      setIsSaving(true);
+      const isNewPlan = currentPlan.id.startsWith('plan-');
+
+      const payload = {
+        planNumber: currentPlan.planNumber,
+        name: currentPlan.name,
+        status: currentPlan.status,
+        lineItems: currentPlan.lineItems,
+      };
+
+      if (isNewPlan) {
+        // Create new plan
+        const response = await fetch('/api/inventory-payments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create payment plan');
+        }
+      } else {
+        // Update existing plan
+        const response = await fetch(`/api/inventory-payments/${currentPlan.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update payment plan');
+        }
+      }
+
+      // Reload plans from database
+      await loadPaymentPlans();
+      setCurrentPlan(null);
+    } catch (error) {
+      console.error('Error saving payment plan:', error);
+      alert('Failed to save payment plan. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-
-    setCurrentPlan(null);
   };
 
   // Cancel editing
@@ -80,9 +153,23 @@ export default function InventoryPaymentsPage() {
   };
 
   // Delete plan
-  const deletePlan = (planId: string) => {
-    if (confirm('Are you sure you want to delete this payment plan?')) {
-      setPaymentPlans(paymentPlans.filter(p => p.id !== planId));
+  const deletePlan = async (planId: string) => {
+    if (!confirm('Are you sure you want to delete this payment plan?')) return;
+
+    try {
+      const response = await fetch(`/api/inventory-payments/${planId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete payment plan');
+      }
+
+      // Reload plans from database
+      await loadPaymentPlans();
+    } catch (error) {
+      console.error('Error deleting payment plan:', error);
+      alert('Failed to delete payment plan. Please try again.');
     }
   };
 
@@ -202,6 +289,20 @@ export default function InventoryPaymentsPage() {
     return { positions, minDate, maxDate, dayRange };
   };
 
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-[1800px] mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading payment plans...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-[1800px] mx-auto">
@@ -598,13 +699,22 @@ export default function InventoryPaymentsPage() {
                     <Plus className="h-4 w-4 mr-2" />
                     Add Line Item
                   </Button>
-                  <Button onClick={cancelEdit} variant="outline">
+                  <Button onClick={cancelEdit} variant="outline" disabled={isSaving}>
                     <X className="h-4 w-4 mr-2" />
                     Cancel
                   </Button>
-                  <Button onClick={savePlan}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
+                  <Button onClick={savePlan} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
