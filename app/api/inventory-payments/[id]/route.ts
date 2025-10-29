@@ -42,14 +42,15 @@ export async function PUT(
     // Get user's organization(s)
     const { data: orgMemberships, error: orgError } = await supabase
       .from('organization_members')
-      .select('organization_id')
+      .select('organization_uuid')
       .eq('user_auth_id', user.id);
 
     if (orgError || !orgMemberships || orgMemberships.length === 0) {
+      console.error('Organization lookup error:', orgError);
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }
 
-    const orgIds = orgMemberships.map(m => m.organization_id);
+    const orgIds = orgMemberships.map(m => m.organization_uuid);
 
     // Verify user has access to this plan
     const [existingPlan] = await db
@@ -157,14 +158,15 @@ export async function DELETE(
     // Get user's organization(s)
     const { data: orgMemberships, error: orgError } = await supabase
       .from('organization_members')
-      .select('organization_id')
+      .select('organization_uuid')
       .eq('user_auth_id', user.id);
 
     if (orgError || !orgMemberships || orgMemberships.length === 0) {
+      console.error('Organization lookup error:', orgError);
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }
 
-    const orgIds = orgMemberships.map(m => m.organization_id);
+    const orgIds = orgMemberships.map(m => m.organization_uuid);
 
     // Verify user has access to this plan
     const [existingPlan] = await db

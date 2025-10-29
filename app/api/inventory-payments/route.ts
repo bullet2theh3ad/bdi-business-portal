@@ -36,14 +36,15 @@ export async function GET() {
     // Get user's organization(s)
     const { data: orgMemberships, error: orgError } = await supabase
       .from('organization_members')
-      .select('organization_id')
+      .select('organization_uuid')
       .eq('user_auth_id', user.id);
 
     if (orgError || !orgMemberships || orgMemberships.length === 0) {
+      console.error('Organization lookup error:', orgError);
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }
 
-    const orgIds = orgMemberships.map(m => m.organization_id);
+    const orgIds = orgMemberships.map(m => m.organization_uuid);
 
     // Fetch payment plans with their line items
     const plans = await db
@@ -109,12 +110,13 @@ export async function POST(request: Request) {
     // Get user's primary organization
     const { data: orgMemberships, error: orgError } = await supabase
       .from('organization_members')
-      .select('organization_id')
+      .select('organization_uuid')
       .eq('user_auth_id', user.id)
       .limit(1)
       .single();
 
     if (orgError || !orgMemberships) {
+      console.error('Organization lookup error:', orgError);
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }
 
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
         name,
         status: status || 'draft',
         createdBy: user.id,
-        organizationId: orgMemberships.organization_id,
+        organizationId: orgMemberships.organization_uuid,
       })
       .returning();
 
