@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Plus, Calendar, Trash2, Edit, Save, X, Check, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { DollarSign, Plus, Calendar, Trash2, Edit, Save, X, Check, ChevronDown, ChevronUp, Eye, EyeOff, Download } from 'lucide-react';
 
 interface PaymentLineItem {
   id: string;
@@ -34,6 +34,25 @@ export default function InventoryPaymentsPage() {
   const [showTimeline, setShowTimeline] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Date range filter state
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Initialize date range to show all data by default
+  useEffect(() => {
+    if (paymentPlans.length > 0) {
+      const allDates = paymentPlans
+        .flatMap(plan => plan.lineItems.map(item => item.date))
+        .filter(d => d)
+        .sort();
+      
+      if (allDates.length > 0 && !startDate && !endDate) {
+        setStartDate(allDates[0]);
+        setEndDate(allDates[allDates.length - 1]);
+      }
+    }
+  }, [paymentPlans, startDate, endDate]);
 
   // Load payment plans from database on mount
   useEffect(() => {
@@ -70,6 +89,82 @@ export default function InventoryPaymentsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Filter payments by date range
+  const filterPaymentsByDateRange = (payments: PaymentLineItem[]) => {
+    if (!startDate || !endDate) return payments;
+    
+    return payments.filter(payment => {
+      const paymentDate = new Date(payment.date);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      return paymentDate >= start && paymentDate <= end;
+    });
+  };
+
+  // CSV Export function
+  const exportToCSV = () => {
+    const allLineItems = paymentPlans.flatMap(plan => 
+      plan.lineItems.map(item => ({
+        planNumber: plan.planNumber,
+        planName: plan.name,
+        planStatus: plan.status,
+        description: item.description,
+        amount: item.amount,
+        date: item.date,
+        reference: item.reference,
+        referenceType: item.referenceType,
+        isPaid: item.isPaid ? 'Yes' : 'No',
+      }))
+    );
+
+    if (allLineItems.length === 0) {
+      alert('No payment data to export');
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      'Plan Number',
+      'Plan Name',
+      'Plan Status',
+      'Description',
+      'Amount',
+      'Payment Date',
+      'Reference',
+      'Reference Type',
+      'Is Paid',
+    ];
+
+    // Create CSV rows
+    const rows = allLineItems.map(item => [
+      item.planNumber,
+      item.planName,
+      item.planStatus,
+      item.description,
+      item.amount.toFixed(2),
+      item.date,
+      item.reference,
+      item.referenceType,
+      item.isPaid,
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inventory-payments-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Generate new plan number
@@ -307,41 +402,100 @@ export default function InventoryPaymentsPage() {
   return (
     <div className="p-6 max-w-[1800px] mx-auto">
       {/* Page Header */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Inventory Payments</h1>
-          <p className="text-gray-600">Timeline view of payment schedules</p>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Inventory Payments</h1>
+            <p className="text-gray-600">Timeline view of payment schedules</p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={exportToCSV} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button onClick={createNewPlan}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Payment Plan
+            </Button>
+          </div>
         </div>
-        <Button onClick={createNewPlan}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Payment Plan
-        </Button>
+
+        {/* Date Range Filter */}
+        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <span className="font-semibold text-gray-700">Date Range:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="start-date" className="text-sm font-medium text-gray-600">From:</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="end-date" className="text-sm font-medium text-gray-600">To:</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const allDates = paymentPlans
+                    .flatMap(plan => plan.lineItems.map(item => item.date))
+                    .filter(d => d)
+                    .sort();
+                  if (allDates.length > 0) {
+                    setStartDate(allDates[0]);
+                    setEndDate(allDates[allDates.length - 1]);
+                  }
+                }}
+              >
+                Reset to All
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Summary Stats Cards */}
       {paymentPlans.length > 0 && (() => {
+        // Filter payments by date range
         const allPayments = paymentPlans.flatMap(plan => plan.lineItems);
+        const filteredPayments = filterPaymentsByDateRange(allPayments);
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Paid: All payments that have been marked as paid
-        const totalPaid = allPayments
+        // Paid: All payments that have been marked as paid (within date range)
+        const totalPaid = filteredPayments
           .filter(p => p.isPaid)
           .reduce((sum, p) => sum + p.amount, 0);
 
-        // Past Due: Unpaid payments where the date has passed
-        const totalPastDue = allPayments
+        // Past Due: Unpaid payments where the date has passed (within date range)
+        const totalPastDue = filteredPayments
           .filter(p => !p.isPaid && new Date(p.date) < today)
           .reduce((sum, p) => sum + p.amount, 0);
 
-        const pastDueCount = allPayments.filter(p => !p.isPaid && new Date(p.date) < today).length;
+        const pastDueCount = filteredPayments.filter(p => !p.isPaid && new Date(p.date) < today).length;
 
-        // Owed: Unpaid payments that are not yet due (date >= today)
-        const totalOwed = allPayments
+        // Owed: Unpaid payments that are not yet due (date >= today) (within date range)
+        const totalOwed = filteredPayments
           .filter(p => !p.isPaid && new Date(p.date) >= today)
           .reduce((sum, p) => sum + p.amount, 0);
 
-        const owedPaymentCount = allPayments.filter(p => !p.isPaid && new Date(p.date) >= today).length;
+        const owedPaymentCount = filteredPayments.filter(p => !p.isPaid && new Date(p.date) >= today).length;
 
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -414,16 +568,19 @@ export default function InventoryPaymentsPage() {
           <CardContent>
             <div className="space-y-4">
               {(() => {
-                // Calculate GLOBAL date range from ALL payments across ALL plans
+                // Calculate GLOBAL date range from FILTERED payments
                 const allPayments = paymentPlans.flatMap(plan => 
                   plan.lineItems.filter(item => item.date)
                 );
+                
+                // Apply date range filter
+                const filteredPayments = filterPaymentsByDateRange(allPayments);
 
-                if (allPayments.length === 0) return <div className="text-center text-gray-500 py-8">No payments scheduled</div>;
+                if (filteredPayments.length === 0) return <div className="text-center text-gray-500 py-8">No payments in selected date range</div>;
 
-                const allDates = allPayments.map(p => new Date(p.date).getTime());
-                const globalMinDate = new Date(Math.min(...allDates));
-                const globalMaxDate = new Date(Math.max(...allDates));
+                // Use filtered date range for timeline
+                const globalMinDate = new Date(startDate || filteredPayments[0].date);
+                const globalMaxDate = new Date(endDate || filteredPayments[filteredPayments.length - 1].date);
                 const globalDateRange = globalMaxDate.getTime() - globalMinDate.getTime();
 
                 // Calculate global max amount for consistent bubble sizing
@@ -438,14 +595,17 @@ export default function InventoryPaymentsPage() {
                     </div>
 
                     {paymentPlans.map((plan) => {
+                      // Filter plan items by date range
                       const sortedItems = [...plan.lineItems]
                         .filter(item => item.date)
                         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                      
+                      const filteredItems = filterPaymentsByDateRange(sortedItems);
 
-                      if (sortedItems.length === 0) return null;
+                      if (filteredItems.length === 0) return null;
 
                       // Calculate position for each payment relative to GLOBAL date range
-                      const positions = sortedItems.map(item => {
+                      const positions = filteredItems.map(item => {
                         const itemDate = new Date(item.date);
                         const position = globalDateRange === 0 ? 50 : ((itemDate.getTime() - globalMinDate.getTime()) / globalDateRange) * 100;
                         return {
