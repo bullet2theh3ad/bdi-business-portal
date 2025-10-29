@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calculator, FolderOpen, Edit, Trash2, Search, Copy, Grid3x3, List } from 'lucide-react';
+import { Calculator, FolderOpen, Edit, Trash2, Search, Copy, Grid3x3, List, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -23,6 +23,30 @@ interface Scenario {
   // Calculated fields from view
   grossProfit?: string;
   grossMarginPercent?: string;
+  // All detailed fields for CSV export
+  fbaFeePercent?: string;
+  fbaFeeAmount?: string;
+  amazonReferralFeePercent?: string;
+  amazonReferralFeeAmount?: string;
+  acosPercent?: string;
+  acosAmount?: string;
+  otherFeesAndAdvertising?: Array<{label: string; percent?: number; value: number}>;
+  motorolaRoyaltiesPercent?: string;
+  motorolaRoyaltiesAmount?: string;
+  rtvFreightAssumptions?: string;
+  rtvRepairCosts?: string;
+  doaCreditsPercent?: string;
+  doaCreditsAmount?: string;
+  invoiceFactoringNet?: string;
+  salesCommissionsPercent?: string;
+  salesCommissionsAmount?: string;
+  otherFrontendCosts?: Array<{label: string; value: number}>;
+  importDutiesPercent?: string;
+  importDutiesAmount?: string;
+  exWorksStandard?: string;
+  importShippingSea?: string;
+  gryphonSoftware?: string;
+  otherLandedCosts?: Array<{label: string; value: number}>;
 }
 
 export default function SKUFinancialEntryPage() {
@@ -216,6 +240,193 @@ export default function SKUFinancialEntryPage() {
     return channel;
   };
 
+  // CSV Export function
+  const exportToCSV = () => {
+    if (scenarios.length === 0) {
+      alert('No scenarios to export');
+      return;
+    }
+
+    // Collect all unique dynamic field labels
+    const allOtherFeesLabels = new Set<string>();
+    const allOtherFrontendLabels = new Set<string>();
+    const allOtherLandedLabels = new Set<string>();
+
+    scenarios.forEach(scenario => {
+      scenario.otherFeesAndAdvertising?.forEach(item => allOtherFeesLabels.add(item.label));
+      scenario.otherFrontendCosts?.forEach(item => allOtherFrontendLabels.add(item.label));
+      scenario.otherLandedCosts?.forEach(item => allOtherLandedLabels.add(item.label));
+    });
+
+    // Create CSV header
+    const baseHeaders = [
+      'Scenario Name',
+      'Description',
+      'SKU Name',
+      'Channel',
+      'Country Code',
+      'ASP',
+      'FBA Fee %',
+      'FBA Fee $',
+      'Amazon Referral Fee %',
+      'Amazon Referral Fee $',
+      'ACOS %',
+      'ACOS $',
+    ];
+
+    // Add dynamic "Other Fees & Advertising" columns
+    const otherFeesHeaders: string[] = [];
+    allOtherFeesLabels.forEach(label => {
+      otherFeesHeaders.push(`${label} %`);
+      otherFeesHeaders.push(`${label} $`);
+    });
+
+    const backendHeaders = [
+      'Motorola Royalties %',
+      'Motorola Royalties $',
+      'RTV Freight Assumptions',
+      'RTV Repair Costs',
+      'DOA Credits %',
+      'DOA Credits $',
+      'Invoice Factoring Net',
+      'Sales Commissions %',
+      'Sales Commissions $',
+    ];
+
+    // Add dynamic "Other Frontend Costs" columns
+    const otherFrontendHeaders: string[] = [];
+    allOtherFrontendLabels.forEach(label => {
+      otherFrontendHeaders.push(label);
+    });
+
+    const landedHeaders = [
+      'Import Duties %',
+      'Import Duties $',
+      'ExWorks Standard',
+      'Import Shipping Sea',
+      'Gryphon Software',
+    ];
+
+    // Add dynamic "Other Landed Costs" columns
+    const otherLandedHeaders: string[] = [];
+    allOtherLandedLabels.forEach(label => {
+      otherLandedHeaders.push(label);
+    });
+
+    const calculatedHeaders = [
+      'Gross Profit',
+      'Gross Margin %',
+      'Created At',
+      'Updated At',
+      'Created By'
+    ];
+
+    const headers = [
+      ...baseHeaders,
+      ...otherFeesHeaders,
+      ...backendHeaders,
+      ...otherFrontendHeaders,
+      ...landedHeaders,
+      ...otherLandedHeaders,
+      ...calculatedHeaders
+    ];
+
+    // Create CSV rows
+    const rows = scenarios.map(scenario => {
+      const baseValues = [
+        scenario.scenarioName || '',
+        scenario.description || '',
+        scenario.skuName || '',
+        scenario.channel || '',
+        scenario.countryCode || '',
+        scenario.asp || '0',
+        scenario.fbaFeePercent || '0',
+        scenario.fbaFeeAmount || '0',
+        scenario.amazonReferralFeePercent || '0',
+        scenario.amazonReferralFeeAmount || '0',
+        scenario.acosPercent || '0',
+        scenario.acosAmount || '0',
+      ];
+
+      // Add dynamic "Other Fees & Advertising" values
+      const otherFeesValues: string[] = [];
+      allOtherFeesLabels.forEach(label => {
+        const item = scenario.otherFeesAndAdvertising?.find(i => i.label === label);
+        otherFeesValues.push(item?.percent?.toString() || '0');
+        otherFeesValues.push(item?.value?.toString() || '0');
+      });
+
+      const backendValues = [
+        scenario.motorolaRoyaltiesPercent || '0',
+        scenario.motorolaRoyaltiesAmount || '0',
+        scenario.rtvFreightAssumptions || '0',
+        scenario.rtvRepairCosts || '0',
+        scenario.doaCreditsPercent || '0',
+        scenario.doaCreditsAmount || '0',
+        scenario.invoiceFactoringNet || '0',
+        scenario.salesCommissionsPercent || '0',
+        scenario.salesCommissionsAmount || '0',
+      ];
+
+      // Add dynamic "Other Frontend Costs" values
+      const otherFrontendValues: string[] = [];
+      allOtherFrontendLabels.forEach(label => {
+        const item = scenario.otherFrontendCosts?.find(i => i.label === label);
+        otherFrontendValues.push(item?.value?.toString() || '0');
+      });
+
+      const landedValues = [
+        scenario.importDutiesPercent || '0',
+        scenario.importDutiesAmount || '0',
+        scenario.exWorksStandard || '0',
+        scenario.importShippingSea || '0',
+        scenario.gryphonSoftware || '0',
+      ];
+
+      // Add dynamic "Other Landed Costs" values
+      const otherLandedValues: string[] = [];
+      allOtherLandedLabels.forEach(label => {
+        const item = scenario.otherLandedCosts?.find(i => i.label === label);
+        otherLandedValues.push(item?.value?.toString() || '0');
+      });
+
+      const calculatedValues = [
+        scenario.grossProfit || '0',
+        scenario.grossMarginPercent || '0',
+        scenario.createdAt || '',
+        scenario.updatedAt || '',
+        scenario.creatorName || ''
+      ];
+
+      return [
+        ...baseValues,
+        ...otherFeesValues,
+        ...backendValues,
+        ...otherFrontendValues,
+        ...landedValues,
+        ...otherLandedValues,
+        ...calculatedValues
+      ];
+    });
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(v => `"${v}"`).join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sku_financial_scenarios_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Get unique values for filters
   const uniqueSkus = Array.from(new Set(scenarios.map(s => s.skuName))).sort();
   const uniqueChannels = Array.from(new Set(scenarios.map(s => s.channel))).sort();
@@ -267,7 +478,7 @@ export default function SKUFinancialEntryPage() {
           New SKU Worksheet
         </Button>
 
-        {/* View Toggle */}
+        {/* View Toggle & Export */}
         {scenarios.length > 0 && (
           <div className="flex gap-2">
             <Button
@@ -287,6 +498,16 @@ export default function SKUFinancialEntryPage() {
             >
               <List className="h-4 w-4" />
               <span className="hidden sm:inline">List</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportToCSV}
+              className="flex-1 sm:flex-initial gap-2"
+              title="Export all scenarios to CSV"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
           </div>
         )}
