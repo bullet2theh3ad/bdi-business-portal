@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -75,6 +76,7 @@ const COUNTRIES = [
 ];
 
 export default function BusinessAnalysisPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
@@ -255,7 +257,10 @@ export default function BusinessAnalysisPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Cash Flow Analysis */}
-          <Card className="hover:shadow-lg transition-shadow border-t-4 border-t-green-500">
+          <Card 
+            className="hover:shadow-lg transition-shadow border-t-4 border-t-green-500 cursor-pointer"
+            onClick={() => router.push('/admin/business-analysis/cash-flow')}
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <DollarSign className="h-5 w-5 text-green-600" />
@@ -267,14 +272,14 @@ export default function BusinessAnalysisPage() {
                 Real-time cash flow tracking and projections based on QuickBooks data, CPFR forecasts, and payment terms.
               </p>
               <ul className="text-xs text-gray-500 space-y-1">
-                <li>• 30/60/90 day cash projections</li>
-                <li>• Accounts receivable aging</li>
-                <li>• Payment collection forecasts</li>
-                <li>• Working capital analysis</li>
+                <li>• 13-week cash flow view</li>
+                <li>• NRE & inventory payments</li>
+                <li>• Operating expense tracking</li>
+                <li>• Payment schedule builder</li>
               </ul>
               <div className="mt-4 pt-4 border-t">
-                <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
-                  Coming Soon
+                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                  Active
                 </span>
               </div>
             </CardContent>

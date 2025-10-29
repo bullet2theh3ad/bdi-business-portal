@@ -332,6 +332,16 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/inventory-analysis/warehouse-analysis',
             icon: 'warehouse',
           },
+          {
+            title: 'Inventory Payments',
+            href: '/admin/inventory-analysis/inventory-payments',
+            icon: 'payment',
+          },
+          {
+            title: 'GL Code Assignment',
+            href: '/admin/inventory-analysis/gl-code-assignment',
+            icon: 'settings',
+          },
         ],
       },
     ],
