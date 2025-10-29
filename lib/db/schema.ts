@@ -1565,6 +1565,65 @@ export const skuFinancialScenarios = pgTable('sku_financial_scenarios', {
 export type SkuFinancialScenario = typeof skuFinancialScenarios.$inferSelect;
 export type NewSkuFinancialScenario = typeof skuFinancialScenarios.$inferInsert;
 
+// ===== INVENTORY PAYMENT MANAGEMENT =====
+
+// Enums for inventory payments
+export const paymentPlanStatusEnum = pgEnum('payment_plan_status', ['draft', 'active']);
+export const paymentReferenceTypeEnum = pgEnum('payment_reference_type', ['po', 'shipment', 'other']);
+
+// Inventory Payment Plans table
+export const inventoryPaymentPlans = pgTable('inventory_payment_plans', {
+  id: serial('id').primaryKey(),
+  planNumber: varchar('plan_number', { length: 50 }).notNull().unique(), // e.g., PAY-2025-001
+  name: varchar('name', { length: 255 }).notNull(),
+  status: paymentPlanStatusEnum('status').notNull().default('draft'),
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Inventory Payment Line Items table
+export const inventoryPaymentLineItems = pgTable('inventory_payment_line_items', {
+  id: serial('id').primaryKey(),
+  paymentPlanId: integer('payment_plan_id').notNull().references(() => inventoryPaymentPlans.id, { onDelete: 'cascade' }),
+  description: text('description'),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  paymentDate: date('payment_date').notNull(),
+  reference: varchar('reference', { length: 100 }), // PO number, Shipment number, or other reference
+  referenceType: paymentReferenceTypeEnum('reference_type').notNull().default('other'),
+  isPaid: boolean('is_paid').notNull().default(false),
+  paidAt: timestamp('paid_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Relations
+export const inventoryPaymentPlansRelations = relations(inventoryPaymentPlans, ({ many, one }) => ({
+  lineItems: many(inventoryPaymentLineItems),
+  creator: one(users, {
+    fields: [inventoryPaymentPlans.createdBy],
+    references: [users.authId],
+  }),
+  organization: one(organizations, {
+    fields: [inventoryPaymentPlans.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const inventoryPaymentLineItemsRelations = relations(inventoryPaymentLineItems, ({ one }) => ({
+  paymentPlan: one(inventoryPaymentPlans, {
+    fields: [inventoryPaymentLineItems.paymentPlanId],
+    references: [inventoryPaymentPlans.id],
+  }),
+}));
+
+// Type exports
+export type InventoryPaymentPlan = typeof inventoryPaymentPlans.$inferSelect;
+export type NewInventoryPaymentPlan = typeof inventoryPaymentPlans.$inferInsert;
+export type InventoryPaymentLineItem = typeof inventoryPaymentLineItems.$inferSelect;
+export type NewInventoryPaymentLineItem = typeof inventoryPaymentLineItems.$inferInsert;
+
 // ===== SALES REPORTS =====
 export const salesReports = pgTable('sales_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
