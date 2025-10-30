@@ -586,19 +586,60 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Save to database in batches
+    // Save to database in batches (with deduplication)
     if (lineItemsToSave.length > 0) {
+      // Check for existing records to avoid duplicates
+      console.log('[Financial Data] 🔍 Checking for existing records to avoid duplicates...');
+      
+      const existingRecords = await db
+        .select({
+          orderId: amazonFinancialLineItems.orderId,
+          postedDate: amazonFinancialLineItems.postedDate,
+          amazonSku: amazonFinancialLineItems.amazonSku,
+        })
+        .from(amazonFinancialLineItems)
+        .where(
+          and(
+            gte(amazonFinancialLineItems.postedDate, new Date(startDate)),
+            lte(amazonFinancialLineItems.postedDate, new Date(endDate))
+          )
+        );
+      
+      // Create a Set of unique keys for fast lookup
+      const existingKeys = new Set(
+        existingRecords.map(r => 
+          `${r.orderId}_${r.postedDate?.toISOString()}_${r.amazonSku}`
+        )
+      );
+      
+      // Filter out records that already exist
+      const newRecordsOnly = lineItemsToSave.filter(item => {
+        const key = `${item.orderId}_${item.postedDate?.toISOString()}_${item.amazonSku}`;
+        return !existingKeys.has(key);
+      });
+      
+      const duplicatesSkipped = lineItemsToSave.length - newRecordsOnly.length;
+      
+      if (duplicatesSkipped > 0) {
+        console.log(`[Financial Data] ⚠️  Skipped ${duplicatesSkipped} duplicate records (already in database)`);
+      }
+      
+      console.log(`[Financial Data] 📊 ${newRecordsOnly.length} new records to insert`);
+      
+      // Insert only new records in batches
       const batchSize = 100;
       let savedCount = 0;
       
-      for (let i = 0; i < lineItemsToSave.length; i += batchSize) {
-        const batch = lineItemsToSave.slice(i, i + batchSize);
-        await db.insert(amazonFinancialLineItems).values(batch);
-        savedCount += batch.length;
-        console.log(`[Financial Data] Saved batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(lineItemsToSave.length / batchSize)} (${savedCount}/${lineItemsToSave.length} items)`);
+      for (let i = 0; i < newRecordsOnly.length; i += batchSize) {
+        const batch = newRecordsOnly.slice(i, i + batchSize);
+        if (batch.length > 0) {
+          await db.insert(amazonFinancialLineItems).values(batch);
+          savedCount += batch.length;
+          console.log(`[Financial Data] Saved batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(newRecordsOnly.length / batchSize)} (${savedCount}/${newRecordsOnly.length} items)`);
+        }
       }
       
-      console.log(`[Financial Data] ✅ Saved ${savedCount} line items to database`);
+      console.log(`[Financial Data] ✅ Saved ${savedCount} new line items to database (skipped ${duplicatesSkipped} duplicates)`);
       
       // Save summary for this date range (for caching ad spend, credits, debits)
       if (needsAPIFetch) {
