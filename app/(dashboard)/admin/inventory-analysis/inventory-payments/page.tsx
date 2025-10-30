@@ -400,20 +400,21 @@ export default function InventoryPaymentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-[1800px] mx-auto">
+    <div className="p-3 sm:p-6 max-w-[1800px] mx-auto">
       {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Inventory Payments</h1>
-            <p className="text-gray-600">Timeline view of payment schedules</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Inventory Payments</h1>
+            <p className="text-sm sm:text-base text-gray-600">Timeline view of payment schedules</p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={exportToCSV} variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={exportToCSV} variant="outline" className="w-full sm:w-auto">
               <Download className="h-4 w-4 mr-2" />
-              Export CSV
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">Export</span>
             </Button>
-            <Button onClick={createNewPlan}>
+            <Button onClick={createNewPlan} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               New Payment Plan
             </Button>
@@ -422,65 +423,70 @@ export default function InventoryPaymentsPage() {
 
         {/* Date Range Filter */}
         <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold text-gray-700">Date Range:</span>
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                <span className="text-sm sm:text-base font-semibold text-gray-700">Date Range:</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="start-date" className="text-sm font-medium text-gray-600">From:</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-40"
-                />
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="start-date" className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">From:</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full sm:w-40 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="end-date" className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">To:</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full sm:w-40 text-sm"
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="end-date" className="text-sm font-medium text-gray-600">To:</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-40"
-                />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const today = new Date();
+                    const start = new Date(today);
+                    start.setDate(today.getDate() - (3 * 7)); // 3 weeks back
+                    const end = new Date(today);
+                    end.setDate(today.getDate() + (13 * 7)); // 13 weeks forward
+                    
+                    setStartDate(start.toISOString().split('T')[0]);
+                    setEndDate(end.toISOString().split('T')[0]);
+                  }}
+                  className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 font-semibold flex-1 sm:flex-none text-xs sm:text-sm"
+                >
+                  13-Week
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const allDates = paymentPlans
+                      .flatMap(plan => plan.lineItems.map(item => item.date))
+                      .filter(d => d)
+                      .sort();
+                    if (allDates.length > 0) {
+                      setStartDate(allDates[0]);
+                      setEndDate(allDates[allDates.length - 1]);
+                    }
+                  }}
+                  className="flex-1 sm:flex-none text-xs sm:text-sm"
+                >
+                  Reset to All
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const today = new Date();
-                  const start = new Date(today);
-                  start.setDate(today.getDate() - (3 * 7)); // 3 weeks back
-                  const end = new Date(today);
-                  end.setDate(today.getDate() + (13 * 7)); // 13 weeks forward
-                  
-                  setStartDate(start.toISOString().split('T')[0]);
-                  setEndDate(end.toISOString().split('T')[0]);
-                }}
-                className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 font-semibold"
-              >
-                13-Week
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const allDates = paymentPlans
-                    .flatMap(plan => plan.lineItems.map(item => item.date))
-                    .filter(d => d)
-                    .sort();
-                  if (allDates.length > 0) {
-                    setStartDate(allDates[0]);
-                    setEndDate(allDates[allDates.length - 1]);
-                  }
-                }}
-              >
-                Reset to All
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -606,7 +612,7 @@ export default function InventoryPaymentsPage() {
                 return (
                   <>
                     {/* Global date range display */}
-                    <div className="ml-[210px] mb-2 flex justify-between text-xs text-gray-600 font-semibold px-2">
+                    <div className="ml-0 sm:ml-[210px] mb-2 flex justify-between text-[10px] sm:text-xs text-gray-600 font-semibold px-2">
                       <div>{globalMinDate.toLocaleDateString()}</div>
                       <div>{globalMaxDate.toLocaleDateString()}</div>
                     </div>
@@ -633,16 +639,16 @@ export default function InventoryPaymentsPage() {
 
                       return (
                         <div key={plan.id} className="border-b last:border-b-0 pb-4">
-                          <div className="flex items-center mb-2">
-                            <div className="w-[200px] text-right pr-4 flex items-center justify-end gap-2">
-                              <div className="font-bold text-sm">{plan.planNumber}</div>
-                              <div className="font-semibold text-sm text-gray-600">
+                          <div className="flex flex-col sm:flex-row sm:items-center mb-2 gap-1 sm:gap-0">
+                            <div className="w-full sm:w-[200px] text-left sm:text-right sm:pr-4 flex items-center justify-start sm:justify-end gap-2">
+                              <div className="font-bold text-xs sm:text-sm">{plan.planNumber}</div>
+                              <div className="font-semibold text-xs sm:text-sm text-gray-600">
                                 ${getPlanTotal(plan).toLocaleString()}
                               </div>
                             </div>
                           </div>
                           
-                          <div className="ml-[210px]">
+                          <div className="ml-0 sm:ml-[210px]">
                             <div className="relative h-24 bg-gradient-to-r from-blue-100 via-gray-100 to-green-100 rounded-lg pt-6 pb-3">
                               {positions.map((payment) => {
                                 const amount = parseFloat(payment.amount.toString() || '0');
@@ -731,22 +737,23 @@ export default function InventoryPaymentsPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Payment Plans</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Payment Plans</CardTitle>
           </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-3 font-semibold">Plan #</th>
-                  <th className="text-left p-3 font-semibold">Name</th>
-                  <th className="text-right p-3 font-semibold">Total Amount</th>
-                  <th className="text-right p-3 font-semibold">Paid</th>
-                  <th className="text-right p-3 font-semibold">Unpaid</th>
-                  <th className="text-center p-3 font-semibold">Payments</th>
-                  <th className="text-center p-3 font-semibold">Actions</th>
-                  <th className="text-center p-3 font-semibold"></th>
-                </tr>
-              </thead>
+          <CardContent className="p-0 sm:p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left p-2 sm:p-3 font-semibold">Plan #</th>
+                    <th className="text-left p-2 sm:p-3 font-semibold">Name</th>
+                    <th className="text-right p-2 sm:p-3 font-semibold">Total</th>
+                    <th className="text-right p-2 sm:p-3 font-semibold hidden sm:table-cell">Paid</th>
+                    <th className="text-right p-2 sm:p-3 font-semibold hidden sm:table-cell">Unpaid</th>
+                    <th className="text-center p-2 sm:p-3 font-semibold hidden md:table-cell">Payments</th>
+                    <th className="text-center p-2 sm:p-3 font-semibold">Actions</th>
+                    <th className="text-center p-2 sm:p-3 font-semibold"></th>
+                  </tr>
+                </thead>
               <tbody>
                 {paymentPlans.map((plan) => {
                   const isExpanded = expandedPlans.has(plan.planNumber);
@@ -756,66 +763,72 @@ export default function InventoryPaymentsPage() {
                   return (
                     <React.Fragment key={plan.id}>
                       <tr className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-mono text-xs">{plan.planNumber}</td>
-                        <td className="p-3 font-medium">{plan.name}</td>
-                        <td className="p-3 text-right font-semibold">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                        <td className="p-3 text-right text-green-600 font-semibold">${paid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                        <td className="p-3 text-right text-yellow-600 font-semibold">${unpaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                        <td className="p-3 text-center">{plan.lineItems.length}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex gap-2 justify-center">
-                            <Button onClick={() => editPlan(plan)} variant="outline" size="sm">
-                              <Edit className="h-4 w-4" />
+                        <td className="p-2 sm:p-3 font-mono text-[10px] sm:text-xs whitespace-nowrap">{plan.planNumber}</td>
+                        <td className="p-2 sm:p-3 font-medium text-xs sm:text-sm">
+                          <div className="max-w-[120px] sm:max-w-none truncate">{plan.name}</div>
+                        </td>
+                        <td className="p-2 sm:p-3 text-right font-semibold text-xs sm:text-sm whitespace-nowrap">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-2 sm:p-3 text-right text-green-600 font-semibold hidden sm:table-cell whitespace-nowrap">${paid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-2 sm:p-3 text-right text-yellow-600 font-semibold hidden sm:table-cell whitespace-nowrap">${unpaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-2 sm:p-3 text-center hidden md:table-cell">{plan.lineItems.length}</td>
+                        <td className="p-2 sm:p-3 text-center">
+                          <div className="flex gap-1 sm:gap-2 justify-center">
+                            <Button onClick={() => editPlan(plan)} variant="outline" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
-                            <Button onClick={() => deletePlan(plan.id)} variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                            <Button onClick={() => deletePlan(plan.id)} variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                             </Button>
                           </div>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-2 sm:p-3 text-center">
                           <Button
                             onClick={() => toggleExpanded(plan.planNumber)}
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {isExpanded ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
                           </Button>
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={8} className="p-4 bg-gray-50">
-                            <div className="text-sm">
-                              <div className="font-semibold mb-3">Payment Line Items:</div>
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="border-b">
-                                    <th className="text-left p-2">Description</th>
-                                    <th className="text-right p-2">Amount</th>
-                                    <th className="text-left p-2">Date</th>
-                                    <th className="text-left p-2">Reference</th>
-                                    <th className="text-center p-2">Status</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {plan.lineItems.map((item) => (
-                                    <tr key={item.id} className="border-b">
-                                      <td className="p-2">{item.description || '—'}</td>
-                                      <td className="p-2 text-right font-medium">${parseFloat(item.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                                      <td className="p-2">{new Date(item.date).toLocaleDateString()}</td>
-                                      <td className="p-2">{item.reference || '—'}</td>
-                                      <td className="p-2 text-center">
-                                        {item.isPaid ? (
-                                          <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Paid</span>
-                                        ) : (
-                                          <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs">Unpaid</span>
-                                        )}
-                                      </td>
+                          <td colSpan={8} className="p-2 sm:p-4 bg-gray-50">
+                            <div className="text-xs sm:text-sm">
+                              <div className="font-semibold mb-2 sm:mb-3 text-xs sm:text-sm">Payment Line Items:</div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-[10px] sm:text-xs">
+                                  <thead>
+                                    <tr className="border-b">
+                                      <th className="text-left p-1 sm:p-2">Description</th>
+                                      <th className="text-right p-1 sm:p-2">Amount</th>
+                                      <th className="text-left p-1 sm:p-2">Date</th>
+                                      <th className="text-left p-1 sm:p-2 hidden sm:table-cell">Reference</th>
+                                      <th className="text-center p-1 sm:p-2">Status</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody>
+                                    {plan.lineItems.map((item) => (
+                                      <tr key={item.id} className="border-b">
+                                        <td className="p-1 sm:p-2">
+                                          <div className="max-w-[100px] sm:max-w-none truncate">{item.description || '—'}</div>
+                                        </td>
+                                        <td className="p-1 sm:p-2 text-right font-medium whitespace-nowrap">${parseFloat(item.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                        <td className="p-1 sm:p-2 whitespace-nowrap">{new Date(item.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</td>
+                                        <td className="p-1 sm:p-2 hidden sm:table-cell">{item.reference || '—'}</td>
+                                        <td className="p-1 sm:p-2 text-center">
+                                          {item.isPaid ? (
+                                            <span className="bg-green-100 text-green-700 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-xs">Paid</span>
+                                          ) : (
+                                            <span className="bg-yellow-100 text-yellow-700 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-xs">Unpaid</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -825,6 +838,7 @@ export default function InventoryPaymentsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </CardContent>
         </Card>
       )}
