@@ -632,19 +632,17 @@ export default function InventoryPaymentsPage() {
                       });
 
                       return (
-                        <div key={plan.id} className="relative">
+                        <div key={plan.id} className="relative flex items-center">
                           {/* Plan name and total on the left */}
-                          <div className="flex items-center mb-1">
-                            <div className="w-[200px] text-left pr-4 flex items-center gap-2">
-                              <div className="font-bold text-sm">{plan.planNumber}</div>
-                              <div className="font-semibold text-sm text-gray-600">
-                                ${getPlanTotal(plan).toLocaleString()}
-                              </div>
+                          <div className="w-[200px] text-left pr-4 flex items-center gap-2">
+                            <div className="font-bold text-sm">{plan.planNumber}</div>
+                            <div className="font-semibold text-sm text-gray-600">
+                              ${getPlanTotal(plan).toLocaleString()}
                             </div>
                           </div>
                           
                           {/* Timeline with horizontal line and bubbles centered on it */}
-                          <div className="ml-[210px]">
+                          <div className="flex-1">
                             <div className="relative h-16">
                               {/* Horizontal center line */}
                               <div className="absolute left-0 right-0 top-1/2 border-t border-gray-300" />
@@ -712,9 +710,12 @@ export default function InventoryPaymentsPage() {
                     })}
                     
                     {/* Global date range display at bottom */}
-                    <div className="ml-[210px] mt-2 flex justify-between text-xs text-gray-500 font-medium px-2">
-                      <div>{globalMinDate.toLocaleDateString()}</div>
-                      <div>{globalMaxDate.toLocaleDateString()}</div>
+                    <div className="flex">
+                      <div className="w-[200px]"></div>
+                      <div className="flex-1 flex justify-between text-xs text-gray-500 font-medium px-2 mt-2">
+                        <div>{globalMinDate.toLocaleDateString()}</div>
+                        <div>{globalMaxDate.toLocaleDateString()}</div>
+                      </div>
                     </div>
                   </>
                 );
