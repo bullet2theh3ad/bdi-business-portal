@@ -23,29 +23,58 @@ export async function GET(request: NextRequest) {
 
     console.log('[WIP Status API] Fetching status data...', { skuFilter, statusFilter });
 
-    // Build query
-    let query = supabaseService
-      .from('warehouse_wip_units')
-      .select('*')
-      .order('received_date', { ascending: false });
+    // Fetch ALL records with pagination (Supabase limit is 1000 per request)
+    let units: any[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
 
-    // Apply filters if provided
-    if (skuFilter) {
-      query = query.eq('model_number', skuFilter);
-    }
-    if (statusFilter) {
-      query = query.eq('wip_status', statusFilter);
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      console.log(`[WIP Status API] Fetching page ${page + 1} (rows ${from}-${to})...`);
+
+      let query = supabaseService
+        .from('warehouse_wip_units')
+        .select('*')
+        .order('received_date', { ascending: false })
+        .range(from, to);
+
+      // Apply filters if provided
+      if (skuFilter) {
+        query = query.eq('model_number', skuFilter);
+      }
+      if (statusFilter) {
+        query = query.eq('wip_status', statusFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[WIP Status API] Error fetching units:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch WIP status data' },
+          { status: 500 }
+        );
+      }
+
+      if (data && data.length > 0) {
+        units = units.concat(data);
+        console.log(`[WIP Status API] Page ${page + 1}: Fetched ${data.length} records (Total: ${units.length})`);
+        
+        // Check if we got less than pageSize (means we're done)
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    const { data: units, error } = await query;
-
-    if (error) {
-      console.error('[WIP Status API] Error fetching units:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch WIP status data' },
-        { status: 500 }
-      );
-    }
+    console.log(`[WIP Status API] ✅ Fetched total of ${units.length} records`);
 
     // Group by WIP Status
     const statusGroups: Record<string, any[]> = {};

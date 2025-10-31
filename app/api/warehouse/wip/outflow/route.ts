@@ -32,36 +32,65 @@ export async function GET(request: NextRequest) {
       endDate 
     });
 
-    // Build query - Only get units with outflow data
-    let query = supabaseService
-      .from('warehouse_wip_units')
-      .select('*')
-      .not('outflow', 'is', null) // Only get units that have been shipped somewhere
-      .order('received_date', { ascending: false });
+    // Fetch ALL records with pagination (Supabase limit is 1000 per request)
+    let units: any[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
 
-    // Apply filters if provided
-    if (destinationFilter) {
-      query = query.eq('outflow', destinationFilter);
-    }
-    if (skuFilter) {
-      query = query.eq('model_number', skuFilter);
-    }
-    if (startDate) {
-      query = query.gte('received_date', startDate);
-    }
-    if (endDate) {
-      query = query.lte('received_date', endDate);
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      console.log(`[Outflow API] Fetching page ${page + 1} (rows ${from}-${to})...`);
+
+      let query = supabaseService
+        .from('warehouse_wip_units')
+        .select('*')
+        .not('outflow', 'is', null) // Only get units that have been shipped somewhere
+        .order('received_date', { ascending: false })
+        .range(from, to);
+
+      // Apply filters if provided
+      if (destinationFilter) {
+        query = query.eq('outflow', destinationFilter);
+      }
+      if (skuFilter) {
+        query = query.eq('model_number', skuFilter);
+      }
+      if (startDate) {
+        query = query.gte('received_date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('received_date', endDate);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[Outflow API] Error fetching units:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch outflow data' },
+          { status: 500 }
+        );
+      }
+
+      if (data && data.length > 0) {
+        units = units.concat(data);
+        console.log(`[Outflow API] Page ${page + 1}: Fetched ${data.length} records (Total: ${units.length})`);
+        
+        // Check if we got less than pageSize (means we're done)
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    const { data: units, error } = await query;
-
-    if (error) {
-      console.error('[Outflow API] Error fetching units:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch outflow data' },
-        { status: 500 }
-      );
-    }
+    console.log(`[Outflow API] ✅ Fetched total of ${units.length} records`);
 
     // Group by destination (outflow)
     const destinationGroups: Record<string, any[]> = {};
