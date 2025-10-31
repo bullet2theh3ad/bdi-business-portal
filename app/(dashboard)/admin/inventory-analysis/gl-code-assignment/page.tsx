@@ -10,12 +10,18 @@ import { Settings, RefreshCw, Save, Search, Download, CheckCircle2 } from 'lucid
 import { Badge } from '@/components/ui/badge';
 
 interface GLCode {
+  id: string; // UUID from database
+  qbAccountId: string;
   code: string;
   name: string;
+  fullyQualifiedName: string;
+  accountType: string;
+  classification: string;
   description?: string;
   category: 'opex' | 'cogs' | 'inventory' | 'nre' | 'ignore' | 'unassigned';
   includeInCashFlow: boolean;
-  lastSynced?: string;
+  isActive: boolean;
+  currentBalance?: number;
 }
 
 export default function GLCodeAssignmentPage() {
@@ -26,32 +32,64 @@ export default function GLCodeAssignmentPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Sample GL codes (this would come from QuickBooks API)
-  const sampleGLCodes: GLCode[] = [
-    { code: '5000', name: 'Cost of Goods Sold', description: 'Direct costs of products sold', category: 'cogs', includeInCashFlow: true },
-    { code: '6000', name: 'Rent Expense', description: 'Monthly rent for office/warehouse', category: 'opex', includeInCashFlow: true },
-    { code: '6100', name: 'Utilities', description: 'Electricity, water, internet', category: 'opex', includeInCashFlow: true },
-    { code: '6200', name: 'Salaries & Wages', description: 'Employee compensation', category: 'opex', includeInCashFlow: true },
-    { code: '6300', name: 'Marketing & Advertising', description: 'Marketing expenses', category: 'opex', includeInCashFlow: true },
-    { code: '6400', name: 'Office Supplies', description: 'Supplies and materials', category: 'opex', includeInCashFlow: true },
-    { code: '6500', name: 'Insurance', description: 'Business insurance premiums', category: 'opex', includeInCashFlow: true },
-    { code: '6600', name: 'Professional Fees', description: 'Legal, accounting, consulting', category: 'opex', includeInCashFlow: true },
-    { code: '1200', name: 'Inventory', description: 'Inventory asset account', category: 'inventory', includeInCashFlow: false },
-    { code: '7000', name: 'Equipment Purchases', description: 'Capital equipment', category: 'nre', includeInCashFlow: false },
-    { code: '7100', name: 'R&D Expenses', description: 'Research and development', category: 'nre', includeInCashFlow: false },
-    { code: '8000', name: 'Depreciation', description: 'Asset depreciation', category: 'ignore', includeInCashFlow: false },
-    { code: '9000', name: 'Interest Income', description: 'Bank interest earned', category: 'ignore', includeInCashFlow: false },
-    { code: '4000', name: 'Sales Revenue', description: 'Product sales revenue', category: 'ignore', includeInCashFlow: false },
-  ];
-
+  // Load GL codes from QuickBooks on mount
   useEffect(() => {
-    // Initialize with sample data
-    // In production, this would fetch from QuickBooks API
-    setGLCodes(sampleGLCodes);
-    setFilteredCodes(sampleGLCodes);
-    setLastSyncTime(new Date().toISOString());
+    loadGLCodes();
   }, []);
+
+  async function loadGLCodes() {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch QuickBooks accounts
+      const qbResponse = await fetch('/api/quickbooks/accounts');
+      if (!qbResponse.ok) {
+        throw new Error('Failed to fetch QuickBooks accounts');
+      }
+      const qbAccounts = await qbResponse.json();
+
+      // Fetch existing assignments
+      const assignmentsResponse = await fetch('/api/gl-code-assignments');
+      const assignments = assignmentsResponse.ok ? await assignmentsResponse.json() : [];
+
+      // Create a map of assignments by QB account ID
+      const assignmentMap = new Map(
+        assignments.map((a: any) => [a.qbAccountId, a])
+      );
+
+      // Merge QuickBooks accounts with assignments
+      const mergedGLCodes: GLCode[] = qbAccounts.map((account: any) => {
+        const assignment: any = assignmentMap.get(account.qb_account_id);
+        
+        return {
+          id: assignment?.id || account.id,
+          qbAccountId: account.qb_account_id,
+          code: account.account_number || account.qb_account_id,
+          name: account.name,
+          fullyQualifiedName: account.fully_qualified_name || account.name,
+          accountType: account.account_type,
+          classification: account.classification,
+          description: account.description,
+          category: (assignment?.category as GLCode['category']) || 'unassigned',
+          includeInCashFlow: assignment?.include_in_cash_flow ?? true,
+          isActive: account.is_active,
+          currentBalance: parseFloat(account.current_balance || '0'),
+        };
+      });
+
+      setGLCodes(mergedGLCodes);
+      setFilteredCodes(mergedGLCodes);
+      setLastSyncTime(new Date().toISOString());
+    } catch (err) {
+      console.error('Error loading GL codes:', err);
+      setError('Failed to load GL codes from QuickBooks. Please check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     // Apply filters
@@ -74,27 +112,23 @@ export default function GLCodeAssignmentPage() {
 
   // Handle refresh from QuickBooks
   const handleRefresh = async () => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setLastSyncTime(new Date().toISOString());
-    setIsLoading(false);
+    await loadGLCodes();
     alert('GL codes refreshed from QuickBooks');
   };
 
   // Update GL code category
-  const handleCategoryChange = (code: string, newCategory: string) => {
+  const handleCategoryChange = (qbAccountId: string, newCategory: string) => {
     setGLCodes(glCodes.map(glCode =>
-      glCode.code === code
+      glCode.qbAccountId === qbAccountId
         ? { ...glCode, category: newCategory as GLCode['category'] }
         : glCode
     ));
   };
 
   // Toggle cash flow inclusion
-  const handleToggleCashFlow = (code: string) => {
+  const handleToggleCashFlow = (qbAccountId: string) => {
     setGLCodes(glCodes.map(glCode =>
-      glCode.code === code
+      glCode.qbAccountId === qbAccountId
         ? { ...glCode, includeInCashFlow: !glCode.includeInCashFlow }
         : glCode
     ));
@@ -102,11 +136,34 @@ export default function GLCodeAssignmentPage() {
 
   // Save mappings
   const handleSave = async () => {
-    setIsSaving(true);
-    // Simulate API call to save mappings
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    alert('GL code mappings saved successfully');
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      // Prepare assignments data
+      const assignments = glCodes.map(code => ({
+        qbAccountId: code.qbAccountId,
+        category: code.category,
+        includeInCashFlow: code.includeInCashFlow,
+      }));
+
+      const response = await fetch('/api/gl-code-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignments }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save GL code assignments');
+      }
+
+      alert('GL code assignments saved successfully');
+    } catch (err) {
+      console.error('Error saving GL code assignments:', err);
+      setError('Failed to save GL code assignments. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Export mappings
@@ -171,6 +228,22 @@ export default function GLCodeAssignmentPage() {
           Map QuickBooks GL codes to categories for cash flow analysis
         </p>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && glCodes.length === 0 && (
+        <div className="text-center py-12">
+          <RefreshCw className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-spin" />
+          <p className="text-gray-600">Loading GL codes from QuickBooks...</p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
@@ -294,16 +367,24 @@ export default function GLCodeAssignmentPage() {
             {/* Rows */}
             {filteredCodes.map((code) => (
               <div
-                key={code.code}
+                key={code.qbAccountId}
                 className="grid grid-cols-12 gap-4 px-4 py-3 border rounded-lg hover:bg-gray-50 transition-colors items-center"
               >
-                <div className="col-span-1 font-mono font-semibold">{code.code}</div>
-                <div className="col-span-3 font-medium">{code.name}</div>
-                <div className="col-span-3 text-sm text-gray-600">{code.description || '-'}</div>
+                <div className="col-span-1 font-mono font-semibold text-xs">{code.code}</div>
+                <div className="col-span-3">
+                  <div className="font-medium text-sm">{code.name}</div>
+                  <div className="text-xs text-gray-500">{code.fullyQualifiedName}</div>
+                </div>
+                <div className="col-span-3 text-sm text-gray-600">
+                  {code.classification && (
+                    <span className="text-xs bg-gray-100 px-2 py-1 rounded mr-2">{code.classification}</span>
+                  )}
+                  {code.accountType}
+                </div>
                 <div className="col-span-2">
                   <Select
                     value={code.category}
-                    onValueChange={(value) => handleCategoryChange(code.code, value)}
+                    onValueChange={(value) => handleCategoryChange(code.qbAccountId, value)}
                   >
                     <SelectTrigger className="h-8">
                       <SelectValue />
@@ -320,7 +401,7 @@ export default function GLCodeAssignmentPage() {
                 </div>
                 <div className="col-span-2">
                   <button
-                    onClick={() => handleToggleCashFlow(code.code)}
+                    onClick={() => handleToggleCashFlow(code.qbAccountId)}
                     className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       code.includeInCashFlow
                         ? 'bg-green-100 text-green-800 hover:bg-green-200'
