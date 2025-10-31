@@ -611,12 +611,6 @@ export default function InventoryPaymentsPage() {
 
                 return (
                   <>
-                    {/* Global date range display */}
-                    <div className="ml-0 sm:ml-[210px] mb-2 flex justify-between text-[10px] sm:text-xs text-gray-600 font-semibold px-2">
-                      <div>{globalMinDate.toLocaleDateString()}</div>
-                      <div>{globalMaxDate.toLocaleDateString()}</div>
-                    </div>
-
                     {paymentPlans.map((plan) => {
                       // Filter plan items by date range
                       const sortedItems = [...plan.lineItems]
@@ -638,18 +632,24 @@ export default function InventoryPaymentsPage() {
                       });
 
                       return (
-                        <div key={plan.id} className="border-b last:border-b-0 pb-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center mb-2 gap-1 sm:gap-0">
-                            <div className="w-full sm:w-[200px] text-left sm:text-right sm:pr-4 flex items-center justify-start sm:justify-end gap-2">
-                              <div className="font-bold text-xs sm:text-sm">{plan.planNumber}</div>
-                              <div className="font-semibold text-xs sm:text-sm text-gray-600">
+                        <div key={plan.id} className="relative">
+                          {/* Plan name and total on the left */}
+                          <div className="flex items-center mb-1">
+                            <div className="w-[200px] text-left pr-4 flex items-center gap-2">
+                              <div className="font-bold text-sm">{plan.planNumber}</div>
+                              <div className="font-semibold text-sm text-gray-600">
                                 ${getPlanTotal(plan).toLocaleString()}
                               </div>
                             </div>
                           </div>
                           
-                          <div className="ml-0 sm:ml-[210px]">
-                            <div className="relative h-24 bg-gradient-to-r from-blue-100 via-gray-100 to-green-100 rounded-lg pt-6 pb-3">
+                          {/* Timeline with horizontal line and bubbles centered on it */}
+                          <div className="ml-[210px]">
+                            <div className="relative h-16">
+                              {/* Horizontal center line */}
+                              <div className="absolute left-0 right-0 top-1/2 border-t border-gray-300" />
+                              
+                              {/* Bubbles positioned on the line */}
                               {positions.map((payment) => {
                                 const amount = parseFloat(payment.amount.toString() || '0');
                                 const bubbleSize = globalMaxAmount === 0 ? 35 : Math.max(25, Math.min(50, (Math.abs(amount) / globalMaxAmount) * 50));
@@ -676,7 +676,7 @@ export default function InventoryPaymentsPage() {
                                     }}
                                   >
                                     <div
-                                      className={`${color} rounded-full shadow-lg cursor-pointer transition-all hover:scale-110 flex items-center justify-center`}
+                                      className={`${color} rounded-full shadow-lg cursor-pointer transition-all hover:scale-110 flex items-center justify-center border-2 border-white`}
                                       style={{
                                         width: `${bubbleSize}px`,
                                         height: `${bubbleSize}px`,
@@ -687,10 +687,7 @@ export default function InventoryPaymentsPage() {
                                       </span>
                                     </div>
 
-                                    <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-[9px] text-gray-700 font-medium whitespace-nowrap">
-                                      {new Date(payment.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
-                                    </div>
-
+                                    {/* Tooltip on hover */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
                                       <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
                                         <div className="font-semibold">{payment.description || 'Payment'}</div>
@@ -713,6 +710,12 @@ export default function InventoryPaymentsPage() {
                         </div>
                       );
                     })}
+                    
+                    {/* Global date range display at bottom */}
+                    <div className="ml-[210px] mt-2 flex justify-between text-xs text-gray-500 font-medium px-2">
+                      <div>{globalMinDate.toLocaleDateString()}</div>
+                      <div>{globalMaxDate.toLocaleDateString()}</div>
+                    </div>
                   </>
                 );
               })()}
