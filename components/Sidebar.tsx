@@ -177,6 +177,16 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/warehouse-wip/rma',
             icon: 'dashboard',
           },
+          {
+            title: '🔄 WIP Status',
+            href: '/wip-flow/wip-status',
+            icon: 'inventory_analytics',
+          },
+          {
+            title: '📤 Outflow Shipped',
+            href: '/wip-flow/outflow-shipped',
+            icon: 'shipping',
+          },
         ],
       },
     ],

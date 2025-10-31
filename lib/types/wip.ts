@@ -35,6 +35,10 @@ export interface WIPUnit {
   isRma: boolean;
   isCatvIntake: boolean;
   
+  // NEW: Processing status and destination
+  wipStatus?: string | null;  // RECEIVED, PASSED, FAILED, RTS-NEW, RTS-KITTED, RECYCLED, SHIPPED, RMA_SHIPPED, MISSING
+  outflow?: string | null;     // Destination: EMG, ISSOY, SVT, etc.
+  
   // Derived
   stage: WIPStage;
   outflowDate?: string;

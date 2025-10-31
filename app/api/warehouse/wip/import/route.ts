@@ -177,6 +177,8 @@ export async function POST(request: NextRequest) {
         is_wip: unit.isWip ?? false,
         is_rma: unit.isRma ?? false,
         is_catv_intake: unit.isCatvIntake ?? false,
+        wip_status: unit.wipStatus || null,     // NEW
+        outflow: unit.outflow || null,          // NEW
         import_batch_id: importBatch.id,
         raw_data: unit.rawData || null
         // Note: stage, outflow_date, aging_days, aging_bucket are auto-computed by DB trigger

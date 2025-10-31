@@ -101,6 +101,12 @@ export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
         }
         const isCatvIntake = sourceLower.includes('catv');
         
+        // NEW: Parse WIP Status column
+        const wipStatus = row['WIP Status']?.toString().trim() || null;
+        
+        // NEW: Parse Outflow column
+        const outflow = row['Outflow']?.toString().trim() || null;
+        
         // Parse dates
         const receivedDate = parseExcelDate(row['Date Stamp']);
         const isoYearWeekReceived = row['ISO YearWeek (Received)']?.toString().trim();
@@ -139,6 +145,8 @@ export function parseRawDataSheet(workbook: XLSX.WorkBook): Partial<WIPUnit>[] {
           isWip,
           isRma,
           isCatvIntake,
+          wipStatus,        // NEW
+          outflow,          // NEW
           rawData: row // Store entire row for debugging
         };
         
