@@ -1,0 +1,94 @@
+query Combined_Sample1 {
+    shipmentDetails(reference: "SampleReference", containerNumber: "SampleContainerNumber") {
+        shipmentStatus
+        reference
+        unitId
+        shipmentDetailsURL
+        stops {
+            stopNumber
+            locationType
+            location
+            city
+            country
+            latitude
+            longitude
+            milestones {
+                eventCode
+                eventName
+                estimatedDate
+                actualDate
+                plannedDate
+            }
+        }
+        originPort
+        loadingPort
+        dischargePort
+        shipFrom
+        shipTo
+        containerSizeClass
+        containerSeals
+    }
+    shipmentDetailsV2(
+        reference: "SampleReference"
+        containerNumber: "SampleContainerNumber"
+        verbose: false
+    ) {
+        shipmentStatus
+        reference
+        unitId
+        shipmentDetailsURL
+        stops {
+            stopNumber
+            locationType
+            location
+            city
+            country
+            latitude
+            longitude
+            milestones {
+                eventCode
+                eventName
+                estimatedDate
+                actualDate
+                plannedDate
+            }
+        }
+        originPort
+        loadingPort
+        dischargePort
+        shipFrom
+        shipTo
+        containerSeals
+        containerSizeClass
+    }
+    fullTransportDetails(reference: "SampleReference", verbose: true) {
+        shipmentStatus
+        reference
+        shipmentDetailsURL
+        containers {
+            unitId
+            stops {
+                stopNumber
+                locationType
+                location
+                city
+                country
+                latitude
+                longitude
+                milestones {
+                    eventCode
+                    eventName
+                    estimatedDate
+                    actualDate
+                    plannedDate
+                }
+            }
+            loadingPort
+            dischargePort
+            shipFrom
+            shipTo
+            containerSeals
+            containerSizeClass
+            originPort
+    }
+}

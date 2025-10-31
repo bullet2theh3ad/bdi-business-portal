@@ -1,0 +1,50 @@
+{
+	"info": {
+		"_postman_id": "27b724a4-adde-4c10-8e0a-d365777014b7",
+		"name": "MoveHttpDemo",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "5749071"
+	},
+	"item": [
+		{
+			"name": "Http GraphQL",
+			"request": {
+				"auth": {
+					"type": "apikey",
+					"apikey": [
+						{
+							"key": "value",
+							"value": "{{ApiKey}}",
+							"type": "string"
+						},
+						{
+							"key": "key",
+							"value": "ApiKey",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query ShipmentDetails {\n    shipmentDetails(\n        reference: \"SampleReference\"\n        containerNumber: \"SampleContainerNumber\"\n    ) {\n        shipmentDetailsURL\n        shipmentStatus\n        reference\n        unitId\n        stops {\n            stopNumber\n            locationType\n            location\n            city\n            country\n            latitude\n            longitude\n            milestones {\n                eventCode\n                eventName\n                estimatedDate\n                actualDate\n                plannedDate\n            }\n        }\n        \n    }\n}\n",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "https://{{AccessHubDomain}}/move",
+					"protocol": "https",
+					"host": [
+						"{{AccessHubDomain}}"
+					],
+					"path": [
+						"move"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

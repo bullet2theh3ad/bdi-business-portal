@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
 import WarehouseSummaryContent from '@/components/WarehouseSummaryContent';
+import OLShipmentTrackingModal from '@/components/OLShipmentTrackingModal';
 import useSWR from 'swr';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
@@ -92,6 +93,7 @@ export default function WarehousesPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showWarehouseSummaryModal, setShowWarehouseSummaryModal] = useState(false);
+  const [showOLShipmentModal, setShowOLShipmentModal] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -704,6 +706,17 @@ export default function WarehousesPage() {
                         >
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
                           WIP Dashboard
+                        </Button>
+                      )}
+                      {warehouse.warehouseCode === 'OLM' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowOLShipmentModal(true)}
+                          className="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                        >
+                          <SemanticBDIIcon semantic="shipping" size={14} className="mr-1" />
+                          Where's My Shipment
                         </Button>
                       )}
                       <Button
@@ -2630,6 +2643,12 @@ export default function WarehousesPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* OL-USA Shipment Tracking Modal */}
+      <OLShipmentTrackingModal 
+        open={showOLShipmentModal}
+        onOpenChange={setShowOLShipmentModal}
+      />
     </div>
   );
 }

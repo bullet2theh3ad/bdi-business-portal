@@ -1,0 +1,35 @@
+
+query ShiipmentDetails_Sample1 {
+    shipmentDetails(
+        reference: "SampleReference"
+        containerNumber: "SampleContainerNumber"
+    ) {
+        shipmentStatus
+        reference
+        unitId
+        shipmentDetailsURL
+        stops {
+            stopNumber
+            locationType
+            location
+            city
+            country
+            latitude
+            longitude
+            milestones {
+                eventCode
+                eventName
+                estimatedDate
+                actualDate
+                plannedDate
+            }
+        }
+        originPort
+        loadingPort
+        dischargePort
+        shipFrom
+        shipTo
+        containerSizeClass
+        containerSeals
+    }
+}
