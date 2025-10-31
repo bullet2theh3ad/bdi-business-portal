@@ -35,8 +35,24 @@ export async function GET() {
       );
     }
 
+    // Use service role key to bypass RLS policies
+    const supabaseService = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     // Fetch accounts from database (Chart of Accounts)
-    const { data: accounts, error } = await supabase
+    const { data: accounts, error } = await supabaseService
       .from('quickbooks_accounts')
       .select('*')
       .order('fully_qualified_name', { ascending: true });

@@ -36,8 +36,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Use service role key to bypass RLS policies
+    const supabaseService = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     // Fetch all GL code assignments
-    const { data: assignments, error } = await supabase
+    const { data: assignments, error } = await supabaseService
       .from('gl_code_assignments')
       .select('*')
       .order('created_at', { ascending: false });
@@ -93,6 +109,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Use service role key to bypass RLS policies
+    const supabaseService = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     // Parse request body
     const body = await request.json();
     const { assignments } = body;
@@ -129,7 +161,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // Bulk upsert using Supabase
-    const { data, error } = await supabase
+    const { data, error } = await supabaseService
       .from('gl_code_assignments')
       .upsert(assignmentsToSave, {
         onConflict: 'qb_account_id',
