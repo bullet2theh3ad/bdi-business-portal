@@ -754,6 +754,10 @@ export const invoices = pgTable('invoices', {
   // Supporting Documents (JSON array of file paths/URLs)
   documents: jsonb('documents').default('[]'),
   
+  // Partial Invoicing Support
+  poReference: varchar('po_reference', { length: 255 }), // Reference to source Purchase Order
+  isPartial: boolean('is_partial').default(false), // Track if this is a partial invoice
+  
   // Additional Info
   notes: text('notes'),
   
@@ -811,6 +815,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   purchaseOrderDate: date('purchase_order_date').notNull(),
   requestedDeliveryDate: date('requested_delivery_date').notNull(),
   status: varchar('status', { length: 50 }).notNull().default('draft'),
+  invoiceStatus: varchar('invoice_status', { length: 50 }).default('not_invoiced'), // Track partial invoicing status
   terms: varchar('terms', { length: 100 }).notNull().default('NET30'),
   incoterms: varchar('incoterms', { length: 50 }).notNull().default('FOB'),
   incotermsLocation: varchar('incoterms_location', { length: 255 }),
@@ -833,6 +838,8 @@ export const purchaseOrderLineItems = pgTable('purchase_order_line_items', {
   quantity: integer('quantity').notNull().default(0),
   unitCost: numeric('unit_cost', { precision: 10, scale: 2 }).notNull().default('0'),
   totalCost: numeric('total_cost', { precision: 15, scale: 2 }).notNull().default('0'),
+  invoicedQuantity: numeric('invoiced_quantity', { precision: 10, scale: 2 }).default('0'), // Track invoiced amount for partial invoicing
+  remainingQuantity: numeric('remaining_quantity', { precision: 10, scale: 2 }).default('0'), // Track remaining amount for partial invoicing
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

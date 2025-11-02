@@ -416,7 +416,117 @@ export async function DELETE(
     const invoiceId = params.id;
     console.log('🗑️ DELETING Invoice ID:', invoiceId);
 
-    // Delete line items first (due to foreign key constraints)
+    // STEP 1: Get the invoice BEFORE deleting (to check if it's linked to a PO)
+    const [invoiceToDelete] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (!invoiceToDelete) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    // STEP 2: Get line items BEFORE deleting (to know what quantities to reclaim)
+    const lineItemsToDelete = await db
+      .select()
+      .from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, invoiceId));
+
+    console.log(`📋 Found ${lineItemsToDelete.length} line items to delete`);
+
+    // STEP 3: If this invoice was linked to a PO, RECLAIM the quantities back to the PO
+    if (invoiceToDelete.poReference && lineItemsToDelete.length > 0) {
+      console.log(`🔄 Invoice was linked to PO: ${invoiceToDelete.poReference} - reclaiming quantities...`);
+      
+      try {
+        const { purchaseOrders, purchaseOrderLineItems } = await import('@/lib/db/schema');
+        
+        // Find the PO by purchase order number
+        const [targetPO] = await db
+          .select()
+          .from(purchaseOrders)
+          .where(eq(purchaseOrders.purchaseOrderNumber, invoiceToDelete.poReference))
+          .limit(1);
+        
+        if (targetPO) {
+          console.log(`✅ Found PO: ${targetPO.id}`);
+          
+          // Fetch PO line items
+          const poLineItems = await db
+            .select()
+            .from(purchaseOrderLineItems)
+            .where(eq(purchaseOrderLineItems.purchaseOrderId, targetPO.id));
+          
+          console.log(`📋 PO has ${poLineItems.length} line items`);
+          
+          // RECLAIM quantities for each line item
+          for (const invoiceLineItem of lineItemsToDelete) {
+            const matchingPOLineItem = poLineItems.find(
+              poLine => poLine.skuId === invoiceLineItem.skuId
+            );
+            
+            if (matchingPOLineItem) {
+              const invoicedQty = parseFloat(invoiceLineItem.quantity?.toString() || '0');
+              const currentInvoicedQty = parseFloat(matchingPOLineItem.invoicedQuantity?.toString() || '0');
+              const currentRemainingQty = parseFloat(matchingPOLineItem.remainingQuantity?.toString() || '0');
+              
+              const newInvoicedQty = currentInvoicedQty - invoicedQty;  // Subtract invoice qty
+              const newRemainingQty = currentRemainingQty + invoicedQty; // Add back to remaining
+              
+              console.log(`🔄 Reclaiming SKU ${invoiceLineItem.skuCode}: invoiced ${currentInvoicedQty} → ${newInvoicedQty}, remaining: ${currentRemainingQty} → ${newRemainingQty}`);
+              
+              await db
+                .update(purchaseOrderLineItems)
+                .set({
+                  invoicedQuantity: newInvoicedQty.toString(),
+                  remainingQuantity: newRemainingQty.toString()
+                })
+                .where(eq(purchaseOrderLineItems.id, matchingPOLineItem.id));
+            }
+          }
+          
+          // STEP 4: Recalculate PO invoice status
+          const allPOLineItems = await db
+            .select()
+            .from(purchaseOrderLineItems)
+            .where(eq(purchaseOrderLineItems.purchaseOrderId, targetPO.id));
+          
+          const allFullyInvoiced = allPOLineItems.every(line => {
+            const remaining = parseFloat(line.remainingQuantity?.toString() || line.quantity?.toString() || '0');
+            return remaining <= 0;
+          });
+          
+          const anyInvoiced = allPOLineItems.some(line => {
+            const invoiced = parseFloat(line.invoicedQuantity?.toString() || '0');
+            return invoiced > 0;
+          });
+          
+          let newStatus = 'not_invoiced';
+          if (allFullyInvoiced) {
+            newStatus = 'fully_invoiced';
+          } else if (anyInvoiced) {
+            newStatus = 'partially_invoiced';
+          }
+          
+          console.log(`📊 Updating PO status: ${targetPO.invoiceStatus} → ${newStatus}`);
+          
+          await db
+            .update(purchaseOrders)
+            .set({ invoiceStatus: newStatus })
+            .where(eq(purchaseOrders.id, targetPO.id));
+          
+          console.log('✅ Successfully reclaimed quantities to PO');
+        } else {
+          console.log('⚠️ PO not found for reference:', invoiceToDelete.poReference);
+        }
+      } catch (error) {
+        console.error('❌ Error reclaiming PO quantities:', error);
+        // Continue with deletion even if reclaim fails
+      }
+    }
+
+    // STEP 5: Now delete line items (due to foreign key constraints)
     const deletedLineItems = await db
       .delete(invoiceLineItems)
       .where(eq(invoiceLineItems.invoiceId, invoiceId))
@@ -424,15 +534,11 @@ export async function DELETE(
 
     console.log(`🗑️ Deleted ${deletedLineItems.length} line items`);
 
-    // Delete the invoice
+    // STEP 6: Delete the invoice
     const deletedInvoice = await db
       .delete(invoices)
       .where(eq(invoices.id, invoiceId))
       .returning();
-
-    if (deletedInvoice.length === 0) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
 
     console.log('✅ Successfully deleted invoice:', deletedInvoice[0].invoiceNumber);
     

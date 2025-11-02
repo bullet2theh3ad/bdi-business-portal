@@ -353,6 +353,8 @@ export async function POST(request: NextRequest) {
         totalValue: body.totalValue.toString(),
         notes: body.notes,
         createdBy: requestingUser.authId,
+        poReference: body.poReference || null, // 🔑 CRITICAL: Link invoice to PO for quantity reclaim on deletion
+        isPartial: body.isPartial || false, // NEW: Track partial vs full invoice
         // NEW FIELDS: Addresses and shipping
         customerAddress: body.customerAddress || null,
         shipToAddress: body.shipToAddress || null,
@@ -420,6 +422,95 @@ export async function POST(request: NextRequest) {
         .returning();
 
       console.log('Created payment line items:', insertedPaymentItems.length);
+    }
+
+    // 🔄 UPDATE PO LINE ITEMS: Track invoiced quantities for partial invoicing
+    if (body.poReference && body.lineItems && body.lineItems.length > 0) {
+      console.log('📊 Updating PO line item quantities for PO:', body.poReference);
+      
+      try {
+        const { purchaseOrders, purchaseOrderLineItems } = await import('@/lib/db/schema');
+        
+        // Find the PO by purchase order number
+        const [targetPO] = await db
+          .select()
+          .from(purchaseOrders)
+          .where(eq(purchaseOrders.purchaseOrderNumber, body.poReference))
+          .limit(1);
+        
+        if (targetPO) {
+          console.log('✅ Found PO:', targetPO.id);
+          
+          // Fetch PO line items
+          const poLineItems = await db
+            .select()
+            .from(purchaseOrderLineItems)
+            .where(eq(purchaseOrderLineItems.purchaseOrderId, targetPO.id));
+          
+          console.log(`📋 PO has ${poLineItems.length} line items`);
+          
+          // Update each line item's invoiced quantity
+          for (const invoiceLineItem of body.lineItems) {
+            const matchingPOLineItem = poLineItems.find(
+              poLine => poLine.skuId === invoiceLineItem.skuId
+            );
+            
+            if (matchingPOLineItem) {
+              const currentInvoicedQty = parseFloat(matchingPOLineItem.invoicedQuantity?.toString() || '0');
+              const newInvoicedQty = currentInvoicedQty + parseFloat(invoiceLineItem.quantity || 0);
+              const totalQty = parseFloat(matchingPOLineItem.quantity?.toString() || '0');
+              const newRemainingQty = totalQty - newInvoicedQty;
+              
+              console.log(`📊 Updating SKU ${invoiceLineItem.skuCode}: invoiced ${currentInvoicedQty} → ${newInvoicedQty}, remaining: ${newRemainingQty}`);
+              
+              await db
+                .update(purchaseOrderLineItems)
+                .set({
+                  invoicedQuantity: newInvoicedQty.toString(),
+                  remainingQuantity: newRemainingQty.toString()
+                })
+                .where(eq(purchaseOrderLineItems.id, matchingPOLineItem.id));
+            }
+          }
+          
+          // Update PO invoice status
+          const allPOLineItems = await db
+            .select()
+            .from(purchaseOrderLineItems)
+            .where(eq(purchaseOrderLineItems.purchaseOrderId, targetPO.id));
+          
+          const allFullyInvoiced = allPOLineItems.every(line => {
+            const remaining = parseFloat(line.remainingQuantity?.toString() || line.quantity?.toString() || '0');
+            return remaining <= 0;
+          });
+          
+          const anyInvoiced = allPOLineItems.some(line => {
+            const invoiced = parseFloat(line.invoicedQuantity?.toString() || '0');
+            return invoiced > 0;
+          });
+          
+          let newStatus = 'not_invoiced';
+          if (allFullyInvoiced) {
+            newStatus = 'fully_invoiced';
+          } else if (anyInvoiced) {
+            newStatus = 'partially_invoiced';
+          }
+          
+          console.log(`📊 Updating PO status: ${newStatus}`);
+          
+          await db
+            .update(purchaseOrders)
+            .set({ invoiceStatus: newStatus })
+            .where(eq(purchaseOrders.id, targetPO.id));
+          
+          console.log('✅ Successfully updated PO line items and status');
+        } else {
+          console.log('⚠️ PO not found for reference:', body.poReference);
+        }
+      } catch (error) {
+        console.error('❌ Error updating PO line items:', error);
+        // Don't fail the invoice creation if PO update fails
+      }
     }
 
     // 📧 Send finance notification if invoice submitted to finance

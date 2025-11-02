@@ -1,149 +1,73 @@
--- =====================================================
--- Fix QuickBooks RLS Policies to use public.users table
--- Run this AFTER creating the QuickBooks tables
--- =====================================================
+-- ==========================================
+-- Fix QuickBooks RLS Policies
+-- Allow BDI users to read QuickBooks data
+-- ==========================================
 
--- Drop existing policies
-DROP POLICY IF EXISTS "Super admins can view QB connections" ON quickbooks_connections;
-DROP POLICY IF EXISTS "Super admins can manage QB connections" ON quickbooks_connections;
-DROP POLICY IF EXISTS "Super admins can view sync logs" ON quickbooks_sync_log;
-DROP POLICY IF EXISTS "Super admins can create sync logs" ON quickbooks_sync_log;
-DROP POLICY IF EXISTS "Super admins can view QB customers" ON quickbooks_customers;
-DROP POLICY IF EXISTS "Super admins can manage QB customers" ON quickbooks_customers;
-DROP POLICY IF EXISTS "Super admins can view QB invoices" ON quickbooks_invoices;
-DROP POLICY IF EXISTS "Super admins can manage QB invoices" ON quickbooks_invoices;
-DROP POLICY IF EXISTS "Super admins can view QB vendors" ON quickbooks_vendors;
-DROP POLICY IF EXISTS "Super admins can manage QB vendors" ON quickbooks_vendors;
-DROP POLICY IF EXISTS "Super admins can view QB expenses" ON quickbooks_expenses;
-DROP POLICY IF EXISTS "Super admins can manage QB expenses" ON quickbooks_expenses;
+-- Check if RLS is enabled on QuickBooks tables
+SELECT 
+    schemaname,
+    tablename,
+    rowsecurity as rls_enabled
+FROM pg_tables 
+WHERE tablename LIKE 'quickbooks%'
+ORDER BY tablename;
 
--- Create corrected policies using public.users table
--- QuickBooks Connections
-CREATE POLICY "Super admins can view QB connections"
-    ON quickbooks_connections FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+-- ==========================================
+-- OPTION 1: Disable RLS entirely (simplest)
+-- ==========================================
+ALTER TABLE quickbooks_connections DISABLE ROW LEVEL SECURITY;
+ALTER TABLE quickbooks_accounts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE quickbooks_terms DISABLE ROW LEVEL SECURITY;
+ALTER TABLE quickbooks_classes DISABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Super admins can manage QB connections"
-    ON quickbooks_connections FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+-- If you have other quickbooks tables, add them here:
+-- ALTER TABLE quickbooks_invoices DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE quickbooks_customers DISABLE ROW LEVEL SECURITY;
+-- etc.
 
--- Sync Logs
-CREATE POLICY "Super admins can view sync logs"
-    ON quickbooks_sync_log FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+-- ==========================================
+-- OPTION 2: Create permissive policies (if you want to keep RLS enabled)
+-- Run this INSTEAD of OPTION 1 if you want granular control
+-- ==========================================
 
-CREATE POLICY "Super admins can create sync logs"
-    ON quickbooks_sync_log FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+-- Drop existing policies if any
+DROP POLICY IF EXISTS "Allow BDI users to read connections" ON quickbooks_connections;
+DROP POLICY IF EXISTS "Allow BDI users to read accounts" ON quickbooks_accounts;
+DROP POLICY IF EXISTS "Allow BDI users to read terms" ON quickbooks_terms;
+DROP POLICY IF EXISTS "Allow BDI users to read classes" ON quickbooks_classes;
 
--- Customers
-CREATE POLICY "Super admins can view QB customers"
-    ON quickbooks_customers FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+-- Create new permissive read policies for all authenticated users
+CREATE POLICY "Allow all authenticated users to read connections"
+ON quickbooks_connections FOR SELECT
+TO authenticated
+USING (true);
 
-CREATE POLICY "Super admins can manage QB customers"
-    ON quickbooks_customers FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+CREATE POLICY "Allow all authenticated users to read accounts"
+ON quickbooks_accounts FOR SELECT
+TO authenticated
+USING (true);
 
--- Invoices
-CREATE POLICY "Super admins can view QB invoices"
-    ON quickbooks_invoices FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+CREATE POLICY "Allow all authenticated users to read terms"
+ON quickbooks_terms FOR SELECT
+TO authenticated
+USING (true);
 
-CREATE POLICY "Super admins can manage QB invoices"
-    ON quickbooks_invoices FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
+CREATE POLICY "Allow all authenticated users to read classes"
+ON quickbooks_classes FOR SELECT
+TO authenticated
+USING (true);
 
--- Vendors
-CREATE POLICY "Super admins can view QB vendors"
-    ON quickbooks_vendors FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
-
-CREATE POLICY "Super admins can manage QB vendors"
-    ON quickbooks_vendors FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
-
--- Expenses
-CREATE POLICY "Super admins can view QB expenses"
-    ON quickbooks_expenses FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
-
-CREATE POLICY "Super admins can manage QB expenses"
-    ON quickbooks_expenses FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE auth_id = auth.uid() 
-            AND role = 'super_admin'
-        )
-    );
-
--- Success message
-SELECT 'QuickBooks RLS policies fixed successfully! Users table now references public.users instead of auth.users.' as status;
-
+-- ==========================================
+-- Verify policies are working
+-- ==========================================
+SELECT 
+    schemaname,
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd as operation,
+    qual as using_expression
+FROM pg_policies 
+WHERE tablename LIKE 'quickbooks%'
+ORDER BY tablename, policyname;

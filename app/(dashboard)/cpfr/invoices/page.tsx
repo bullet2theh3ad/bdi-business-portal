@@ -327,6 +327,8 @@ export default function InvoicesPage() {
   const [showCustomPaymentTerms, setShowCustomPaymentTerms] = useState(false);
   const [showLandscapePrompt, setShowLandscapePrompt] = useState(true);
   const [invoiceStatus, setInvoiceStatus] = useState<'draft' | 'submitted' | 'submitted_to_finance'>('draft');
+  const [isPartialInvoice, setIsPartialInvoice] = useState(false); // Toggle for partial vs full invoice
+  const [poRemainingQuantities, setPoRemainingQuantities] = useState<Record<string, number>>({}); // Track remaining quantities per line item
   const [customerAddress, setCustomerAddress] = useState('');
   const [shipToAddress, setShipToAddress] = useState('');
   const [shipDate, setShipDate] = useState('');
@@ -2271,52 +2273,9 @@ export default function InvoicesPage() {
                               inv.notes && inv.notes.includes(`Generated from PO: ${po.purchaseOrderNumber}`)
                             );
                             
-                            if (existingInvoice && !editingInvoiceId) {
-                              // Invoice already exists - switch to edit mode
-                              console.log('📋 Invoice already exists for this PO - switching to edit mode');
-                              setEditingInvoiceId(existingInvoice.id);
-                              
-                              // Load existing invoice data (ensure no null values)
-                              setGeneratedInvoice({
-                                invoiceNumber: existingInvoice.invoiceNumber || '',
-                                customerName: existingInvoice.customerName || '',
-                                invoiceDate: formatDateForInput(existingInvoice.invoiceDate),
-                                requestedDeliveryWeek: existingInvoice.requestedDeliveryWeek || '',
-                                status: existingInvoice.status || 'draft',
-                                terms: existingInvoice.terms || '',
-                                incoterms: existingInvoice.incoterms || '',
-                                incotermsLocation: existingInvoice.incotermsLocation || '',
-                                totalValue: existingInvoice.totalValue || '',
-                                notes: existingInvoice.notes || '',
-                                poReference: po.purchaseOrderNumber,
-                                lineItems: []
-                              });
-                              
-                              // Load existing addresses and bank info (ensure no null values)
-                              setCustomerAddress(existingInvoice.customerAddress || '');
-                              setShipToAddress(existingInvoice.shipToAddress || '');
-                              setShipDate(existingInvoice.shipDate || '');
-                              setBankInfo({
-                                bankName: existingInvoice.bankName || 'California Bank and Trust',
-                                accountNumber: existingInvoice.bankAccountNumber || '',
-                                routing: existingInvoice.bankRoutingNumber || '',
-                                swift: existingInvoice.bankSwiftCode || '',
-                                iban: existingInvoice.bankIban || '',
-                                bankAddress: existingInvoice.bankAddress || '',
-                                bankCountry: existingInvoice.bankCountry || 'United States',
-                                currency: existingInvoice.bankCurrency || 'USD'
-                              });
-                              
-                              // Load existing line items
-                              fetch(`/api/cpfr/invoices/${existingInvoice.id}/line-items`)
-                                .then(res => res.json())
-                                .then(lineItems => {
-                                  console.log('📋 Loaded existing line items for edit mode:', lineItems);
-                                  setGeneratedInvoice((prev: any) => ({...prev, lineItems: lineItems || []}));
-                                });
-                              
-                              return; // Don't fetch PO line items, use existing invoice
-                            }
+                            // ⚠️ REMOVED AUTO-EDIT MODE - Allow multiple invoices per PO (partial invoicing)
+                            // Old logic would auto-switch to edit mode if invoice existed, preventing new invoices
+                            // Now we ALWAYS fetch fresh PO line items to get updated remaining quantities
                             
                             // Fetch PO line items with enhanced debugging
                             console.log(`🔍 Fetching line items for PO ID: ${po.id}`);
@@ -2332,29 +2291,39 @@ export default function InvoicesPage() {
                                 console.log(`📊 Line items count: ${Array.isArray(lineItems) ? lineItems.length : 'Not an array'}`);
                                 if (Array.isArray(lineItems) && lineItems.length > 0) {
                                   console.log('📋 First line item structure:', lineItems[0]);
+                                  console.log('🔍 Checking quantities:', {
+                                    quantity: lineItems[0].quantity,
+                                    remainingQuantity: lineItems[0].remainingQuantity,
+                                    remaining_quantity: lineItems[0].remaining_quantity,
+                                    invoicedQuantity: lineItems[0].invoicedQuantity,
+                                    invoiced_quantity: lineItems[0].invoiced_quantity
+                                  });
                                 }
                                 
-                                // Calculate total from line items
-                                const calculatedTotal = Array.isArray(lineItems) ? 
-                                  lineItems.reduce((sum, item) => sum + (item.totalCost || item.total_cost || (item.quantity * item.unitCost) || 0), 0) : 
-                                  po.totalValue || 0;
-                                
-                                console.log('💰 Calculated total from line items:', calculatedTotal);
-                                
-                                // Map line items to correct field names
+                                // Map line items to correct field names FIRST
                                 const mappedLineItems = Array.isArray(lineItems) ? lineItems.map(item => ({
                                   id: item.id,
                                   skuId: item.skuId || item.sku_id,
                                   skuCode: item.skuCode || item.sku_code || item.sku,
                                   skuName: item.skuName || item.sku_name || item.name,
                                   description: item.description,
-                                  quantity: item.quantity,
+                                  quantity: item.remainingQuantity || item.remaining_quantity || item.quantity, // Use remaining if available
+                                  originalQuantity: item.quantity, // Store original PO quantity
+                                  remainingQuantity: item.remainingQuantity || item.remaining_quantity || item.quantity,
+                                  invoicedQuantity: item.invoicedQuantity || item.invoiced_quantity || 0,
                                   unitCost: item.unitCost || item.unit_cost,
                                   unitPrice: item.unitPrice || item.unit_cost,
                                   totalCost: item.totalCost || item.total_cost
                                 })) : [];
                                 
                                 console.log('🔄 Mapped line items:', mappedLineItems);
+                                
+                                // Calculate total from MAPPED line items (using remaining quantities)
+                                const calculatedTotal = mappedLineItems.reduce((sum, item) => 
+                                  sum + ((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)), 0
+                                );
+                                
+                                console.log('💰 Calculated total from mapped line items:', calculatedTotal);
                                 
                                 setGeneratedInvoice({
                                   invoiceNumber: `INV-${po.purchaseOrderNumber}-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
@@ -2407,7 +2376,18 @@ export default function InvoicesPage() {
                               <strong>PO #{selectedPO.purchaseOrderNumber}</strong><br />
                               Customer: {selectedPO.customerName || selectedPO.organization?.name}<br />
                               Value: ${selectedPO.totalValue?.toLocaleString()}<br />
-                              Delivery: Week {selectedPO.requestedDeliveryWeek}
+                              Delivery: Week {selectedPO.requestedDeliveryWeek}<br />
+                              {selectedPO.invoiceStatus && (
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+                                  selectedPO.invoiceStatus === 'fully_invoiced' ? 'bg-green-100 text-green-800' :
+                                  selectedPO.invoiceStatus === 'partially_invoiced' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {selectedPO.invoiceStatus === 'fully_invoiced' ? '✓ Fully Invoiced' :
+                                   selectedPO.invoiceStatus === 'partially_invoiced' ? '◐ Partially Invoiced' :
+                                   '○ Not Invoiced'}
+                                </span>
+                              )}
                             </p>
                             <Button
                               type="button"
@@ -2428,7 +2408,10 @@ export default function InvoicesPage() {
                                       skuCode: item.skuCode || item.sku_code || item.sku,
                                       skuName: item.skuName || item.sku_name || item.name,
                                       description: item.description || `PO ${selectedPO.purchaseOrderNumber}`,
-                                      quantity: item.quantity,
+                                      quantity: item.remainingQuantity || item.remaining_quantity || item.quantity,
+                                      originalQuantity: item.quantity,
+                                      remainingQuantity: item.remainingQuantity || item.remaining_quantity || item.quantity,
+                                      invoicedQuantity: item.invoicedQuantity || item.invoiced_quantity || 0,
                                       unitCost: item.unitCost || item.unit_cost,
                                       unitPrice: item.unitPrice || item.unit_cost,
                                       totalCost: item.totalCost || item.total_cost
@@ -2461,6 +2444,65 @@ export default function InvoicesPage() {
                               )}
                             </Button>
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Full vs Partial Invoice Toggle */}
+                      {selectedPO && generatedInvoice && (
+                        <div className="mt-4 p-3 bg-blue-100 rounded border border-blue-300">
+                          <Label className="text-sm font-semibold text-blue-900 mb-2 block">Invoice Type</Label>
+                          <div className="flex gap-4">
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="radio"
+                                name="invoiceType"
+                                checked={!isPartialInvoice}
+                                onChange={() => {
+                                  setIsPartialInvoice(false);
+                                  // Reset to full quantities and clear pending updates
+                                  if (generatedInvoice.lineItems) {
+                                    const resetLineItems = generatedInvoice.lineItems.map((item: any) => ({
+                                      ...item,
+                                      quantity: item.remainingQuantity || item.originalQuantity || item.quantity,
+                                      pendingUpdate: false // Clear any pending updates
+                                    }));
+                                    
+                                    // Recalculate total
+                                    const newTotal = resetLineItems.reduce((sum: number, lineItem: any) => 
+                                      sum + ((lineItem.quantity || 0) * (lineItem.unitCost || lineItem.unitPrice || 0)), 0
+                                    );
+                                    
+                                    setGeneratedInvoice({
+                                      ...generatedInvoice, 
+                                      lineItems: resetLineItems,
+                                      totalValue: newTotal
+                                    });
+                                  }
+                                }}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">
+                                <strong>Full Invoice</strong> (entire PO)
+                              </span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="radio"
+                                name="invoiceType"
+                                checked={isPartialInvoice}
+                                onChange={() => setIsPartialInvoice(true)}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">
+                                <strong>Partial Invoice</strong> (edit quantities)
+                              </span>
+                            </label>
+                          </div>
+                          {isPartialInvoice && (
+                            <div className="mt-2 text-xs text-blue-700">
+                              ℹ️ You can edit quantities in the preview panel. Quantities will be validated against available amounts.
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2881,6 +2923,7 @@ export default function InvoicesPage() {
                               notes: generatedInvoice.notes,
                               poReference: generatedInvoice.poReference,
                               lineItems: generatedInvoice.lineItems || [],
+                              isPartial: isPartialInvoice, // NEW: Track partial vs full invoice
                               // NEW FIELDS: Addresses and shipping
                               customerAddress: customerAddress,
                               shipToAddress: shipToAddress,
@@ -3190,7 +3233,69 @@ export default function InvoicesPage() {
                                         placeholder="Enter description..."
                                       />
                                     </td>
-                                    <td className="border border-gray-300 px-2 py-2 text-right text-xs">{(item.quantity || 0).toLocaleString()}</td>
+                                    <td className="border border-gray-300 px-1 py-1 text-right text-xs">
+                                      {isPartialInvoice ? (
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center gap-1">
+                                            <input
+                                              type="number"
+                                              value={item.quantity || 0}
+                                              onChange={(e) => {
+                                                const newQty = parseFloat(e.target.value) || 0;
+                                                
+                                                // Update the value and recalculate total in real-time
+                                                const updatedLineItems = [...generatedInvoice.lineItems];
+                                                updatedLineItems[index] = {...item, quantity: newQty, pendingUpdate: true};
+                                                
+                                                // Real-time total calculation
+                                                const newTotal = updatedLineItems.reduce((sum, lineItem) => 
+                                                  sum + ((lineItem.quantity || 0) * (lineItem.unitCost || lineItem.unitPrice || 0)), 0
+                                                );
+                                                
+                                                setGeneratedInvoice({
+                                                  ...generatedInvoice, 
+                                                  lineItems: updatedLineItems,
+                                                  totalValue: newTotal
+                                                });
+                                              }}
+                                              className="w-16 text-xs border border-blue-300 bg-white focus:border-blue-500 rounded px-1 text-right"
+                                              placeholder="Qty"
+                                              min="0"
+                                            />
+                                            {item.pendingUpdate && (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const maxQty = item.remainingQuantity || item.originalQuantity || item.quantity;
+                                                  const currentQty = item.quantity || 0;
+                                                  
+                                                  // Validate against remaining quantity
+                                                  if (currentQty > maxQty && maxQty > 0) {
+                                                    alert(`⚠️ Cannot exceed available quantity: ${maxQty.toLocaleString()}`);
+                                                    return;
+                                                  }
+                                                  
+                                                  // Lock in the update (just clear pending flag, total already calculated)
+                                                  const updatedLineItems = [...generatedInvoice.lineItems];
+                                                  updatedLineItems[index] = {...item, pendingUpdate: false};
+                                                  
+                                                  setGeneratedInvoice({
+                                                    ...generatedInvoice, 
+                                                    lineItems: updatedLineItems
+                                                  });
+                                                }}
+                                                className="px-1 py-0.5 text-[10px] bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                title="Lock in this quantity"
+                                              >
+                                                ✓
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span>{(item.quantity || 0).toLocaleString()}</span>
+                                      )}
+                                    </td>
                                     <td className="border border-gray-300 px-2 py-2 text-right text-xs">${(item.unitCost || item.unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td className="border border-gray-300 px-2 py-2 text-right text-xs font-semibold">${((item.quantity || 0) * (item.unitCost || item.unitPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                   </tr>
@@ -3212,6 +3317,21 @@ export default function InvoicesPage() {
                             </tbody>
                           </table>
                         </div>
+
+                        {/* Partial Invoice Footnote - Show remaining quantities */}
+                        {isPartialInvoice && generatedInvoice.lineItems && generatedInvoice.lineItems.length > 0 && (
+                          <div className="text-[10px] text-gray-600 italic mb-4 px-2">
+                            <strong>Remaining PO Balance:</strong> {generatedInvoice.lineItems.map((item: any, index: number) => {
+                              const remaining = (item.remainingQuantity || item.originalQuantity || 0) - (item.quantity || 0);
+                              return (
+                                <span key={index}>
+                                  {item.skuCode}: {remaining.toLocaleString()} units
+                                  {index < generatedInvoice.lineItems.length - 1 ? ' • ' : ''}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {/* Total Section - Compact */}
                         <div className="flex justify-end mb-4">

@@ -108,9 +108,11 @@ export async function GET(
     console.log(`✅ Access granted - Fetching line items for PO ${purchaseOrderId}`);
 
     // Use Drizzle ORM to fetch line items (bypasses RLS issues)
+    // Explicitly select fields including partial invoicing columns
     const lineItemsData = await db
       .select({
         id: purchaseOrderLineItems.id,
+        purchaseOrderId: purchaseOrderLineItems.purchaseOrderId,
         skuId: purchaseOrderLineItems.skuId,
         skuCode: purchaseOrderLineItems.skuCode,
         skuName: purchaseOrderLineItems.skuName,
@@ -118,31 +120,67 @@ export async function GET(
         quantity: purchaseOrderLineItems.quantity,
         unitCost: purchaseOrderLineItems.unitCost,
         totalCost: purchaseOrderLineItems.totalCost,
-        // Join with product SKUs for additional details
-        productSku: {
-          id: productSkus.id,
-          sku: productSkus.sku,
-          name: productSkus.name
-        }
+        invoicedQuantity: purchaseOrderLineItems.invoicedQuantity,
+        remainingQuantity: purchaseOrderLineItems.remainingQuantity,
+        createdAt: purchaseOrderLineItems.createdAt,
+        updatedAt: purchaseOrderLineItems.updatedAt,
       })
       .from(purchaseOrderLineItems)
-      .leftJoin(productSkus, eq(purchaseOrderLineItems.skuId, productSkus.id))
       .where(eq(purchaseOrderLineItems.purchaseOrderId, purchaseOrderId))
       .orderBy(purchaseOrderLineItems.createdAt);
 
-    console.log(`📦 Found ${lineItemsData.length} line items for PO ${purchaseOrderId}`);
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`📦 FETCHING LINE ITEMS FOR PO: ${purchaseOrderId}`);
+    console.log(`📦 Found ${lineItemsData.length} line items`);
+    console.log(`${'='.repeat(80)}\n`);
 
     // Transform data to match frontend interface
-    const transformedLineItems = lineItemsData.map((row: any) => ({
-      id: row.id,
-      skuId: row.skuId,
-      skuCode: row.skuCode || row.productSku?.sku || 'UNKNOWN',
-      skuName: row.skuName || row.productSku?.name || 'SKU data not found',
-      description: row.description,
-      quantity: row.quantity,
-      unitCost: parseFloat(row.unitCost || '0'),
-      totalCost: parseFloat(row.totalCost || '0'),
-    }));
+    const transformedLineItems = lineItemsData.map((row: any, index: number) => {
+      const totalQuantity = parseFloat(row.quantity?.toString() || '0');
+      const invoicedQty = parseFloat(row.invoicedQuantity?.toString() || '0');
+      const remainingQty = row.remainingQuantity !== null && row.remainingQuantity !== undefined
+        ? parseFloat(row.remainingQuantity.toString())
+        : totalQuantity - invoicedQty; // Calculate if not set
+      
+      // DETAILED LOGGING FOR EACH LINE ITEM
+      console.log(`\n📋 LINE ITEM #${index + 1}: ${row.skuCode}`);
+      console.log(`   SKU Name: ${row.skuName}`);
+      console.log(`   ---`);
+      console.log(`   🔢 RAW DATABASE VALUES:`);
+      console.log(`      quantity (DB):           ${row.quantity} (type: ${typeof row.quantity})`);
+      console.log(`      invoiced_quantity (DB):  ${row.invoicedQuantity} (type: ${typeof row.invoicedQuantity})`);
+      console.log(`      remaining_quantity (DB): ${row.remainingQuantity} (type: ${typeof row.remainingQuantity})`);
+      console.log(`   ---`);
+      console.log(`   🧮 CALCULATED VALUES:`);
+      console.log(`      totalQuantity:      ${totalQuantity}`);
+      console.log(`      invoicedQty:        ${invoicedQty}`);
+      console.log(`      remainingQty:       ${remainingQty}`);
+      console.log(`      calculated formula: ${totalQuantity} - ${invoicedQty} = ${totalQuantity - invoicedQty}`);
+      console.log(`   ---`);
+      console.log(`   📤 SENDING TO FRONTEND:`);
+      console.log(`      quantity:           ${totalQuantity}`);
+      console.log(`      invoicedQuantity:   ${invoicedQty}`);
+      console.log(`      remainingQuantity:  ${remainingQty}`);
+      console.log(`      originalQuantity:   ${totalQuantity}`);
+      
+      return {
+        id: row.id,
+        skuId: row.skuId,
+        skuCode: row.skuCode || 'UNKNOWN',
+        skuName: row.skuName || 'SKU data not found',
+        description: row.description,
+        quantity: totalQuantity,
+        unitCost: parseFloat(row.unitCost || '0'),
+        totalCost: parseFloat(row.totalCost || '0'),
+        invoicedQuantity: invoicedQty,
+        remainingQuantity: remainingQty,
+        originalQuantity: totalQuantity, // For UI reference
+      };
+    });
+
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`✅ RETURNING ${transformedLineItems.length} LINE ITEMS TO FRONTEND`);
+    console.log(`${'='.repeat(80)}\n`);
 
     return NextResponse.json(transformedLineItems);
 

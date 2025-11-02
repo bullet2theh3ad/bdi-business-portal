@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Sandbox configuration
-const SANDBOX_API_URL = 'https://tf-uat-accesshub.azurewebsites.net/move/';
+const SANDBOX_API_URL = 'https://accesshub.uat-olxhub.app/move/';
 const SANDBOX_API_KEY = '259e2642-2269-48d6-91f9-be580f5c6f13';
 
 // Production configuration (from env vars)

@@ -633,8 +633,8 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < newRecordsOnly.length; i += batchSize) {
         const batch = newRecordsOnly.slice(i, i + batchSize);
         if (batch.length > 0) {
-          await db.insert(amazonFinancialLineItems).values(batch);
-          savedCount += batch.length;
+        await db.insert(amazonFinancialLineItems).values(batch);
+        savedCount += batch.length;
           console.log(`[Financial Data] Saved batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(newRecordsOnly.length / batchSize)} (${savedCount}/${newRecordsOnly.length} items)`);
         }
       }
