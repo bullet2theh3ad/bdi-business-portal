@@ -35,8 +35,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Use service role key to bypass RLS policies
+    const supabaseService = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     // Get active QuickBooks connection
-    const { data: connection, error } = await supabase
+    const { data: connection, error } = await supabaseService
       .from('quickbooks_connections')
       .select('*')
       .eq('is_active', true)
