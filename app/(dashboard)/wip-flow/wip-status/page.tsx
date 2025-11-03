@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Filter, X, TrendingUp, Clock, AlertCircle, Package } from 'lucide-react';
+import { Loader2, Filter, X, TrendingUp, Clock, AlertCircle, Package, Info } from 'lucide-react';
 
 interface WIPStatusData {
   summary: {
@@ -103,6 +103,32 @@ export default function WIPStatusPage() {
         return 'bg-gray-400';
       default:
         return 'bg-gray-300';
+    }
+  };
+
+  // Get status definition for tooltip
+  const getStatusDefinition = (status: string) => {
+    switch (status) {
+      case 'RECEIVED':
+        return 'Intake performed and serial number entered. (To Triage).';
+      case 'PASSED':
+        return 'Triaged as good – Next process – Kitting.';
+      case 'FAILED':
+        return 'Triaged as failed – Next process either REPAIR or RECYCLED.';
+      case 'RTS-NEW':
+        return 'Unit unopened, resealed and in gaylord.';
+      case 'RTS-KITTED':
+        return 'Unit recovered, accessories added, sealed and single packed. Next is to be packed in gaylord or held for RMA.';
+      case 'RECYCLED':
+        return 'Unit failed triage/repair process and are flagged to be recycled.';
+      case 'SHIPPED':
+        return 'Units are out of our facility.';
+      case 'RMA_SHIPPED':
+        return 'Shipped via Jira RMA process.';
+      case 'MISSING':
+        return 'Box returned but device was not returned (missing actual device or wrong item returned) – Next process - recover any accessories and maybe recycle to get it out of WIP.';
+      default:
+        return 'Status definition not available.';
     }
   };
 
@@ -392,9 +418,22 @@ export default function WIPStatusPage() {
                   <Card key={status} className="border-2">
                     <CardHeader className={`${getStatusColor(status)} text-white pb-3 pt-4`}>
                       <div className="flex items-center justify-between mb-2">
-                        <CardTitle className="text-sm font-bold">
-                          {status.replace('_', ' ')}
-                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-sm font-bold">
+                            {status.replace('_', ' ')}
+                          </CardTitle>
+                          {/* Info icon with tooltip */}
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-white/80 hover:text-white cursor-help" />
+                            {/* Tooltip */}
+                            <div className="absolute left-0 top-6 hidden group-hover:block z-50 w-64">
+                              <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl">
+                                {getStatusDefinition(status)}
+                              </div>
+                              <div className="absolute -top-1 left-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-900"></div>
+                            </div>
+                          </div>
+                        </div>
                         <Badge variant={getStatusBadgeVariant(status)} className="bg-white/20 text-white border-white/30">
                           {percentage.toFixed(1)}%
                         </Badge>
