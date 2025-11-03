@@ -2312,20 +2312,26 @@ export default function InvoicesPage() {
                                 }
                                 
                                 // Map line items to correct field names FIRST
-                                const mappedLineItems = Array.isArray(lineItems) ? lineItems.map(item => ({
-                                  id: item.id,
-                                  skuId: item.skuId || item.sku_id,
-                                  skuCode: item.skuCode || item.sku_code || item.sku,
-                                  skuName: item.skuName || item.sku_name || item.name,
-                                  description: item.description,
-                                  quantity: item.remainingQuantity || item.remaining_quantity || item.quantity, // Use remaining if available
-                                  originalQuantity: item.quantity, // Store original PO quantity
-                                  remainingQuantity: item.remainingQuantity || item.remaining_quantity || item.quantity,
-                                  invoicedQuantity: item.invoicedQuantity || item.invoiced_quantity || 0,
-                                  unitCost: item.unitCost || item.unit_cost,
-                                  unitPrice: item.unitPrice || item.unit_cost,
-                                  totalCost: item.totalCost || item.total_cost
-                                })) : [];
+                                const mappedLineItems = Array.isArray(lineItems) ? lineItems.map(item => {
+                                  // Use nullish coalescing to properly handle 0 values
+                                  const remaining = item.remainingQuantity ?? item.remaining_quantity ?? item.quantity;
+                                  const invoiced = item.invoicedQuantity ?? item.invoiced_quantity ?? 0;
+                                  
+                                  return {
+                                    id: item.id,
+                                    skuId: item.skuId || item.sku_id,
+                                    skuCode: item.skuCode || item.sku_code || item.sku,
+                                    skuName: item.skuName || item.sku_name || item.name,
+                                    description: item.description,
+                                    quantity: remaining, // Use remaining quantity (can be 0!)
+                                    originalQuantity: item.quantity, // Store original PO quantity
+                                    remainingQuantity: remaining,
+                                    invoicedQuantity: invoiced,
+                                    unitCost: item.unitCost || item.unit_cost,
+                                    unitPrice: item.unitPrice || item.unit_cost,
+                                    totalCost: item.totalCost || item.total_cost
+                                  };
+                                }) : [];
                                 
                                 console.log('🔄 Mapped line items:', mappedLineItems);
                                 
