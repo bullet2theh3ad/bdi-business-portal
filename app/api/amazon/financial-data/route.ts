@@ -199,23 +199,24 @@ export async function POST(request: NextRequest) {
     if (!needsAPIFetch && dbLineItems.length > 0) {
       // Always recalculate from line items for accuracy
       // Revenue, fees, tax, refunds are calculated fresh from line items
-      // Ad spend, credits, debits are pulled from overlapping summaries (not in line items)
+      // Ad spend, credits, debits are pulled ONLY from summaries fully contained in date range (not in line items)
       console.log('[Financial Data] Recalculating summary from line items for accuracy...');
       
-      // Check for overlapping summaries to get ad spend/credits/debits
-      const overlappingSummaries = await db
+      // Check for summaries FULLY CONTAINED within the date range (not just overlapping)
+      // This ensures we only aggregate ad spend/credits/debits for the exact period
+      const containedSummaries = await db
         .select()
         .from(amazonFinancialSummaries)
         .where(
           and(
-            gte(amazonFinancialSummaries.dateRangeEnd, new Date(startDate)),
-            lte(amazonFinancialSummaries.dateRangeStart, new Date(endDate))
+            gte(amazonFinancialSummaries.dateRangeStart, new Date(startDate)),
+            lte(amazonFinancialSummaries.dateRangeEnd, new Date(endDate))
           )
         )
         .execute();
       
-      if (overlappingSummaries.length > 0) {
-        console.log(`[Financial Data] 📊 Found ${overlappingSummaries.length} overlapping summaries to aggregate ad spend/credits/debits.`);
+      if (containedSummaries.length > 0) {
+        console.log(`[Financial Data] 📊 Found ${containedSummaries.length} summaries fully contained within date range for ad spend/credits/debits.`);
       }
       
       // Get unique order IDs
@@ -236,16 +237,16 @@ export async function POST(request: NextRequest) {
         .filter(item => item.transactionType === 'refund')
         .reduce((sum, item) => sum + parseFloat(String(item.grossRevenue || 0)), 0));
       
-      // Aggregate ad spend, chargebacks, coupons, adjustments, tax refunded from overlapping summaries
-      if (overlappingSummaries.length > 0) {
-        console.log(`[Financial Data] 📊 Aggregating ad spend/credits/debits/tax refunded from ${overlappingSummaries.length} overlapping summaries...`);
-        totalAdSpend = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalAdSpend || 0)), 0);
-        totalChargebacks = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalChargebacks || 0)), 0);
-        totalCoupons = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalCoupons || 0)), 0);
-        totalTaxRefunded = overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalTaxRefunded || 0)), 0);
+      // Aggregate ad spend, chargebacks, coupons, adjustments, tax refunded from contained summaries
+      if (containedSummaries.length > 0) {
+        console.log(`[Financial Data] 📊 Aggregating ad spend/credits/debits/tax refunded from ${containedSummaries.length} contained summaries...`);
+        totalAdSpend = containedSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalAdSpend || 0)), 0);
+        totalChargebacks = containedSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalChargebacks || 0)), 0);
+        totalCoupons = containedSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalCoupons || 0)), 0);
+        totalTaxRefunded = containedSummaries.reduce((sum, s) => sum + parseFloat(String(s.totalTaxRefunded || 0)), 0);
         adjustments = {
-          credits: overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentCredits || 0)), 0),
-          debits: overlappingSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentDebits || 0)), 0),
+          credits: containedSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentCredits || 0)), 0),
+          debits: containedSummaries.reduce((sum, s) => sum + parseFloat(String(s.adjustmentDebits || 0)), 0),
           net: 0, // Will be calculated below
         };
         adjustments.net = adjustments.credits - adjustments.debits;
