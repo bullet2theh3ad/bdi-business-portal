@@ -196,68 +196,11 @@ export async function POST(request: NextRequest) {
     let skuSummary: Map<string, { units: number; revenue: number; fees: number }>;
     let refundSummary: Map<string, { units: number; refundAmount: number }>;
 
-    if (!needsAPIFetch && existingSummary[0]) {
-      // Use cached summary from DB
-      console.log('[Financial Data] Using cached summary from database...');
-      const summary = existingSummary[0];
-      
-      // Get unique order IDs from DB line items
-      orderIds = Array.from(new Set(dbLineItems.map(item => item.orderId)));
-      
-      // Use cached totals (includes ad spend, credits, debits, tax refunded!)
-      totalRevenue = parseFloat(String(summary.totalRevenue || 0));
-      totalTax = parseFloat(String(summary.totalTax || 0));
-      totalFees = parseFloat(String(summary.totalFees || 0));
-      totalRefunds = parseFloat(String(summary.totalRefunds || 0));
-      totalTaxRefunded = parseFloat(String(summary.totalTaxRefunded || 0));
-      totalAdSpend = parseFloat(String(summary.totalAdSpend || 0));
-      totalChargebacks = parseFloat(String(summary.totalChargebacks || 0));
-      totalCoupons = parseFloat(String(summary.totalCoupons || 0));
-      adjustments = {
-        credits: parseFloat(String(summary.adjustmentCredits || 0)),
-        debits: parseFloat(String(summary.adjustmentDebits || 0)),
-        net: parseFloat(String(summary.adjustmentCredits || 0)) - parseFloat(String(summary.adjustmentDebits || 0)),
-      };
-      
-      // These breakdowns are not cached, so set to empty
-      adSpendBreakdown = {};
-      adjustmentBreakdown = { credits: [], debits: [] };
-      
-      // Fee breakdown (simplified - can be enhanced later)
-      feeBreakdown = {
-        commission: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.commission || 0)), 0),
-        fbaFees: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.fbaFees || 0)), 0),
-        otherFees: dbLineItems.reduce((sum, item) => sum + parseFloat(String(item.otherFees || 0)), 0),
-      };
-      
-      // SKU summary
-      skuSummary = new Map();
-      refundSummary = new Map();
-      
-      dbLineItems.forEach(item => {
-        const sku = item.amazonSku;
-        if (!sku) return;
-        
-        if (item.transactionType === 'sale') {
-          const existing = skuSummary.get(sku) || { units: 0, revenue: 0, fees: 0 };
-          skuSummary.set(sku, {
-            units: existing.units + (item.quantity || 0),
-            revenue: existing.revenue + parseFloat(String(item.grossRevenue || 0)),
-            fees: existing.fees + parseFloat(String(item.totalFees || 0)),
-          });
-        } else if (item.transactionType === 'refund') {
-          const existing = refundSummary.get(sku) || { units: 0, refundAmount: 0 };
-          refundSummary.set(sku, {
-            units: existing.units + Math.abs(item.quantity || 0),
-            refundAmount: existing.refundAmount + Math.abs(parseFloat(String(item.grossRevenue || 0))),
-          });
-        }
-      });
-      
-    } else if (!needsAPIFetch && dbLineItems.length > 0) {
-      // Have line items but no summary (and can't fetch from API due to date range)
-      // Aggregate from DB line items directly
-      console.log('[Financial Data] Aggregating summary from DB line items (no cached summary)...');
+    if (!needsAPIFetch && dbLineItems.length > 0) {
+      // Always recalculate from line items for accuracy
+      // Revenue, fees, tax, refunds are calculated fresh from line items
+      // Ad spend, credits, debits are pulled from overlapping summaries (not in line items)
+      console.log('[Financial Data] Recalculating summary from line items for accuracy...');
       
       // Check for overlapping summaries to get ad spend/credits/debits
       const overlappingSummaries = await db
