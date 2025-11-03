@@ -152,12 +152,23 @@ export default function InvoicesPage() {
         });
         
         // Fix input fields for PDF - replace with their values
-        const inputs = clonedDoc.querySelectorAll('input[type="text"]');
-        inputs.forEach(input => {
+        const textInputs = clonedDoc.querySelectorAll('input[type="text"]');
+        textInputs.forEach(input => {
           const inputEl = input as HTMLInputElement;
           const span = clonedDoc.createElement('span');
           span.textContent = inputEl.value || inputEl.placeholder || '';
           span.className = inputEl.className;
+          span.style.cssText = inputEl.style.cssText;
+          inputEl.parentNode?.replaceChild(span, inputEl);
+        });
+        
+        // ALSO fix number inputs (quantity fields) for PDF
+        const numberInputs = clonedDoc.querySelectorAll('input[type="number"]');
+        numberInputs.forEach(input => {
+          const inputEl = input as HTMLInputElement;
+          const span = clonedDoc.createElement('span');
+          span.textContent = inputEl.value || '0';
+          span.className = inputEl.className.replace('border', '').replace('focus:', ''); // Remove input styling
           span.style.cssText = inputEl.style.cssText;
           inputEl.parentNode?.replaceChild(span, inputEl);
         });
