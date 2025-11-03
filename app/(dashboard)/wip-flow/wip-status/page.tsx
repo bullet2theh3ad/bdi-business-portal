@@ -41,9 +41,8 @@ export default function WIPStatusPage() {
       if (selectedSku && selectedSku !== 'all') {
         params.append('sku', selectedSku);
       }
-      if (selectedStatus) {
-        params.append('status', selectedStatus);
-      }
+      // DON'T send selectedStatus to API - keep full data for bubble flow
+      // Filtering by status happens in the UI only
 
       const response = await fetch(`/api/warehouse/wip/status?${params.toString()}`);
       if (!response.ok) {
@@ -62,7 +61,7 @@ export default function WIPStatusPage() {
 
   useEffect(() => {
     loadData();
-  }, [selectedSku, selectedStatus]);
+  }, [selectedSku]); // Only reload on SKU change, not status (status is UI-only filter)
 
   const handleClearFilters = () => {
     setSelectedSku('all');
@@ -280,8 +279,8 @@ export default function WIPStatusPage() {
 
             {/* Bubble timeline */}
             <div className="relative h-24">
-              {/* Horizontal line */}
-              <div className="absolute left-0 right-0 top-1/2 border-t-2 border-gray-300" />
+              {/* Horizontal line - with margins to contain bubbles */}
+              <div className="absolute left-[50px] right-[50px] top-1/2 border-t-2 border-gray-300" />
 
               {/* Bubbles */}
               {data.statusOrder
@@ -289,13 +288,19 @@ export default function WIPStatusPage() {
                 .map((status, idx, arr) => {
                   const count = data.statusTotals[status] || 0;
                   const percentage = data.statusPercentages[status] || 0;
-                  const position = (idx / (arr.length - 1)) * 100;
                   
                   // Scale bubble size based on count (min 30px, max 70px)
                   const maxCount = Math.max(...Object.values(data.statusTotals));
                   const bubbleSize = maxCount > 0 
                     ? Math.max(30, Math.min(70, (count / maxCount) * 70))
                     : 30;
+                  
+                  // Calculate position with padding to keep bubbles within bounds
+                  // Reserve 50px on each side for the largest bubble radius
+                  const padding = 50;
+                  const availableWidth = `calc(100% - ${padding * 2}px)`;
+                  const position = arr.length === 1 ? 50 : (idx / (arr.length - 1)) * 100;
+                  const leftPosition = `calc(${padding}px + (${availableWidth}) * ${position / 100})`;
 
                   const color = getStatusColor(status);
                   const isSelected = selectedStatus === status;
@@ -305,7 +310,7 @@ export default function WIPStatusPage() {
                       key={status}
                       className={`absolute group transition-all hover:scale-110 ${isSelected ? 'ring-4 ring-blue-400' : ''}`}
                       style={{
-                        left: `${position}%`,
+                        left: leftPosition,
                         top: '50%',
                         transform: 'translate(-50%, -50%)',
                       }}
@@ -385,8 +390,8 @@ export default function WIPStatusPage() {
 
                 return (
                   <Card key={status} className="border-2">
-                    <CardHeader className={`${getStatusColor(status)} text-white pb-3`}>
-                      <div className="flex items-center justify-between">
+                    <CardHeader className={`${getStatusColor(status)} text-white pb-3 pt-4`}>
+                      <div className="flex items-center justify-between mb-2">
                         <CardTitle className="text-sm font-bold">
                           {status.replace('_', ' ')}
                         </CardTitle>
