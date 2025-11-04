@@ -49,7 +49,7 @@ interface Props {
 export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
   const [reference, setReference] = useState('');
   const [containerNumber, setContainerNumber] = useState('');
-  const [queryType, setQueryType] = useState<'shipmentDetailsV2' | 'fullTransportDetails'>('shipmentDetailsV2');
+  const [queryType, setQueryType] = useState<'shipmentDetailsV2' | 'fullTransportDetails'>('fullTransportDetails');
   const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox');
   const [isLoading, setIsLoading] = useState(false);
   const [shipmentData, setShipmentData] = useState<ShipmentData | null>(null);
@@ -58,6 +58,12 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
   const handleSearch = async () => {
     if (!reference && !containerNumber) {
       setError('Please enter either a reference number or container number');
+      return;
+    }
+
+    // shipmentDetailsV2 requires containerNumber
+    if (queryType === 'shipmentDetailsV2' && !containerNumber) {
+      setError('Container Number is required when using "Shipment Details V2" query type. Use "Full Transport Details" if you only have a reference number.');
       return;
     }
 
@@ -191,13 +197,13 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
                 <Label htmlFor="queryType">Query Type</Label>
                 <select
                   id="queryType"
-                  className="w-full mt-1 p-2 border rounded-md"
+                  className="w-full mt-1 p-2 border rounded-md text-sm"
                   value={queryType}
                   onChange={(e) => setQueryType(e.target.value as any)}
                   disabled={isLoading}
                 >
-                  <option value="shipmentDetailsV2">Shipment Details V2</option>
-                  <option value="fullTransportDetails">Full Transport Details</option>
+                  <option value="fullTransportDetails">Full Transport Details (Reference only - recommended)</option>
+                  <option value="shipmentDetailsV2">Shipment Details V2 (Requires container number)</option>
                 </select>
               </div>
 
@@ -216,10 +222,23 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
               </div>
             </div>
 
+            {/* Query Type Info */}
+            {queryType === 'shipmentDetailsV2' && !containerNumber && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <div className="flex items-start">
+                  <span className="text-blue-600 mr-2">ℹ️</span>
+                  <p className="text-blue-800">
+                    <strong>Shipment Details V2:</strong> Requires both Reference Number and Container Number. 
+                    Switch to <strong>"Full Transport Details"</strong> if you only have a JJOLM/Reference number.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex space-x-3">
               <Button
                 onClick={handleSearch}
-                disabled={isLoading || (!reference && !containerNumber)}
+                disabled={isLoading || (!reference && !containerNumber) || (queryType === 'shipmentDetailsV2' && !containerNumber)}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700"
               >
                 {isLoading ? (

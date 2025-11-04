@@ -8,6 +8,10 @@ const SANDBOX_API_KEY = '259e2642-2269-48d6-91f9-be580f5c6f13';
 const PRODUCTION_API_URL = process.env.OL_USA_API_URL || 'https://api.olxhub.app/move';
 const PRODUCTION_API_KEY = process.env.OL_USA_API_KEY || '';
 
+// Debug: Log env var loading on server start
+console.log('[OL-USA Config] Production URL from env:', process.env.OL_USA_API_URL ? '✅ Loaded' : '❌ Missing');
+console.log('[OL-USA Config] Production Key from env:', process.env.OL_USA_API_KEY ? '✅ Loaded (first 10 chars: ' + process.env.OL_USA_API_KEY.substring(0, 10) + '...)' : '❌ Missing');
+
 export const dynamic = 'force-dynamic';
 
 /**
