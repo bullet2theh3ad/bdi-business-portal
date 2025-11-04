@@ -108,7 +108,8 @@ export default function InventoryPaymentsPage() {
 
   // Load existing documents when editing a payment plan
   useEffect(() => {
-    if (currentPlan && currentPlan.id) {
+    // Only load documents for existing plans (not temporary IDs that start with "plan-")
+    if (currentPlan && currentPlan.id && !currentPlan.id.toString().startsWith('plan-')) {
       fetch(`/api/inventory-payments/${currentPlan.id}/documents`)
         .then(res => res.json())
         .then(docs => {
@@ -117,7 +118,7 @@ export default function InventoryPaymentsPage() {
         })
         .catch(err => console.error('Error loading payment plan documents:', err));
     } else {
-      // Clear files when modal closes
+      // Clear files when modal closes or for new plans
       setUploadedFiles([]);
       setPendingFiles([]);
     }
