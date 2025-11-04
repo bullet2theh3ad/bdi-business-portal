@@ -1000,9 +1000,9 @@ export default function InventoryPaymentsPage() {
         const timelineData = getTimelineData();
         
         return (
-          <div className="fixed inset-0 bg-white z-50 overflow-y-auto p-6">
-            {/* Floating Summary */}
-            <div className="fixed top-4 right-4 z-50 w-[300px] bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-300 rounded-lg shadow-lg backdrop-blur-sm bg-opacity-95 p-3">
+          <div className="fixed inset-0 bg-white z-50 overflow-y-auto p-3 sm:p-6">
+            {/* Floating Summary - Hidden on mobile, shown as fixed panel on desktop */}
+            <div className="hidden lg:block fixed top-4 right-4 z-50 w-[300px] bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-300 rounded-lg shadow-lg backdrop-blur-sm bg-opacity-95 p-3">
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-sm">{currentPlan.planNumber}</h3>
@@ -1024,40 +1024,62 @@ export default function InventoryPaymentsPage() {
               </div>
             </div>
 
-            {/* Editor Content */}
-            <div className="max-w-[1800px] mx-auto pr-[320px]">
-              <div className="mb-6 flex justify-between items-center">
+            {/* Mobile Summary Bar - Only shown on mobile */}
+            <div className="lg:hidden bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-300 rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold">Edit Payment Plan: {currentPlan.planNumber}</h1>
-                  <Input
-                    value={currentPlan.name}
-                    onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
-                    className="mt-2 max-w-md"
-                    placeholder="Plan name..."
-                  />
+                  <div className="text-xs text-gray-600">{currentPlan.planNumber}</div>
+                  <div className={`text-xl font-bold ${totals.total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${totals.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={addLineItem} variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Line Item
-                  </Button>
-                  <Button onClick={cancelEdit} variant="outline" disabled={isSaving}>
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button onClick={savePlan} disabled={isSaving}>
-                    {isSaving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save
-                      </>
-                    )}
-                  </Button>
+                <div className="text-right">
+                  <div className="text-xs text-gray-600">Payments</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {totals.count}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Editor Content - Responsive padding */}
+            <div className="max-w-[1800px] mx-auto lg:pr-[320px]">
+              {/* Header Section - Responsive layout */}
+              <div className="mb-4 sm:mb-6">
+                <div className="flex flex-col gap-3 mb-4">
+                  <div className="flex-1">
+                    <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Payment Plan: {currentPlan.planNumber}</h1>
+                    <Input
+                      value={currentPlan.name}
+                      onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
+                      className="w-full sm:max-w-md"
+                      placeholder="Plan name..."
+                    />
+                  </div>
+                  {/* Action Buttons - Stack on mobile, row on desktop */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={addLineItem} variant="outline" className="w-full sm:w-auto">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Line Item
+                    </Button>
+                    <Button onClick={cancelEdit} variant="outline" disabled={isSaving} className="w-full sm:w-auto">
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button onClick={savePlan} disabled={isSaving} className="w-full sm:w-auto">
+                      {isSaving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -1144,97 +1166,200 @@ export default function InventoryPaymentsPage() {
                       <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-lg font-medium mb-2">No line items yet</p>
                       <p className="text-sm mb-4">Click "Add Line Item" to start adding payments</p>
-                      <Button onClick={addLineItem} variant="outline">
+                      <Button onClick={addLineItem} variant="outline" className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Line Item
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-12 gap-2 pb-2 border-b font-semibold text-sm text-gray-600">
-                        <div className="col-span-2">Description</div>
-                        <div className="col-span-2">Amount ($)</div>
-                        <div className="col-span-2">Date</div>
-                        <div className="col-span-2">Reference Type</div>
-                        <div className="col-span-2">Reference #</div>
-                        <div className="col-span-1">Status</div>
-                        <div className="col-span-1">Actions</div>
+                    <>
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block space-y-2">
+                        <div className="grid grid-cols-12 gap-2 pb-2 border-b font-semibold text-sm text-gray-600">
+                          <div className="col-span-2">Description</div>
+                          <div className="col-span-2">Amount ($)</div>
+                          <div className="col-span-2">Date</div>
+                          <div className="col-span-2">Reference Type</div>
+                          <div className="col-span-2">Reference #</div>
+                          <div className="col-span-1">Status</div>
+                          <div className="col-span-1">Actions</div>
+                        </div>
+
+                        {currentPlan.lineItems.map((line) => (
+                          <div key={line.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b">
+                            <div className="col-span-2">
+                              <Input
+                                value={line.description}
+                                onChange={(e) => updateLineItem(line.id, 'description', e.target.value)}
+                                placeholder="e.g., Deposit"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={line.amount || ''}
+                                onChange={(e) => updateLineItem(line.id, 'amount', parseFloat(e.target.value) || 0)}
+                                placeholder="0.00"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Input
+                                type="date"
+                                value={line.date}
+                                onChange={(e) => updateLineItem(line.id, 'date', e.target.value)}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Select
+                                value={line.referenceType}
+                                onValueChange={(value) => updateLineItem(line.id, 'referenceType', value)}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="po">Purchase Order</SelectItem>
+                                  <SelectItem value="shipment">Shipment</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="col-span-2">
+                              <Input
+                                value={line.reference}
+                                onChange={(e) => updateLineItem(line.id, 'reference', e.target.value)}
+                                placeholder="PO-123"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="col-span-1">
+                              <Button
+                                variant={line.isPaid ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => updateLineItem(line.id, 'isPaid', !line.isPaid)}
+                                className={`h-9 w-full ${line.isPaid ? "bg-green-600 hover:bg-green-700 text-white" : "border-yellow-500 text-yellow-700 hover:bg-yellow-50"}`}
+                              >
+                                {line.isPaid ? <Check className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                            <div className="col-span-1">
+                              <Button
+                                onClick={() => deleteLineItem(line.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 w-9 p-0"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
-                      {currentPlan.lineItems.map((line) => (
-                        <div key={line.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b">
-                          <div className="col-span-2">
-                            <Input
-                              value={line.description}
-                              onChange={(e) => updateLineItem(line.id, 'description', e.target.value)}
-                              placeholder="e.g., Deposit"
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={line.amount || ''}
-                              onChange={(e) => updateLineItem(line.id, 'amount', parseFloat(e.target.value) || 0)}
-                              placeholder="0.00"
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Input
-                              type="date"
-                              value={line.date}
-                              onChange={(e) => updateLineItem(line.id, 'date', e.target.value)}
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Select
-                              value={line.referenceType}
-                              onValueChange={(value) => updateLineItem(line.id, 'referenceType', value)}
-                            >
-                              <SelectTrigger className="h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="po">Purchase Order</SelectItem>
-                                <SelectItem value="shipment">Shipment</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2">
-                            <Input
-                              value={line.reference}
-                              onChange={(e) => updateLineItem(line.id, 'reference', e.target.value)}
-                              placeholder="PO-123"
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="col-span-1">
-                            <Button
-                              variant={line.isPaid ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => updateLineItem(line.id, 'isPaid', !line.isPaid)}
-                              className={`h-9 w-full ${line.isPaid ? "bg-green-600 hover:bg-green-700 text-white" : "border-yellow-500 text-yellow-700 hover:bg-yellow-50"}`}
-                            >
-                              {line.isPaid ? <Check className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
-                            </Button>
-                          </div>
-                          <div className="col-span-1">
-                            <Button
-                              onClick={() => deleteLineItem(line.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="h-9 w-9 p-0"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-4">
+                        {currentPlan.lineItems.map((line) => (
+                          <Card key={line.id} className="border-2">
+                            <CardContent className="pt-4 space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <Label className="text-xs text-gray-600 mb-1">Description</Label>
+                                  <Input
+                                    value={line.description}
+                                    onChange={(e) => updateLineItem(line.id, 'description', e.target.value)}
+                                    placeholder="e.g., Deposit"
+                                    className="h-10"
+                                  />
+                                </div>
+                                <Button
+                                  onClick={() => deleteLineItem(line.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-10 w-10 p-0 mt-5"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-600 mb-1">Amount ($)</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={line.amount || ''}
+                                    onChange={(e) => updateLineItem(line.id, 'amount', parseFloat(e.target.value) || 0)}
+                                    placeholder="0.00"
+                                    className="h-10"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-600 mb-1">Date</Label>
+                                  <Input
+                                    type="date"
+                                    value={line.date}
+                                    onChange={(e) => updateLineItem(line.id, 'date', e.target.value)}
+                                    className="h-10"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs text-gray-600 mb-1">Reference Type</Label>
+                                <Select
+                                  value={line.referenceType}
+                                  onValueChange={(value) => updateLineItem(line.id, 'referenceType', value)}
+                                >
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="po">Purchase Order</SelectItem>
+                                    <SelectItem value="shipment">Shipment</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs text-gray-600 mb-1">Reference #</Label>
+                                <Input
+                                  value={line.reference}
+                                  onChange={(e) => updateLineItem(line.id, 'reference', e.target.value)}
+                                  placeholder="PO-123"
+                                  className="h-10"
+                                />
+                              </div>
+
+                              <div>
+                                <Label className="text-xs text-gray-600 mb-1">Payment Status</Label>
+                                <Button
+                                  variant={line.isPaid ? "default" : "outline"}
+                                  onClick={() => updateLineItem(line.id, 'isPaid', !line.isPaid)}
+                                  className={`h-10 w-full ${line.isPaid ? "bg-green-600 hover:bg-green-700 text-white" : "border-yellow-500 text-yellow-700 hover:bg-yellow-50"}`}
+                                >
+                                  {line.isPaid ? (
+                                    <>
+                                      <Check className="h-4 w-4 mr-2" />
+                                      Paid
+                                    </>
+                                  ) : (
+                                    <>
+                                      <DollarSign className="h-4 w-4 mr-2" />
+                                      Unpaid
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
                   )}
 
                   <div className="mt-6 pt-4 border-t flex justify-between items-center">
