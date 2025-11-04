@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Plus, Calendar, Trash2, Edit, Save, X, Check, ChevronDown, ChevronUp, Eye, EyeOff, Download, Upload, FileText } from 'lucide-react';
+import { DollarSign, Plus, Calendar, Trash2, Edit, Save, X, Check, ChevronDown, ChevronUp, Eye, EyeOff, Download, Upload, FileText, Search, ArrowUpDown } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
 interface PaymentLineItem {
@@ -53,6 +53,10 @@ export default function InventoryPaymentsPage() {
   // Date range filter state
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  
+  // Search and sort state
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
 
   // Initialize date range to show all data by default
   useEffect(() => {
@@ -490,6 +494,48 @@ export default function InventoryPaymentsPage() {
     return { paid, unpaid };
   };
 
+  // Filter and sort payment plans
+  const getFilteredAndSortedPlans = () => {
+    let filtered = [...paymentPlans];
+    
+    // Apply fuzzy search filter (case-insensitive)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(plan => {
+        // Search in plan number, name, and line item descriptions/references
+        const searchableText = [
+          plan.planNumber,
+          plan.name,
+          ...plan.lineItems.map(item => item.description),
+          ...plan.lineItems.map(item => item.reference),
+        ].join(' ').toLowerCase();
+        
+        return searchableText.includes(query);
+      });
+    }
+    
+    // Sort by earliest payment date in the plan
+    filtered.sort((a, b) => {
+      // Get the earliest date from each plan's line items
+      const aEarliestDate = a.lineItems.length > 0 
+        ? a.lineItems.map(item => new Date(item.date)).sort((d1, d2) => d1.getTime() - d2.getTime())[0]
+        : new Date(a.createdAt || 0);
+      
+      const bEarliestDate = b.lineItems.length > 0 
+        ? b.lineItems.map(item => new Date(item.date)).sort((d1, d2) => d1.getTime() - d2.getTime())[0]
+        : new Date(b.createdAt || 0);
+      
+      // Sort based on selected order
+      if (sortOrder === 'asc') {
+        return aEarliestDate.getTime() - bEarliestDate.getTime(); // Oldest first
+      } else {
+        return bEarliestDate.getTime() - aEarliestDate.getTime(); // Newest first
+      }
+    });
+    
+    return filtered;
+  };
+
   // Calculate totals for floating summary (editor view)
   const calculateTotals = () => {
     if (!currentPlan) return { total: 0, count: 0, minDate: '', maxDate: '' };
@@ -888,7 +934,39 @@ export default function InventoryPaymentsPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Payment Plans</CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <CardTitle className="text-lg sm:text-xl">Payment Plans</CardTitle>
+              
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                {/* Search Input */}
+                <div className="relative flex-1 sm:w-[300px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search plans, descriptions, references..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-9"
+                  />
+                </div>
+                
+                {/* Sort Order Toggle */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="h-9 gap-2"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {sortOrder === 'asc' ? 'Oldest First' : 'Newest First'}
+                  </span>
+                  <span className="sm:hidden">
+                    {sortOrder === 'asc' ? 'Old→New' : 'New→Old'}
+                  </span>
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
             <div className="overflow-x-auto">
@@ -906,12 +984,26 @@ export default function InventoryPaymentsPage() {
                   </tr>
                 </thead>
               <tbody>
-                {paymentPlans.map((plan) => {
-                  const isExpanded = expandedPlans.has(plan.planNumber);
-                  const total = getPlanTotal(plan);
-                  const { paid, unpaid } = getPlanPaidUnpaid(plan);
+                {getFilteredAndSortedPlans().length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12 text-gray-500">
+                      <Search className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p>No payment plans match your search</p>
+                      <button 
+                        onClick={() => setSearchQuery('')}
+                        className="text-blue-600 hover:underline text-sm mt-2"
+                      >
+                        Clear search
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  getFilteredAndSortedPlans().map((plan) => {
+                    const isExpanded = expandedPlans.has(plan.planNumber);
+                    const total = getPlanTotal(plan);
+                    const { paid, unpaid } = getPlanPaidUnpaid(plan);
 
-                  return (
+                    return (
                     <React.Fragment key={plan.id}>
                       <tr className="border-b hover:bg-gray-50">
                         <td className="p-2 sm:p-3 font-mono text-[10px] sm:text-xs whitespace-nowrap">{plan.planNumber}</td>
@@ -985,8 +1077,9 @@ export default function InventoryPaymentsPage() {
                         </tr>
                       )}
                     </React.Fragment>
-                  );
-                })}
+                    );
+                  })
+                )}
               </tbody>
             </table>
             </div>
