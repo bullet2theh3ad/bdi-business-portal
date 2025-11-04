@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Plus, Calendar, Trash2, Edit, Save, X, Check, ChevronDown, ChevronUp, Eye, EyeOff, Download } from 'lucide-react';
+import { DollarSign, Plus, Calendar, Trash2, Edit, Save, X, Check, ChevronDown, ChevronUp, Eye, EyeOff, Download, Upload, FileText } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
 
 interface PaymentLineItem {
   id: string;
@@ -27,6 +28,15 @@ interface PaymentPlan {
   status: 'draft' | 'active';
 }
 
+interface PaymentDocument {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
 export default function InventoryPaymentsPage() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
   const [currentPlan, setCurrentPlan] = useState<PaymentPlan | null>(null);
@@ -34,6 +44,11 @@ export default function InventoryPaymentsPage() {
   const [showTimeline, setShowTimeline] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // File upload state
+  const [uploadedFiles, setUploadedFiles] = useState<PaymentDocument[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   
   // Date range filter state
   const [startDate, setStartDate] = useState<string>('');
@@ -88,6 +103,127 @@ export default function InventoryPaymentsPage() {
       console.error('Failed to load payment plans:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Load existing documents when editing a payment plan
+  useEffect(() => {
+    if (currentPlan && currentPlan.id) {
+      fetch(`/api/inventory-payments/${currentPlan.id}/documents`)
+        .then(res => res.json())
+        .then(docs => {
+          console.log('📁 Loaded payment plan documents:', docs);
+          setUploadedFiles(docs || []);
+        })
+        .catch(err => console.error('Error loading payment plan documents:', err));
+    } else {
+      // Clear files when modal closes
+      setUploadedFiles([]);
+      setPendingFiles([]);
+    }
+  }, [currentPlan]);
+
+  // Dropzone for payment plan documents
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setPendingFiles(prev => [...prev, ...acceptedFiles]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg']
+    },
+    maxSize: 10 * 1024 * 1024 // 10MB limit
+  });
+
+  // Remove pending file from list
+  const removePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload files to server
+  const uploadFiles = async (paymentPlanId: string) => {
+    if (pendingFiles.length === 0) return;
+
+    setIsUploadingFiles(true);
+    try {
+      const formData = new FormData();
+      pendingFiles.forEach(file => formData.append('files', file));
+
+      const response = await fetch(`/api/inventory-payments/${paymentPlanId}/documents`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Files uploaded:', result);
+        setUploadedFiles(prev => [...prev, ...result.files]);
+        setPendingFiles([]);
+      } else {
+        console.error('File upload failed:', await response.text());
+        alert('Failed to upload some files. Please try again.');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      alert('Error uploading files. Please try again.');
+    } finally {
+      setIsUploadingFiles(false);
+    }
+  };
+
+  // Download a document
+  const downloadDocument = async (doc: PaymentDocument) => {
+    try {
+      // Request a signed URL from our API for private bucket access
+      const response = await fetch(
+        `/api/inventory-payments/documents/download?filePath=${encodeURIComponent(doc.filePath)}&fileName=${encodeURIComponent(doc.fileName)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to get download URL');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download file');
+    }
+  };
+
+  // Delete a document
+  const deleteDocument = async (doc: PaymentDocument) => {
+    if (!confirm(`Are you sure you want to delete "${doc.fileName}"?`)) return;
+
+    try {
+      const response = await fetch(
+        `/api/inventory-payments/${currentPlan?.id}/documents?documentId=${doc.id}`,
+        { method: 'DELETE' }
+      );
+
+      if (response.ok) {
+        setUploadedFiles(prev => prev.filter(f => f.id !== doc.id));
+        console.log('✅ Document deleted');
+      } else {
+        alert('Failed to delete document');
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Error deleting document');
     }
   };
 
@@ -207,6 +343,8 @@ export default function InventoryPaymentsPage() {
         lineItems: currentPlan.lineItems,
       };
 
+      let planId = currentPlan.id;
+
       if (isNewPlan) {
         // Create new plan
         const response = await fetch('/api/inventory-payments', {
@@ -218,6 +356,9 @@ export default function InventoryPaymentsPage() {
         if (!response.ok) {
           throw new Error('Failed to create payment plan');
         }
+
+        const result = await response.json();
+        planId = result.plan.id.toString();
       } else {
         // Update existing plan
         const response = await fetch(`/api/inventory-payments/${currentPlan.id}`, {
@@ -229,6 +370,11 @@ export default function InventoryPaymentsPage() {
         if (!response.ok) {
           throw new Error('Failed to update payment plan');
         }
+      }
+
+      // Upload pending files if any
+      if (pendingFiles.length > 0) {
+        await uploadFiles(planId);
       }
 
       // Reload plans from database
@@ -405,8 +551,8 @@ export default function InventoryPaymentsPage() {
       <div className="mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Inventory Payments</h1>
-            <p className="text-sm sm:text-base text-gray-600">Timeline view of payment schedules</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Inventory/Major Payments</h1>
+            <p className="text-sm sm:text-base text-gray-600">Timeline view of payment schedules with document management</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button onClick={exportToCSV} variant="outline" className="w-full sm:w-auto">
@@ -1098,6 +1244,112 @@ export default function InventoryPaymentsPage() {
                       {totals.count} line {totals.count === 1 ? 'item' : 'items'}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Document Upload Section */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Supporting Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Dropzone for file upload */}
+                  <div
+                    {...getRootProps()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                      isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input {...getInputProps()} />
+                    <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    {isDragActive ? (
+                      <p className="text-blue-600 font-medium">Drop files here...</p>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 font-medium mb-2">Drag & drop files here, or click to select</p>
+                        <p className="text-sm text-gray-500">PDF, Word, Excel, Images - Max 10MB per file</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Pending files to upload */}
+                  {pendingFiles.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Files to Upload:</h4>
+                      <div className="space-y-2">
+                        {pendingFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <div className="flex items-center flex-1 min-w-0">
+                              <FileText className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                                <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => removePendingFile(index)}
+                              variant="ghost"
+                              size="sm"
+                              className="ml-2 flex-shrink-0"
+                            >
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        * Files will be uploaded when you save the payment plan
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Uploaded files list */}
+                  {uploadedFiles.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Uploaded Documents:</h4>
+                      <div className="space-y-2">
+                        {uploadedFiles.map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex items-center flex-1 min-w-0">
+                              <FileText className="h-5 w-5 text-green-600 mr-3 flex-shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-900 truncate">{doc.fileName}</p>
+                                <p className="text-xs text-gray-500">
+                                  {(doc.fileSize / 1024).toFixed(1)} KB • 
+                                  Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1 ml-2 flex-shrink-0">
+                              <Button
+                                onClick={() => downloadDocument(doc)}
+                                variant="ghost"
+                                size="sm"
+                                title="Download"
+                              >
+                                <Download className="h-4 w-4 text-blue-500" />
+                              </Button>
+                              <Button
+                                onClick={() => deleteDocument(doc)}
+                                variant="ghost"
+                                size="sm"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadedFiles.length === 0 && pendingFiles.length === 0 && (
+                    <p className="text-center text-gray-500 text-sm mt-4">No documents attached yet</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

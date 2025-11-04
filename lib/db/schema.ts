@@ -1605,9 +1605,28 @@ export const inventoryPaymentLineItems = pgTable('inventory_payment_line_items',
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// Inventory Payment Documents table
+export const inventoryPaymentDocuments = pgTable('inventory_payment_documents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Foreign Key
+  paymentPlanId: integer('payment_plan_id').notNull().references(() => inventoryPaymentPlans.id, { onDelete: 'cascade' }),
+  
+  // File Details
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  filePath: varchar('file_path', { length: 500 }).notNull(),
+  fileType: varchar('file_type', { length: 100 }).notNull(),
+  fileSize: bigint('file_size', { mode: 'number' }).notNull(),
+  
+  // Upload Info
+  uploadedBy: uuid('uploaded_by').notNull().references(() => users.authId),
+  uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
+});
+
 // Relations
 export const inventoryPaymentPlansRelations = relations(inventoryPaymentPlans, ({ many, one }) => ({
   lineItems: many(inventoryPaymentLineItems),
+  documents: many(inventoryPaymentDocuments),
   creator: one(users, {
     fields: [inventoryPaymentPlans.createdBy],
     references: [users.authId],
@@ -1625,11 +1644,24 @@ export const inventoryPaymentLineItemsRelations = relations(inventoryPaymentLine
   }),
 }));
 
+export const inventoryPaymentDocumentsRelations = relations(inventoryPaymentDocuments, ({ one }) => ({
+  paymentPlan: one(inventoryPaymentPlans, {
+    fields: [inventoryPaymentDocuments.paymentPlanId],
+    references: [inventoryPaymentPlans.id],
+  }),
+  uploader: one(users, {
+    fields: [inventoryPaymentDocuments.uploadedBy],
+    references: [users.authId],
+  }),
+}));
+
 // Type exports
 export type InventoryPaymentPlan = typeof inventoryPaymentPlans.$inferSelect;
 export type NewInventoryPaymentPlan = typeof inventoryPaymentPlans.$inferInsert;
 export type InventoryPaymentLineItem = typeof inventoryPaymentLineItems.$inferSelect;
 export type NewInventoryPaymentLineItem = typeof inventoryPaymentLineItems.$inferInsert;
+export type InventoryPaymentDocument = typeof inventoryPaymentDocuments.$inferSelect;
+export type NewInventoryPaymentDocument = typeof inventoryPaymentDocuments.$inferInsert;
 
 // ===== SALES REPORTS =====
 export const salesReports = pgTable('sales_reports', {
