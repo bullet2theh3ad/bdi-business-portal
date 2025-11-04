@@ -1576,7 +1576,7 @@ export type NewSkuFinancialScenario = typeof skuFinancialScenarios.$inferInsert;
 
 // Enums for inventory payments
 export const paymentPlanStatusEnum = pgEnum('payment_plan_status', ['draft', 'active']);
-export const paymentReferenceTypeEnum = pgEnum('payment_reference_type', ['po', 'shipment', 'other']);
+export const paymentReferenceTypeEnum = pgEnum('payment_reference_type', ['po', 'shipment', 'other', 'customs', 'freight', 'handling', 'insurance']);
 
 // Inventory Payment Plans table
 export const inventoryPaymentPlans = pgTable('inventory_payment_plans', {

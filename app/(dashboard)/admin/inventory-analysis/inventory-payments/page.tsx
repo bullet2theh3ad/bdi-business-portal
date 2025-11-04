@@ -15,7 +15,7 @@ interface PaymentLineItem {
   amount: number;
   date: string;
   reference: string;
-  referenceType: 'po' | 'shipment' | 'other';
+  referenceType: 'po' | 'shipment' | 'other' | 'customs' | 'freight' | 'handling' | 'insurance';
   isPaid: boolean;
 }
 
@@ -1224,6 +1224,10 @@ export default function InventoryPaymentsPage() {
                                 <SelectContent>
                                   <SelectItem value="po">Purchase Order</SelectItem>
                                   <SelectItem value="shipment">Shipment</SelectItem>
+                                  <SelectItem value="customs">Customs</SelectItem>
+                                  <SelectItem value="freight">Freight</SelectItem>
+                                  <SelectItem value="handling">Handling</SelectItem>
+                                  <SelectItem value="insurance">Insurance</SelectItem>
                                   <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -1320,6 +1324,10 @@ export default function InventoryPaymentsPage() {
                                   <SelectContent>
                                     <SelectItem value="po">Purchase Order</SelectItem>
                                     <SelectItem value="shipment">Shipment</SelectItem>
+                                    <SelectItem value="customs">Customs</SelectItem>
+                                    <SelectItem value="freight">Freight</SelectItem>
+                                    <SelectItem value="handling">Handling</SelectItem>
+                                    <SelectItem value="insurance">Insurance</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                   </SelectContent>
                                 </Select>
