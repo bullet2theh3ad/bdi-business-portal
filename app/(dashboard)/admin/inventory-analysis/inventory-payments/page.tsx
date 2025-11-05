@@ -57,6 +57,15 @@ export default function InventoryPaymentsPage() {
   // Search and sort state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
+  
+  // Current date line toggle (persisted in localStorage)
+  const [showCurrentDateLine, setShowCurrentDateLine] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('inventory-payments-show-current-date');
+      return saved !== null ? saved === 'true' : true; // Default to true
+    }
+    return true;
+  });
 
   // Initialize date range to show all data by default
   useEffect(() => {
@@ -474,6 +483,15 @@ export default function InventoryPaymentsPage() {
     setExpandedPlans(newExpanded);
   };
 
+  // Toggle current date line visibility
+  const toggleCurrentDateLine = () => {
+    const newValue = !showCurrentDateLine;
+    setShowCurrentDateLine(newValue);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('inventory-payments-show-current-date', String(newValue));
+    }
+  };
+
   // Calculate total for a plan
   const getPlanTotal = (plan: PaymentPlan) => {
     return plan.lineItems.reduce((sum, item) => sum + parseFloat(item.amount.toString() || '0'), 0);
@@ -779,7 +797,27 @@ export default function InventoryPaymentsPage() {
       {paymentPlans.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Payment Timeline</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Payment Timeline</CardTitle>
+              <Button
+                variant={showCurrentDateLine ? "default" : "outline"}
+                size="sm"
+                onClick={toggleCurrentDateLine}
+                className="gap-2"
+              >
+                {showCurrentDateLine ? (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    <span className="hidden sm:inline">Current Date Line</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    <span className="hidden sm:inline">Current Date Line</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -801,6 +839,12 @@ export default function InventoryPaymentsPage() {
 
                 // Calculate global max amount for consistent bubble sizing
                 const globalMaxAmount = Math.max(...allPayments.map(p => Math.abs(p.amount)));
+
+                // Calculate current date position
+                const currentDate = new Date();
+                currentDate.setHours(0, 0, 0, 0);
+                const currentDatePosition = globalDateRange === 0 ? 50 : ((currentDate.getTime() - globalMinDate.getTime()) / globalDateRange) * 100;
+                const isCurrentDateInRange = currentDatePosition >= 0 && currentDatePosition <= 100;
 
                 return (
                   <>
@@ -839,6 +883,24 @@ export default function InventoryPaymentsPage() {
                             <div className="relative h-16">
                               {/* Horizontal center line */}
                               <div className="absolute left-0 right-0 top-1/2 border-t border-gray-300" />
+                              
+                              {/* Current Date Line */}
+                              {showCurrentDateLine && isCurrentDateInRange && (
+                                <div
+                                  className="absolute top-0 bottom-0 z-10"
+                                  style={{ left: `${currentDatePosition}%` }}
+                                >
+                                  {/* Vertical dashed line */}
+                                  <div className="absolute top-0 bottom-0 border-l-2 border-dashed border-blue-500 opacity-60" />
+                                  
+                                  {/* "Today" label at top (only show on first plan row) */}
+                                  {plan.id === paymentPlans[0].id && (
+                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap shadow-md">
+                                      Today
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                               
                               {/* Bubbles positioned on the line */}
                               {positions.map((payment) => {
