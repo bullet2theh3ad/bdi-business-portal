@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Search, ArrowUpDown, Eye, EyeOff, Download } from 'lucide-react';
+import { Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface NREPaymentLineItem {
   id: string;
@@ -31,6 +31,7 @@ export default function NRESummaryPage() {
   const [nreBudgets, setNreBudgets] = useState<NREBudget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showTimeline, setShowTimeline] = useState(true);
+  const [expandedBudgets, setExpandedBudgets] = useState<Set<string>>(new Set());
   
   // Date range filter state
   const [startDate, setStartDate] = useState<string>('');
@@ -192,6 +193,19 @@ export default function NRESummaryPage() {
     if (daysUntilDue === 0) return 'Due today';
     if (daysUntilDue <= 30) return `Due in ${daysUntilDue} days`;
     return 'Upcoming';
+  };
+
+  // Toggle expanded budget
+  const toggleBudgetExpanded = (budgetId: string) => {
+    setExpandedBudgets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(budgetId)) {
+        newSet.delete(budgetId);
+      } else {
+        newSet.add(budgetId);
+      }
+      return newSet;
+    });
   };
 
   // Export to CSV
@@ -569,8 +583,16 @@ export default function NRESummaryPage() {
       {/* Table View of All Payment Line Items */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">All NRE Payments</CardTitle>
-          <p className="text-sm text-gray-600">Detailed view of all payment line items</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg sm:text-xl">All NRE Payments</CardTitle>
+              <p className="text-sm text-gray-600">Detailed view of all payment line items</p>
+            </div>
+            <Button onClick={exportToCSV} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredBudgets.length === 0 ? (
@@ -582,6 +604,7 @@ export default function NRESummaryPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
+                      <th className="text-left p-3 font-semibold w-10"></th>
                       <th className="text-left p-3 font-semibold">NRE #</th>
                       <th className="text-left p-3 font-semibold">Vendor</th>
                       <th className="text-left p-3 font-semibold">Project</th>
@@ -593,23 +616,47 @@ export default function NRESummaryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredBudgets.map((budget) => (
-                      budget.paymentLineItems.map((item, idx) => (
+                    {filteredBudgets.map((budget) => {
+                      const isExpanded = expandedBudgets.has(budget.id.toString());
+                      const itemsToShow = isExpanded ? budget.paymentLineItems : [budget.paymentLineItems[0]];
+                      
+                      return itemsToShow.map((item, idx) => (
                         <tr key={`${budget.id}-${item.id}`} className="border-b hover:bg-gray-50">
                           {idx === 0 && (
                             <>
-                              <td className="p-3 font-medium" rowSpan={budget.paymentLineItems.length}>
+                              <td className="p-3" rowSpan={isExpanded ? budget.paymentLineItems.length : 1}>
+                                {budget.paymentLineItems.length > 1 && (
+                                  <button
+                                    onClick={() => toggleBudgetExpanded(budget.id.toString())}
+                                    className="text-gray-600 hover:text-gray-900"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                )}
+                              </td>
+                              <td className="p-3 font-medium" rowSpan={isExpanded ? budget.paymentLineItems.length : 1}>
                                 {budget.nreReferenceNumber}
                               </td>
-                              <td className="p-3" rowSpan={budget.paymentLineItems.length}>
+                              <td className="p-3" rowSpan={isExpanded ? budget.paymentLineItems.length : 1}>
                                 {budget.vendorName}
                               </td>
-                              <td className="p-3" rowSpan={budget.paymentLineItems.length}>
+                              <td className="p-3" rowSpan={isExpanded ? budget.paymentLineItems.length : 1}>
                                 {budget.projectName || '—'}
                               </td>
                             </>
                           )}
-                          <td className="p-3">Payment #{item.paymentNumber}</td>
+                          <td className="p-3">
+                            Payment #{item.paymentNumber}
+                            {!isExpanded && budget.paymentLineItems.length > 1 && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                (+{budget.paymentLineItems.length - 1} more)
+                              </span>
+                            )}
+                          </td>
                           <td className="p-3 font-semibold">${item.amount.toLocaleString()}</td>
                           <td className="p-3">{new Date(item.paymentDate).toLocaleDateString()}</td>
                           <td className="p-3">
@@ -623,42 +670,77 @@ export default function NRESummaryPage() {
                           </td>
                           <td className="p-3 text-gray-600">{item.notes || '—'}</td>
                         </tr>
-                      ))
-                    ))}
+                      ));
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile Cards */}
               <div className="sm:hidden space-y-4">
-                {filteredBudgets.map((budget) => (
-                  budget.paymentLineItems.map((item) => (
-                    <div key={`${budget.id}-${item.id}`} className="border rounded-lg p-4 space-y-2">
-                      <div className="font-bold text-sm">{budget.nreReferenceNumber}</div>
-                      <div className="text-xs text-gray-600">{budget.vendorName}</div>
-                      {budget.projectName && (
-                        <div className="text-xs text-gray-600">{budget.projectName}</div>
-                      )}
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <span className="text-xs text-gray-600">Payment #{item.paymentNumber}</span>
-                        <span className="font-semibold">${item.amount.toLocaleString()}</span>
+                {filteredBudgets.map((budget) => {
+                  const isExpanded = expandedBudgets.has(budget.id.toString());
+                  const itemsToShow = isExpanded ? budget.paymentLineItems : [budget.paymentLineItems[0]];
+                  
+                  return (
+                    <div key={budget.id} className="border rounded-lg">
+                      {/* Budget Header */}
+                      <div className="p-4 border-b bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-bold text-sm">{budget.nreReferenceNumber}</div>
+                            <div className="text-xs text-gray-600">{budget.vendorName}</div>
+                            {budget.projectName && (
+                              <div className="text-xs text-gray-600">{budget.projectName}</div>
+                            )}
+                          </div>
+                          {budget.paymentLineItems.length > 1 && (
+                            <button
+                              onClick={() => toggleBudgetExpanded(budget.id.toString())}
+                              className="text-gray-600 hover:text-gray-900 ml-2"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-5 h-5" />
+                              ) : (
+                                <ChevronRight className="w-5 h-5" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        {!isExpanded && budget.paymentLineItems.length > 1 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {budget.paymentLineItems.length} payments
+                          </div>
+                        )}
                       </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-600">{new Date(item.paymentDate).toLocaleDateString()}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          item.isPaid 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {item.isPaid ? 'Paid' : 'Pending'}
-                        </span>
+                      
+                      {/* Payment Items */}
+                      <div className="divide-y">
+                        {itemsToShow.map((item) => (
+                          <div key={item.id} className="p-4 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-600">Payment #{item.paymentNumber}</span>
+                              <span className="font-semibold">${item.amount.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600">{new Date(item.paymentDate).toLocaleDateString()}</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                item.isPaid 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {item.isPaid ? 'Paid' : 'Pending'}
+                              </span>
+                            </div>
+                            {item.notes && (
+                              <div className="text-xs text-gray-600 pt-2 border-t">{item.notes}</div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      {item.notes && (
-                        <div className="text-xs text-gray-600 pt-2 border-t">{item.notes}</div>
-                      )}
                     </div>
-                  ))
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
