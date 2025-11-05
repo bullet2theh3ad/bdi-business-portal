@@ -166,7 +166,7 @@ export default function NRESummaryPage() {
 
   // Get color for payment bubble based on date and paid status
   const getBubbleColor = (date: string, isPaid: boolean) => {
-    if (isPaid) return 'bg-green-500'; // Paid = Green
+    if (isPaid) return 'bg-green-500'; // Paid = Green (only if actually paid)
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -174,9 +174,8 @@ export default function NRESummaryPage() {
     paymentDate.setHours(0, 0, 0, 0);
     const daysUntilDue = Math.ceil((paymentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (daysUntilDue < 0) return 'bg-red-500'; // Overdue = Red
-    if (daysUntilDue <= 30) return 'bg-yellow-500'; // Due soon = Yellow
-    return 'bg-green-500'; // Future = Green
+    if (daysUntilDue < 0) return 'bg-red-500'; // Overdue = Red (not paid and past due)
+    return 'bg-yellow-500'; // Unpaid & Future = Yellow (not paid but upcoming)
   };
 
   // Get status text for bubble
@@ -375,15 +374,15 @@ export default function NRESummaryPage() {
               <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-gray-600 pb-4 border-b">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span>Paid / Upcoming</span>
+                  <span>Paid</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span>Due Soon (≤30 days)</span>
+                  <span>Unpaid & Upcoming</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span>Overdue</span>
+                  <span>Overdue (Unpaid & Past Due)</span>
                 </div>
               </div>
 

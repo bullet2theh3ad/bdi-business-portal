@@ -104,6 +104,7 @@ export default function InventoryPaymentsPage() {
           lineItems: plan.lineItems.map((item: any) => ({
             id: item.id.toString(),
             description: item.description || '',
+            project: item.project || 'Other', // Ensure project always has a value
             amount: parseFloat(item.amount),
             date: item.paymentDate,
             reference: item.reference || '',
@@ -1368,13 +1369,22 @@ export default function InventoryPaymentsPage() {
                               />
                             </div>
                             <div className="col-span-1">
-                              <Input
-                                value={line.project}
-                                onChange={(e) => updateLineItem(line.id, 'project', e.target.value)}
-                                placeholder="Q15, Other"
-                                className="h-9"
-                                required
-                              />
+                              <Select
+                                value={line.project || 'Other'}
+                                onValueChange={(value) => updateLineItem(line.id, 'project', value)}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Q15">Q15</SelectItem>
+                                  <SelectItem value="MQ15">MQ15</SelectItem>
+                                  <SelectItem value="MQ15-E">MQ15-E</SelectItem>
+                                  <SelectItem value="Q15-EU">Q15-EU</SelectItem>
+                                  <SelectItem value="Q15-ANZ">Q15-ANZ</SelectItem>
+                                  <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="col-span-2">
                               <Input
@@ -1472,13 +1482,22 @@ export default function InventoryPaymentsPage() {
 
                               <div>
                                 <Label className="text-xs text-gray-600 mb-1">Project/SKU *</Label>
-                                <Input
-                                  value={line.project}
-                                  onChange={(e) => updateLineItem(line.id, 'project', e.target.value)}
-                                  placeholder="Q15, MQ15, Other, etc."
-                                  className="h-10"
-                                  required
-                                />
+                                <Select
+                                  value={line.project || 'Other'}
+                                  onValueChange={(value) => updateLineItem(line.id, 'project', value)}
+                                >
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Q15">Q15</SelectItem>
+                                    <SelectItem value="MQ15">MQ15</SelectItem>
+                                    <SelectItem value="MQ15-E">MQ15-E</SelectItem>
+                                    <SelectItem value="Q15-EU">Q15-EU</SelectItem>
+                                    <SelectItem value="Q15-ANZ">Q15-ANZ</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">
