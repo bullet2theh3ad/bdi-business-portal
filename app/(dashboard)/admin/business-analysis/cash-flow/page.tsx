@@ -911,6 +911,36 @@ export default function CashFlowAnalysisPage() {
                       })}
                     </g>
                   )}
+                  
+                  {/* Burn Rate Legend (tiny, inside chart) */}
+                  <g transform="translate(10, 10)">
+                    <rect
+                      x="0"
+                      y="0"
+                      width="140"
+                      height="52"
+                      fill="white"
+                      stroke="#e5e7eb"
+                      strokeWidth="1"
+                      rx="4"
+                      opacity="0.95"
+                    />
+                    <text x="8" y="14" fontSize="9" fontWeight="600" fill="#374151">
+                      Avg Line Burn Rate:
+                    </text>
+                    <g transform="translate(8, 20)">
+                      <circle cx="3" cy="3" r="3" fill="#ef4444" />
+                      <text x="10" y="6" fontSize="8" fill="#374151">High ≥130%</text>
+                    </g>
+                    <g transform="translate(70, 20)">
+                      <circle cx="3" cy="3" r="3" fill="#f59e0b" />
+                      <text x="10" y="6" fontSize="8" fill="#374151">Med 100-130%</text>
+                    </g>
+                    <g transform="translate(8, 35)">
+                      <circle cx="3" cy="3" r="3" fill="#10b981" />
+                      <text x="10" y="6" fontSize="8" fill="#374151">Low &lt;100%</text>
+                    </g>
+                  </g>
                 </svg>
               </div>
             </div>
