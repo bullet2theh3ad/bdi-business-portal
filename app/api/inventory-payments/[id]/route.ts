@@ -68,13 +68,14 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, status, lineItems } = body;
+    const { name, project, status, lineItems } = body;
 
     // Update the payment plan
     const [updatedPlan] = await db
       .update(inventoryPaymentPlans)
       .set({
         name,
+        project: project || null,
         status,
         updatedAt: new Date(),
       })

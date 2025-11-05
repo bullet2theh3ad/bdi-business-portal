@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { planNumber, name, status, lineItems } = body;
+    const { planNumber, name, project, status, lineItems } = body;
 
     // Create the payment plan
     const [newPlan] = await db
@@ -129,6 +129,7 @@ export async function POST(request: Request) {
       .values({
         planNumber,
         name,
+        project: project || null,
         status: status || 'draft',
         createdBy: user.id,
         organizationId: orgMemberships.organization_uuid,

@@ -23,6 +23,7 @@ interface PaymentPlan {
   id: string;
   planNumber: string; // PAY-2025-001
   name: string;
+  project?: string | null; // Project identifier (Q15, MQ15, MQ15-E, etc.)
   lineItems: PaymentLineItem[];
   createdAt: string;
   status: 'draft' | 'active';
@@ -330,6 +331,7 @@ export default function InventoryPaymentsPage() {
       id: `plan-${Date.now()}`,
       planNumber: generatePlanNumber(),
       name: `Payment Plan ${paymentPlans.length + 1}`,
+      project: null,
       lineItems: [],
       createdAt: new Date().toISOString(),
       status: 'draft',
@@ -353,6 +355,7 @@ export default function InventoryPaymentsPage() {
       const payload = {
         planNumber: currentPlan.planNumber,
         name: currentPlan.name,
+        project: currentPlan.project || null,
         status: currentPlan.status,
         lineItems: currentPlan.lineItems,
       };
@@ -1215,12 +1218,29 @@ export default function InventoryPaymentsPage() {
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex-1">
                     <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Payment Plan: {currentPlan.planNumber}</h1>
-                    <Input
-                      value={currentPlan.name}
-                      onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
-                      className="w-full sm:max-w-md"
-                      placeholder="Plan name..."
-                    />
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700 mb-1">Plan Name</Label>
+                        <Input
+                          value={currentPlan.name}
+                          onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
+                          className="w-full sm:max-w-md"
+                          placeholder="Plan name..."
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700 mb-1">Project (optional)</Label>
+                        <Input
+                          value={currentPlan.project || ''}
+                          onChange={(e) => setCurrentPlan({ ...currentPlan, project: e.target.value || null })}
+                          className="w-full sm:max-w-md"
+                          placeholder="e.g., Q15, MQ15, MQ15-E, etc."
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Helps track costs by project in Cash Flow analysis
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   {/* Action Buttons - Stack on mobile, row on desktop */}
                   <div className="flex flex-col sm:flex-row gap-2">

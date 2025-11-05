@@ -1583,6 +1583,7 @@ export const inventoryPaymentPlans = pgTable('inventory_payment_plans', {
   id: serial('id').primaryKey(),
   planNumber: varchar('plan_number', { length: 50 }).notNull().unique(), // e.g., PAY-2025-001
   name: varchar('name', { length: 255 }).notNull(),
+  project: varchar('project', { length: 255 }), // Project identifier (Q15, MQ15, MQ15-E, etc.)
   status: paymentPlanStatusEnum('status').notNull().default('draft'),
   createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
