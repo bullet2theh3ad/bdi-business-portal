@@ -872,11 +872,17 @@ export default function InventoryPaymentsPage() {
                         <div key={plan.id} className="relative flex items-center">
                           {/* Plan name and total on the left */}
                           <div className="w-[200px] text-left pr-4 flex items-center gap-2">
-                            <div 
-                              className="font-bold text-sm cursor-help" 
-                              title={plan.name}
-                            >
-                              {plan.planNumber}
+                            <div className="relative group">
+                              <div className="font-bold text-sm cursor-help">
+                                {plan.planNumber}
+                              </div>
+                              {/* Tooltip on hover */}
+                              <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50">
+                                <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
+                                  {plan.name}
+                                </div>
+                                <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900"></div>
+                              </div>
                             </div>
                             <div className="font-semibold text-sm text-gray-600">
                               ${getPlanTotal(plan).toLocaleString()}
