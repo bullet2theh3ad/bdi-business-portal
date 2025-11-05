@@ -913,32 +913,33 @@ export default function CashFlowAnalysisPage() {
                   )}
                   
                   {/* Burn Rate Legend (tiny, inside chart) */}
-                  <g transform="translate(10, 10)">
+                  <g transform="translate(20, 20)">
                     <rect
                       x="0"
                       y="0"
-                      width="140"
-                      height="52"
+                      width="155"
+                      height="58"
                       fill="white"
-                      stroke="#e5e7eb"
-                      strokeWidth="1"
-                      rx="4"
-                      opacity="0.95"
+                      stroke="#d1d5db"
+                      strokeWidth="1.5"
+                      rx="6"
+                      opacity="0.98"
+                      filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
                     />
-                    <text x="8" y="14" fontSize="9" fontWeight="600" fill="#374151">
+                    <text x="10" y="16" fontSize="10" fontWeight="700" fill="#111827">
                       Avg Line Burn Rate:
                     </text>
-                    <g transform="translate(8, 20)">
-                      <circle cx="3" cy="3" r="3" fill="#ef4444" />
-                      <text x="10" y="6" fontSize="8" fill="#374151">High ≥130%</text>
+                    <g transform="translate(10, 26)">
+                      <circle cx="4" cy="4" r="4" fill="#ef4444" />
+                      <text x="13" y="7" fontSize="9" fill="#374151">High ≥130%</text>
                     </g>
-                    <g transform="translate(70, 20)">
-                      <circle cx="3" cy="3" r="3" fill="#f59e0b" />
-                      <text x="10" y="6" fontSize="8" fill="#374151">Med 100-130%</text>
+                    <g transform="translate(80, 26)">
+                      <circle cx="4" cy="4" r="4" fill="#f59e0b" />
+                      <text x="13" y="7" fontSize="9" fill="#374151">Med 100-130%</text>
                     </g>
-                    <g transform="translate(8, 35)">
-                      <circle cx="3" cy="3" r="3" fill="#10b981" />
-                      <text x="10" y="6" fontSize="8" fill="#374151">Low &lt;100%</text>
+                    <g transform="translate(10, 42)">
+                      <circle cx="4" cy="4" r="4" fill="#10b981" />
+                      <text x="13" y="7" fontSize="9" fill="#374151">Low &lt;100%</text>
                     </g>
                   </g>
                 </svg>
