@@ -339,7 +339,17 @@ export default function InventoryPaymentsPage() {
   // Generate new plan number
   const generatePlanNumber = () => {
     const year = new Date().getFullYear();
-    const nextNum = (paymentPlans.length + 1).toString().padStart(3, '0');
+    
+    // Find the highest existing number for the current year
+    const yearPrefix = `PAY-${year}-`;
+    const existingNumbers = paymentPlans
+      .map(p => p.planNumber)
+      .filter(num => num.startsWith(yearPrefix))
+      .map(num => parseInt(num.replace(yearPrefix, '')) || 0);
+    
+    const maxNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+    const nextNum = (maxNum + 1).toString().padStart(3, '0');
+    
     return `PAY-${year}-${nextNum}`;
   };
 
@@ -367,6 +377,33 @@ export default function InventoryPaymentsPage() {
 
     try {
       setIsSaving(true);
+      
+      // Validate required fields
+      if (!currentPlan.name.trim()) {
+        alert('Please enter a plan name');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Validate all line items have required fields
+      for (const item of currentPlan.lineItems) {
+        if (!item.project || item.project.trim() === '') {
+          alert('All line items must have a Project/SKU selected');
+          setIsSaving(false);
+          return;
+        }
+        if (!item.date) {
+          alert('All line items must have a payment date');
+          setIsSaving(false);
+          return;
+        }
+        if (item.amount <= 0) {
+          alert('All line items must have an amount greater than 0');
+          setIsSaving(false);
+          return;
+        }
+      }
+      
       const isNewPlan = currentPlan.id.startsWith('plan-');
 
       const payload = {
@@ -387,11 +424,13 @@ export default function InventoryPaymentsPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create payment plan');
+          const errorData = await response.json();
+          console.error('API Error:', errorData);
+          throw new Error(errorData.error || 'Failed to create payment plan');
         }
 
         const result = await response.json();
-        planId = result.plan.id.toString();
+        planId = result.id.toString();
       } else {
         // Update existing plan
         const response = await fetch(`/api/inventory-payments/${currentPlan.id}`, {
@@ -401,7 +440,9 @@ export default function InventoryPaymentsPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to update payment plan');
+          const errorData = await response.json();
+          console.error('API Error:', errorData);
+          throw new Error(errorData.error || 'Failed to update payment plan');
         }
       }
 

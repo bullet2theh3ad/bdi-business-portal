@@ -162,10 +162,11 @@ export async function POST(request: Request) {
       ...newPlan,
       lineItems: createdLineItems,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating payment plan:', error);
+    const errorMessage = error?.message || 'Failed to create payment plan';
     return NextResponse.json(
-      { error: 'Failed to create payment plan' },
+      { error: errorMessage, details: error?.toString() },
       { status: 500 }
     );
   }
