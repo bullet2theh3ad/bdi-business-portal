@@ -872,7 +872,12 @@ export default function InventoryPaymentsPage() {
                         <div key={plan.id} className="relative flex items-center">
                           {/* Plan name and total on the left */}
                           <div className="w-[200px] text-left pr-4 flex items-center gap-2">
-                            <div className="font-bold text-sm">{plan.planNumber}</div>
+                            <div 
+                              className="font-bold text-sm cursor-help" 
+                              title={plan.name}
+                            >
+                              {plan.planNumber}
+                            </div>
                             <div className="font-semibold text-sm text-gray-600">
                               ${getPlanTotal(plan).toLocaleString()}
                             </div>
