@@ -305,6 +305,86 @@ export default function CashFlowAnalysisPage() {
 
   const trailingAverages = calculateTrailingAverages();
 
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = [
+      'Week Start',
+      'Week End',
+      'NRE Total',
+      'Inventory Total',
+      'OpEx Total',
+      'Total Outflows',
+      `${avgPeriodWeeks}-Week Avg`,
+    ];
+
+    // Create CSV rows
+    const rows: string[][] = [];
+    sortedWeeklyData.forEach((week, idx) => {
+      const avg = trailingAverages.find(a => a.weekStart === week.weekStart);
+      rows.push([
+        week.weekStart,
+        week.weekEnd,
+        week.nreTotal.toFixed(2),
+        week.inventoryTotal.toFixed(2),
+        week.opexTotal.toFixed(2),
+        week.total.toFixed(2),
+        avg ? avg.average.toFixed(2) : '0.00',
+      ]);
+    });
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cash-flow-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export chart to PNG
+  const exportChartToPNG = async () => {
+    const chartElement = document.getElementById('cash-flow-chart');
+    if (!chartElement) {
+      alert('Chart not found');
+      return;
+    }
+
+    try {
+      // Dynamically import html2canvas
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(chartElement, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher quality
+      });
+      
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `cash-flow-chart-${new Date().toISOString().split('T')[0]}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to export chart:', error);
+      alert('Failed to export chart. Please try again.');
+    }
+  };
+
   // Calculate summary metrics
   const totalOutflows = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
   const peakWeek = weeklyData.length > 0 
@@ -521,6 +601,16 @@ export default function CashFlowAnalysisPage() {
 
             {/* Control Buttons */}
             <div className="flex flex-wrap gap-2">
+              <Button onClick={exportToCSV} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+
+              <Button onClick={exportChartToPNG} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export PNG
+              </Button>
+
               <Button onClick={set13WeekView} variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
                 13 Weeks
@@ -578,15 +668,31 @@ export default function CashFlowAnalysisPage() {
 
       {/* Stacked Bar Chart with Trailing Average Line */}
       {showTimeline && weeklyData.length > 0 && (
-        <Card className="mb-6">
+        <Card className="mb-6" id="cash-flow-chart">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow</CardTitle>
-            <p className="text-sm text-gray-600">
-              Stacked bar chart with {avgPeriodWeeks}-week trailing average
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow</CardTitle>
+                <p className="text-sm text-gray-600">
+                  Stacked bar chart with {avgPeriodWeeks}-week trailing average
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={exportToCSV} variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                  <span className="sm:hidden">CSV</span>
+                </Button>
+                <Button onClick={exportChartToPNG} variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Export PNG</span>
+                  <span className="sm:hidden">PNG</span>
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div id="cash-flow-chart" className="space-y-4">
               {/* Legend */}
               <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-gray-600 pb-4 border-b">
                 <div className="flex items-center gap-2">

@@ -367,6 +367,15 @@ export default function NRESummaryPage() {
           {/* Control Buttons */}
           <div className="flex flex-wrap gap-2">
             <Button
+              onClick={exportToCSV}
+              variant="outline"
+              size="sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+
+            <Button
               onClick={() => setShowTimeline(!showTimeline)}
               variant="outline"
               size="sm"
