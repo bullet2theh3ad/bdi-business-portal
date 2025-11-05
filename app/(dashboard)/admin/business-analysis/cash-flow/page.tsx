@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DollarSign, TrendingDown, Calendar, Search, ArrowUpDown, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, TrendingDown, Calendar, Search, ArrowUpDown, Eye, EyeOff, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
 // Interfaces for data structures
 interface PaymentItem {
@@ -12,7 +12,7 @@ interface PaymentItem {
   category: 'NRE' | 'Inventory' | 'OpEx';
   source: string; // NRE number, Payment plan number, or OpEx category
   description: string;
-  project: string | null; // Project name (from NRE or Inventory)
+  sku: string | null; // SKU code (common across NRE, Inventory, OpEx)
   amount: number;
   date: string;
   isPaid: boolean;
@@ -40,7 +40,7 @@ export default function CashFlowAnalysisPage() {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'NRE' | 'Inventory' | 'OpEx'>('all');
-  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [skuFilter, setSkuFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Default to oldest first for cash flow
   const [tableSortOrder, setTableSortOrder] = useState<'asc' | 'desc'>('asc'); // Separate sort for table
   
@@ -85,7 +85,7 @@ export default function CashFlowAnalysisPage() {
                 category: 'NRE',
                 source: budget.nreReferenceNumber,
                 description: `${budget.projectName || 'No Project'} - ${budget.vendorName}`,
-                project: budget.projectName || null,
+                sku: budget.skuCode || null, // Use SKU code from NRE
                 amount: parseFloat(item.amount),
                 date: item.paymentDate,
                 isPaid: item.isPaid || false,
@@ -107,7 +107,7 @@ export default function CashFlowAnalysisPage() {
                 category: 'Inventory',
                 source: plan.planNumber,
                 description: item.description || plan.name,
-                project: item.project || null, // Use line item's project field
+                sku: item.project || null, // Use line item's project field as SKU
                 amount: parseFloat(item.amount),
                 date: item.paymentDate,
                 isPaid: item.isPaid || false,
@@ -186,9 +186,9 @@ export default function CashFlowAnalysisPage() {
       filtered = filtered.filter(payment => payment.category === categoryFilter);
     }
 
-    // Apply project filter
-    if (projectFilter !== 'all') {
-      filtered = filtered.filter(payment => payment.project === projectFilter);
+    // Apply SKU filter
+    if (skuFilter !== 'all') {
+      filtered = filtered.filter(payment => payment.sku === skuFilter);
     }
 
     // Apply date range filter
@@ -203,9 +203,9 @@ export default function CashFlowAnalysisPage() {
 
   const filteredPayments = getFilteredPayments();
 
-  // Get unique projects for filter dropdown
-  const uniqueProjects = Array.from(
-    new Set(allPayments.map(p => p.project).filter(Boolean) as string[])
+  // Get unique SKUs for filter dropdown
+  const uniqueSkus = Array.from(
+    new Set(allPayments.map(p => p.sku).filter(Boolean) as string[])
   ).sort();
 
   // Aggregate payments by week
@@ -447,15 +447,15 @@ export default function CashFlowAnalysisPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
                 <select
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
+                  value={skuFilter}
+                  onChange={(e) => setSkuFilter(e.target.value)}
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-bdi-green-1"
                 >
-                  <option value="all">All Projects</option>
-                  {uniqueProjects.map(project => (
-                    <option key={project} value={project}>{project}</option>
+                  <option value="all">All SKUs</option>
+                  {uniqueSkus.map(sku => (
+                    <option key={sku} value={sku}>{sku}</option>
                   ))}
                 </select>
               </div>
