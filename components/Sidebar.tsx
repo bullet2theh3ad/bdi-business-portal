@@ -235,6 +235,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             href: '/admin/budget-targets',
             icon: 'forecasts',
           },
+          {
+            title: 'NRE Summary',
+            href: '/admin/business-analysis/nre-summary',
+            icon: 'timeline',
+          },
         ],
       },
       {
