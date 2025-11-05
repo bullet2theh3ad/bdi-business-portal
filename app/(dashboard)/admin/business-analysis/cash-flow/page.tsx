@@ -40,6 +40,10 @@ export default function CashFlowAnalysisPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'NRE' | 'Inventory' | 'OpEx'>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Default to oldest first for cash flow
+  const [tableSortOrder, setTableSortOrder] = useState<'asc' | 'desc'>('asc'); // Separate sort for table
+  
+  // Trailing average period (in weeks)
+  const [avgPeriodWeeks, setAvgPeriodWeeks] = useState<number>(4); // Default to 4 weeks
   
   // Current date line toggle (persisted in localStorage)
   const [showCurrentDateLine, setShowCurrentDateLine] = useState<boolean>(() => {
@@ -242,6 +246,47 @@ export default function CashFlowAnalysisPage() {
 
   const weeklyData = aggregateByWeek();
 
+  // Get sorted weekly data for table (separate sort order)
+  const getSortedWeeklyDataForTable = () => {
+    const sorted = [...weeklyData];
+    sorted.sort((a, b) => {
+      if (tableSortOrder === 'asc') {
+        return a.weekStart.localeCompare(b.weekStart);
+      } else {
+        return b.weekStart.localeCompare(a.weekStart);
+      }
+    });
+    return sorted;
+  };
+
+  const sortedWeeklyData = getSortedWeeklyDataForTable();
+
+  // Calculate trailing averages for each week
+  const calculateTrailingAverages = (): { weekStart: string; average: number }[] => {
+    const averages: { weekStart: string; average: number }[] = [];
+    
+    for (let i = 0; i < weeklyData.length; i++) {
+      const week = weeklyData[i];
+      
+      // Get trailing window (including current week)
+      const windowStart = Math.max(0, i - avgPeriodWeeks + 1);
+      const windowWeeks = weeklyData.slice(windowStart, i + 1);
+      
+      // Calculate average
+      const sum = windowWeeks.reduce((total, w) => total + w.total, 0);
+      const average = windowWeeks.length > 0 ? sum / windowWeeks.length : 0;
+      
+      averages.push({
+        weekStart: week.weekStart,
+        average,
+      });
+    }
+    
+    return averages;
+  };
+
+  const trailingAverages = calculateTrailingAverages();
+
   // Calculate summary metrics
   const totalOutflows = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
   const peakWeek = weeklyData.length > 0 
@@ -251,14 +296,14 @@ export default function CashFlowAnalysisPage() {
     ? totalOutflows / weeklyData.length 
     : 0;
 
-  // Get color for bubble based on total amount (relative to peak)
-  const getBubbleColor = (amount: number) => {
-    if (peakWeek === 0) return 'bg-gray-500';
-    const percentage = (amount / peakWeek) * 100;
+  // Get color for average line based on burn rate (compared to overall average)
+  const getAvgLineColor = (avgAmount: number) => {
+    if (avgWeekly === 0) return '#10b981'; // green
+    const percentage = (avgAmount / avgWeekly) * 100;
     
-    if (percentage >= 75) return 'bg-red-500'; // High burn (>75% of peak)
-    if (percentage >= 40) return 'bg-yellow-500'; // Medium burn (40-75%)
-    return 'bg-green-500'; // Low burn (<40%)
+    if (percentage >= 130) return '#ef4444'; // High burn (>130% of overall avg) - red
+    if (percentage >= 100) return '#f59e0b'; // Medium burn (100-130%) - yellow
+    return '#10b981'; // Low burn (<100%) - green
   };
 
   // Toggle week expansion
@@ -412,6 +457,36 @@ export default function CashFlowAnalysisPage() {
               </div>
             </div>
 
+            {/* Trailing Average Period */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Trailing Average Period
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => setAvgPeriodWeeks(4)}
+                  variant={avgPeriodWeeks === 4 ? "default" : "outline"}
+                  size="sm"
+                >
+                  4 Weeks
+                </Button>
+                <Button
+                  onClick={() => setAvgPeriodWeeks(13)}
+                  variant={avgPeriodWeeks === 13 ? "default" : "outline"}
+                  size="sm"
+                >
+                  3 Months (13 weeks)
+                </Button>
+                <Button
+                  onClick={() => setAvgPeriodWeeks(26)}
+                  variant={avgPeriodWeeks === 26 ? "default" : "outline"}
+                  size="sm"
+                >
+                  6 Months (26 weeks)
+                </Button>
+              </div>
+            </div>
+
             {/* Control Buttons */}
             <div className="flex flex-wrap gap-2">
               <Button onClick={set13WeekView} variant="outline" size="sm">
@@ -429,7 +504,7 @@ export default function CashFlowAnalysisPage() {
                 size="sm"
               >
                 {showTimeline ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
-                {showTimeline ? 'Hide' : 'Show'} Timeline
+                {showTimeline ? 'Hide' : 'Show'} Chart
               </Button>
 
               <Button
@@ -447,7 +522,7 @@ export default function CashFlowAnalysisPage() {
                 size="sm"
               >
                 <ArrowUpDown className="w-4 h-4 mr-2" />
-                Sort: {sortOrder === 'asc' ? 'Oldest First' : 'Newest First'}
+                Chart: {sortOrder === 'asc' ? 'Oldest First' : 'Newest First'}
               </Button>
             </div>
           </div>
@@ -469,121 +544,211 @@ export default function CashFlowAnalysisPage() {
         </div>
       )}
 
-      {/* Timeline Visualization */}
-      {showTimeline && weeklyData.length > 0 && startDate && endDate && (
-        <Card className="mb-6 overflow-x-auto">
+      {/* Stacked Bar Chart with Trailing Average Line */}
+      {showTimeline && weeklyData.length > 0 && (
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow Timeline</CardTitle>
-            <p className="text-sm text-gray-600">Combined view of all payment categories</p>
+            <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow</CardTitle>
+            <p className="text-sm text-gray-600">
+              Stacked bar chart with {avgPeriodWeeks}-week trailing average
+            </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6 min-w-[600px]">
-              {/* Timeline legend */}
+            <div className="space-y-4">
+              {/* Legend */}
               <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-gray-600 pb-4 border-b">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span>Low Burn (&lt;40%)</span>
+                  <div className="w-4 h-4 bg-green-600"></div>
+                  <span>NRE</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span>Medium Burn (40-75%)</span>
+                  <div className="w-4 h-4 bg-blue-600"></div>
+                  <span>Inventory</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span>High Burn (&gt;75%)</span>
+                  <div className="w-4 h-4 bg-purple-600"></div>
+                  <span>OpEx</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-0.5 bg-gray-900"></div>
+                  <span>{avgPeriodWeeks}wk Avg (colored by burn rate)</span>
                 </div>
               </div>
 
-              {/* Date range display */}
-              <div className="flex justify-between text-xs sm:text-sm font-medium text-gray-700">
-                <span>{new Date(startDate).toLocaleDateString()}</span>
-                <span>{new Date(endDate).toLocaleDateString()}</span>
-              </div>
-
-              {/* Weekly timelines */}
-              {weeklyData.map((week) => {
-                const totalDays = Math.max(1, Math.ceil(
-                  (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)
-                ));
-
-                // Calculate position for this week
-                const weekDate = new Date(week.weekStart);
-                const rangeStart = new Date(startDate);
-                rangeStart.setHours(0, 0, 0, 0);
-                
-                const daysFromStart = Math.ceil((weekDate.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
-                const position = (daysFromStart / totalDays) * 100;
-
-                // Calculate current date position
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const daysFromStartToToday = Math.ceil((today.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
-                const currentDatePosition = (daysFromStartToToday / totalDays) * 100;
-                const isCurrentDateInRange = today >= rangeStart && today <= new Date(endDate);
-
-                return (
-                  <div key={week.weekStart} className="relative flex items-center">
-                    {/* Week label on the left */}
-                    <div className="w-[200px] text-left pr-4">
-                      <div className="font-bold text-sm">
-                        Week of {new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="font-semibold text-sm text-gray-600">
-                        ${week.total.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {week.items.length} payment{week.items.length !== 1 ? 's' : ''}
-                      </div>
-                    </div>
+              {/* Chart Container */}
+              <div className="relative" style={{ height: '400px' }}>
+                <svg width="100%" height="100%" className="overflow-visible">
+                  <defs>
+                    <marker
+                      id="current-date-marker"
+                      markerWidth="10"
+                      markerHeight="10"
+                      refX="5"
+                      refY="5"
+                      orient="auto"
+                    >
+                      <circle cx="5" cy="5" r="3" fill="#3b82f6" />
+                    </marker>
+                  </defs>
+                  
+                  {weeklyData.map((week, index) => {
+                    const barWidth = 100 / weeklyData.length;
+                    const barX = index * barWidth;
+                    const maxHeight = 350;
                     
-                    {/* Timeline with horizontal line and bubble */}
-                    <div className="flex-1">
-                      <div className="relative h-16">
-                        {/* Horizontal center line */}
-                        <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-300 -translate-y-1/2"></div>
-                        
-                        {/* Current date line (if enabled and in range) */}
-                        {showCurrentDateLine && isCurrentDateInRange && week.weekStart === weeklyData[0].weekStart && (
-                          <div
-                            className="absolute top-0 bottom-0 z-10"
-                            style={{ left: `${currentDatePosition}%` }}
+                    // Calculate bar heights
+                    const totalHeight = peakWeek > 0 ? (week.total / peakWeek) * maxHeight : 0;
+                    const nreHeight = peakWeek > 0 ? (week.nreTotal / peakWeek) * maxHeight : 0;
+                    const inventoryHeight = peakWeek > 0 ? (week.inventoryTotal / peakWeek) * maxHeight : 0;
+                    const opexHeight = peakWeek > 0 ? (week.opexTotal / peakWeek) * maxHeight : 0;
+                    
+                    // Stack from bottom
+                    const nreY = maxHeight - nreHeight;
+                    const inventoryY = nreY - inventoryHeight;
+                    const opexY = inventoryY - opexHeight;
+                    
+                    // Current date marker
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const weekStartDate = new Date(week.weekStart);
+                    const weekEndDate = new Date(week.weekEnd);
+                    const isTodayInWeek = today >= weekStartDate && today <= weekEndDate;
+                    
+                    return (
+                      <g key={week.weekStart}>
+                        {/* Stacked bars */}
+                        {week.nreTotal > 0 && (
+                          <rect
+                            x={`${barX}%`}
+                            y={nreY}
+                            width={`${barWidth * 0.8}%`}
+                            height={nreHeight}
+                            fill="#16a34a"
+                            className="hover:opacity-80 cursor-pointer transition-opacity"
                           >
-                            <div className="absolute top-0 bottom-0 border-l-2 border-dashed border-blue-500 opacity-60" />
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap shadow-md">
-                              Today
-                            </div>
-                          </div>
+                            <title>
+                              {`Week of ${new Date(week.weekStart).toLocaleDateString()}\nNRE: $${week.nreTotal.toLocaleString()}`}
+                            </title>
+                          </rect>
+                        )}
+                        {week.inventoryTotal > 0 && (
+                          <rect
+                            x={`${barX}%`}
+                            y={inventoryY}
+                            width={`${barWidth * 0.8}%`}
+                            height={inventoryHeight}
+                            fill="#2563eb"
+                            className="hover:opacity-80 cursor-pointer transition-opacity"
+                          >
+                            <title>
+                              {`Week of ${new Date(week.weekStart).toLocaleDateString()}\nInventory: $${week.inventoryTotal.toLocaleString()}`}
+                            </title>
+                          </rect>
+                        )}
+                        {week.opexTotal > 0 && (
+                          <rect
+                            x={`${barX}%`}
+                            y={opexY}
+                            width={`${barWidth * 0.8}%`}
+                            height={opexHeight}
+                            fill="#9333ea"
+                            className="hover:opacity-80 cursor-pointer transition-opacity"
+                          >
+                            <title>
+                              {`Week of ${new Date(week.weekStart).toLocaleDateString()}\nOpEx: $${week.opexTotal.toLocaleString()}`}
+                            </title>
+                          </rect>
                         )}
                         
-                        {/* Week bubble */}
-                        <div
-                          className="absolute top-1/2 -translate-y-1/2 group"
-                          style={{ left: `${Math.max(5, Math.min(95, position))}%`, transform: 'translate(-50%, -50%)' }}
+                        {/* Today marker */}
+                        {showCurrentDateLine && isTodayInWeek && (
+                          <g>
+                            <line
+                              x1={`${barX + barWidth * 0.4}%`}
+                              y1="0"
+                              x2={`${barX + barWidth * 0.4}%`}
+                              y2={maxHeight}
+                              stroke="#3b82f6"
+                              strokeWidth="2"
+                              strokeDasharray="5,5"
+                              opacity="0.6"
+                            />
+                            {index === 0 && (
+                              <text
+                                x={`${barX + barWidth * 0.4}%`}
+                                y="-5"
+                                textAnchor="middle"
+                                fill="#3b82f6"
+                                fontSize="12"
+                                fontWeight="bold"
+                              >
+                                Today
+                              </text>
+                            )}
+                          </g>
+                        )}
+                        
+                        {/* Week label */}
+                        <text
+                          x={`${barX + barWidth * 0.4}%`}
+                          y={maxHeight + 20}
+                          textAnchor="middle"
+                          fill="#6b7280"
+                          fontSize="10"
                         >
-                          {/* Bubble */}
-                          <div className={`w-12 h-12 rounded-full ${getBubbleColor(week.total)} flex items-center justify-center text-white text-xs font-bold shadow-lg cursor-pointer transition-all hover:scale-110 relative z-20`}>
-                            ${(week.total / 1000).toFixed(0)}k
-                          </div>
-                          
-                          {/* Tooltip on hover */}
-                          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30">
-                            <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
-                              <div className="font-semibold">Week of {new Date(week.weekStart).toLocaleDateString()}</div>
-                              <div className="text-green-300">NRE: ${week.nreTotal.toLocaleString()}</div>
-                              <div className="text-blue-300">Inventory: ${week.inventoryTotal.toLocaleString()}</div>
-                              <div className="text-purple-300">OpEx: ${week.opexTotal.toLocaleString()}</div>
-                              <div className="text-yellow-300 font-bold mt-1 pt-1 border-t border-gray-700">
-                                Total: ${week.total.toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                          {new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  
+                  {/* Trailing Average Line */}
+                  {trailingAverages.length > 1 && (
+                    <g>
+                      {trailingAverages.map((avg, index) => {
+                        if (index === 0) return null;
+                        
+                        const prevAvg = trailingAverages[index - 1];
+                        const barWidth = 100 / weeklyData.length;
+                        const maxHeight = 350;
+                        
+                        const x1 = (index - 1) * barWidth + barWidth * 0.4;
+                        const y1 = maxHeight - (peakWeek > 0 ? (prevAvg.average / peakWeek) * maxHeight : 0);
+                        const x2 = index * barWidth + barWidth * 0.4;
+                        const y2 = maxHeight - (peakWeek > 0 ? (avg.average / peakWeek) * maxHeight : 0);
+                        
+                        const lineColor = getAvgLineColor(avg.average);
+                        
+                        return (
+                          <g key={`avg-${index}`}>
+                            <line
+                              x1={`${x1}%`}
+                              y1={y1}
+                              x2={`${x2}%`}
+                              y2={y2}
+                              stroke={lineColor}
+                              strokeWidth="3"
+                              className="transition-all"
+                            />
+                            {/* Data point circle */}
+                            <circle
+                              cx={`${x2}%`}
+                              cy={y2}
+                              r="4"
+                              fill={lineColor}
+                              className="hover:r-6 cursor-pointer transition-all"
+                            >
+                              <title>
+                                {`${avgPeriodWeeks}-week avg: $${avg.average.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                              </title>
+                            </circle>
+                          </g>
+                        );
+                      })}
+                    </g>
+                  )}
+                </svg>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -592,15 +757,27 @@ export default function CashFlowAnalysisPage() {
       {/* Expandable Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Payment Details by Week</CardTitle>
-          <p className="text-sm text-gray-600">Click to expand/collapse week details</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg sm:text-xl">Payment Details by Week</CardTitle>
+              <p className="text-sm text-gray-600">Click to expand/collapse week details</p>
+            </div>
+            <Button
+              onClick={() => setTableSortOrder(tableSortOrder === 'asc' ? 'desc' : 'asc')}
+              variant="outline"
+              size="sm"
+            >
+              <ArrowUpDown className="w-4 h-4 mr-2" />
+              {tableSortOrder === 'asc' ? 'Oldest First' : 'Newest First'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {weeklyData.length === 0 ? (
+          {sortedWeeklyData.length === 0 ? (
             <p className="text-center py-8 text-gray-500">No payment data available for selected date range</p>
           ) : (
             <div className="space-y-2">
-              {weeklyData.map((week) => {
+              {sortedWeeklyData.map((week) => {
                 const isExpanded = expandedWeeks.has(week.weekStart);
                 
                 return (
