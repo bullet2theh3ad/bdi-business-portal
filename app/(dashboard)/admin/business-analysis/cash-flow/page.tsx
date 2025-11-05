@@ -12,6 +12,7 @@ interface PaymentItem {
   category: 'NRE' | 'Inventory' | 'OpEx';
   source: string; // NRE number, Payment plan number, or OpEx category
   description: string;
+  project: string | null; // Project name (from NRE or Inventory)
   amount: number;
   date: string;
   isPaid: boolean;
@@ -39,6 +40,7 @@ export default function CashFlowAnalysisPage() {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'NRE' | 'Inventory' | 'OpEx'>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // Default to oldest first for cash flow
   const [tableSortOrder, setTableSortOrder] = useState<'asc' | 'desc'>('asc'); // Separate sort for table
   
@@ -83,6 +85,7 @@ export default function CashFlowAnalysisPage() {
                 category: 'NRE',
                 source: budget.nreReferenceNumber,
                 description: `${budget.projectName || 'No Project'} - ${budget.vendorName}`,
+                project: budget.projectName || null,
                 amount: parseFloat(item.amount),
                 date: item.paymentDate,
                 isPaid: item.isPaid || false,
@@ -104,6 +107,7 @@ export default function CashFlowAnalysisPage() {
                 category: 'Inventory',
                 source: plan.planNumber,
                 description: item.description || plan.name,
+                project: plan.name || null, // Use payment plan name as project
                 amount: parseFloat(item.amount),
                 date: item.paymentDate,
                 isPaid: item.isPaid || false,
@@ -182,6 +186,11 @@ export default function CashFlowAnalysisPage() {
       filtered = filtered.filter(payment => payment.category === categoryFilter);
     }
 
+    // Apply project filter
+    if (projectFilter !== 'all') {
+      filtered = filtered.filter(payment => payment.project === projectFilter);
+    }
+
     // Apply date range filter
     if (startDate && endDate) {
       filtered = filtered.filter(payment => 
@@ -193,6 +202,11 @@ export default function CashFlowAnalysisPage() {
   };
 
   const filteredPayments = getFilteredPayments();
+
+  // Get unique projects for filter dropdown
+  const uniqueProjects = Array.from(
+    new Set(allPayments.map(p => p.project).filter(Boolean) as string[])
+  ).sort();
 
   // Aggregate payments by week
   const aggregateByWeek = (): WeeklyAggregate[] => {
@@ -402,8 +416,8 @@ export default function CashFlowAnalysisPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Search and Category Filter */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Search, Category, and Project Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Search className="inline w-4 h-4 mr-1" />
@@ -429,6 +443,20 @@ export default function CashFlowAnalysisPage() {
                   <option value="NRE">NRE Only</option>
                   <option value="Inventory">Inventory Only</option>
                   <option value="OpEx">OpEx Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                <select
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-bdi-green-1"
+                >
+                  <option value="all">All Projects</option>
+                  {uniqueProjects.map(project => (
+                    <option key={project} value={project}>{project}</option>
+                  ))}
                 </select>
               </div>
             </div>
