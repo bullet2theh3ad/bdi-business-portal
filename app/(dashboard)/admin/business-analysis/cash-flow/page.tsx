@@ -107,7 +107,7 @@ export default function CashFlowAnalysisPage() {
                 category: 'Inventory',
                 source: plan.planNumber,
                 description: item.description || plan.name,
-                project: plan.project || null, // Use dedicated project field
+                project: item.project || null, // Use line item's project field
                 amount: parseFloat(item.amount),
                 date: item.paymentDate,
                 isPaid: item.isPaid || false,

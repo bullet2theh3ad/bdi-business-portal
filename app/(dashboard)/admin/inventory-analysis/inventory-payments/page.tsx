@@ -12,6 +12,7 @@ import { useDropzone } from 'react-dropzone';
 interface PaymentLineItem {
   id: string;
   description: string;
+  project: string; // Required: SKU/Project identifier (Q15, MQ15, MQ15-E, Other, etc.)
   amount: number;
   date: string;
   reference: string;
@@ -23,7 +24,6 @@ interface PaymentPlan {
   id: string;
   planNumber: string; // PAY-2025-001
   name: string;
-  project?: string | null; // Project identifier (Q15, MQ15, MQ15-E, etc.)
   lineItems: PaymentLineItem[];
   createdAt: string;
   status: 'draft' | 'active';
@@ -331,7 +331,6 @@ export default function InventoryPaymentsPage() {
       id: `plan-${Date.now()}`,
       planNumber: generatePlanNumber(),
       name: `Payment Plan ${paymentPlans.length + 1}`,
-      project: null,
       lineItems: [],
       createdAt: new Date().toISOString(),
       status: 'draft',
@@ -355,7 +354,6 @@ export default function InventoryPaymentsPage() {
       const payload = {
         planNumber: currentPlan.planNumber,
         name: currentPlan.name,
-        project: currentPlan.project || null,
         status: currentPlan.status,
         lineItems: currentPlan.lineItems,
       };
@@ -438,6 +436,7 @@ export default function InventoryPaymentsPage() {
     const newLine: PaymentLineItem = {
       id: `line-${Date.now()}`,
       description: '',
+      project: 'Other', // Default to 'Other'
       amount: 0,
       date: new Date().toISOString().split('T')[0],
       reference: '',
@@ -1218,28 +1217,14 @@ export default function InventoryPaymentsPage() {
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex-1">
                     <h1 className="text-xl sm:text-2xl font-bold mb-2">Edit Payment Plan: {currentPlan.planNumber}</h1>
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700 mb-1">Plan Name</Label>
-                        <Input
-                          value={currentPlan.name}
-                          onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
-                          className="w-full sm:max-w-md"
-                          placeholder="Plan name..."
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700 mb-1">Project (optional)</Label>
-                        <Input
-                          value={currentPlan.project || ''}
-                          onChange={(e) => setCurrentPlan({ ...currentPlan, project: e.target.value || null })}
-                          className="w-full sm:max-w-md"
-                          placeholder="e.g., Q15, MQ15, MQ15-E, etc."
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Helps track costs by project in Cash Flow analysis
-                        </p>
-                      </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 mb-1">Plan Name</Label>
+                      <Input
+                        value={currentPlan.name}
+                        onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
+                        className="w-full sm:max-w-md"
+                        placeholder="Plan name..."
+                      />
                     </div>
                   </div>
                   {/* Action Buttons - Stack on mobile, row on desktop */}
@@ -1361,8 +1346,9 @@ export default function InventoryPaymentsPage() {
                     <>
                       {/* Desktop Table View */}
                       <div className="hidden md:block space-y-2">
-                        <div className="grid grid-cols-12 gap-2 pb-2 border-b font-semibold text-sm text-gray-600">
+                        <div className="grid grid-cols-13 gap-2 pb-2 border-b font-semibold text-sm text-gray-600">
                           <div className="col-span-2">Description</div>
+                          <div className="col-span-1">Project/SKU</div>
                           <div className="col-span-2">Amount ($)</div>
                           <div className="col-span-2">Date</div>
                           <div className="col-span-2">Reference Type</div>
@@ -1372,13 +1358,22 @@ export default function InventoryPaymentsPage() {
                         </div>
 
                         {currentPlan.lineItems.map((line) => (
-                          <div key={line.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b">
+                          <div key={line.id} className="grid grid-cols-13 gap-2 items-center py-2 border-b">
                             <div className="col-span-2">
                               <Input
                                 value={line.description}
                                 onChange={(e) => updateLineItem(line.id, 'description', e.target.value)}
                                 placeholder="e.g., Deposit"
                                 className="h-9"
+                              />
+                            </div>
+                            <div className="col-span-1">
+                              <Input
+                                value={line.project}
+                                onChange={(e) => updateLineItem(line.id, 'project', e.target.value)}
+                                placeholder="Q15, Other"
+                                className="h-9"
+                                required
                               />
                             </div>
                             <div className="col-span-2">
@@ -1473,6 +1468,17 @@ export default function InventoryPaymentsPage() {
                                 >
                                   <Trash2 className="h-4 w-4 text-red-500" />
                                 </Button>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs text-gray-600 mb-1">Project/SKU *</Label>
+                                <Input
+                                  value={line.project}
+                                  onChange={(e) => updateLineItem(line.id, 'project', e.target.value)}
+                                  placeholder="Q15, MQ15, Other, etc."
+                                  className="h-10"
+                                  required
+                                />
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">

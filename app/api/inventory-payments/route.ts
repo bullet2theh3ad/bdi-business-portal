@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { planNumber, name, project, status, lineItems } = body;
+    const { planNumber, name, status, lineItems } = body;
 
     // Create the payment plan
     const [newPlan] = await db
@@ -129,7 +129,6 @@ export async function POST(request: Request) {
       .values({
         planNumber,
         name,
-        project: project || null,
         status: status || 'draft',
         createdBy: user.id,
         organizationId: orgMemberships.organization_uuid,
@@ -141,6 +140,7 @@ export async function POST(request: Request) {
       const lineItemsToInsert = lineItems.map((item: any) => ({
         paymentPlanId: newPlan.id,
         description: item.description,
+        project: item.project, // Required field
         amount: item.amount.toString(),
         paymentDate: item.date,
         reference: item.reference || '',

@@ -68,14 +68,13 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, project, status, lineItems } = body;
+    const { name, status, lineItems } = body;
 
     // Update the payment plan
     const [updatedPlan] = await db
       .update(inventoryPaymentPlans)
       .set({
         name,
-        project: project || null,
         status,
         updatedAt: new Date(),
       })
@@ -92,6 +91,7 @@ export async function PUT(
       const lineItemsToInsert = lineItems.map((item: any) => ({
         paymentPlanId: planId,
         description: item.description,
+        project: item.project, // Required field
         amount: item.amount.toString(),
         paymentDate: item.date,
         reference: item.reference || '',

@@ -1583,7 +1583,6 @@ export const inventoryPaymentPlans = pgTable('inventory_payment_plans', {
   id: serial('id').primaryKey(),
   planNumber: varchar('plan_number', { length: 50 }).notNull().unique(), // e.g., PAY-2025-001
   name: varchar('name', { length: 255 }).notNull(),
-  project: varchar('project', { length: 255 }), // Project identifier (Q15, MQ15, MQ15-E, etc.)
   status: paymentPlanStatusEnum('status').notNull().default('draft'),
   createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
@@ -1596,6 +1595,7 @@ export const inventoryPaymentLineItems = pgTable('inventory_payment_line_items',
   id: serial('id').primaryKey(),
   paymentPlanId: integer('payment_plan_id').notNull().references(() => inventoryPaymentPlans.id, { onDelete: 'cascade' }),
   description: text('description'),
+  project: varchar('project', { length: 255 }).notNull(), // SKU/Project identifier (Q15, MQ15, MQ15-E, Other, etc.)
   amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
   paymentDate: date('payment_date').notNull(),
   reference: varchar('reference', { length: 100 }), // PO number, Shipment number, or other reference
