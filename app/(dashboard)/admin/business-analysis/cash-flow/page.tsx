@@ -57,6 +57,10 @@ export default function CashFlowAnalysisPage() {
   // Expandable table state
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
 
+  // Hover state for tooltips
+  const [hoveredWeek, setHoveredWeek] = useState<WeeklyAggregate | null>(null);
+  const [hoveredAvg, setHoveredAvg] = useState<{ weekStart: string; average: number } | null>(null);
+
   // Load all payment data from both APIs
   useEffect(() => {
     loadAllPaymentData();
@@ -577,6 +581,42 @@ export default function CashFlowAnalysisPage() {
 
               {/* Chart Container */}
               <div className="relative" style={{ height: '400px' }}>
+                {/* Custom Tooltip */}
+                {hoveredWeek && (
+                  <div className="absolute z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none"
+                    style={{
+                      left: '50%',
+                      top: '20px',
+                      transform: 'translateX(-50%)',
+                    }}
+                  >
+                    <div className="font-semibold mb-1">
+                      Week of {new Date(hoveredWeek.weekStart).toLocaleDateString()}
+                    </div>
+                    <div className="text-green-300">NRE: ${hoveredWeek.nreTotal.toLocaleString()}</div>
+                    <div className="text-blue-300">Inventory: ${hoveredWeek.inventoryTotal.toLocaleString()}</div>
+                    <div className="text-purple-300">OpEx: ${hoveredWeek.opexTotal.toLocaleString()}</div>
+                    <div className="text-yellow-300 font-bold mt-1 pt-1 border-t border-gray-700">
+                      Total: ${hoveredWeek.total.toLocaleString()}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Average Line Tooltip */}
+                {hoveredAvg && (
+                  <div className="absolute z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none"
+                    style={{
+                      left: '50%',
+                      top: '60px',
+                      transform: 'translateX(-50%)',
+                    }}
+                  >
+                    <div className="font-semibold">
+                      {avgPeriodWeeks}-week avg: ${hoveredAvg.average.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                  </div>
+                )}
+                
                 <svg width="100%" height="100%" className="overflow-visible">
                   <defs>
                     <marker
@@ -625,11 +665,9 @@ export default function CashFlowAnalysisPage() {
                             height={nreHeight}
                             fill="#16a34a"
                             className="hover:opacity-80 cursor-pointer transition-opacity"
-                          >
-                            <title>
-                              {`Week of ${new Date(week.weekStart).toLocaleDateString()}\nNRE: $${week.nreTotal.toLocaleString()}`}
-                            </title>
-                          </rect>
+                            onMouseEnter={() => setHoveredWeek(week)}
+                            onMouseLeave={() => setHoveredWeek(null)}
+                          />
                         )}
                         {week.inventoryTotal > 0 && (
                           <rect
@@ -639,11 +677,9 @@ export default function CashFlowAnalysisPage() {
                             height={inventoryHeight}
                             fill="#2563eb"
                             className="hover:opacity-80 cursor-pointer transition-opacity"
-                          >
-                            <title>
-                              {`Week of ${new Date(week.weekStart).toLocaleDateString()}\nInventory: $${week.inventoryTotal.toLocaleString()}`}
-                            </title>
-                          </rect>
+                            onMouseEnter={() => setHoveredWeek(week)}
+                            onMouseLeave={() => setHoveredWeek(null)}
+                          />
                         )}
                         {week.opexTotal > 0 && (
                           <rect
@@ -653,11 +689,9 @@ export default function CashFlowAnalysisPage() {
                             height={opexHeight}
                             fill="#9333ea"
                             className="hover:opacity-80 cursor-pointer transition-opacity"
-                          >
-                            <title>
-                              {`Week of ${new Date(week.weekStart).toLocaleDateString()}\nOpEx: $${week.opexTotal.toLocaleString()}`}
-                            </title>
-                          </rect>
+                            onMouseEnter={() => setHoveredWeek(week)}
+                            onMouseLeave={() => setHoveredWeek(null)}
+                          />
                         )}
                         
                         {/* Today marker */}
@@ -673,18 +707,16 @@ export default function CashFlowAnalysisPage() {
                               strokeDasharray="5,5"
                               opacity="0.6"
                             />
-                            {index === 0 && (
-                              <text
-                                x={`${barX + barWidth * 0.4}%`}
-                                y="-5"
-                                textAnchor="middle"
-                                fill="#3b82f6"
-                                fontSize="12"
-                                fontWeight="bold"
-                              >
-                                Today
-                              </text>
-                            )}
+                            <text
+                              x={`${barX + barWidth * 0.4}%`}
+                              y="-5"
+                              textAnchor="middle"
+                              fill="#3b82f6"
+                              fontSize="12"
+                              fontWeight="bold"
+                            >
+                              Today
+                            </text>
                           </g>
                         )}
                         
@@ -737,11 +769,9 @@ export default function CashFlowAnalysisPage() {
                               r="4"
                               fill={lineColor}
                               className="hover:r-6 cursor-pointer transition-all"
-                            >
-                              <title>
-                                {`${avgPeriodWeeks}-week avg: $${avg.average.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                              </title>
-                            </circle>
+                              onMouseEnter={() => setHoveredAvg(avg)}
+                              onMouseLeave={() => setHoveredAvg(null)}
+                            />
                           </g>
                         );
                       })}
