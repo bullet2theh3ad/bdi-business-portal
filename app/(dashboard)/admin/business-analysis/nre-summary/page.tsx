@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Search, ArrowUpDown, Eye, EyeOff } from 'lucide-react';
+import { Calendar, Search, ArrowUpDown, Eye, EyeOff, Download } from 'lucide-react';
 
 interface NREPaymentLineItem {
   id: string;
@@ -192,6 +192,56 @@ export default function NRESummaryPage() {
     if (daysUntilDue === 0) return 'Due today';
     if (daysUntilDue <= 30) return `Due in ${daysUntilDue} days`;
     return 'Upcoming';
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = [
+      'NRE Reference',
+      'Project Name',
+      'Vendor',
+      'Payment Number',
+      'Payment Date',
+      'Amount',
+      'Status',
+      'Payment Status',
+      'Notes',
+    ];
+
+    // Create CSV rows from filtered budgets
+    const rows: string[][] = [];
+    filteredBudgets.forEach(budget => {
+      budget.paymentLineItems.forEach(payment => {
+        rows.push([
+          budget.nreReferenceNumber,
+          budget.projectName || 'N/A',
+          budget.vendorName,
+          payment.paymentNumber.toString(),
+          payment.paymentDate,
+          payment.amount.toFixed(2),
+          payment.isPaid ? 'Paid' : 'Unpaid',
+          budget.paymentStatus,
+          payment.notes || '',
+        ]);
+      });
+    });
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `nre-summary-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (isLoading) {

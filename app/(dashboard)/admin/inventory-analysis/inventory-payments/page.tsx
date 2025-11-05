@@ -55,6 +55,9 @@ export default function InventoryPaymentsPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   
+  // SKU list for dropdown
+  const [skus, setSkus] = useState<{ sku_code: string; sku_name: string }[]>([]);
+  
   // Search and sort state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
@@ -86,7 +89,21 @@ export default function InventoryPaymentsPage() {
   // Load payment plans from database on mount
   useEffect(() => {
     loadPaymentPlans();
+    loadSkus();
   }, []);
+
+  // Load SKUs from database
+  const loadSkus = async () => {
+    try {
+      const response = await fetch('/api/skus');
+      if (response.ok) {
+        const data = await response.json();
+        setSkus(data);
+      }
+    } catch (error) {
+      console.error('Failed to load SKUs:', error);
+    }
+  };
 
   const loadPaymentPlans = async () => {
     try {
@@ -1377,11 +1394,11 @@ export default function InventoryPaymentsPage() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Q15">Q15</SelectItem>
-                                  <SelectItem value="MQ15">MQ15</SelectItem>
-                                  <SelectItem value="MQ15-E">MQ15-E</SelectItem>
-                                  <SelectItem value="Q15-EU">Q15-EU</SelectItem>
-                                  <SelectItem value="Q15-ANZ">Q15-ANZ</SelectItem>
+                                  {skus.map(sku => (
+                                    <SelectItem key={sku.sku_code} value={sku.sku_code}>
+                                      {sku.sku_code} - {sku.sku_name}
+                                    </SelectItem>
+                                  ))}
                                   <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -1490,11 +1507,11 @@ export default function InventoryPaymentsPage() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="Q15">Q15</SelectItem>
-                                    <SelectItem value="MQ15">MQ15</SelectItem>
-                                    <SelectItem value="MQ15-E">MQ15-E</SelectItem>
-                                    <SelectItem value="Q15-EU">Q15-EU</SelectItem>
-                                    <SelectItem value="Q15-ANZ">Q15-ANZ</SelectItem>
+                                    {skus.map(sku => (
+                                      <SelectItem key={sku.sku_code} value={sku.sku_code}>
+                                        {sku.sku_code} - {sku.sku_name}
+                                      </SelectItem>
+                                    ))}
                                     <SelectItem value="Other">Other</SelectItem>
                                   </SelectContent>
                                 </Select>
