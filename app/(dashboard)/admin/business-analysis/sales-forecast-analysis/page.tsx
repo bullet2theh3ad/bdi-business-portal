@@ -176,6 +176,13 @@ export default function SalesForecastAnalysisPage() {
     a.weekStart.localeCompare(b.weekStart)
   ));
 
+  // Debug logging
+  console.log('📊 Sales Forecast Debug:');
+  console.log('Total forecasts:', forecasts.length);
+  console.log('Filtered forecasts:', filteredForecasts.length);
+  console.log('Weekly data:', weeklyData.length);
+  console.log('Weekly data sample:', weeklyData.slice(0, 3));
+
   // Calculate summary stats
   const totalQuantity = filteredForecasts.reduce((sum, f) => sum + f.quantity, 0);
   const avgWeeklyQuantity = weeklyData.length > 0 ? totalQuantity / weeklyData.length : 0;
@@ -413,6 +420,13 @@ export default function SalesForecastAnalysisPage() {
                       {weeklyData.map((week, idx) => {
                         const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity), 1);
                         const totalHeight = (week.totalQuantity / maxQty) * 100;
+                        
+                        console.log(`Week ${week.weekLabel}:`, {
+                          totalQuantity: week.totalQuantity,
+                          maxQty,
+                          totalHeight,
+                          skuBreakdown: week.skuBreakdown
+                        });
                         
                         // Get unique SKUs and assign colors
                         const allSkus = Array.from(new Set(
