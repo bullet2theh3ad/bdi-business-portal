@@ -1451,8 +1451,8 @@ export default function CashFlowRunwayPage() {
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-green-700 whitespace-nowrap">
-                        ${receiptsTotal.toLocaleString()}
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${receiptsTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(receiptsTotal).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1461,11 +1461,14 @@ export default function CashFlowRunwayPage() {
                 {/* Total Operating Cash Disbursements */}
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-red-700 whitespace-nowrap">Total Operating Cash Disbursements</td>
-                  {weeklyData.map((week) => (
-                    <td key={week.weekStart} className="text-right py-1.5 px-1 text-red-700 whitespace-nowrap">
-                      ${(week.nreTotal + week.inventoryTotal + week.mustPayTotal).toLocaleString()}
-                    </td>
-                  ))}
+                  {weeklyData.map((week) => {
+                    const total = week.nreTotal + week.inventoryTotal + week.mustPayTotal;
+                    return (
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${total >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(total).toLocaleString()}
+                      </td>
+                    );
+                  })}
                 </tr>
 
                 {/* Operating Cash Flow */}
@@ -1477,8 +1480,8 @@ export default function CashFlowRunwayPage() {
                       .reduce((sum, item) => sum + item.amount, 0);
                     const operatingCashFlow = receiptsTotal - (week.nreTotal + week.inventoryTotal + week.mustPayTotal);
                     return (
-                      <td key={week.weekStart} className="text-right py-1.5 px-1 font-bold text-blue-900 whitespace-nowrap">
-                        ${operatingCashFlow.toLocaleString()}
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 font-bold whitespace-nowrap ${operatingCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(operatingCashFlow).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1492,8 +1495,8 @@ export default function CashFlowRunwayPage() {
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-purple-700 whitespace-nowrap">
-                        ${fundingTotal.toLocaleString()}
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${fundingTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(fundingTotal).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1507,8 +1510,8 @@ export default function CashFlowRunwayPage() {
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-red-700 whitespace-nowrap">
-                        ${nonOpTotal.toLocaleString()}
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${nonOpTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(nonOpTotal).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1531,7 +1534,7 @@ export default function CashFlowRunwayPage() {
                     const netCashFlow = receiptsTotal - operatingTotal + fundingTotal - nonOpTotal;
                     return (
                       <td key={week.weekStart} className={`text-right py-1.5 px-1 font-semibold text-xs whitespace-nowrap ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                        ${netCashFlow.toLocaleString()}
+                        ${Math.round(netCashFlow).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1579,8 +1582,8 @@ export default function CashFlowRunwayPage() {
                     }
                     
                     return (
-                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-blue-700 whitespace-nowrap">
-                        ${beginningBalance.toLocaleString()}
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${beginningBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(beginningBalance).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1594,8 +1597,8 @@ export default function CashFlowRunwayPage() {
                       .filter(item => item.weekStart === week.weekStart && item.entryType === 'bank_reconciliation')
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-gray-700 whitespace-nowrap">
-                        ${bankRecon.toLocaleString()}
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${bankRecon >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${Math.round(bankRecon).toLocaleString()}
                       </td>
                     );
                   })}
@@ -1658,7 +1661,7 @@ export default function CashFlowRunwayPage() {
                     
                     return (
                       <td key={week.weekStart} className={`text-right py-1.5 px-1 font-semibold text-xs whitespace-nowrap ${endingBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                        ${endingBalance.toLocaleString()}
+                        ${Math.round(endingBalance).toLocaleString()}
                       </td>
                     );
                   })}

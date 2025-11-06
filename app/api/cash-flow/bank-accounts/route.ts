@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { db } from '@/lib/db';
+import { db } from '@/lib/db/drizzle';
 import { cashFlowBankAccounts } from '@/lib/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
@@ -34,21 +34,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organization ID required' }, { status: 400 });
     }
 
-    let query = db
-      .select()
-      .from(cashFlowBankAccounts)
-      .where(eq(cashFlowBankAccounts.organizationId, organizationId));
-
-    if (startDate && endDate) {
-      query = query.where(
-        and(
-          gte(cashFlowBankAccounts.weekStart, startDate),
-          lte(cashFlowBankAccounts.weekStart, endDate)
-        )
-      );
+    // Build conditions array
+    const conditions = [eq(cashFlowBankAccounts.organizationId, organizationId)];
+    
+    if (startDate) {
+      conditions.push(gte(cashFlowBankAccounts.weekStart, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(cashFlowBankAccounts.weekStart, endDate));
     }
 
-    const entries = await query;
+    const entries = await db
+      .select()
+      .from(cashFlowBankAccounts)
+      .where(and(...conditions));
 
     return NextResponse.json(entries);
   } catch (error) {
