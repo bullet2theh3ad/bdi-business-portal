@@ -1,0 +1,514 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+// Interfaces
+interface Forecast {
+  id: string;
+  skuId: string;
+  sku: {
+    skuCode: string;
+    name: string;
+  };
+  deliveryWeek: string; // ISO week format: 2025-W12
+  quantity: number;
+  salesSignal: 'unknown' | 'draft' | 'submitted' | 'confirmed' | 'rejected';
+  factorySignal: 'unknown' | 'reviewing' | 'confirmed' | 'rejected';
+  shippingSignal: 'unknown' | 'draft' | 'submitted' | 'confirmed' | 'rejected';
+  shippingPreference: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+interface WeeklyData {
+  weekStart: string; // ISO date: 2025-10-06
+  weekLabel: string; // Display: W40 2025
+  totalQuantity: number;
+  skuBreakdown: { [skuCode: string]: number };
+}
+
+export default function SalesForecastAnalysisPage() {
+  const router = useRouter();
+  
+  // Data state
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [skus, setSkus] = useState<any[]>([]);
+  const [organizationId, setOrganizationId] = useState<string>('');
+  
+  // UI state
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [selectedSKU, setSelectedSKU] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  
+  // Chart ref
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  // Initialize date range (13 weeks from today)
+  useEffect(() => {
+    const today = new Date();
+    const thirteenWeeksLater = new Date(today);
+    thirteenWeeksLater.setDate(today.getDate() + (13 * 7));
+    
+    setStartDate(today.toISOString().split('T')[0]);
+    setEndDate(thirteenWeeksLater.toISOString().split('T')[0]);
+  }, []);
+
+  // Fetch user data
+  useEffect(() => {
+    async function fetchUserData() {
+      try {
+        const response = await fetch('/api/user');
+        if (response.ok) {
+          const userData = await response.json();
+          const orgId = userData.organizations?.[0]?.organization?.id;
+          console.log('Organization ID:', orgId);
+          setOrganizationId(orgId);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      }
+    }
+    fetchUserData();
+  }, []);
+
+  // Fetch forecasts and SKUs
+  useEffect(() => {
+    if (!organizationId) return;
+    
+    async function loadData() {
+      try {
+        setLoading(true);
+        
+        // Fetch forecasts
+        const forecastsRes = await fetch('/api/cpfr/forecasts');
+        if (forecastsRes.ok) {
+          const forecastsData = await forecastsRes.json();
+          console.log('Forecasts loaded:', forecastsData.length);
+          setForecasts(forecastsData);
+        }
+        
+        // Fetch SKUs
+        const skusRes = await fetch('/api/admin/skus');
+        if (skusRes.ok) {
+          const skusData = await skusRes.json();
+          console.log('SKUs loaded:', skusData.length);
+          setSkus(skusData);
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, [organizationId]);
+
+  // Convert ISO week (2025-W12) to date
+  const isoWeekToDate = (isoWeek: string): Date => {
+    const [year, week] = isoWeek.split('-W').map(Number);
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay();
+    const ISOweekStart = simple;
+    if (dow <= 4)
+      ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    else
+      ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    return ISOweekStart;
+  };
+
+  // Filter forecasts
+  const filteredForecasts = forecasts.filter(f => {
+    if (!f.deliveryWeek) return false;
+    
+    const weekDate = isoWeekToDate(f.deliveryWeek);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (weekDate < start || weekDate > end) return false;
+    if (selectedSKU !== 'all' && f.sku?.skuCode !== selectedSKU) return false;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        f.sku?.skuCode?.toLowerCase().includes(query) ||
+        f.sku?.name?.toLowerCase().includes(query)
+      );
+    }
+    
+    return true;
+  });
+
+  // Aggregate forecasts by week
+  const weeklyData: WeeklyData[] = [];
+  const weekMap = new Map<string, WeeklyData>();
+
+  filteredForecasts.forEach(f => {
+    const weekDate = isoWeekToDate(f.deliveryWeek);
+    const weekStart = weekDate.toISOString().split('T')[0];
+    
+    if (!weekMap.has(weekStart)) {
+      weekMap.set(weekStart, {
+        weekStart,
+        weekLabel: f.deliveryWeek,
+        totalQuantity: 0,
+        skuBreakdown: {},
+      });
+    }
+    
+    const week = weekMap.get(weekStart)!;
+    week.totalQuantity += f.quantity;
+    
+    const skuCode = f.sku?.skuCode || 'Unknown';
+    week.skuBreakdown[skuCode] = (week.skuBreakdown[skuCode] || 0) + f.quantity;
+  });
+
+  weeklyData.push(...Array.from(weekMap.values()).sort((a, b) => 
+    a.weekStart.localeCompare(b.weekStart)
+  ));
+
+  // Calculate summary stats
+  const totalQuantity = filteredForecasts.reduce((sum, f) => sum + f.quantity, 0);
+  const avgWeeklyQuantity = weeklyData.length > 0 ? totalQuantity / weeklyData.length : 0;
+  const peakWeek = weeklyData.reduce((max, week) => 
+    week.totalQuantity > max.totalQuantity ? week : max, 
+    { totalQuantity: 0, weekLabel: '-', weekStart: '', skuBreakdown: {} }
+  );
+  const uniqueSKUs = new Set(filteredForecasts.map(f => f.sku?.skuCode)).size;
+
+  // Handle 13-week button
+  const handleThirteenWeeks = () => {
+    const today = new Date();
+    const thirteenWeeksLater = new Date(today);
+    thirteenWeeksLater.setDate(today.getDate() + (13 * 7));
+    
+    setStartDate(today.toISOString().split('T')[0]);
+    setEndDate(thirteenWeeksLater.toISOString().split('T')[0]);
+  };
+
+  // Handle reset to all
+  const handleResetToAll = () => {
+    if (forecasts.length === 0) return;
+    
+    const allWeeks = forecasts.map(f => isoWeekToDate(f.deliveryWeek));
+    const minDate = new Date(Math.min(...allWeeks.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...allWeeks.map(d => d.getTime())));
+    
+    setStartDate(minDate.toISOString().split('T')[0]);
+    setEndDate(maxDate.toISOString().split('T')[0]);
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['Week', 'SKU', 'Quantity', 'Sales Signal', 'Factory Signal', 'Shipping Signal'];
+    const rows = filteredForecasts.map(f => [
+      f.deliveryWeek,
+      f.sku?.skuCode || '',
+      f.quantity,
+      f.salesSignal,
+      f.factorySignal,
+      f.shippingSignal,
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales-forecast-${startDate}-to-${endDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading forecast data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-full mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={() => router.push('/admin/business-analysis')}
+            variant="ghost"
+            size="sm"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <LineChartIcon className="h-8 w-8 text-blue-600" />
+              Sales Forecast Analysis
+            </h1>
+            <p className="text-gray-600 mt-1">Timeline visualization of CPFR forecast data</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters & Controls */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Filters & Date Range</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Date Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+
+            {/* SKU Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+              <Select value={selectedSKU} onValueChange={setSelectedSKU}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All SKUs</SelectItem>
+                  {skus.map(sku => (
+                    <SelectItem key={sku.id} value={sku.skuCode}>
+                      {sku.skuCode} - {sku.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search SKU or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col justify-end gap-2">
+              <Button onClick={handleThirteenWeeks} variant="outline" size="sm">
+                <Calendar className="w-4 h-4 mr-2" />
+                13-Week
+              </Button>
+              <Button onClick={handleResetToAll} variant="outline" size="sm">
+                Reset to All
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Total Forecast</div>
+            <div className="text-2xl font-bold text-blue-600">{totalQuantity.toLocaleString()}</div>
+            <div className="text-xs text-gray-500">units</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Avg Weekly</div>
+            <div className="text-2xl font-bold text-green-600">{Math.round(avgWeeklyQuantity).toLocaleString()}</div>
+            <div className="text-xs text-gray-500">units/week</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Peak Week</div>
+            <div className="text-2xl font-bold text-orange-600">{peakWeek.totalQuantity.toLocaleString()}</div>
+            <div className="text-xs text-gray-500">{peakWeek.weekLabel}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">SKUs</div>
+            <div className="text-2xl font-bold text-purple-600">{uniqueSKUs}</div>
+            <div className="text-xs text-gray-500">unique products</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Chart Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              Weekly Forecast Timeline
+            </CardTitle>
+            <Button onClick={exportToCSV} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {weeklyData.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              No forecast data available for the selected period
+            </div>
+          ) : (
+            <div ref={chartRef} className="overflow-x-auto">
+              {/* Simple Bar Chart */}
+              <div className="min-w-[800px]">
+                <div className="flex items-end gap-2 h-64 border-b border-gray-200 pb-2">
+                  {weeklyData.map((week, idx) => {
+                    const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity));
+                    const height = (week.totalQuantity / maxQty) * 100;
+                    
+                    return (
+                      <div key={idx} className="flex-1 flex flex-col items-center group relative">
+                        <div
+                          className="w-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer rounded-t"
+                          style={{ height: `${height}%` }}
+                          title={`${week.weekLabel}: ${week.totalQuantity} units`}
+                        >
+                          {/* Tooltip on hover */}
+                          <div className="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-10">
+                            <div className="font-semibold">{week.weekLabel}</div>
+                            <div>{week.totalQuantity} units</div>
+                            <div className="mt-1 text-gray-300 text-xs">
+                              {Object.entries(week.skuBreakdown).slice(0, 3).map(([sku, qty]) => (
+                                <div key={sku}>{sku}: {qty}</div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-2 transform -rotate-45 origin-top-left whitespace-nowrap">
+                          {week.weekLabel}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Detailed Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Forecast Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left font-semibold">Week</th>
+                  <th className="px-4 py-2 text-left font-semibold">SKU</th>
+                  <th className="px-4 py-2 text-right font-semibold">Quantity</th>
+                  <th className="px-4 py-2 text-center font-semibold">Sales</th>
+                  <th className="px-4 py-2 text-center font-semibold">Factory</th>
+                  <th className="px-4 py-2 text-center font-semibold">Shipping</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredForecasts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      No forecasts match your filters
+                    </td>
+                  </tr>
+                ) : (
+                  filteredForecasts.slice(0, 100).map((forecast, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-2">{forecast.deliveryWeek}</td>
+                      <td className="px-4 py-2 font-mono text-xs">
+                        {forecast.sku?.skuCode || '-'}
+                      </td>
+                      <td className="px-4 py-2 text-right font-semibold">
+                        {forecast.quantity.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                          forecast.salesSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                          forecast.salesSignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {forecast.salesSignal}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                          forecast.factorySignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          forecast.factorySignal === 'reviewing' ? 'bg-yellow-100 text-yellow-800' :
+                          forecast.factorySignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {forecast.factorySignal}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                          forecast.shippingSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          forecast.shippingSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                          forecast.shippingSignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {forecast.shippingSignal}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            {filteredForecasts.length > 100 && (
+              <div className="text-center py-4 text-sm text-gray-500">
+                Showing first 100 of {filteredForecasts.length} forecasts
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+

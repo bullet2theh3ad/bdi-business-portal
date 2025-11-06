@@ -315,7 +315,10 @@ export default function BusinessAnalysisPage() {
           </Card>
 
           {/* Sales Forecast Analysis */}
-          <Card className="hover:shadow-lg transition-shadow border-t-4 border-t-blue-500">
+          <Card 
+            className="hover:shadow-lg transition-shadow border-t-4 border-t-blue-500 cursor-pointer"
+            onClick={() => router.push('/admin/business-analysis/sales-forecast-analysis')}
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <LineChartIcon className="h-5 w-5 text-blue-600" />
@@ -324,17 +327,17 @@ export default function BusinessAnalysisPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-600 mb-3">
-                Advanced forecasting using CPFR data, historical sales, seasonality patterns, and market trends.
+                Timeline visualization of CPFR forecast data, showing demand by SKU over weeks/months.
               </p>
               <ul className="text-xs text-gray-500 space-y-1">
-                <li>• Forecast accuracy tracking</li>
-                <li>• Variance analysis</li>
-                <li>• SKU-level predictions</li>
-                <li>• Customer demand patterns</li>
+                <li>• Weekly forecast timeline</li>
+                <li>• SKU-level filtering</li>
+                <li>• Quantity tracking by period</li>
+                <li>• Status & signal tracking</li>
               </ul>
               <div className="mt-4 pt-4 border-t">
-                <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
-                  Coming Soon
+                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                  Active
                 </span>
               </div>
             </CardContent>
