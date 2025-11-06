@@ -39,7 +39,7 @@ interface NonOpDisbursement {
 interface OperatingReceipt {
   id: string;
   weekStart: string;
-  receiptType: 'ar_aging' | 'ar_forecast';
+  receiptType: 'ar_aging' | 'ar_forecast' | 'other';
   description: string;
   amount: number;
   sourceReference?: string;
@@ -128,13 +128,15 @@ export default function CashFlowRunwayPage() {
     }
   }, [organizationId]);
 
-  // Set default 13-week range
+  // Set default 13-week range (-4 weeks to +16 weeks from today)
   useEffect(() => {
     const today = new Date();
     const start = new Date(today);
-    start.setDate(start.getDate() - (today.getDay() || 7)); // Monday of current week
-    const end = new Date(start);
-    end.setDate(end.getDate() + (13 * 7)); // 13 weeks forward
+    // Go to Monday of current week, then back 4 weeks
+    start.setDate(start.getDate() - (today.getDay() || 7) - (4 * 7));
+    const end = new Date(today);
+    // Go to Monday of current week, then forward 16 weeks, then to end of that week
+    end.setDate(end.getDate() - (today.getDay() || 7) + (16 * 7) + 6);
 
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
@@ -325,13 +327,15 @@ export default function CashFlowRunwayPage() {
     };
   });
 
-  // Set 13-week view
+  // Set 13-week view (-4 weeks to +16 weeks from today = 20 weeks total)
   const set13WeekView = () => {
     const today = new Date();
     const start = new Date(today);
-    start.setDate(start.getDate() - (today.getDay() || 7));
-    const end = new Date(start);
-    end.setDate(end.getDate() + (13 * 7));
+    // Go to Monday of current week, then back 4 weeks
+    start.setDate(start.getDate() - (today.getDay() || 7) - (4 * 7));
+    const end = new Date(today);
+    // Go to Monday of current week, then forward 16 weeks, then to end of that week
+    end.setDate(end.getDate() - (today.getDay() || 7) + (16 * 7) + 6);
 
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
@@ -794,6 +798,7 @@ export default function CashFlowRunwayPage() {
   const receiptTypeLabels = {
     'ar_aging': 'Customer Cash Receipts (A/R Aging)',
     'ar_forecast': 'Customer Forecasted Receipts (A/R Forecast)',
+    'other': 'Other',
   };
 
   if (isLoading) {
@@ -1259,13 +1264,13 @@ export default function CashFlowRunwayPage() {
           <p className="text-sm text-gray-600">Consolidated view of all cash inflows and outflows</p>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-4 px-4">
+            <table className={`w-full min-w-full ${weeklyData.length > 15 ? 'text-[10px]' : weeklyData.length > 10 ? 'text-xs' : 'text-sm'}`}>
               <thead>
                 <tr className="border-b-2 border-gray-300">
-                  <th className="text-left py-3 px-2 font-semibold">Week Starting</th>
+                  <th className="sticky left-0 z-10 bg-white text-left py-2 px-1 font-semibold whitespace-nowrap min-w-[140px]">Week Starting</th>
                   {weeklyData.map((week) => (
-                    <th key={week.weekStart} className="text-right py-3 px-2 font-semibold">
+                    <th key={week.weekStart} className="text-right py-2 px-1 font-semibold whitespace-nowrap">
                       {new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </th>
                   ))}
@@ -1274,13 +1279,13 @@ export default function CashFlowRunwayPage() {
               <tbody>
                 {/* Total Incoming Cash */}
                 <tr className="border-b border-gray-200">
-                  <td className="py-2 px-2 font-semibold text-green-700">Total Incoming Cash</td>
+                  <td className="sticky left-0 z-10 bg-white py-1.5 px-1 font-semibold text-green-700 whitespace-nowrap">Total Incoming Cash</td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-2 px-2 text-green-700">
+                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-green-700 whitespace-nowrap">
                         ${receiptsTotal.toLocaleString()}
                       </td>
                     );
@@ -1289,9 +1294,9 @@ export default function CashFlowRunwayPage() {
 
                 {/* Total Operating Cash Disbursements */}
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <td className="py-2 px-2 font-semibold text-red-700">Total Operating Cash Disbursements</td>
+                  <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-red-700 whitespace-nowrap">Total Operating Cash Disbursements</td>
                   {weeklyData.map((week) => (
-                    <td key={week.weekStart} className="text-right py-2 px-2 text-red-700">
+                    <td key={week.weekStart} className="text-right py-1.5 px-1 text-red-700 whitespace-nowrap">
                       ${(week.nreTotal + week.inventoryTotal + week.mustPayTotal).toLocaleString()}
                     </td>
                   ))}
@@ -1299,14 +1304,14 @@ export default function CashFlowRunwayPage() {
 
                 {/* Operating Cash Flow */}
                 <tr className="border-b-2 border-gray-300 bg-blue-50">
-                  <td className="py-2 px-2 font-bold text-blue-900">Operating Cash Flow</td>
+                  <td className="sticky left-0 z-10 bg-blue-50 py-1.5 px-1 font-bold text-blue-900 whitespace-nowrap">Operating Cash Flow</td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     const operatingCashFlow = receiptsTotal - (week.nreTotal + week.inventoryTotal + week.mustPayTotal);
                     return (
-                      <td key={week.weekStart} className="text-right py-2 px-2 font-bold text-blue-900">
+                      <td key={week.weekStart} className="text-right py-1.5 px-1 font-bold text-blue-900 whitespace-nowrap">
                         ${operatingCashFlow.toLocaleString()}
                       </td>
                     );
@@ -1315,13 +1320,13 @@ export default function CashFlowRunwayPage() {
 
                 {/* Funding Request Total */}
                 <tr className="border-b border-gray-200">
-                  <td className="py-2 px-2 font-semibold text-purple-700">Funding Request Total</td>
+                  <td className="sticky left-0 z-10 bg-white py-1.5 px-1 font-semibold text-purple-700 whitespace-nowrap">Funding Request Total</td>
                   {weeklyData.map((week) => {
                     const fundingTotal = fundingRequests
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-2 px-2 text-purple-700">
+                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-purple-700 whitespace-nowrap">
                         ${fundingTotal.toLocaleString()}
                       </td>
                     );
@@ -1330,13 +1335,13 @@ export default function CashFlowRunwayPage() {
 
                 {/* Cash Disbursements Total */}
                 <tr className="border-b-2 border-gray-300 bg-gray-50">
-                  <td className="py-2 px-2 font-semibold text-red-700">Cash Disbursements Total</td>
+                  <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-red-700 whitespace-nowrap">Cash Disbursements Total</td>
                   {weeklyData.map((week) => {
                     const nonOpTotal = nonOpDisbursements
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
                     return (
-                      <td key={week.weekStart} className="text-right py-2 px-2 text-red-700">
+                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-red-700 whitespace-nowrap">
                         ${nonOpTotal.toLocaleString()}
                       </td>
                     );
@@ -1345,7 +1350,7 @@ export default function CashFlowRunwayPage() {
 
                 {/* Net Cash Flow */}
                 <tr className="border-b-2 border-gray-400 bg-yellow-50">
-                  <td className="py-3 px-2 font-bold text-lg text-gray-900">Net Cash Flow</td>
+                  <td className="sticky left-0 z-10 bg-yellow-50 py-2 px-1 font-bold text-base text-gray-900 whitespace-nowrap">Net Cash Flow</td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
@@ -1359,7 +1364,7 @@ export default function CashFlowRunwayPage() {
                       .reduce((sum, item) => sum + item.amount, 0);
                     const netCashFlow = receiptsTotal - operatingTotal + fundingTotal - nonOpTotal;
                     return (
-                      <td key={week.weekStart} className={`text-right py-3 px-2 font-bold text-lg ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      <td key={week.weekStart} className={`text-right py-2 px-1 font-bold text-base whitespace-nowrap ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         ${netCashFlow.toLocaleString()}
                       </td>
                     );
