@@ -1833,6 +1833,40 @@ export const cashFlowBankAccountsRelations = relations(cashFlowBankAccounts, ({ 
 export type CashFlowBankAccount = typeof cashFlowBankAccounts.$inferSelect;
 export type NewCashFlowBankAccount = typeof cashFlowBankAccounts.$inferInsert;
 
+// ===== CASH FLOW OPERATING RECEIPTS =====
+export const operatingReceiptTypeEnum = pgEnum('operating_receipt_type', [
+  'ar_aging',
+  'ar_forecast',
+  'other'
+]);
+
+export const cashFlowOperatingReceipts = pgTable('cash_flow_operating_receipts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  weekStart: date('week_start').notNull(),
+  receiptType: operatingReceiptTypeEnum('receipt_type').notNull(),
+  description: text('description'),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  sourceReference: varchar('source_reference', { length: 255 }),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const cashFlowOperatingReceiptsRelations = relations(cashFlowOperatingReceipts, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [cashFlowOperatingReceipts.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [cashFlowOperatingReceipts.createdBy],
+    references: [users.authId],
+  }),
+}));
+
+export type CashFlowOperatingReceipt = typeof cashFlowOperatingReceipts.$inferSelect;
+export type NewCashFlowOperatingReceipt = typeof cashFlowOperatingReceipts.$inferInsert;
+
 // ===== SALES REPORTS =====
 export const salesReports = pgTable('sales_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
