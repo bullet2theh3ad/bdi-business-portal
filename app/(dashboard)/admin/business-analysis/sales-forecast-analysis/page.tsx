@@ -392,37 +392,116 @@ export default function SalesForecastAnalysisPage() {
             </div>
           ) : (
             <div ref={chartRef} className="overflow-x-auto">
-              {/* Simple Bar Chart */}
+              {/* Stacked Bar Chart */}
               <div className="min-w-[800px]">
-                <div className="flex items-end gap-2 h-64 border-b border-gray-200 pb-2">
-                  {weeklyData.map((week, idx) => {
-                    const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity));
-                    const height = (week.totalQuantity / maxQty) * 100;
-                    
-                    return (
-                      <div key={idx} className="flex-1 flex flex-col items-center group relative">
-                        <div
-                          className="w-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer rounded-t"
-                          style={{ height: `${height}%` }}
-                          title={`${week.weekLabel}: ${week.totalQuantity} units`}
-                        >
-                          {/* Tooltip on hover */}
-                          <div className="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-10">
-                            <div className="font-semibold">{week.weekLabel}</div>
-                            <div>{week.totalQuantity} units</div>
-                            <div className="mt-1 text-gray-300 text-xs">
-                              {Object.entries(week.skuBreakdown).slice(0, 3).map(([sku, qty]) => (
-                                <div key={sku}>{sku}: {qty}</div>
-                              ))}
+                {/* Y-axis labels */}
+                <div className="flex mb-2">
+                  <div className="w-16 flex flex-col justify-between text-xs text-gray-600 text-right pr-2 h-64">
+                    {(() => {
+                      const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity), 1);
+                      const steps = 5;
+                      return Array.from({ length: steps + 1 }, (_, i) => {
+                        const value = Math.round((maxQty / steps) * (steps - i));
+                        return <div key={i}>{value.toLocaleString()}</div>;
+                      });
+                    })()}
+                  </div>
+                  
+                  {/* Chart area */}
+                  <div className="flex-1">
+                    <div className="flex items-end gap-1 h-64 border-b border-l border-gray-300 pb-2 pl-2">
+                      {weeklyData.map((week, idx) => {
+                        const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity), 1);
+                        const totalHeight = (week.totalQuantity / maxQty) * 100;
+                        
+                        // Get unique SKUs and assign colors
+                        const allSkus = Array.from(new Set(
+                          filteredForecasts.map(f => f.sku?.skuCode).filter(Boolean)
+                        ));
+                        const skuColors: { [key: string]: string } = {};
+                        const colors = [
+                          '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                          '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'
+                        ];
+                        allSkus.forEach((sku, i) => {
+                          skuColors[sku] = colors[i % colors.length];
+                        });
+                        
+                        return (
+                          <div key={idx} className="flex-1 flex flex-col items-center group relative min-w-[40px]">
+                            {/* Stacked bar segments */}
+                            <div 
+                              className="w-full flex flex-col-reverse cursor-pointer rounded-t overflow-hidden"
+                              style={{ height: `${totalHeight}%`, minHeight: totalHeight > 0 ? '2px' : '0' }}
+                            >
+                              {Object.entries(week.skuBreakdown).map(([sku, qty]) => {
+                                const segmentHeight = (qty / week.totalQuantity) * 100;
+                                return (
+                                  <div
+                                    key={sku}
+                                    className="w-full hover:opacity-80 transition-opacity"
+                                    style={{
+                                      height: `${segmentHeight}%`,
+                                      backgroundColor: skuColors[sku] || '#6B7280',
+                                      minHeight: '1px'
+                                    }}
+                                    title={`${sku}: ${qty} units`}
+                                  />
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Tooltip on hover */}
+                            <div className="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-10 shadow-lg">
+                              <div className="font-semibold mb-1">{week.weekLabel}</div>
+                              <div className="font-bold text-blue-300 mb-2">{week.totalQuantity.toLocaleString()} units</div>
+                              <div className="border-t border-gray-700 pt-1 space-y-1">
+                                {Object.entries(week.skuBreakdown)
+                                  .sort((a, b) => b[1] - a[1])
+                                  .map(([sku, qty]) => (
+                                    <div key={sku} className="flex items-center gap-2">
+                                      <div 
+                                        className="w-2 h-2 rounded-full flex-shrink-0" 
+                                        style={{ backgroundColor: skuColors[sku] }}
+                                      />
+                                      <span>{sku}: {qty.toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                            
+                            {/* Week label */}
+                            <div className="text-xs text-gray-600 mt-2 transform -rotate-45 origin-top-left whitespace-nowrap">
+                              {week.weekLabel}
                             </div>
                           </div>
-                        </div>
-                        <div className="text-xs text-gray-600 mt-2 transform -rotate-45 origin-top-left whitespace-nowrap">
-                          {week.weekLabel}
-                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Legend */}
+                <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                  {(() => {
+                    const allSkus = Array.from(new Set(
+                      filteredForecasts.map(f => f.sku?.skuCode).filter(Boolean)
+                    ));
+                    const colors = [
+                      '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                      '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'
+                    ];
+                    
+                    return allSkus.map((sku, i) => (
+                      <div key={sku} className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded" 
+                          style={{ backgroundColor: colors[i % colors.length] }}
+                        />
+                        <span className="text-xs font-mono">{sku}</span>
                       </div>
-                    );
-                  })}
+                    ));
+                  })()}
                 </div>
               </div>
             </div>
