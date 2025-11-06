@@ -320,6 +320,11 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
             icon: 'dashboard',
           },
           {
+            title: 'Cash Flow Runway',
+            href: '/admin/business-analysis/cash-flow-runway',
+            icon: 'trending_up',
+          },
+          {
             title: 'SKU Financial Entry',
             href: '/admin/business-analysis/sku-financial-entry',
             icon: 'calculator',

@@ -285,6 +285,35 @@ export default function BusinessAnalysisPage() {
             </CardContent>
           </Card>
 
+          {/* Cash Flow Runway */}
+          <Card 
+            className="hover:shadow-lg transition-shadow border-t-4 border-t-teal-500 cursor-pointer"
+            onClick={() => router.push('/admin/business-analysis/cash-flow-runway')}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5 text-teal-600" />
+                Cash Flow Runway
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-3">
+                13-week cash flow runway calculator combining NRE, Inventory, and Must Pay expenses.
+              </p>
+              <ul className="text-xs text-gray-500 space-y-1">
+                <li>• Pulls real NRE & Inventory data</li>
+                <li>• Manual Must Pay entry (Labor, OpEx, R&D, etc.)</li>
+                <li>• Copy week-over-week</li>
+                <li>• Visualize total weekly outflows</li>
+              </ul>
+              <div className="mt-4 pt-4 border-t">
+                <span className="inline-block px-3 py-1 bg-teal-100 text-teal-800 text-xs font-semibold rounded-full">
+                  Testing
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Sales Forecast Analysis */}
           <Card className="hover:shadow-lg transition-shadow border-t-4 border-t-blue-500">
             <CardHeader>
