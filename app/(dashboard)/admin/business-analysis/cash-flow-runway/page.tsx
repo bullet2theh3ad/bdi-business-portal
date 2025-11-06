@@ -248,7 +248,7 @@ export default function CashFlowRunwayPage() {
         .filter(p => p.date >= weekStartStr && p.date <= weekEndStr)
         .reduce((sum, p) => sum + p.amount, 0);
 
-      // Must Pay total
+      // Operating total
       const mustPayTotal = mustPayItems
         .filter(item => item.weekStart === weekStartStr)
         .reduce((sum, item) => sum + item.amount, 0);
@@ -348,7 +348,7 @@ export default function CashFlowRunwayPage() {
       'Week End',
       'NRE Total',
       'Inventory Total',
-      'Must Pay Total',
+      'Operating Total',
       'Total Operating Outflows',
       'Funding Requests',
       'Non-Op Disbursements',
@@ -501,6 +501,92 @@ export default function CashFlowRunwayPage() {
     setMustPayItems([...mustPayItems, ...copiedItems]);
   };
 
+  // Funding Request CRUD functions
+  const saveFundingRequest = async (item: FundingRequest) => {
+    try {
+      const isNew = item.id.startsWith('funding-temp-');
+      const url = '/api/cash-flow/funding-requests';
+      const method = isNew ? 'POST' : 'PUT';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item,
+          organizationId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save funding request');
+      }
+
+      await loadAllData();
+      return true;
+    } catch (error) {
+      console.error('Error saving funding request:', error);
+      alert('Failed to save funding request');
+      return false;
+    }
+  };
+
+  const deleteFundingRequest = async (id: string) => {
+    if (!id || id.startsWith('funding-temp-')) {
+      setFundingRequests(items => items.filter(item => item.id !== id));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/cash-flow/funding-requests?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete funding request');
+      }
+
+      await loadAllData();
+    } catch (error) {
+      console.error('Error deleting funding request:', error);
+      alert('Failed to delete funding request');
+    }
+  };
+
+  const addFundingRequest = (weekStart: string) => {
+    const newItem: FundingRequest = {
+      id: `funding-temp-${Date.now()}`,
+      weekStart,
+      fundingType: 'lt_notes_payable',
+      description: '',
+      amount: 0,
+    };
+    setFundingRequests([...fundingRequests, newItem]);
+  };
+
+  const updateFundingRequest = (id: string, field: keyof FundingRequest, value: any) => {
+    setFundingRequests(items =>
+      items.map(item => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const copyFundingToNextWeek = (weekStart: string) => {
+    const weekItems = fundingRequests.filter(item => item.weekStart === weekStart);
+    if (weekItems.length === 0) return;
+
+    const currentDate = new Date(weekStart);
+    const nextWeekDate = new Date(currentDate);
+    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+    const nextWeekStart = nextWeekDate.toISOString().split('T')[0];
+
+    const copiedItems = weekItems.map(item => ({
+      ...item,
+      id: `funding-temp-${Date.now()}-${Math.random()}`,
+      weekStart: nextWeekStart,
+    }));
+
+    setFundingRequests([...fundingRequests, ...copiedItems]);
+  };
+
   const categoryLabels = {
     labor: 'Labor',
     opex: 'OpEx',
@@ -508,6 +594,12 @@ export default function CashFlowRunwayPage() {
     marketing: 'Marketing',
     cert: 'Cert',
     other: 'Other',
+  };
+
+  const fundingTypeLabels = {
+    'lt_notes_payable': 'TR Capital Funding (LT Notes Payable)',
+    'st_notes_payable': 'TR Cashflow Funding (ST Notes Payable)',
+    'other': 'Other Funding Request',
   };
 
   if (isLoading) {
@@ -526,7 +618,7 @@ export default function CashFlowRunwayPage() {
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Cash Flow Runway</h1>
         <p className="text-sm sm:text-base text-gray-600">
-          13-week cash flow projections with NRE, Inventory, and Must Pay expenses
+          13-week cash flow projections with NRE, Inventory, and Operating expenses
         </p>
       </div>
 
@@ -558,7 +650,7 @@ export default function CashFlowRunwayPage() {
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-bdi-green-1"
                 >
                   <option value="all">All Categories</option>
-                  <option value="must-pays">Must Pays</option>
+                  <option value="must-pays">Operating</option>
                   <option value="funding">Funding Requests</option>
                   <option value="non-op">Non-Op Disbursements</option>
                 </select>
@@ -681,7 +773,7 @@ export default function CashFlowRunwayPage() {
             <div className="text-2xl font-bold text-red-600">
               ${totalOutflows.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </div>
-            <p className="text-xs text-gray-500">NRE + Inventory + Must Pays</p>
+            <p className="text-xs text-gray-500">NRE + Inventory + Operating</p>
           </CardContent>
         </Card>
         <Card>
@@ -791,7 +883,7 @@ export default function CashFlowRunwayPage() {
                     </div>
                     <div className="text-green-300">NRE: ${hoveredWeek.nreTotal.toLocaleString()}</div>
                     <div className="text-blue-300">Inventory: ${hoveredWeek.inventoryTotal.toLocaleString()}</div>
-                    <div className="text-purple-300">Must Pays: ${hoveredWeek.mustPayTotal.toLocaleString()}</div>
+                    <div className="text-purple-300">Operating: ${hoveredWeek.mustPayTotal.toLocaleString()}</div>
                     <div className="text-yellow-300 font-bold mt-1 pt-1 border-t border-gray-700">
                       Total: ${hoveredWeek.total.toLocaleString()}
                     </div>
@@ -859,7 +951,7 @@ export default function CashFlowRunwayPage() {
                           onMouseEnter={() => setHoveredWeek(week)}
                           onMouseLeave={() => setHoveredWeek(null)}
                         />
-                        {/* Must Pay Bar */}
+                        {/* Operating Bar */}
                         <rect
                           x={`${barX + barWidth * 0.1}%`}
                           y={maxHeight - nreHeight - invHeight - mustPayHeight}
@@ -966,17 +1058,19 @@ export default function CashFlowRunwayPage() {
         </Card>
       )}
 
-      {/* Must Pay Entry Section */}
+      {/* Operating Cash Disbursements Entry Section */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Must Pay Items (Manual Entry)</CardTitle>
-          <p className="text-sm text-gray-600">Add labor, OpEx, R&D, marketing, cert, and other expenses by week</p>
+          <CardTitle className="text-lg sm:text-xl">Operating Cash Disbursements</CardTitle>
+          <p className="text-sm text-gray-600">Add labor, OpEx, R&D, marketing, cert, and other operating expenses by week</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             {weeklyData.map((week) => {
               const weekItems = mustPayItems.filter(item => item.weekStart === week.weekStart);
               const weekTotal = weekItems.reduce((sum, item) => sum + item.amount, 0);
+              const weekFunding = fundingRequests.filter(item => item.weekStart === week.weekStart);
+              const fundingTotal = weekFunding.reduce((sum, item) => sum + item.amount, 0);
 
               return (
                 <div key={week.weekStart} className="border rounded-lg p-4">
@@ -988,7 +1082,8 @@ export default function CashFlowRunwayPage() {
                       <p className="text-sm text-gray-600">
                         NRE: ${week.nreTotal.toLocaleString()} | 
                         Inventory: ${week.inventoryTotal.toLocaleString()} | 
-                        Must Pays: ${weekTotal.toLocaleString()}
+                        Operating: ${weekTotal.toLocaleString()} |
+                        Funding: ${fundingTotal.toLocaleString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -1062,6 +1157,83 @@ export default function CashFlowRunwayPage() {
                       ))}
                     </div>
                   )}
+
+                  {/* Funding Request Section */}
+                  <div className="mt-6 pt-6 border-t">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-purple-700">Funding Requests</h4>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => addFundingRequest(week.weekStart)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Funding
+                        </Button>
+                        {weekFunding.length > 0 && (
+                          <Button
+                            onClick={() => copyFundingToNextWeek(week.weekStart)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Next Week
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {weekFunding.length > 0 && (
+                      <div className="space-y-2">
+                        {weekFunding.map(item => (
+                          <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                            <div className="col-span-3">
+                              <Select
+                                value={item.fundingType}
+                                onValueChange={(value) => updateFundingRequest(item.id, 'fundingType', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(fundingTypeLabels).map(([key, label]) => (
+                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="col-span-5">
+                              <Input
+                                placeholder="Description / Notes"
+                                value={item.description}
+                                onChange={(e) => updateFundingRequest(item.id, 'description', e.target.value)}
+                                onBlur={() => saveFundingRequest(item)}
+                              />
+                            </div>
+                            <div className="col-span-3">
+                              <Input
+                                type="number"
+                                placeholder="Amount"
+                                value={item.amount || ''}
+                                onChange={(e) => updateFundingRequest(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                                onBlur={() => saveFundingRequest(item)}
+                              />
+                            </div>
+                            <div className="col-span-1">
+                              <Button
+                                onClick={() => deleteFundingRequest(item.id)}
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
