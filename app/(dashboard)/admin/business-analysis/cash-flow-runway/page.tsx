@@ -36,6 +36,15 @@ interface NonOpDisbursement {
   sourceReference?: string;
 }
 
+interface OperatingReceipt {
+  id: string;
+  weekStart: string;
+  receiptType: 'ar_aging' | 'ar_forecast';
+  description: string;
+  amount: number;
+  sourceReference?: string;
+}
+
 interface BankBalance {
   id: string;
   weekStart: string;
@@ -66,6 +75,7 @@ export default function CashFlowRunwayPage() {
   const [nrePayments, setNrePayments] = useState<any[]>([]);
   const [inventoryPayments, setInventoryPayments] = useState<any[]>([]);
   const [mustPayItems, setMustPayItems] = useState<MustPayItem[]>([]);
+  const [operatingReceipts, setOperatingReceipts] = useState<OperatingReceipt[]>([]);
   const [fundingRequests, setFundingRequests] = useState<FundingRequest[]>([]);
   const [nonOpDisbursements, setNonOpDisbursements] = useState<NonOpDisbursement[]>([]);
   const [bankBalances, setBankBalances] = useState<BankBalance[]>([]);
@@ -673,6 +683,92 @@ export default function CashFlowRunwayPage() {
     setNonOpDisbursements([...nonOpDisbursements, ...copiedItems]);
   };
 
+  // Operating Receipts CRUD functions
+  const saveOperatingReceipt = async (item: OperatingReceipt) => {
+    try {
+      const isNew = item.id.startsWith('receipt-temp-');
+      const url = '/api/cash-flow/operating-receipts';
+      const method = isNew ? 'POST' : 'PUT';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item,
+          organizationId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save operating receipt');
+      }
+
+      await loadAllData();
+      return true;
+    } catch (error) {
+      console.error('Error saving operating receipt:', error);
+      alert('Failed to save operating receipt');
+      return false;
+    }
+  };
+
+  const deleteOperatingReceipt = async (id: string) => {
+    if (!id || id.startsWith('receipt-temp-')) {
+      setOperatingReceipts(items => items.filter(item => item.id !== id));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/cash-flow/operating-receipts?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete operating receipt');
+      }
+
+      await loadAllData();
+    } catch (error) {
+      console.error('Error deleting operating receipt:', error);
+      alert('Failed to delete operating receipt');
+    }
+  };
+
+  const addOperatingReceipt = (weekStart: string) => {
+    const newItem: OperatingReceipt = {
+      id: `receipt-temp-${Date.now()}`,
+      weekStart,
+      receiptType: 'ar_aging',
+      description: '',
+      amount: 0,
+    };
+    setOperatingReceipts([...operatingReceipts, newItem]);
+  };
+
+  const updateOperatingReceipt = (id: string, field: keyof OperatingReceipt, value: any) => {
+    setOperatingReceipts(items =>
+      items.map(item => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const copyReceiptsToNextWeek = (weekStart: string) => {
+    const weekItems = operatingReceipts.filter(item => item.weekStart === weekStart);
+    if (weekItems.length === 0) return;
+
+    const currentDate = new Date(weekStart);
+    const nextWeekDate = new Date(currentDate);
+    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+    const nextWeekStart = nextWeekDate.toISOString().split('T')[0];
+
+    const copiedItems = weekItems.map(item => ({
+      ...item,
+      id: `receipt-temp-${Date.now()}-${Math.random()}`,
+      weekStart: nextWeekStart,
+    }));
+
+    setOperatingReceipts([...operatingReceipts, ...copiedItems]);
+  };
+
   const categoryLabels = {
     labor: 'Labor',
     opex: 'OpEx',
@@ -693,6 +789,11 @@ export default function CashFlowRunwayPage() {
     'interest_payments': 'TR Interest Payments',
     'distributions': 'TR Distributions',
     'other': 'Other',
+  };
+
+  const receiptTypeLabels = {
+    'ar_aging': 'Customer Cash Receipts (A/R Aging)',
+    'ar_forecast': 'Customer Forecasted Receipts (A/R Forecast)',
   };
 
   if (isLoading) {
@@ -1174,11 +1275,16 @@ export default function CashFlowRunwayPage() {
                 {/* Total Incoming Cash */}
                 <tr className="border-b border-gray-200">
                   <td className="py-2 px-2 font-semibold text-green-700">Total Incoming Cash</td>
-                  {weeklyData.map((week) => (
-                    <td key={week.weekStart} className="text-right py-2 px-2 text-green-700">
-                      ${(0).toLocaleString()}
-                    </td>
-                  ))}
+                  {weeklyData.map((week) => {
+                    const receiptsTotal = operatingReceipts
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    return (
+                      <td key={week.weekStart} className="text-right py-2 px-2 text-green-700">
+                        ${receiptsTotal.toLocaleString()}
+                      </td>
+                    );
+                  })}
                 </tr>
 
                 {/* Total Operating Cash Disbursements */}
@@ -1195,7 +1301,10 @@ export default function CashFlowRunwayPage() {
                 <tr className="border-b-2 border-gray-300 bg-blue-50">
                   <td className="py-2 px-2 font-bold text-blue-900">Operating Cash Flow</td>
                   {weeklyData.map((week) => {
-                    const operatingCashFlow = 0 - (week.nreTotal + week.inventoryTotal + week.mustPayTotal);
+                    const receiptsTotal = operatingReceipts
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    const operatingCashFlow = receiptsTotal - (week.nreTotal + week.inventoryTotal + week.mustPayTotal);
                     return (
                       <td key={week.weekStart} className="text-right py-2 px-2 font-bold text-blue-900">
                         ${operatingCashFlow.toLocaleString()}
@@ -1238,6 +1347,9 @@ export default function CashFlowRunwayPage() {
                 <tr className="border-b-2 border-gray-400 bg-yellow-50">
                   <td className="py-3 px-2 font-bold text-lg text-gray-900">Net Cash Flow</td>
                   {weeklyData.map((week) => {
+                    const receiptsTotal = operatingReceipts
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
                     const operatingTotal = week.nreTotal + week.inventoryTotal + week.mustPayTotal;
                     const fundingTotal = fundingRequests
                       .filter(item => item.weekStart === week.weekStart)
@@ -1245,7 +1357,7 @@ export default function CashFlowRunwayPage() {
                     const nonOpTotal = nonOpDisbursements
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
-                    const netCashFlow = 0 - operatingTotal + fundingTotal - nonOpTotal;
+                    const netCashFlow = receiptsTotal - operatingTotal + fundingTotal - nonOpTotal;
                     return (
                       <td key={week.weekStart} className={`text-right py-3 px-2 font-bold text-lg ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         ${netCashFlow.toLocaleString()}
@@ -1259,17 +1371,19 @@ export default function CashFlowRunwayPage() {
         </CardContent>
       </Card>
 
-      {/* Operating Cash Disbursements Entry Section */}
+      {/* Weekly Entry Sections */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Operating Cash Disbursements</CardTitle>
-          <p className="text-sm text-gray-600">Add labor, OpEx, R&D, marketing, cert, and other operating expenses by week</p>
+          <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow Entry</CardTitle>
+          <p className="text-sm text-gray-600">Enter all cash receipts and disbursements by week</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             {weeklyData.map((week) => {
               const weekItems = mustPayItems.filter(item => item.weekStart === week.weekStart);
               const weekTotal = weekItems.reduce((sum, item) => sum + item.amount, 0);
+              const weekReceipts = operatingReceipts.filter(item => item.weekStart === week.weekStart);
+              const receiptsTotal = weekReceipts.reduce((sum, item) => sum + item.amount, 0);
               const weekFunding = fundingRequests.filter(item => item.weekStart === week.weekStart);
               const fundingTotal = weekFunding.reduce((sum, item) => sum + item.amount, 0);
               const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
@@ -1290,27 +1404,110 @@ export default function CashFlowRunwayPage() {
                         Cash Disb.: ${nonOpTotal.toLocaleString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => addMustPayItem(week.weekStart)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Item
-                      </Button>
-                      {weekItems.length > 0 && (
+                  </div>
+
+                  {/* Operating Cash Receipts Section */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-green-700">Operating Cash Receipts</h4>
+                      <div className="flex gap-2">
                         <Button
-                          onClick={() => copyToNextWeek(week.weekStart)}
+                          onClick={() => addOperatingReceipt(week.weekStart)}
                           variant="outline"
                           size="sm"
                         >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy to Next Week
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Receipt
                         </Button>
-                      )}
+                        {weekReceipts.length > 0 && (
+                          <Button
+                            onClick={() => copyReceiptsToNextWeek(week.weekStart)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Next Week
+                          </Button>
+                        )}
+                      </div>
                     </div>
+
+                    {weekReceipts.length > 0 && (
+                      <div className="space-y-2">
+                        {weekReceipts.map(item => (
+                          <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                            <div className="col-span-3">
+                              <Select
+                                value={item.receiptType}
+                                onValueChange={(value) => updateOperatingReceipt(item.id, 'receiptType', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(receiptTypeLabels).map(([key, label]) => (
+                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="col-span-5">
+                              <Input
+                                placeholder="Description"
+                                value={item.description}
+                                onChange={(e) => updateOperatingReceipt(item.id, 'description', e.target.value)}
+                                onBlur={() => saveOperatingReceipt(item)}
+                              />
+                            </div>
+                            <div className="col-span-3">
+                              <Input
+                                type="number"
+                                placeholder="Amount"
+                                value={item.amount || ''}
+                                onChange={(e) => updateOperatingReceipt(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                                onBlur={() => saveOperatingReceipt(item)}
+                              />
+                            </div>
+                            <div className="col-span-1">
+                              <Button
+                                onClick={() => deleteOperatingReceipt(item.id)}
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Weekly Operating Section */}
+                  <div className="mb-6 pt-6 border-t">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold">Weekly Operating</h4>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => addMustPayItem(week.weekStart)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Item
+                        </Button>
+                        {weekItems.length > 0 && (
+                          <Button
+                            onClick={() => copyToNextWeek(week.weekStart)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Next Week
+                          </Button>
+                        )}
+                      </div>
+                    </div>
 
                   {weekItems.length > 0 && (
                     <div className="space-y-2">
@@ -1361,6 +1558,7 @@ export default function CashFlowRunwayPage() {
                       ))}
                     </div>
                   )}
+                  </div>
 
                   {/* Funding Request Section */}
                   <div className="mt-6 pt-6 border-t">
