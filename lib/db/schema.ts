@@ -1702,6 +1702,103 @@ export const cashFlowMustPaysRelations = relations(cashFlowMustPays, ({ one }) =
 export type CashFlowMustPay = typeof cashFlowMustPays.$inferSelect;
 export type NewCashFlowMustPay = typeof cashFlowMustPays.$inferInsert;
 
+// ===== CASH FLOW FUNDING REQUESTS =====
+export const fundingRequestTypeEnum = pgEnum('funding_request_type', [
+  'lt_notes_payable',
+  'st_notes_payable',
+  'other'
+]);
+
+export const cashFlowFundingRequests = pgTable('cash_flow_funding_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  weekStart: date('week_start').notNull(),
+  fundingType: fundingRequestTypeEnum('funding_type').notNull(),
+  description: text('description'),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  isCalculated: boolean('is_calculated').default(false),
+  calculationNote: text('calculation_note'),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const cashFlowFundingRequestsRelations = relations(cashFlowFundingRequests, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [cashFlowFundingRequests.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [cashFlowFundingRequests.createdBy],
+    references: [users.authId],
+  }),
+}));
+
+export type CashFlowFundingRequest = typeof cashFlowFundingRequests.$inferSelect;
+export type NewCashFlowFundingRequest = typeof cashFlowFundingRequests.$inferInsert;
+
+// ===== CASH FLOW NON-OPERATING DISBURSEMENTS =====
+export const nonOperatingDisbursementTypeEnum = pgEnum('non_operating_disbursement_type', [
+  'notes_repayment',
+  'interest_payments',
+  'distributions',
+  'other'
+]);
+
+export const cashFlowNonOperatingDisbursements = pgTable('cash_flow_non_operating_disbursements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  weekStart: date('week_start').notNull(),
+  disbursementType: nonOperatingDisbursementTypeEnum('disbursement_type').notNull(),
+  description: text('description'),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  sourceReference: varchar('source_reference', { length: 255 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const cashFlowNonOperatingDisbursementsRelations = relations(cashFlowNonOperatingDisbursements, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [cashFlowNonOperatingDisbursements.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [cashFlowNonOperatingDisbursements.createdBy],
+    references: [users.authId],
+  }),
+}));
+
+export type CashFlowNonOperatingDisbursement = typeof cashFlowNonOperatingDisbursements.$inferSelect;
+export type NewCashFlowNonOperatingDisbursement = typeof cashFlowNonOperatingDisbursements.$inferInsert;
+
+// ===== CASH FLOW BANK BALANCES =====
+export const cashFlowBankBalances = pgTable('cash_flow_bank_balances', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  weekStart: date('week_start').notNull(),
+  beginningBalance: numeric('beginning_balance', { precision: 15, scale: 2 }).notNull(),
+  outstandingChecks: numeric('outstanding_checks', { precision: 15, scale: 2 }).default('0'),
+  notes: text('notes'),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const cashFlowBankBalancesRelations = relations(cashFlowBankBalances, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [cashFlowBankBalances.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [cashFlowBankBalances.createdBy],
+    references: [users.authId],
+  }),
+}));
+
+export type CashFlowBankBalance = typeof cashFlowBankBalances.$inferSelect;
+export type NewCashFlowBankBalance = typeof cashFlowBankBalances.$inferInsert;
+
 // ===== SALES REPORTS =====
 export const salesReports = pgTable('sales_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
