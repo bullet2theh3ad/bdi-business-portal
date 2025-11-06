@@ -1428,16 +1428,21 @@ export default function CashFlowRunwayPage() {
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow Summary</CardTitle>
           <p className="text-sm text-gray-600">Consolidated view of all cash inflows and outflows</p>
+          <p className="text-xs text-gray-500 mt-1 md:hidden">← Swipe to see all weeks →</p>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto -mx-4 px-4">
-            <table className={`w-full min-w-full ${weeklyData.length > 15 ? 'text-[10px]' : weeklyData.length > 10 ? 'text-xs' : 'text-sm'}`}>
+          <div className="overflow-x-auto -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <table className={`w-full min-w-full ${weeklyData.length > 15 ? 'text-[8px] md:text-[10px]' : weeklyData.length > 10 ? 'text-[9px] md:text-xs' : 'text-[10px] md:text-sm'}`}>
               <thead>
                 <tr className="border-b-2 border-gray-300">
-                  <th className="sticky left-0 z-10 bg-white text-left py-2 px-1 font-semibold whitespace-nowrap min-w-[140px]">Week Starting</th>
+                  <th className="sticky left-0 z-10 bg-white text-left py-1 md:py-2 px-0.5 md:px-1 font-semibold whitespace-nowrap min-w-[100px] md:min-w-[140px] text-[9px] md:text-sm shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                    <span className="hidden md:inline">Week Starting</span>
+                    <span className="md:hidden">Week</span>
+                  </th>
                   {weeklyData.map((week) => (
-                    <th key={week.weekStart} className="text-right py-2 px-1 font-semibold whitespace-nowrap">
-                      {new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    <th key={week.weekStart} className="text-right py-1 md:py-2 px-0.5 md:px-1 font-semibold whitespace-nowrap">
+                      <span className="hidden sm:inline">{new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <span className="sm:hidden">{new Date(week.weekStart).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }).replace('/', '/')}</span>
                     </th>
                   ))}
                 </tr>
@@ -1445,7 +1450,10 @@ export default function CashFlowRunwayPage() {
               <tbody>
                 {/* Total Incoming Cash */}
                 <tr className="border-b border-gray-200">
-                  <td className="sticky left-0 z-10 bg-white py-1.5 px-1 font-semibold text-green-700 whitespace-nowrap">Total Incoming Cash</td>
+                  <td className="sticky left-0 z-10 bg-white py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-green-700 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm">
+                    <span className="hidden lg:inline">Total Incoming Cash</span>
+                    <span className="lg:hidden">Incoming Cash</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
@@ -1460,7 +1468,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Total Operating Cash Disbursements */}
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-red-700 whitespace-nowrap">Total Operating Cash Disbursements</td>
+                  <td className="sticky left-0 z-10 bg-gray-50 py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-red-700 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm">
+                    <span className="hidden lg:inline">Total Operating Cash Disbursements</span>
+                    <span className="lg:hidden">Operating Disb.</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const total = week.nreTotal + week.inventoryTotal + week.mustPayTotal;
                     return (
@@ -1473,7 +1484,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Operating Cash Flow */}
                 <tr className="border-b-2 border-gray-300 bg-blue-50">
-                  <td className="sticky left-0 z-10 bg-blue-50 py-1.5 px-1 font-bold text-blue-900 whitespace-nowrap">Operating Cash Flow</td>
+                  <td className="sticky left-0 z-10 bg-blue-50 py-1 md:py-1.5 px-0.5 md:px-1 font-bold whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm text-blue-900">
+                    <span className="hidden lg:inline">Operating Cash Flow</span>
+                    <span className="lg:hidden">Operating CF</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
@@ -1489,7 +1503,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Funding Request Total */}
                 <tr className="border-b border-gray-200">
-                  <td className="sticky left-0 z-10 bg-white py-1.5 px-1 font-semibold text-purple-700 whitespace-nowrap">Funding Request Total</td>
+                  <td className="sticky left-0 z-10 bg-white py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-purple-700 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm">
+                    <span className="hidden lg:inline">Funding Request Total</span>
+                    <span className="lg:hidden">Funding</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const fundingTotal = fundingRequests
                       .filter(item => item.weekStart === week.weekStart)
@@ -1504,7 +1521,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Cash Disbursements Total */}
                 <tr className="border-b-2 border-gray-300 bg-gray-50">
-                  <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-red-700 whitespace-nowrap">Cash Disbursements Total</td>
+                  <td className="sticky left-0 z-10 bg-gray-50 py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-red-700 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm">
+                    <span className="hidden lg:inline">Cash Disbursements Total</span>
+                    <span className="lg:hidden">Cash Disb.</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const nonOpTotal = nonOpDisbursements
                       .filter(item => item.weekStart === week.weekStart)
@@ -1519,7 +1539,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Net Cash Flow */}
                 <tr className="border-b-2 border-gray-400 bg-yellow-50">
-                  <td className="sticky left-0 z-10 bg-yellow-50 py-1.5 px-1 font-semibold text-xs text-gray-900 whitespace-nowrap">Net Cash Flow</td>
+                  <td className="sticky left-0 z-10 bg-yellow-50 py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-gray-900 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-xs">
+                    <span className="hidden lg:inline">Net Cash Flow</span>
+                    <span className="lg:hidden">Net CF</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
@@ -1542,7 +1565,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Beginning Bank Balance */}
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-blue-700 whitespace-nowrap">Beginning Bank Balance</td>
+                  <td className="sticky left-0 z-10 bg-gray-50 py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-blue-700 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm">
+                    <span className="hidden lg:inline">Beginning Bank Balance</span>
+                    <span className="lg:hidden">Begin Balance</span>
+                  </td>
                   {weeklyData.map((week, weekIndex) => {
                     // First week: use beginning_balance entry
                     // Subsequent weeks: use previous week's ending balance
@@ -1591,7 +1617,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Bank Reconciliations */}
                 <tr className="border-b border-gray-200">
-                  <td className="sticky left-0 z-10 bg-white py-1.5 px-1 font-semibold text-gray-700 whitespace-nowrap">Bank Reconciliations</td>
+                  <td className="sticky left-0 z-10 bg-white py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-gray-700 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-sm">
+                    <span className="hidden lg:inline">Bank Reconciliations</span>
+                    <span className="lg:hidden">Bank Recon</span>
+                  </td>
                   {weeklyData.map((week) => {
                     const bankRecon = bankAccountEntries
                       .filter(item => item.weekStart === week.weekStart && item.entryType === 'bank_reconciliation')
@@ -1606,7 +1635,10 @@ export default function CashFlowRunwayPage() {
 
                 {/* Ending Book Balance */}
                 <tr className="border-b-2 border-gray-400 bg-green-50">
-                  <td className="sticky left-0 z-10 bg-green-50 py-1.5 px-1 font-semibold text-xs text-gray-900 whitespace-nowrap">Ending Book Balance</td>
+                  <td className="sticky left-0 z-10 bg-green-50 py-1 md:py-1.5 px-0.5 md:px-1 font-semibold text-gray-900 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9px] md:text-xs">
+                    <span className="hidden lg:inline">Ending Book Balance</span>
+                    <span className="lg:hidden">End Balance</span>
+                  </td>
                   {weeklyData.map((week, weekIndex) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
