@@ -1188,6 +1188,42 @@ export default function CashFlowRunwayPage() {
                           </g>
                         )}
 
+                        {/* Week 13 Marker Line */}
+                        {(() => {
+                          const today = new Date();
+                          const week13Date = new Date(today);
+                          week13Date.setDate(week13Date.getDate() + (13 * 7)); // 13 weeks from today
+                          const week13Start = new Date(week13Date);
+                          week13Start.setDate(week13Start.getDate() - (week13Start.getDay() || 7)); // Monday of that week
+                          const week13StartStr = week13Start.toISOString().split('T')[0];
+                          const isWeek13 = week.weekStart === week13StartStr;
+                          
+                          return showCurrentDateLine && isWeek13 && (
+                            <g>
+                              <line
+                                x1={`${barX + barWidth * 0.5}%`}
+                                y1="0"
+                                x2={`${barX + barWidth * 0.5}%`}
+                                y2={maxHeight}
+                                stroke="#10b981"
+                                strokeWidth="2"
+                                strokeDasharray="5,5"
+                                opacity="0.6"
+                              />
+                              <text
+                                x={`${barX + barWidth * 0.5}%`}
+                                y="-5"
+                                textAnchor="middle"
+                                fill="#10b981"
+                                fontSize="12"
+                                fontWeight="bold"
+                              >
+                                Week 13
+                              </text>
+                            </g>
+                          );
+                        })()}
+
                         {/* Week Label */}
                         <text
                           x={`${barX + barWidth * 0.5}%`}
