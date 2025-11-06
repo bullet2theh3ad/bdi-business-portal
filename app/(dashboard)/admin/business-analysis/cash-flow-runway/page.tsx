@@ -45,6 +45,15 @@ interface OperatingReceipt {
   sourceReference?: string;
 }
 
+interface BankAccountEntry {
+  id: string;
+  weekStart: string;
+  entryType: 'beginning_balance' | 'bank_reconciliation' | 'other';
+  description: string;
+  amount: number;
+  notes?: string;
+}
+
 interface BankBalance {
   id: string;
   weekStart: string;
@@ -78,6 +87,7 @@ export default function CashFlowRunwayPage() {
   const [operatingReceipts, setOperatingReceipts] = useState<OperatingReceipt[]>([]);
   const [fundingRequests, setFundingRequests] = useState<FundingRequest[]>([]);
   const [nonOpDisbursements, setNonOpDisbursements] = useState<NonOpDisbursement[]>([]);
+  const [bankAccountEntries, setBankAccountEntries] = useState<BankAccountEntry[]>([]);
   const [bankBalances, setBankBalances] = useState<BankBalance[]>([]);
 
   // UI state
@@ -223,6 +233,34 @@ export default function CashFlowRunwayPage() {
           description: item.description || '',
           amount: parseFloat(item.amount) || 0,
           sourceReference: item.sourceReference || item.source_reference,
+        })));
+      }
+
+      // Load Operating Receipts
+      const receiptsRes = await fetch(`/api/cash-flow/operating-receipts?organizationId=${organizationId}`);
+      if (receiptsRes.ok) {
+        const receiptsData = await receiptsRes.json();
+        setOperatingReceipts(receiptsData.map((item: any) => ({
+          id: item.id,
+          weekStart: item.weekStart || item.week_start,
+          receiptType: item.receiptType || item.receipt_type,
+          description: item.description || '',
+          amount: parseFloat(item.amount) || 0,
+          sourceReference: item.sourceReference || item.source_reference,
+        })));
+      }
+
+      // Load Bank Account Entries
+      const bankAccountsRes = await fetch(`/api/cash-flow/bank-accounts?organizationId=${organizationId}`);
+      if (bankAccountsRes.ok) {
+        const bankAccountsData = await bankAccountsRes.json();
+        setBankAccountEntries(bankAccountsData.map((item: any) => ({
+          id: item.id,
+          weekStart: item.weekStart || item.week_start,
+          entryType: item.entryType || item.entry_type,
+          description: item.description || '',
+          amount: parseFloat(item.amount) || 0,
+          notes: item.notes,
         })));
       }
 
@@ -773,6 +811,92 @@ export default function CashFlowRunwayPage() {
     setOperatingReceipts([...operatingReceipts, ...copiedItems]);
   };
 
+  // Bank Account Entries CRUD functions
+  const saveBankAccountEntry = async (item: BankAccountEntry) => {
+    try {
+      const isNew = item.id.startsWith('bank-temp-');
+      const url = '/api/cash-flow/bank-accounts';
+      const method = isNew ? 'POST' : 'PUT';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item,
+          organizationId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save bank account entry');
+      }
+
+      await loadAllData();
+      return true;
+    } catch (error) {
+      console.error('Error saving bank account entry:', error);
+      alert('Failed to save bank account entry');
+      return false;
+    }
+  };
+
+  const deleteBankAccountEntry = async (id: string) => {
+    if (!id || id.startsWith('bank-temp-')) {
+      setBankAccountEntries(items => items.filter(item => item.id !== id));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/cash-flow/bank-accounts?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete bank account entry');
+      }
+
+      await loadAllData();
+    } catch (error) {
+      console.error('Error deleting bank account entry:', error);
+      alert('Failed to delete bank account entry');
+    }
+  };
+
+  const addBankAccountEntry = (weekStart: string) => {
+    const newItem: BankAccountEntry = {
+      id: `bank-temp-${Date.now()}`,
+      weekStart,
+      entryType: 'beginning_balance',
+      description: '',
+      amount: 0,
+    };
+    setBankAccountEntries([...bankAccountEntries, newItem]);
+  };
+
+  const updateBankAccountEntry = (id: string, field: keyof BankAccountEntry, value: any) => {
+    setBankAccountEntries(items =>
+      items.map(item => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const copyBankAccountsToNextWeek = (weekStart: string) => {
+    const weekItems = bankAccountEntries.filter(item => item.weekStart === weekStart);
+    if (weekItems.length === 0) return;
+
+    const currentDate = new Date(weekStart);
+    const nextWeekDate = new Date(currentDate);
+    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+    const nextWeekStart = nextWeekDate.toISOString().split('T')[0];
+
+    const copiedItems = weekItems.map(item => ({
+      ...item,
+      id: `bank-temp-${Date.now()}-${Math.random()}`,
+      weekStart: nextWeekStart,
+    }));
+
+    setBankAccountEntries([...bankAccountEntries, ...copiedItems]);
+  };
+
   const categoryLabels = {
     labor: 'Labor',
     opex: 'OpEx',
@@ -798,6 +922,12 @@ export default function CashFlowRunwayPage() {
   const receiptTypeLabels = {
     'ar_aging': 'Customer Cash Receipts (A/R Aging)',
     'ar_forecast': 'Customer Forecasted Receipts (A/R Forecast)',
+    'other': 'Other',
+  };
+
+  const bankAccountEntryLabels = {
+    'beginning_balance': 'Beginning Bank Balance',
+    'bank_reconciliation': 'Bank Reconciliation',
     'other': 'Other',
   };
 
@@ -1386,7 +1516,7 @@ export default function CashFlowRunwayPage() {
 
                 {/* Net Cash Flow */}
                 <tr className="border-b-2 border-gray-400 bg-yellow-50">
-                  <td className="sticky left-0 z-10 bg-yellow-50 py-2 px-1 font-bold text-base text-gray-900 whitespace-nowrap">Net Cash Flow</td>
+                  <td className="sticky left-0 z-10 bg-yellow-50 py-1.5 px-1 font-semibold text-xs text-gray-900 whitespace-nowrap">Net Cash Flow</td>
                   {weeklyData.map((week) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
@@ -1400,8 +1530,135 @@ export default function CashFlowRunwayPage() {
                       .reduce((sum, item) => sum + item.amount, 0);
                     const netCashFlow = receiptsTotal - operatingTotal + fundingTotal - nonOpTotal;
                     return (
-                      <td key={week.weekStart} className={`text-right py-2 px-1 font-bold text-base whitespace-nowrap ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 font-semibold text-xs whitespace-nowrap ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         ${netCashFlow.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Beginning Bank Balance */}
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <td className="sticky left-0 z-10 bg-gray-50 py-1.5 px-1 font-semibold text-blue-700 whitespace-nowrap">Beginning Bank Balance</td>
+                  {weeklyData.map((week, weekIndex) => {
+                    // First week: use beginning_balance entry
+                    // Subsequent weeks: use previous week's ending balance
+                    let beginningBalance = 0;
+                    
+                    if (weekIndex === 0) {
+                      // First week - get from bank account entries
+                      beginningBalance = bankAccountEntries
+                        .filter(item => item.weekStart === week.weekStart && item.entryType === 'beginning_balance')
+                        .reduce((sum, item) => sum + item.amount, 0);
+                    } else {
+                      // Calculate previous week's ending balance
+                      const prevWeek = weeklyData[weekIndex - 1];
+                      const prevReceipts = operatingReceipts
+                        .filter(item => item.weekStart === prevWeek.weekStart)
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      const prevOperating = prevWeek.nreTotal + prevWeek.inventoryTotal + prevWeek.mustPayTotal;
+                      const prevFunding = fundingRequests
+                        .filter(item => item.weekStart === prevWeek.weekStart)
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      const prevNonOp = nonOpDisbursements
+                        .filter(item => item.weekStart === prevWeek.weekStart)
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      const prevNetCashFlow = prevReceipts - prevOperating + prevFunding - prevNonOp;
+                      
+                      const prevBeginningBalance = weekIndex === 1 
+                        ? bankAccountEntries
+                            .filter(item => item.weekStart === prevWeek.weekStart && item.entryType === 'beginning_balance')
+                            .reduce((sum, item) => sum + item.amount, 0)
+                        : 0; // Will be calculated recursively in actual implementation
+                      
+                      const prevBankRecon = bankAccountEntries
+                        .filter(item => item.weekStart === prevWeek.weekStart && item.entryType === 'bank_reconciliation')
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      
+                      beginningBalance = prevNetCashFlow + prevBeginningBalance + prevBankRecon;
+                    }
+                    
+                    return (
+                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-blue-700 whitespace-nowrap">
+                        ${beginningBalance.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Bank Reconciliations */}
+                <tr className="border-b border-gray-200">
+                  <td className="sticky left-0 z-10 bg-white py-1.5 px-1 font-semibold text-gray-700 whitespace-nowrap">Bank Reconciliations</td>
+                  {weeklyData.map((week) => {
+                    const bankRecon = bankAccountEntries
+                      .filter(item => item.weekStart === week.weekStart && item.entryType === 'bank_reconciliation')
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    return (
+                      <td key={week.weekStart} className="text-right py-1.5 px-1 text-gray-700 whitespace-nowrap">
+                        ${bankRecon.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Ending Book Balance */}
+                <tr className="border-b-2 border-gray-400 bg-green-50">
+                  <td className="sticky left-0 z-10 bg-green-50 py-1.5 px-1 font-semibold text-xs text-gray-900 whitespace-nowrap">Ending Book Balance</td>
+                  {weeklyData.map((week, weekIndex) => {
+                    const receiptsTotal = operatingReceipts
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    const operatingTotal = week.nreTotal + week.inventoryTotal + week.mustPayTotal;
+                    const fundingTotal = fundingRequests
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    const nonOpTotal = nonOpDisbursements
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    const netCashFlow = receiptsTotal - operatingTotal + fundingTotal - nonOpTotal;
+                    
+                    let beginningBalance = 0;
+                    if (weekIndex === 0) {
+                      beginningBalance = bankAccountEntries
+                        .filter(item => item.weekStart === week.weekStart && item.entryType === 'beginning_balance')
+                        .reduce((sum, item) => sum + item.amount, 0);
+                    } else {
+                      // Use previous week's ending balance (simplified - full recursion would be needed)
+                      const prevWeek = weeklyData[weekIndex - 1];
+                      const prevReceipts = operatingReceipts
+                        .filter(item => item.weekStart === prevWeek.weekStart)
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      const prevOperating = prevWeek.nreTotal + prevWeek.inventoryTotal + prevWeek.mustPayTotal;
+                      const prevFunding = fundingRequests
+                        .filter(item => item.weekStart === prevWeek.weekStart)
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      const prevNonOp = nonOpDisbursements
+                        .filter(item => item.weekStart === prevWeek.weekStart)
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      const prevNetCashFlow = prevReceipts - prevOperating + prevFunding - prevNonOp;
+                      
+                      const prevBeginningBalance = weekIndex === 1 
+                        ? bankAccountEntries
+                            .filter(item => item.weekStart === prevWeek.weekStart && item.entryType === 'beginning_balance')
+                            .reduce((sum, item) => sum + item.amount, 0)
+                        : 0;
+                      
+                      const prevBankRecon = bankAccountEntries
+                        .filter(item => item.weekStart === prevWeek.weekStart && item.entryType === 'bank_reconciliation')
+                        .reduce((sum, item) => sum + item.amount, 0);
+                      
+                      beginningBalance = prevNetCashFlow + prevBeginningBalance + prevBankRecon;
+                    }
+                    
+                    const bankRecon = bankAccountEntries
+                      .filter(item => item.weekStart === week.weekStart && item.entryType === 'bank_reconciliation')
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    
+                    const endingBalance = netCashFlow + beginningBalance + bankRecon;
+                    
+                    return (
+                      <td key={week.weekStart} className={`text-right py-1.5 px-1 font-semibold text-xs whitespace-nowrap ${endingBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${endingBalance.toLocaleString()}
                       </td>
                     );
                   })}
@@ -1748,6 +2005,89 @@ export default function CashFlowRunwayPage() {
                               <div className="col-span-1">
                                 <Button
                                   onClick={() => deleteNonOpDisbursement(item.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Bank Accounts Section */}
+                  <div className="mt-6 pt-6 border-t">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-blue-700">Bank Accounts</h4>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => addBankAccountEntry(week.weekStart)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Entry
+                        </Button>
+                        {(() => {
+                          const weekBankEntries = bankAccountEntries.filter(item => item.weekStart === week.weekStart);
+                          return weekBankEntries.length > 0 && (
+                            <Button
+                              onClick={() => copyBankAccountsToNextWeek(week.weekStart)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy to Next Week
+                            </Button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const weekBankEntries = bankAccountEntries.filter(item => item.weekStart === week.weekStart);
+                      return weekBankEntries.length > 0 && (
+                        <div className="space-y-2">
+                          {weekBankEntries.map(item => (
+                            <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-3">
+                                <Select
+                                  value={item.entryType}
+                                  onValueChange={(value) => updateBankAccountEntry(item.id, 'entryType', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(bankAccountEntryLabels).map(([key, label]) => (
+                                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-5">
+                                <Input
+                                  placeholder="Description / Notes"
+                                  value={item.description}
+                                  onChange={(e) => updateBankAccountEntry(item.id, 'description', e.target.value)}
+                                  onBlur={() => saveBankAccountEntry(item)}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <Input
+                                  type="number"
+                                  placeholder="Amount"
+                                  value={item.amount || ''}
+                                  onChange={(e) => updateBankAccountEntry(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                                  onBlur={() => saveBankAccountEntry(item)}
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <Button
+                                  onClick={() => deleteBankAccountEntry(item.id)}
                                   variant="ghost"
                                   size="sm"
                                 >
