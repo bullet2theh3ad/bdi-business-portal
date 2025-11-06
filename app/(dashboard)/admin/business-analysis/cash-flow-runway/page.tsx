@@ -587,6 +587,92 @@ export default function CashFlowRunwayPage() {
     setFundingRequests([...fundingRequests, ...copiedItems]);
   };
 
+  // Non-Operating Disbursements CRUD functions
+  const saveNonOpDisbursement = async (item: NonOpDisbursement) => {
+    try {
+      const isNew = item.id.startsWith('nonop-temp-');
+      const url = '/api/cash-flow/non-operating-disbursements';
+      const method = isNew ? 'POST' : 'PUT';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item,
+          organizationId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save cash disbursement');
+      }
+
+      await loadAllData();
+      return true;
+    } catch (error) {
+      console.error('Error saving cash disbursement:', error);
+      alert('Failed to save cash disbursement');
+      return false;
+    }
+  };
+
+  const deleteNonOpDisbursement = async (id: string) => {
+    if (!id || id.startsWith('nonop-temp-')) {
+      setNonOpDisbursements(items => items.filter(item => item.id !== id));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/cash-flow/non-operating-disbursements?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete cash disbursement');
+      }
+
+      await loadAllData();
+    } catch (error) {
+      console.error('Error deleting cash disbursement:', error);
+      alert('Failed to delete cash disbursement');
+    }
+  };
+
+  const addNonOpDisbursement = (weekStart: string) => {
+    const newItem: NonOpDisbursement = {
+      id: `nonop-temp-${Date.now()}`,
+      weekStart,
+      disbursementType: 'notes_repayment',
+      description: '',
+      amount: 0,
+    };
+    setNonOpDisbursements([...nonOpDisbursements, newItem]);
+  };
+
+  const updateNonOpDisbursement = (id: string, field: keyof NonOpDisbursement, value: any) => {
+    setNonOpDisbursements(items =>
+      items.map(item => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const copyNonOpToNextWeek = (weekStart: string) => {
+    const weekItems = nonOpDisbursements.filter(item => item.weekStart === weekStart);
+    if (weekItems.length === 0) return;
+
+    const currentDate = new Date(weekStart);
+    const nextWeekDate = new Date(currentDate);
+    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+    const nextWeekStart = nextWeekDate.toISOString().split('T')[0];
+
+    const copiedItems = weekItems.map(item => ({
+      ...item,
+      id: `nonop-temp-${Date.now()}-${Math.random()}`,
+      weekStart: nextWeekStart,
+    }));
+
+    setNonOpDisbursements([...nonOpDisbursements, ...copiedItems]);
+  };
+
   const categoryLabels = {
     labor: 'Labor',
     opex: 'OpEx',
@@ -600,6 +686,13 @@ export default function CashFlowRunwayPage() {
     'lt_notes_payable': 'TR Capital Funding (LT Notes Payable)',
     'st_notes_payable': 'TR Cashflow Funding (ST Notes Payable)',
     'other': 'Other Funding Request',
+  };
+
+  const disbursementTypeLabels = {
+    'notes_repayment': 'TR Notes Repayment',
+    'interest_payments': 'TR Interest Payments',
+    'distributions': 'TR Distributions',
+    'other': 'Other',
   };
 
   if (isLoading) {
@@ -1058,6 +1151,114 @@ export default function CashFlowRunwayPage() {
         </Card>
       )}
 
+      {/* Consolidated Weekly Summary Table */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg sm:text-xl">Weekly Cash Flow Summary</CardTitle>
+          <p className="text-sm text-gray-600">Consolidated view of all cash inflows and outflows</p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-3 px-2 font-semibold">Week Starting</th>
+                  {weeklyData.map((week) => (
+                    <th key={week.weekStart} className="text-right py-3 px-2 font-semibold">
+                      {new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Total Incoming Cash */}
+                <tr className="border-b border-gray-200">
+                  <td className="py-2 px-2 font-semibold text-green-700">Total Incoming Cash</td>
+                  {weeklyData.map((week) => (
+                    <td key={week.weekStart} className="text-right py-2 px-2 text-green-700">
+                      ${(0).toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Total Operating Cash Disbursements */}
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <td className="py-2 px-2 font-semibold text-red-700">Total Operating Cash Disbursements</td>
+                  {weeklyData.map((week) => (
+                    <td key={week.weekStart} className="text-right py-2 px-2 text-red-700">
+                      ${(week.nreTotal + week.inventoryTotal + week.mustPayTotal).toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Operating Cash Flow */}
+                <tr className="border-b-2 border-gray-300 bg-blue-50">
+                  <td className="py-2 px-2 font-bold text-blue-900">Operating Cash Flow</td>
+                  {weeklyData.map((week) => {
+                    const operatingCashFlow = 0 - (week.nreTotal + week.inventoryTotal + week.mustPayTotal);
+                    return (
+                      <td key={week.weekStart} className="text-right py-2 px-2 font-bold text-blue-900">
+                        ${operatingCashFlow.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Funding Request Total */}
+                <tr className="border-b border-gray-200">
+                  <td className="py-2 px-2 font-semibold text-purple-700">Funding Request Total</td>
+                  {weeklyData.map((week) => {
+                    const fundingTotal = fundingRequests
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    return (
+                      <td key={week.weekStart} className="text-right py-2 px-2 text-purple-700">
+                        ${fundingTotal.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Cash Disbursements Total */}
+                <tr className="border-b-2 border-gray-300 bg-gray-50">
+                  <td className="py-2 px-2 font-semibold text-red-700">Cash Disbursements Total</td>
+                  {weeklyData.map((week) => {
+                    const nonOpTotal = nonOpDisbursements
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    return (
+                      <td key={week.weekStart} className="text-right py-2 px-2 text-red-700">
+                        ${nonOpTotal.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Net Cash Flow */}
+                <tr className="border-b-2 border-gray-400 bg-yellow-50">
+                  <td className="py-3 px-2 font-bold text-lg text-gray-900">Net Cash Flow</td>
+                  {weeklyData.map((week) => {
+                    const operatingTotal = week.nreTotal + week.inventoryTotal + week.mustPayTotal;
+                    const fundingTotal = fundingRequests
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    const nonOpTotal = nonOpDisbursements
+                      .filter(item => item.weekStart === week.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    const netCashFlow = 0 - operatingTotal + fundingTotal - nonOpTotal;
+                    return (
+                      <td key={week.weekStart} className={`text-right py-3 px-2 font-bold text-lg ${netCashFlow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        ${netCashFlow.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Operating Cash Disbursements Entry Section */}
       <Card className="mb-6">
         <CardHeader>
@@ -1071,6 +1272,8 @@ export default function CashFlowRunwayPage() {
               const weekTotal = weekItems.reduce((sum, item) => sum + item.amount, 0);
               const weekFunding = fundingRequests.filter(item => item.weekStart === week.weekStart);
               const fundingTotal = weekFunding.reduce((sum, item) => sum + item.amount, 0);
+              const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
+              const nonOpTotal = weekNonOp.reduce((sum, item) => sum + item.amount, 0);
 
               return (
                 <div key={week.weekStart} className="border rounded-lg p-4">
@@ -1082,8 +1285,9 @@ export default function CashFlowRunwayPage() {
                       <p className="text-sm text-gray-600">
                         NRE: ${week.nreTotal.toLocaleString()} | 
                         Inventory: ${week.inventoryTotal.toLocaleString()} | 
-                        Operating: ${weekTotal.toLocaleString()} |
-                        Funding: ${fundingTotal.toLocaleString()}
+                        Operating: ${weekTotal.toLocaleString()} | 
+                        Funding: ${fundingTotal.toLocaleString()} | 
+                        Cash Disb.: ${nonOpTotal.toLocaleString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -1233,6 +1437,89 @@ export default function CashFlowRunwayPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* Cash Disbursements Section */}
+                  <div className="mt-6 pt-6 border-t">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-red-700">Cash Disbursements (Non-Operating)</h4>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => addNonOpDisbursement(week.weekStart)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Disbursement
+                        </Button>
+                        {(() => {
+                          const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
+                          return weekNonOp.length > 0 && (
+                            <Button
+                              onClick={() => copyNonOpToNextWeek(week.weekStart)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy to Next Week
+                            </Button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
+                      return weekNonOp.length > 0 && (
+                        <div className="space-y-2">
+                          {weekNonOp.map(item => (
+                            <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-3">
+                                <Select
+                                  value={item.disbursementType}
+                                  onValueChange={(value) => updateNonOpDisbursement(item.id, 'disbursementType', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(disbursementTypeLabels).map(([key, label]) => (
+                                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-5">
+                                <Input
+                                  placeholder="Description / Notes"
+                                  value={item.description}
+                                  onChange={(e) => updateNonOpDisbursement(item.id, 'description', e.target.value)}
+                                  onBlur={() => saveNonOpDisbursement(item)}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <Input
+                                  type="number"
+                                  placeholder="Amount"
+                                  value={item.amount || ''}
+                                  onChange={(e) => updateNonOpDisbursement(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                                  onBlur={() => saveNonOpDisbursement(item)}
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <Button
+                                  onClick={() => deleteNonOpDisbursement(item.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
