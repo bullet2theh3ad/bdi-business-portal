@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, TrendingDown, Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, Upload, Plus, Copy, Trash2 } from 'lucide-react';
+import { DollarSign, TrendingDown, Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, Upload, Plus, Copy, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Interfaces
 interface MustPayItem {
@@ -89,6 +89,22 @@ export default function CashFlowRunwayPage() {
   const [nonOpDisbursements, setNonOpDisbursements] = useState<NonOpDisbursement[]>([]);
   const [bankAccountEntries, setBankAccountEntries] = useState<BankAccountEntry[]>([]);
   const [bankBalances, setBankBalances] = useState<BankBalance[]>([]);
+  
+  // Track collapsed sections per week: "receipts-2025-10-04", "operating-2025-10-04", etc.
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  // Toggle section collapse
+  const toggleSection = (sectionKey: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionKey)) {
+        newSet.delete(sectionKey);
+      } else {
+        newSet.add(sectionKey);
+      }
+      return newSet;
+    });
+  };
 
   // UI state
   const [startDate, setStartDate] = useState<string>('');
@@ -1732,6 +1748,7 @@ export default function CashFlowRunwayPage() {
                       <p className="text-sm text-gray-600">
                         NRE: ${week.nreTotal.toLocaleString()} | 
                         Inventory: ${week.inventoryTotal.toLocaleString()} | 
+                        Receipts: ${receiptsTotal.toLocaleString()} | 
                         Operating: ${weekTotal.toLocaleString()} | 
                         Funding: ${fundingTotal.toLocaleString()} | 
                         Cash Disb.: ${nonOpTotal.toLocaleString()}
@@ -1742,7 +1759,23 @@ export default function CashFlowRunwayPage() {
                   {/* Operating Cash Receipts Section */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-green-700">Operating Cash Receipts</h4>
+                      <div className="flex items-center gap-2">
+                        {weekReceipts.length > 0 && (
+                          <Button
+                            onClick={() => toggleSection(`receipts-${week.weekStart}`)}
+                            variant="ghost"
+                            size="sm"
+                            className="p-1"
+                          >
+                            {collapsedSections.has(`receipts-${week.weekStart}`) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronUp className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        <h4 className="font-semibold text-green-700">Operating Cash Receipts</h4>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           onClick={() => addOperatingReceipt(week.weekStart)}
@@ -1753,43 +1786,57 @@ export default function CashFlowRunwayPage() {
                           Add Receipt
                         </Button>
                         {weekReceipts.length > 0 && (
-                          <Button
-                            onClick={() => copyReceiptsToNextWeek(week.weekStart)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy to Next Week
-                          </Button>
+                          <>
+                            <Button
+                              onClick={async () => {
+                                for (const item of weekReceipts) {
+                                  await saveOperatingReceipt(item);
+                                }
+                              }}
+                              variant="default"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save All
+                            </Button>
+                            <Button
+                              onClick={() => copyReceiptsToNextWeek(week.weekStart)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy to Next Week
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
 
-                    {weekReceipts.length > 0 && (
-                      <div className="space-y-2">
-                        {weekReceipts.map(item => (
-                          <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                            <div className="col-span-3">
-                              <Select
-                                value={item.receiptType}
-                                onValueChange={(value) => updateOperatingReceipt(item.id, 'receiptType', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(receiptTypeLabels).map(([key, label]) => (
-                                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                    {weekReceipts.length > 0 && !collapsedSections.has(`receipts-${week.weekStart}`) && (
+                        <div className="space-y-2">
+                          {weekReceipts.map(item => (
+                            <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-3">
+                                <Select
+                                  value={item.receiptType}
+                                  onValueChange={(value) => updateOperatingReceipt(item.id, 'receiptType', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(receiptTypeLabels).map(([key, label]) => (
+                                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             <div className="col-span-5">
                               <Input
                                 placeholder="Description"
                                 value={item.description}
                                 onChange={(e) => updateOperatingReceipt(item.id, 'description', e.target.value)}
-                                onBlur={() => saveOperatingReceipt(item)}
                               />
                             </div>
                             <div className="col-span-3">
@@ -1798,7 +1845,6 @@ export default function CashFlowRunwayPage() {
                                 placeholder="Amount"
                                 value={item.amount || ''}
                                 onChange={(e) => updateOperatingReceipt(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                onBlur={() => saveOperatingReceipt(item)}
                               />
                             </div>
                             <div className="col-span-1">
@@ -1819,7 +1865,23 @@ export default function CashFlowRunwayPage() {
                   {/* Weekly Operating Section */}
                   <div className="mb-6 pt-6 border-t">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold">Weekly Operating</h4>
+                      <div className="flex items-center gap-2">
+                        {weekItems.length > 0 && (
+                          <Button
+                            onClick={() => toggleSection(`operating-${week.weekStart}`)}
+                            variant="ghost"
+                            size="sm"
+                            className="p-1"
+                          >
+                            {collapsedSections.has(`operating-${week.weekStart}`) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronUp className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        <h4 className="font-semibold">Weekly Operating</h4>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           onClick={() => addMustPayItem(week.weekStart)}
@@ -1830,19 +1892,34 @@ export default function CashFlowRunwayPage() {
                           Add Item
                         </Button>
                         {weekItems.length > 0 && (
-                          <Button
-                            onClick={() => copyToNextWeek(week.weekStart)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy to Next Week
-                          </Button>
+                          <>
+                            <Button
+                              onClick={async () => {
+                                for (const item of weekItems) {
+                                  await saveMustPayItem(item);
+                                }
+                              }}
+                              variant="default"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save All
+                            </Button>
+                            <Button
+                              onClick={() => copyToNextWeek(week.weekStart)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy to Next Week
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
 
-                  {weekItems.length > 0 && (
+                  {weekItems.length > 0 && !collapsedSections.has(`operating-${week.weekStart}`) && (
                     <div className="space-y-2">
                       {weekItems.map(item => (
                         <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
@@ -1866,7 +1943,6 @@ export default function CashFlowRunwayPage() {
                               placeholder="Description"
                               value={item.description}
                               onChange={(e) => updateMustPayItem(item.id, 'description', e.target.value)}
-                              onBlur={() => saveMustPayItem(item)}
                             />
                           </div>
                           <div className="col-span-3">
@@ -1875,7 +1951,6 @@ export default function CashFlowRunwayPage() {
                               placeholder="Amount"
                               value={item.amount || ''}
                               onChange={(e) => updateMustPayItem(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                              onBlur={() => saveMustPayItem(item)}
                             />
                           </div>
                           <div className="col-span-1">
@@ -1896,7 +1971,23 @@ export default function CashFlowRunwayPage() {
                   {/* Funding Request Section */}
                   <div className="mt-6 pt-6 border-t">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-purple-700">Funding Requests</h4>
+                      <div className="flex items-center gap-2">
+                        {weekFunding.length > 0 && (
+                          <Button
+                            onClick={() => toggleSection(`funding-${week.weekStart}`)}
+                            variant="ghost"
+                            size="sm"
+                            className="p-1"
+                          >
+                            {collapsedSections.has(`funding-${week.weekStart}`) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronUp className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        <h4 className="font-semibold text-purple-700">Funding Requests</h4>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           onClick={() => addFundingRequest(week.weekStart)}
@@ -1907,19 +1998,34 @@ export default function CashFlowRunwayPage() {
                           Add Funding
                         </Button>
                         {weekFunding.length > 0 && (
-                          <Button
-                            onClick={() => copyFundingToNextWeek(week.weekStart)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy to Next Week
-                          </Button>
+                          <>
+                            <Button
+                              onClick={async () => {
+                                for (const item of weekFunding) {
+                                  await saveFundingRequest(item);
+                                }
+                              }}
+                              variant="default"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save All
+                            </Button>
+                            <Button
+                              onClick={() => copyFundingToNextWeek(week.weekStart)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy to Next Week
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
 
-                    {weekFunding.length > 0 && (
+                    {weekFunding.length > 0 && !collapsedSections.has(`funding-${week.weekStart}`) && (
                       <div className="space-y-2">
                         {weekFunding.map(item => (
                           <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
@@ -1943,7 +2049,6 @@ export default function CashFlowRunwayPage() {
                                 placeholder="Description / Notes"
                                 value={item.description}
                                 onChange={(e) => updateFundingRequest(item.id, 'description', e.target.value)}
-                                onBlur={() => saveFundingRequest(item)}
                               />
                             </div>
                             <div className="col-span-3">
@@ -1952,7 +2057,6 @@ export default function CashFlowRunwayPage() {
                                 placeholder="Amount"
                                 value={item.amount || ''}
                                 onChange={(e) => updateFundingRequest(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                onBlur={() => saveFundingRequest(item)}
                               />
                             </div>
                             <div className="col-span-1">
@@ -1972,166 +2076,226 @@ export default function CashFlowRunwayPage() {
 
                   {/* Cash Disbursements Section */}
                   <div className="mt-6 pt-6 border-t">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-red-700">Cash Disbursements (Non-Operating)</h4>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => addNonOpDisbursement(week.weekStart)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Disbursement
-                        </Button>
-                        {(() => {
-                          const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
-                          return weekNonOp.length > 0 && (
-                            <Button
-                              onClick={() => copyNonOpToNextWeek(week.weekStart)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              Copy to Next Week
-                            </Button>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
                     {(() => {
                       const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
-                      return weekNonOp.length > 0 && (
-                        <div className="space-y-2">
-                          {weekNonOp.map(item => (
-                            <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                              <div className="col-span-3">
-                                <Select
-                                  value={item.disbursementType}
-                                  onValueChange={(value) => updateNonOpDisbursement(item.id, 'disbursementType', value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(disbursementTypeLabels).map(([key, label]) => (
-                                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="col-span-5">
-                                <Input
-                                  placeholder="Description / Notes"
-                                  value={item.description}
-                                  onChange={(e) => updateNonOpDisbursement(item.id, 'description', e.target.value)}
-                                  onBlur={() => saveNonOpDisbursement(item)}
-                                />
-                              </div>
-                              <div className="col-span-3">
-                                <Input
-                                  type="number"
-                                  placeholder="Amount"
-                                  value={item.amount || ''}
-                                  onChange={(e) => updateNonOpDisbursement(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                  onBlur={() => saveNonOpDisbursement(item)}
-                                />
-                              </div>
-                              <div className="col-span-1">
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              {weekNonOp.length > 0 && (
                                 <Button
-                                  onClick={() => deleteNonOpDisbursement(item.id)}
+                                  onClick={() => toggleSection(`disbursement-${week.weekStart}`)}
                                   variant="ghost"
                                   size="sm"
+                                  className="p-1"
                                 >
-                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                  {collapsedSections.has(`disbursement-${week.weekStart}`) ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronUp className="w-4 h-4" />
+                                  )}
                                 </Button>
-                              </div>
+                              )}
+                              <h4 className="font-semibold text-red-700">Cash Disbursements (Non-Operating)</h4>
                             </div>
-                          ))}
-                        </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => addNonOpDisbursement(week.weekStart)}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Disbursement
+                              </Button>
+                              {weekNonOp.length > 0 && (
+                                <>
+                                  <Button
+                                    onClick={async () => {
+                                      for (const item of weekNonOp) {
+                                        await saveNonOpDisbursement(item);
+                                      }
+                                    }}
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Save All
+                                  </Button>
+                                  <Button
+                                    onClick={() => copyNonOpToNextWeek(week.weekStart)}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Copy to Next Week
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {weekNonOp.length > 0 && !collapsedSections.has(`disbursement-${week.weekStart}`) && (
+                            <div className="space-y-2">
+                              {weekNonOp.map(item => (
+                                <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                                  <div className="col-span-3">
+                                    <Select
+                                      value={item.disbursementType}
+                                      onValueChange={(value) => updateNonOpDisbursement(item.id, 'disbursementType', value)}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(disbursementTypeLabels).map(([key, label]) => (
+                                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="col-span-5">
+                                    <Input
+                                      placeholder="Description / Notes"
+                                      value={item.description}
+                                      onChange={(e) => updateNonOpDisbursement(item.id, 'description', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="col-span-3">
+                                    <Input
+                                      type="number"
+                                      placeholder="Amount"
+                                      value={item.amount || ''}
+                                      onChange={(e) => updateNonOpDisbursement(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <Button
+                                      onClick={() => deleteNonOpDisbursement(item.id)}
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       );
                     })()}
                   </div>
 
                   {/* Bank Accounts Section */}
                   <div className="mt-6 pt-6 border-t">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-blue-700">Bank Accounts</h4>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => addBankAccountEntry(week.weekStart)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Entry
-                        </Button>
-                        {(() => {
-                          const weekBankEntries = bankAccountEntries.filter(item => item.weekStart === week.weekStart);
-                          return weekBankEntries.length > 0 && (
-                            <Button
-                              onClick={() => copyBankAccountsToNextWeek(week.weekStart)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              Copy to Next Week
-                            </Button>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
                     {(() => {
                       const weekBankEntries = bankAccountEntries.filter(item => item.weekStart === week.weekStart);
-                      return weekBankEntries.length > 0 && (
-                        <div className="space-y-2">
-                          {weekBankEntries.map(item => (
-                            <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                              <div className="col-span-3">
-                                <Select
-                                  value={item.entryType}
-                                  onValueChange={(value) => updateBankAccountEntry(item.id, 'entryType', value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(bankAccountEntryLabels).map(([key, label]) => (
-                                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="col-span-5">
-                                <Input
-                                  placeholder="Description / Notes"
-                                  value={item.description}
-                                  onChange={(e) => updateBankAccountEntry(item.id, 'description', e.target.value)}
-                                  onBlur={() => saveBankAccountEntry(item)}
-                                />
-                              </div>
-                              <div className="col-span-3">
-                                <Input
-                                  type="number"
-                                  placeholder="Amount"
-                                  value={item.amount || ''}
-                                  onChange={(e) => updateBankAccountEntry(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                  onBlur={() => saveBankAccountEntry(item)}
-                                />
-                              </div>
-                              <div className="col-span-1">
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              {weekBankEntries.length > 0 && (
                                 <Button
-                                  onClick={() => deleteBankAccountEntry(item.id)}
+                                  onClick={() => toggleSection(`bank-${week.weekStart}`)}
                                   variant="ghost"
                                   size="sm"
+                                  className="p-1"
                                 >
-                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                  {collapsedSections.has(`bank-${week.weekStart}`) ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronUp className="w-4 h-4" />
+                                  )}
                                 </Button>
-                              </div>
+                              )}
+                              <h4 className="font-semibold text-blue-700">Bank Accounts</h4>
                             </div>
-                          ))}
-                        </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => addBankAccountEntry(week.weekStart)}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Entry
+                              </Button>
+                              {weekBankEntries.length > 0 && (
+                                <>
+                                  <Button
+                                    onClick={async () => {
+                                      for (const item of weekBankEntries) {
+                                        await saveBankAccountEntry(item);
+                                      }
+                                    }}
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Save All
+                                  </Button>
+                                  <Button
+                                    onClick={() => copyBankAccountsToNextWeek(week.weekStart)}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Copy to Next Week
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {weekBankEntries.length > 0 && !collapsedSections.has(`bank-${week.weekStart}`) && (
+                            <div className="space-y-2">
+                              {weekBankEntries.map(item => (
+                                <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                                  <div className="col-span-3">
+                                    <Select
+                                      value={item.entryType}
+                                      onValueChange={(value) => updateBankAccountEntry(item.id, 'entryType', value)}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(bankAccountEntryLabels).map(([key, label]) => (
+                                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="col-span-5">
+                                    <Input
+                                      placeholder="Description / Notes"
+                                      value={item.description}
+                                      onChange={(e) => updateBankAccountEntry(item.id, 'description', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="col-span-3">
+                                    <Input
+                                      type="number"
+                                      placeholder="Amount"
+                                      value={item.amount || ''}
+                                      onChange={(e) => updateBankAccountEntry(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <Button
+                                      onClick={() => deleteBankAccountEntry(item.id)}
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       );
                     })()}
                   </div>
