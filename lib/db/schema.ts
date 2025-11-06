@@ -1664,6 +1664,44 @@ export type NewInventoryPaymentLineItem = typeof inventoryPaymentLineItems.$infe
 export type InventoryPaymentDocument = typeof inventoryPaymentDocuments.$inferSelect;
 export type NewInventoryPaymentDocument = typeof inventoryPaymentDocuments.$inferInsert;
 
+// ===== CASH FLOW MUST PAYS =====
+export const mustPayCategoryEnum = pgEnum('must_pay_category', [
+  'labor',
+  'opex',
+  'r&d',
+  'marketing',
+  'cert',
+  'other'
+]);
+
+export const cashFlowMustPays = pgTable('cash_flow_must_pays', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  weekStart: date('week_start').notNull(), // Monday of the week
+  category: mustPayCategoryEnum('category').notNull(),
+  description: text('description'),
+  amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  sourceType: varchar('source_type', { length: 50 }).default('manual'), // 'manual', 'csv', 'quickbooks', etc.
+  sourceReference: varchar('source_reference', { length: 255 }), // Invoice #, PO #, etc.
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const cashFlowMustPaysRelations = relations(cashFlowMustPays, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [cashFlowMustPays.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [cashFlowMustPays.createdBy],
+    references: [users.authId],
+  }),
+}));
+
+export type CashFlowMustPay = typeof cashFlowMustPays.$inferSelect;
+export type NewCashFlowMustPay = typeof cashFlowMustPays.$inferInsert;
+
 // ===== SALES REPORTS =====
 export const salesReports = pgTable('sales_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
