@@ -99,7 +99,10 @@ export default function CashFlowRunwayPage() {
         const userRes = await fetch('/api/user');
         if (userRes.ok) {
           const userData = await userRes.json();
-          setOrganizationId(userData.organizationId);
+          // Organization ID is in the first organization
+          const orgId = userData.organizations?.[0]?.organization?.id || userData.organizationId;
+          console.log('🔍 Organization ID:', orgId);
+          setOrganizationId(orgId);
         }
       } catch (error) {
         console.error('Failed to load user organization:', error);
@@ -129,9 +132,11 @@ export default function CashFlowRunwayPage() {
 
   const loadAllData = async () => {
     try {
+      console.log('🚀 Loading all cash flow data for org:', organizationId);
       setIsLoading(true);
 
       // Load NRE
+      console.log('📊 Fetching NRE data...');
       const nreRes = await fetch('/api/admin/nre-budget');
       if (nreRes.ok) {
         const nreData = await nreRes.json();
@@ -164,9 +169,12 @@ export default function CashFlowRunwayPage() {
       }
 
       // Load Must Pays
+      console.log('💰 Fetching Must Pays...');
       const mustPayRes = await fetch(`/api/cash-flow/must-pays?organizationId=${organizationId}`);
+      console.log('💰 Must Pays response:', mustPayRes.status, mustPayRes.ok);
       if (mustPayRes.ok) {
         const mustPayData = await mustPayRes.json();
+        console.log('💰 Must Pays data:', mustPayData);
         setMustPayItems(mustPayData.map((item: any) => ({
           id: item.id,
           weekStart: item.weekStart || item.week_start,
@@ -206,9 +214,10 @@ export default function CashFlowRunwayPage() {
         })));
       }
 
+      console.log('✅ All data loaded successfully');
       setIsLoading(false);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error loading data:', error);
       setIsLoading(false);
     }
   };
@@ -748,6 +757,25 @@ export default function CashFlowRunwayPage() {
 
               {/* Chart */}
               <div className="relative" style={{ height: '400px' }}>
+                {/* Burn Rate Legend (HTML positioned) */}
+                <div className="absolute top-4 left-4 z-20 bg-white border border-gray-300 rounded-lg px-3 py-2 shadow-md">
+                  <div className="text-xs font-bold text-gray-800 mb-2">Avg Line Burn Rate:</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-xs text-gray-700">High ≥130%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                      <span className="text-xs text-gray-700">Med 100-130%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-xs text-gray-700">Low &lt;100%</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Custom Tooltip for Bars */}
                 {hoveredWeek && (
                   <div
@@ -787,36 +815,6 @@ export default function CashFlowRunwayPage() {
                 )}
 
                 <svg width="100%" height="100%" viewBox="0 0 1000 400" preserveAspectRatio="none" className="overflow-visible">
-                  {/* Burn Rate Legend */}
-                  <g transform="translate(20, 20)">
-                    <rect
-                      x="0"
-                      y="0"
-                      width="155"
-                      height="58"
-                      fill="white"
-                      stroke="#d1d5db"
-                      strokeWidth="1.5"
-                      rx="6"
-                      opacity="0.98"
-                      filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
-                    />
-                    <text x="10" y="16" fontSize="10" fontWeight="700" fill="#111827">
-                      Avg Line Burn Rate:
-                    </text>
-                    <g transform="translate(10, 26)">
-                      <circle cx="4" cy="4" r="4" fill="#ef4444" />
-                      <text x="13" y="7" fontSize="9" fill="#374151">High ≥130%</text>
-                    </g>
-                    <g transform="translate(80, 26)">
-                      <circle cx="4" cy="4" r="4" fill="#f59e0b" />
-                      <text x="13" y="7" fontSize="9" fill="#374151">Med 100-130%</text>
-                    </g>
-                    <g transform="translate(10, 42)">
-                      <circle cx="4" cy="4" r="4" fill="#10b981" />
-                      <text x="13" y="7" fontSize="9" fill="#374151">Low &lt;100%</text>
-                    </g>
-                  </g>
 
                   {/* Bars and Line */}
                   {weeklyData.map((week, index) => {
@@ -913,21 +911,31 @@ export default function CashFlowRunwayPage() {
                     );
                   })}
 
-                  {/* Trailing Average Line */}
-                  <polyline
-                    points={trailingAverages
-                      .map((avg, index) => {
-                        const barWidth = 100 / weeklyData.length;
-                        const x = (index * barWidth + barWidth * 0.5);
-                        const y = 350 - (peakWeek > 0 ? (avg.average / peakWeek) * 350 : 0);
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
-                    fill="none"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  {/* Trailing Average Line - Colored Segments */}
+                  {trailingAverages.map((avg, index) => {
+                    if (index === 0) return null; // Skip first point (no line before it)
+                    
+                    const barWidth = 100 / weeklyData.length;
+                    const prevAvg = trailingAverages[index - 1];
+                    
+                    const x1 = ((index - 1) * barWidth + barWidth * 0.5);
+                    const y1 = 350 - (peakWeek > 0 ? (prevAvg.average / peakWeek) * 350 : 0);
+                    const x2 = (index * barWidth + barWidth * 0.5);
+                    const y2 = 350 - (peakWeek > 0 ? (avg.average / peakWeek) * 350 : 0);
+
+                    return (
+                      <line
+                        key={`line-${avg.weekStart}`}
+                        x1={`${x1}%`}
+                        y1={y1}
+                        x2={`${x2}%`}
+                        y2={y2}
+                        stroke={avg.color}
+                        strokeWidth="3"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })}
 
                   {/* Average Line Data Points */}
                   {trailingAverages.map((avg, index) => {
@@ -940,8 +948,10 @@ export default function CashFlowRunwayPage() {
                         key={avg.weekStart}
                         cx={`${x}%`}
                         cy={y}
-                        r="4"
+                        r="5"
                         fill={avg.color}
+                        stroke="white"
+                        strokeWidth="2"
                         className="cursor-pointer"
                         onMouseEnter={() => setHoveredAvg(avg)}
                         onMouseLeave={() => setHoveredAvg(null)}
