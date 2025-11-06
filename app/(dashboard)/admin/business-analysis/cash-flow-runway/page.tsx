@@ -1746,14 +1746,67 @@ export default function CashFlowRunwayPage() {
                         Week of {new Date(week.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        NRE: ${week.nreTotal.toLocaleString()} | 
-                        Inventory: ${week.inventoryTotal.toLocaleString()} | 
                         Receipts: ${receiptsTotal.toLocaleString()} | 
-                        Operating: ${weekTotal.toLocaleString()} | 
+                        Total Op. Disb.: ${(week.nreTotal + week.inventoryTotal + weekTotal).toLocaleString()} 
+                        <span className="text-xs text-gray-500">(NRE: ${week.nreTotal.toLocaleString()} + Inv: ${week.inventoryTotal.toLocaleString()} + Weekly: ${weekTotal.toLocaleString()})</span> | 
                         Funding: ${fundingTotal.toLocaleString()} | 
                         Cash Disb.: ${nonOpTotal.toLocaleString()}
                       </p>
                     </div>
+                    {(weekReceipts.length > 0 || weekItems.length > 0 || weekFunding.length > 0 || (() => {
+                      const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
+                      const weekBankEntries = bankAccountEntries.filter(item => item.weekStart === week.weekStart);
+                      return weekNonOp.length > 0 || weekBankEntries.length > 0;
+                    })()) && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            // Save all sections for this week
+                            const promises = [];
+                            
+                            // Save Operating Receipts
+                            for (const item of weekReceipts) {
+                              promises.push(saveOperatingReceipt(item));
+                            }
+                            
+                            // Save Weekly Operating
+                            for (const item of weekItems) {
+                              promises.push(saveMustPayItem(item));
+                            }
+                            
+                            // Save Funding Requests
+                            for (const item of weekFunding) {
+                              promises.push(saveFundingRequest(item));
+                            }
+                            
+                            // Save Cash Disbursements
+                            const weekNonOp = nonOpDisbursements.filter(item => item.weekStart === week.weekStart);
+                            for (const item of weekNonOp) {
+                              promises.push(saveNonOpDisbursement(item));
+                            }
+                            
+                            // Save Bank Accounts
+                            const weekBankEntries = bankAccountEntries.filter(item => item.weekStart === week.weekStart);
+                            for (const item of weekBankEntries) {
+                              promises.push(saveBankAccountEntry(item));
+                            }
+                            
+                            // Wait for all saves to complete
+                            await Promise.all(promises);
+                            alert('✅ All entries for this week saved successfully!');
+                          } catch (error) {
+                            console.error('Failed to save week:', error);
+                            alert('❌ Failed to save some entries. Please check the console.');
+                          }
+                        }}
+                        variant="default"
+                        size="lg"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                      >
+                        <Save className="w-5 h-5 mr-2" />
+                        Save All for This Week
+                      </Button>
+                    )}
                   </div>
 
                   {/* Operating Cash Receipts Section */}
@@ -1786,29 +1839,14 @@ export default function CashFlowRunwayPage() {
                           Add Receipt
                         </Button>
                         {weekReceipts.length > 0 && (
-                          <>
-                            <Button
-                              onClick={async () => {
-                                for (const item of weekReceipts) {
-                                  await saveOperatingReceipt(item);
-                                }
-                              }}
-                              variant="default"
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Save className="w-4 h-4 mr-2" />
-                              Save All
-                            </Button>
-                            <Button
-                              onClick={() => copyReceiptsToNextWeek(week.weekStart)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              Copy to Next Week
-                            </Button>
-                          </>
+                          <Button
+                            onClick={() => copyReceiptsToNextWeek(week.weekStart)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Next Week
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -1892,29 +1930,14 @@ export default function CashFlowRunwayPage() {
                           Add Item
                         </Button>
                         {weekItems.length > 0 && (
-                          <>
-                            <Button
-                              onClick={async () => {
-                                for (const item of weekItems) {
-                                  await saveMustPayItem(item);
-                                }
-                              }}
-                              variant="default"
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Save className="w-4 h-4 mr-2" />
-                              Save All
-                            </Button>
-                            <Button
-                              onClick={() => copyToNextWeek(week.weekStart)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              Copy to Next Week
-                            </Button>
-                          </>
+                          <Button
+                            onClick={() => copyToNextWeek(week.weekStart)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Next Week
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -1998,29 +2021,14 @@ export default function CashFlowRunwayPage() {
                           Add Funding
                         </Button>
                         {weekFunding.length > 0 && (
-                          <>
-                            <Button
-                              onClick={async () => {
-                                for (const item of weekFunding) {
-                                  await saveFundingRequest(item);
-                                }
-                              }}
-                              variant="default"
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Save className="w-4 h-4 mr-2" />
-                              Save All
-                            </Button>
-                            <Button
-                              onClick={() => copyFundingToNextWeek(week.weekStart)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              Copy to Next Week
-                            </Button>
-                          </>
+                          <Button
+                            onClick={() => copyFundingToNextWeek(week.weekStart)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Next Week
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -2108,29 +2116,14 @@ export default function CashFlowRunwayPage() {
                                 Add Disbursement
                               </Button>
                               {weekNonOp.length > 0 && (
-                                <>
-                                  <Button
-                                    onClick={async () => {
-                                      for (const item of weekNonOp) {
-                                        await saveNonOpDisbursement(item);
-                                      }
-                                    }}
-                                    variant="default"
-                                    size="sm"
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <Save className="w-4 h-4 mr-2" />
-                                    Save All
-                                  </Button>
-                                  <Button
-                                    onClick={() => copyNonOpToNextWeek(week.weekStart)}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Copy to Next Week
-                                  </Button>
-                                </>
+                                <Button
+                                  onClick={() => copyNonOpToNextWeek(week.weekStart)}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Copy to Next Week
+                                </Button>
                               )}
                             </div>
                           </div>
@@ -2221,29 +2214,14 @@ export default function CashFlowRunwayPage() {
                                 Add Entry
                               </Button>
                               {weekBankEntries.length > 0 && (
-                                <>
-                                  <Button
-                                    onClick={async () => {
-                                      for (const item of weekBankEntries) {
-                                        await saveBankAccountEntry(item);
-                                      }
-                                    }}
-                                    variant="default"
-                                    size="sm"
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <Save className="w-4 h-4 mr-2" />
-                                    Save All
-                                  </Button>
-                                  <Button
-                                    onClick={() => copyBankAccountsToNextWeek(week.weekStart)}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Copy to Next Week
-                                  </Button>
-                                </>
+                                <Button
+                                  onClick={() => copyBankAccountsToNextWeek(week.weekStart)}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Copy to Next Week
+                                </Button>
                               )}
                             </div>
                           </div>
