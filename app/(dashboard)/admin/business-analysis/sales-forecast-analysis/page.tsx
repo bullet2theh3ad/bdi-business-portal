@@ -1277,37 +1277,62 @@ export default function SalesForecastAnalysisPage() {
                                     
                                     {/* Reorder Date - Calculated */}
                                     <div className="bg-purple-50 rounded p-2 border border-purple-300">
-                                      <Label className="text-xs text-purple-700 font-semibold">🔔 Reorder Date</Label>
-                                      <p className="text-base font-bold text-purple-600 mt-1">
-                                        {(() => {
-                                          if (!bolHandoverDate && !selectedForecast?.deliveryWeek) return 'N/A';
-                                          if (salesVelocityUnitsPerDay <= 0 || leadTimeDays <= 0) return 'Set velocity & lead time';
-                                          
-                                          // Use BOL date if set, otherwise calculate from delivery week
-                                          let baseDate: Date;
-                                          if (bolHandoverDate) {
-                                            baseDate = new Date(bolHandoverDate);
-                                          } else {
-                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                            const day = date.getDay();
-                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-                                            baseDate = new Date(date.setDate(diff));
-                                          }
-                                          
-                                          // Calculate days of stock on hand
-                                          const daysOfStock = quantity / salesVelocityUnitsPerDay;
-                                          
-                                          // Reorder date = BOL date + days of stock - lead time
-                                          const reorderDate = new Date(baseDate);
-                                          reorderDate.setDate(reorderDate.getDate() + daysOfStock - leadTimeDays);
-                                          
-                                          return reorderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                        })()}
-                                      </p>
-                                      <p className="text-xs text-purple-600 mt-1">
-                                        {salesVelocityUnitsPerDay > 0 ? `${(quantity / salesVelocityUnitsPerDay).toFixed(1)} days of stock` : ''}
-                                      </p>
+                                      <Label className="text-xs text-purple-700 font-semibold mb-1 block">🔔 Reorder Date</Label>
+                                      {(() => {
+                                        if (!bolHandoverDate && !selectedForecast?.deliveryWeek) return <p className="text-sm text-gray-500">N/A</p>;
+                                        if (salesVelocityUnitsPerDay <= 0 || leadTimeDays <= 0) return <p className="text-sm text-gray-500">Set velocity & lead time</p>;
+                                        
+                                        // Use BOL date if set, otherwise calculate from delivery week
+                                        let baseDate: Date;
+                                        if (bolHandoverDate) {
+                                          baseDate = new Date(bolHandoverDate);
+                                        } else {
+                                          const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                          const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                          const day = date.getDay();
+                                          const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                          baseDate = new Date(date.setDate(diff));
+                                        }
+                                        
+                                        // Calculate days of stock on hand
+                                        const daysOfStock = quantity / salesVelocityUnitsPerDay;
+                                        
+                                        // Reorder date = BOL date + days of stock - lead time
+                                        const reorderDate = new Date(baseDate);
+                                        reorderDate.setDate(reorderDate.getDate() + daysOfStock - leadTimeDays);
+                                        
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const isInPast = reorderDate < today;
+                                        
+                                        // First available reorder date = today + lead time
+                                        const firstAvailableDate = new Date(today);
+                                        firstAvailableDate.setDate(firstAvailableDate.getDate() + leadTimeDays);
+                                        
+                                        return (
+                                          <div className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                              <p className={`text-base font-bold ${isInPast ? 'text-red-600 line-through' : 'text-purple-600'}`}>
+                                                {reorderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                              </p>
+                                              <p className="text-xs text-purple-600">
+                                                {`${daysOfStock.toFixed(1)} days of stock`}
+                                              </p>
+                                            </div>
+                                            {isInPast && (
+                                              <div className="bg-red-50 border border-red-300 rounded p-1.5 mt-1">
+                                                <p className="text-xs text-red-700 font-semibold mb-0.5">⚠️ Date has passed!</p>
+                                                <p className="text-xs text-red-600">
+                                                  First available: <span className="font-bold">{firstAvailableDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                </p>
+                                                <p className="text-xs text-red-500">
+                                                  (Today + {leadTimeDays} day lead time)
+                                                </p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
