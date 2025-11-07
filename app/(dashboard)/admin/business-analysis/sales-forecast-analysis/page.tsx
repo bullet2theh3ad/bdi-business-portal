@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft } from 'lucide-react';
+import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft, FileSpreadsheet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // Interfaces
@@ -48,6 +48,7 @@ export default function SalesForecastAnalysisPage() {
   const [selectedSKU, setSelectedSKU] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [showWorksheetModal, setShowWorksheetModal] = useState(false);
   
   // Chart ref
   const chartRef = useRef<HTMLDivElement>(null);
@@ -386,10 +387,16 @@ export default function SalesForecastAnalysisPage() {
               <TrendingUp className="h-5 w-5 text-blue-600" />
               Weekly Forecast Timeline
             </CardTitle>
-            <Button onClick={exportToCSV} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowWorksheetModal(true)} variant="default" size="sm" className="bg-green-600 hover:bg-green-700">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Worksheet
+              </Button>
+              <Button onClick={exportToCSV} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -588,6 +595,148 @@ export default function SalesForecastAnalysisPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Worksheet Modal */}
+      {showWorksheetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-white">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <FileSpreadsheet className="h-7 w-7 text-green-600" />
+                  Sales Forecast Worksheet
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Configure channel scenarios, cash flow timing, and sales velocity
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWorksheetModal(false)}
+                className="hover:bg-green-100"
+              >
+                <span className="text-2xl">&times;</span>
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Instructions Card */}
+                <Card className="border-l-4 border-l-blue-500 bg-blue-50">
+                  <CardContent className="pt-6">
+                    <h3 className="font-semibold text-blue-900 mb-2">📊 Worksheet Overview</h3>
+                    <p className="text-sm text-blue-800">
+                      For each forecast, configure the channel type (D2C or B2B), link to a SKU financial scenario,
+                      set sales velocity, and define cash flow timing. This will generate detailed cash flow projections
+                      showing booked vs. received revenue, and calculate reorder triggers based on inventory levels.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Forecast List */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Configure Forecasts ({filteredForecasts.length} items)
+                  </h3>
+                  
+                  {filteredForecasts.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center text-gray-500">
+                        No forecasts in the selected date range. Adjust your filters to see forecasts.
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    filteredForecasts.slice(0, 20).map((forecast) => (
+                      <Card key={forecast.id} className="border-l-4 border-l-green-500">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                📦 {forecast.sku?.sku || 'Unknown SKU'}
+                              </CardTitle>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {forecast.deliveryWeek} • {forecast.quantity.toLocaleString()} units
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Configure →
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-600">Channel:</span>
+                              <span className="ml-2 font-medium text-gray-400">Not configured</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Scenario:</span>
+                              <span className="ml-2 font-medium text-gray-400">Not linked</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Velocity:</span>
+                              <span className="ml-2 font-medium text-gray-400">Not set</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Cash Timing:</span>
+                              <span className="ml-2 font-medium text-gray-400">Not set</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                  
+                  {filteredForecasts.length > 20 && (
+                    <Card className="bg-gray-50">
+                      <CardContent className="py-4 text-center text-sm text-gray-600">
+                        Showing first 20 of {filteredForecasts.length} forecasts. 
+                        Use filters above to narrow down results.
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Coming Soon Features */}
+                <Card className="border-l-4 border-l-yellow-500 bg-yellow-50">
+                  <CardContent className="pt-6">
+                    <h3 className="font-semibold text-yellow-900 mb-2">🚧 Coming Next</h3>
+                    <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+                      <li>Channel configuration (D2C / B2B)</li>
+                      <li>SKU Financial Scenario linking (ASP, margins, costs)</li>
+                      <li>Sales velocity input (units/day or units/week)</li>
+                      <li>Cash flow timing rules (days to receive cash)</li>
+                      <li>B2B factoring options (85/15 splits, etc.)</li>
+                      <li>Reorder triggers based on DSOH</li>
+                      <li>Individual forecast graphs (booked vs. received revenue)</li>
+                      <li>Consolidated dashboard (all forecasts stacked)</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t p-4 bg-gray-50 flex justify-between">
+              <div className="text-sm text-gray-600">
+                💡 <strong>Tip:</strong> Start by configuring your most critical forecasts first
+              </div>
+              <Button
+                onClick={() => setShowWorksheetModal(false)}
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
