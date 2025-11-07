@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft, FileSpreadsheet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -55,6 +56,34 @@ export default function SalesForecastAnalysisPage() {
   const [worksheetSortOrder, setWorksheetSortOrder] = useState<'asc' | 'desc'>('asc');
   const [worksheetSKUFilter, setWorksheetSKUFilter] = useState<string>('all');
   const [worksheetManufacturerFilter, setWorksheetManufacturerFilter] = useState<string>('all');
+  
+  // Configuration modal
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [selectedForecast, setSelectedForecast] = useState<Forecast | null>(null);
+  const [scenarios, setScenarios] = useState<any[]>([]);
+  const [loadingScenarios, setLoadingScenarios] = useState(false);
+  
+  // Configuration form state
+  const [channelType, setChannelType] = useState<'D2C' | 'B2B'>('D2C');
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const [salesVelocity, setSalesVelocity] = useState<number>(0);
+  const [velocityUnit, setVelocityUnit] = useState<'per_day' | 'per_week'>('per_day');
+  const [daysToCash, setDaysToCash] = useState<number>(0);
+  const [warehouse, setWarehouse] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>('');
+  const [region, setRegion] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  
+  // B2B specific
+  const [useFactoring, setUseFactoring] = useState(false);
+  const [factoringInitialPercent, setFactoringInitialPercent] = useState<number>(85);
+  const [factoringInitialDays, setFactoringInitialDays] = useState<number>(3);
+  const [factoringRemainderPercent, setFactoringRemainderPercent] = useState<number>(15);
+  const [factoringRemainderDays, setFactoringRemainderDays] = useState<number>(30);
+  const [insurancePercent, setInsurancePercent] = useState<number>(0);
+  const [pickupLocation, setPickupLocation] = useState<string>('Vietnam');
+  
+  const [savingConfig, setSavingConfig] = useState(false);
   
   // Chart ref
   const chartRef = useRef<HTMLDivElement>(null);
@@ -245,6 +274,141 @@ export default function SalesForecastAnalysisPage() {
     a.download = `sales-forecast-${startDate}-to-${endDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Open configuration modal for a forecast
+  const handleConfigure = async (forecast: Forecast) => {
+    setSelectedForecast(forecast);
+    setShowConfigModal(true);
+    
+    // Load SKU Financial Scenarios
+    setLoadingScenarios(true);
+    try {
+      const response = await fetch('/api/business-analysis/sku-scenarios');
+      if (response.ok) {
+        const data = await response.json();
+        setScenarios(data.scenarios || []);
+      }
+    } catch (error) {
+      console.error('Error loading scenarios:', error);
+    } finally {
+      setLoadingScenarios(false);
+    }
+    
+    // Check if this forecast already has a configuration
+    try {
+      const response = await fetch(`/api/forecast-scenarios?forecastId=${forecast.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const config = data[0];
+          // Load existing configuration
+          setChannelType(config.channel_type);
+          setSelectedScenarioId(config.sku_scenario_id || '');
+          setSalesVelocity(config.sales_velocity || 0);
+          setVelocityUnit(config.velocity_unit || 'per_day');
+          setDaysToCash(config.days_to_cash || 0);
+          setWarehouse(config.warehouse || '');
+          setCustomerName(config.customer_name || '');
+          setRegion(config.region || '');
+          setNotes(config.notes || '');
+          setUseFactoring(config.use_factoring || false);
+          setFactoringInitialPercent(config.factoring_initial_percent || 85);
+          setFactoringInitialDays(config.factoring_initial_days || 3);
+          setFactoringRemainderPercent(config.factoring_remainder_percent || 15);
+          setFactoringRemainderDays(config.factoring_remainder_days || 30);
+          setInsurancePercent(config.insurance_percent || 0);
+          setPickupLocation(config.pickup_location || 'Vietnam');
+        } else {
+          // Reset to defaults for new configuration
+          resetConfigForm();
+        }
+      }
+    } catch (error) {
+      console.error('Error loading existing configuration:', error);
+      resetConfigForm();
+    }
+  };
+
+  const resetConfigForm = () => {
+    setChannelType('D2C');
+    setSelectedScenarioId('');
+    setSalesVelocity(0);
+    setVelocityUnit('per_day');
+    setDaysToCash(0);
+    setWarehouse('');
+    setCustomerName('');
+    setRegion('');
+    setNotes('');
+    setUseFactoring(false);
+    setFactoringInitialPercent(85);
+    setFactoringInitialDays(3);
+    setFactoringRemainderPercent(15);
+    setFactoringRemainderDays(30);
+    setInsurancePercent(0);
+    setPickupLocation('Vietnam');
+  };
+
+  const saveConfiguration = async () => {
+    if (!selectedForecast) return;
+
+    setSavingConfig(true);
+    try {
+      const configData = {
+        forecast_id: selectedForecast.id,
+        channel_type: channelType,
+        sku_scenario_id: selectedScenarioId || null,
+        sales_velocity: salesVelocity,
+        velocity_unit: velocityUnit,
+        days_to_cash: daysToCash,
+        warehouse: warehouse || null,
+        customer_name: customerName || null,
+        region: region || null,
+        notes: notes || null,
+        use_factoring: useFactoring,
+        factoring_initial_percent: useFactoring ? factoringInitialPercent : null,
+        factoring_initial_days: useFactoring ? factoringInitialDays : null,
+        factoring_remainder_percent: useFactoring ? factoringRemainderPercent : null,
+        factoring_remainder_days: useFactoring ? factoringRemainderDays : null,
+        insurance_percent: insurancePercent || null,
+        pickup_location: channelType === 'B2B' ? pickupLocation : null,
+      };
+
+      // Check if configuration exists
+      const checkResponse = await fetch(`/api/forecast-scenarios?forecastId=${selectedForecast.id}`);
+      const existing = checkResponse.ok ? await checkResponse.json() : [];
+
+      let response;
+      if (existing && existing.length > 0) {
+        // Update existing
+        response = await fetch('/api/forecast-scenarios', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...configData, id: existing[0].id }),
+        });
+      } else {
+        // Create new
+        response = await fetch('/api/forecast-scenarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configData),
+        });
+      }
+
+      if (response.ok) {
+        alert('✅ Configuration saved successfully!');
+        setShowConfigModal(false);
+        // Optionally refresh the forecast list to show configured status
+      } else {
+        const error = await response.text();
+        alert(`❌ Failed to save configuration: ${error}`);
+      }
+    } catch (error: any) {
+      console.error('Error saving configuration:', error);
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setSavingConfig(false);
+    }
   };
 
   if (loading) {
@@ -793,6 +957,7 @@ export default function SalesForecastAnalysisPage() {
                             <Button
                               size="sm"
                               className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleConfigure(forecast)}
                             >
                               Configure →
                             </Button>
@@ -864,6 +1029,374 @@ export default function SalesForecastAnalysisPage() {
                 variant="outline"
               >
                 Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Configuration Modal */}
+      {showConfigModal && selectedForecast && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-purple-50 to-white">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  ⚙️ Configure Forecast
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedForecast.sku?.sku} • {selectedForecast.deliveryWeek} • {selectedForecast.quantity.toLocaleString()} units
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowConfigModal(false)}
+                className="hover:bg-purple-100"
+              >
+                <span className="text-2xl">&times;</span>
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Channel Type Selection */}
+                <Card className="border-2 border-purple-200">
+                  <CardHeader>
+                    <CardTitle className="text-base">📡 Channel Type</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setChannelType('D2C')}
+                        className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                          channelType === 'D2C'
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">🛒</div>
+                          <div className="font-semibold">D2C</div>
+                          <div className="text-xs text-gray-600 mt-1">Direct to Consumer</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setChannelType('B2B')}
+                        className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                          channelType === 'B2B'
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">🏢</div>
+                          <div className="font-semibold">B2B</div>
+                          <div className="text-xs text-gray-600 mt-1">Business to Business</div>
+                        </div>
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* SKU Financial Scenario */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">💰 SKU Financial Scenario</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingScenarios ? (
+                      <div className="text-center py-4 text-gray-500">Loading scenarios...</div>
+                    ) : (
+                      <div className="space-y-4">
+                        <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a scenario" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {scenarios.length === 0 ? (
+                              <SelectItem value="none" disabled>No scenarios available</SelectItem>
+                            ) : (
+                              scenarios.map((scenario) => (
+                                <SelectItem key={scenario.id} value={scenario.id}>
+                                  {scenario.scenarioName} - ASP: ${parseFloat(scenario.asp).toFixed(2)} ({scenario.channel})
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+
+                        {selectedScenarioId && scenarios.find(s => s.id === selectedScenarioId) && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600">Scenario ASP:</span>
+                                <span className="ml-2 font-semibold text-green-600">
+                                  ${parseFloat(scenarios.find(s => s.id === selectedScenarioId)?.asp || '0').toFixed(2)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Standard Cost:</span>
+                                <span className="ml-2 font-semibold text-blue-600">
+                                  (from SKU table)
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* D2C-Specific Fields */}
+                {channelType === 'D2C' && (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">🚀 Sales Velocity</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Velocity</Label>
+                            <Input
+                              type="number"
+                              value={salesVelocity}
+                              onChange={(e) => setSalesVelocity(parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <Label>Unit</Label>
+                            <Select value={velocityUnit} onValueChange={(value: 'per_day' | 'per_week') => setVelocityUnit(value)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="per_day">Units per Day</SelectItem>
+                                <SelectItem value="per_week">Units per Week</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">💵 Cash Flow Timing</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Days to Receive Cash</Label>
+                            <Input
+                              type="number"
+                              value={daysToCash}
+                              onChange={(e) => setDaysToCash(parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <Label>Warehouse</Label>
+                            <Input
+                              type="text"
+                              value={warehouse}
+                              onChange={(e) => setWarehouse(e.target.value)}
+                              placeholder="e.g., EMG, OL-USA"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+
+                {/* B2B-Specific Fields */}
+                {channelType === 'B2B' && (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">📦 Pickup & Location</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Pickup Location</Label>
+                            <Input
+                              type="text"
+                              value={pickupLocation}
+                              onChange={(e) => setPickupLocation(e.target.value)}
+                              placeholder="e.g., Vietnam"
+                            />
+                          </div>
+                          <div>
+                            <Label>Sales Velocity (for reorders)</Label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <Input
+                                type="number"
+                                value={salesVelocity}
+                                onChange={(e) => setSalesVelocity(parseFloat(e.target.value) || 0)}
+                                placeholder="0"
+                              />
+                              <Select value={velocityUnit} onValueChange={(value: 'per_day' | 'per_week') => setVelocityUnit(value)}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="per_day">Units/Day</SelectItem>
+                                  <SelectItem value="per_week">Units/Week</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center justify-between">
+                          💳 Factoring
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={useFactoring}
+                              onChange={(e) => setUseFactoring(e.target.checked)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm font-normal">Use Factoring</span>
+                          </label>
+                        </CardTitle>
+                      </CardHeader>
+                      {useFactoring && (
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Initial Cash %</Label>
+                                <Input
+                                  type="number"
+                                  value={factoringInitialPercent}
+                                  onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
+                                  placeholder="85"
+                                />
+                              </div>
+                              <div>
+                                <Label>Days to Initial Cash</Label>
+                                <Input
+                                  type="number"
+                                  value={factoringInitialDays}
+                                  onChange={(e) => setFactoringInitialDays(parseFloat(e.target.value) || 0)}
+                                  placeholder="3"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Remainder %</Label>
+                                <Input
+                                  type="number"
+                                  value={factoringRemainderPercent}
+                                  onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
+                                  placeholder="15"
+                                />
+                              </div>
+                              <div>
+                                <Label>Days to Remainder</Label>
+                                <Input
+                                  type="number"
+                                  value={factoringRemainderDays}
+                                  onChange={(e) => setFactoringRemainderDays(parseFloat(e.target.value) || 0)}
+                                  placeholder="30"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      )}
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">🛡️ Insurance</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div>
+                          <Label>Insurance %</Label>
+                          <Input
+                            type="number"
+                            value={insurancePercent}
+                            onChange={(e) => setInsurancePercent(parseFloat(e.target.value) || 0)}
+                            placeholder="0"
+                            step="0.1"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+
+                {/* Customer & Notes (Both Channels) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">📝 Customer & Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Customer Name</Label>
+                          <Input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="Customer or Partner"
+                          />
+                        </div>
+                        <div>
+                          <Label>Region</Label>
+                          <Input
+                            type="text"
+                            value={region}
+                            onChange={(e) => setRegion(e.target.value)}
+                            placeholder="e.g., US, EU, APAC"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Notes</Label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          className="w-full border rounded-md p-2 min-h-[80px]"
+                          placeholder="Additional notes about this forecast..."
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t p-4 bg-gray-50 flex justify-between">
+              <Button
+                onClick={() => setShowConfigModal(false)}
+                variant="outline"
+                disabled={savingConfig}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveConfiguration}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={savingConfig}
+              >
+                {savingConfig ? 'Saving...' : '💾 Save Configuration'}
               </Button>
             </div>
           </div>
