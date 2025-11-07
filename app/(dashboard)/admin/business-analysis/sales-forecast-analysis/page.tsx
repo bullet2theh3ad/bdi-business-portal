@@ -15,6 +15,7 @@ interface Forecast {
   sku: {
     sku: string;
     name: string;
+    mfg?: string;
   };
   deliveryWeek: string; // ISO week format: 2025-W12
   quantity: number;
@@ -49,6 +50,11 @@ export default function SalesForecastAnalysisPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showWorksheetModal, setShowWorksheetModal] = useState(false);
+  
+  // Worksheet modal filters
+  const [worksheetSortOrder, setWorksheetSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [worksheetSKUFilter, setWorksheetSKUFilter] = useState<string>('all');
+  const [worksheetManufacturerFilter, setWorksheetManufacturerFilter] = useState<string>('all');
   
   // Chart ref
   const chartRef = useRef<HTMLDivElement>(null);
@@ -636,30 +642,153 @@ export default function SalesForecastAnalysisPage() {
                   </CardContent>
                 </Card>
 
+                {/* Worksheet Filters */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Search className="h-4 w-4" />
+                      Filter Forecasts
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Sort by Week */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Sort by Week
+                        </label>
+                        <Select value={worksheetSortOrder} onValueChange={(value: 'asc' | 'desc') => setWorksheetSortOrder(value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="asc">📅 Earliest First</SelectItem>
+                            <SelectItem value="desc">📅 Latest First</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filter by SKU */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Filter by SKU
+                        </label>
+                        <Select value={worksheetSKUFilter} onValueChange={setWorksheetSKUFilter}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All SKUs</SelectItem>
+                            {Array.from(new Set(filteredForecasts.map(f => f.sku?.sku).filter(Boolean))).sort().map(sku => (
+                              <SelectItem key={sku} value={sku!}>{sku}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filter by Manufacturer */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Filter by Manufacturer
+                        </label>
+                        <Select value={worksheetManufacturerFilter} onValueChange={setWorksheetManufacturerFilter}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Manufacturers</SelectItem>
+                            {Array.from(new Set(filteredForecasts.map(f => f.sku?.mfg).filter(Boolean))).sort().map(mfg => (
+                              <SelectItem key={mfg} value={mfg!}>{mfg}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Active Filters Display */}
+                    {(worksheetSKUFilter !== 'all' || worksheetManufacturerFilter !== 'all') && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="text-xs text-gray-600">Active filters:</span>
+                        {worksheetSKUFilter !== 'all' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            SKU: {worksheetSKUFilter}
+                            <button onClick={() => setWorksheetSKUFilter('all')} className="hover:text-blue-900">×</button>
+                          </span>
+                        )}
+                        {worksheetManufacturerFilter !== 'all' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                            Mfg: {worksheetManufacturerFilter}
+                            <button onClick={() => setWorksheetManufacturerFilter('all')} className="hover:text-green-900">×</button>
+                          </span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setWorksheetSKUFilter('all');
+                            setWorksheetManufacturerFilter('all');
+                          }}
+                          className="text-xs text-gray-600 hover:text-gray-900 underline"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Forecast List */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Configure Forecasts ({filteredForecasts.length} items)
-                  </h3>
-                  
-                  {filteredForecasts.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center text-gray-500">
-                        No forecasts in the selected date range. Adjust your filters to see forecasts.
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    filteredForecasts.slice(0, 20).map((forecast) => (
+                  {(() => {
+                    // Apply worksheet-specific filters
+                    let worksheetFiltered = [...filteredForecasts];
+                    
+                    // Filter by SKU
+                    if (worksheetSKUFilter !== 'all') {
+                      worksheetFiltered = worksheetFiltered.filter(f => f.sku?.sku === worksheetSKUFilter);
+                    }
+                    
+                    // Filter by Manufacturer
+                    if (worksheetManufacturerFilter !== 'all') {
+                      worksheetFiltered = worksheetFiltered.filter(f => f.sku?.mfg === worksheetManufacturerFilter);
+                    }
+                    
+                    // Sort by week
+                    worksheetFiltered.sort((a, b) => {
+                      if (worksheetSortOrder === 'asc') {
+                        return a.deliveryWeek.localeCompare(b.deliveryWeek);
+                      } else {
+                        return b.deliveryWeek.localeCompare(a.deliveryWeek);
+                      }
+                    });
+
+                    return (
+                      <>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Configure Forecasts ({worksheetFiltered.length} {worksheetFiltered.length === 1 ? 'item' : 'items'})
+                        </h3>
+                        
+                        {worksheetFiltered.length === 0 ? (
+                          <Card>
+                            <CardContent className="py-12 text-center text-gray-500">
+                              No forecasts match your filters. Try adjusting the filters above.
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          worksheetFiltered.slice(0, 20).map((forecast) => (
                       <Card key={forecast.id} className="border-l-4 border-l-green-500">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
-                            <div>
+                            <div className="flex-1">
                               <CardTitle className="text-base font-semibold flex items-center gap-2">
                                 📦 {forecast.sku?.sku || 'Unknown SKU'}
                               </CardTitle>
                               <p className="text-sm text-gray-600 mt-1">
                                 {forecast.deliveryWeek} • {forecast.quantity.toLocaleString()} units
                               </p>
+                              {forecast.sku?.mfg && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  🏭 {forecast.sku.mfg}
+                                </p>
+                              )}
                             </div>
                             <Button
                               size="sm"
@@ -690,17 +819,20 @@ export default function SalesForecastAnalysisPage() {
                           </div>
                         </CardContent>
                       </Card>
-                    ))
-                  )}
-                  
-                  {filteredForecasts.length > 20 && (
-                    <Card className="bg-gray-50">
-                      <CardContent className="py-4 text-center text-sm text-gray-600">
-                        Showing first 20 of {filteredForecasts.length} forecasts. 
-                        Use filters above to narrow down results.
-                      </CardContent>
-                    </Card>
-                  )}
+                            ))
+                        )}
+                        
+                        {worksheetFiltered.length > 20 && (
+                          <Card className="bg-gray-50">
+                            <CardContent className="py-4 text-center text-sm text-gray-600">
+                              Showing first 20 of {worksheetFiltered.length} forecasts. 
+                              Use filters above to narrow down results.
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Coming Soon Features */}
