@@ -1121,24 +1121,31 @@ export default function SalesForecastAnalysisPage() {
                       <div className="text-center py-4 text-gray-500">Loading scenarios...</div>
                     ) : (
                       <div className="space-y-4">
-                        {scenarios.length > 0 && (
-                          <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded p-2">
+                        {scenarios.length > 0 ? (
+                          <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded p-2 mb-2">
                             ✓ Found {scenarios.length} scenario{scenarios.length !== 1 ? 's' : ''} for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-2">
+                            ⚠️ No scenarios found for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
                           </div>
                         )}
                         <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a scenario" />
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={scenarios.length > 0 ? "Select a scenario" : "No scenarios available"} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px]">
                             {scenarios.length === 0 ? (
-                              <SelectItem value="none" disabled>No scenarios available</SelectItem>
+                              <SelectItem value="none" disabled>No scenarios match this SKU</SelectItem>
                             ) : (
-                              scenarios.map((scenario) => (
-                                <SelectItem key={scenario.id} value={scenario.id}>
-                                  {scenario.skuName} - {scenario.scenarioName} - ASP: ${parseFloat(scenario.asp).toFixed(2)} ({scenario.channel})
-                                </SelectItem>
-                              ))
+                              scenarios.map((scenario, index) => {
+                                console.log(`Rendering scenario ${index + 1}:`, scenario.scenarioName, scenario.skuName, scenario.asp);
+                                return (
+                                  <SelectItem key={scenario.id} value={scenario.id}>
+                                    {scenario.scenarioName} - {scenario.skuName} - ${parseFloat(scenario.asp || '0').toFixed(2)} ({scenario.channel || 'N/A'})
+                                  </SelectItem>
+                                );
+                              })
                             )}
                           </SelectContent>
                         </Select>
