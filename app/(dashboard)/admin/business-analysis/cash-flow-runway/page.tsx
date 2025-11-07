@@ -75,6 +75,15 @@ interface WeeklyAggregate {
   total: number; // For chart display (operating outflows)
 }
 
+// Helper function to get Monday of the week for any date (PST)
+const getMondayOfWeek = (date: Date): Date => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diff = (day + 6) % 7; // Days to subtract to get to Monday
+  d.setDate(d.getDate() - diff);
+  return d;
+};
+
 export default function CashFlowRunwayPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showChart, setShowChart] = useState(true);
@@ -157,12 +166,15 @@ export default function CashFlowRunwayPage() {
   // Set default 13-week range (-4 weeks to +16 weeks from today)
   useEffect(() => {
     const today = new Date();
-    const start = new Date(today);
-    // Go to Monday of current week, then back 4 weeks
-    start.setDate(start.getDate() - (today.getDay() || 7) - (4 * 7));
-    const end = new Date(today);
-    // Go to Monday of current week, then forward 16 weeks, then to end of that week
-    end.setDate(end.getDate() - (today.getDay() || 7) + (16 * 7) + 6);
+    const mondayThisWeek = getMondayOfWeek(today);
+    
+    // Start: Monday of current week - 4 weeks
+    const start = new Date(mondayThisWeek);
+    start.setDate(start.getDate() - (4 * 7));
+    
+    // End: Monday of current week + 16 weeks + 6 days (to get to end of that week)
+    const end = new Date(mondayThisWeek);
+    end.setDate(end.getDate() + (16 * 7) + 6);
 
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
@@ -293,13 +305,13 @@ export default function CashFlowRunwayPage() {
     if (!startDate || !endDate) return [];
 
     const weeks: WeeklyAggregate[] = [];
-    const start = new Date(startDate);
+    const start = getMondayOfWeek(new Date(startDate)); // Align to Monday
     const end = new Date(endDate);
     let currentWeekStart = new Date(start);
 
     while (currentWeekStart <= end) {
       const weekEnd = new Date(currentWeekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setDate(weekEnd.getDate() + 6); // Monday + 6 days = Sunday
 
       const weekStartStr = currentWeekStart.toISOString().split('T')[0];
       const weekEndStr = weekEnd.toISOString().split('T')[0];
@@ -384,12 +396,15 @@ export default function CashFlowRunwayPage() {
   // Set 13-week view (-4 weeks to +16 weeks from today = 20 weeks total)
   const set13WeekView = () => {
     const today = new Date();
-    const start = new Date(today);
-    // Go to Monday of current week, then back 4 weeks
-    start.setDate(start.getDate() - (today.getDay() || 7) - (4 * 7));
-    const end = new Date(today);
-    // Go to Monday of current week, then forward 16 weeks, then to end of that week
-    end.setDate(end.getDate() - (today.getDay() || 7) + (16 * 7) + 6);
+    const mondayThisWeek = getMondayOfWeek(today);
+    
+    // Start: Monday of current week - 4 weeks
+    const start = new Date(mondayThisWeek);
+    start.setDate(start.getDate() - (4 * 7));
+    
+    // End: Monday of current week + 16 weeks + 6 days (to get to end of that week)
+    const end = new Date(mondayThisWeek);
+    end.setDate(end.getDate() + (16 * 7) + 6);
 
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
