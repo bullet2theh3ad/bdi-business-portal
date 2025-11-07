@@ -281,13 +281,15 @@ export default function SalesForecastAnalysisPage() {
     setSelectedForecast(forecast);
     setShowConfigModal(true);
     
-    // Load SKU Financial Scenarios
+    // Load SKU Financial Scenarios (all of them - UI will filter)
     setLoadingScenarios(true);
     try {
       const response = await fetch('/api/business-analysis/sku-scenarios');
       if (response.ok) {
         const data = await response.json();
-        setScenarios(data.scenarios || []);
+        const allScenarios = data.scenarios || [];
+        console.log(`📊 Loaded ${allScenarios.length} total scenarios for SKU: ${forecast.sku?.sku}`);
+        setScenarios(allScenarios);
       }
     } catch (error) {
       console.error('Error loading scenarios:', error);
@@ -769,7 +771,7 @@ export default function SalesForecastAnalysisPage() {
       {/* Worksheet Modal */}
       {showWorksheetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-[98vw] max-h-[95vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-white">
               <div>
@@ -1038,7 +1040,7 @@ export default function SalesForecastAnalysisPage() {
       {/* Configuration Modal */}
       {showConfigModal && selectedForecast && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-[98vw] max-h-[95vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-purple-50 to-white">
               <div>
@@ -1111,22 +1113,72 @@ export default function SalesForecastAnalysisPage() {
                       <div className="text-center py-4 text-gray-500">Loading scenarios...</div>
                     ) : (
                       <div className="space-y-4">
-                        <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a scenario" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {scenarios.length === 0 ? (
-                              <SelectItem value="none" disabled>No scenarios available</SelectItem>
-                            ) : (
-                              scenarios.map((scenario) => (
-                                <SelectItem key={scenario.id} value={scenario.id}>
-                                  {scenario.scenarioName} - ASP: ${parseFloat(scenario.asp).toFixed(2)} ({scenario.channel})
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                        {(() => {
+                          // Filter scenarios by SKU (fuzzy match)
+                          const forecastSKU = selectedForecast?.sku?.sku?.toLowerCase() || '';
+                          const matchingScenarios = scenarios.filter(s => {
+                            const scenarioSKU = s.skuName?.toLowerCase() || '';
+                            // Exact match or fuzzy match (contains)
+                            return scenarioSKU === forecastSKU || 
+                                   scenarioSKU.includes(forecastSKU) || 
+                                   forecastSKU.includes(scenarioSKU);
+                          });
+                          
+                          // Sort: exact matches first, then partial matches
+                          matchingScenarios.sort((a, b) => {
+                            const aSKU = a.skuName?.toLowerCase() || '';
+                            const bSKU = b.skuName?.toLowerCase() || '';
+                            if (aSKU === forecastSKU && bSKU !== forecastSKU) return -1;
+                            if (bSKU === forecastSKU && aSKU !== forecastSKU) return 1;
+                            return 0;
+                          });
+
+                          return (
+                            <>
+                              {matchingScenarios.length > 0 && (
+                                <div className="text-xs text-green-600 mb-2">
+                                  ✓ Found {matchingScenarios.length} scenario{matchingScenarios.length !== 1 ? 's' : ''} matching SKU: <strong>{selectedForecast?.sku?.sku}</strong>
+                                </div>
+                              )}
+                              <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a scenario" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {matchingScenarios.length === 0 ? (
+                                    <>
+                                      <SelectItem value="none" disabled>No scenarios match SKU: {selectedForecast?.sku?.sku}</SelectItem>
+                                      <SelectItem value="divider" disabled>─── All Scenarios ───</SelectItem>
+                                      {scenarios.map((scenario) => (
+                                        <SelectItem key={scenario.id} value={scenario.id}>
+                                          {scenario.skuName} - {scenario.scenarioName} - ASP: ${parseFloat(scenario.asp).toFixed(2)}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  ) : (
+                                    <>
+                                      {matchingScenarios.map((scenario) => (
+                                        <SelectItem key={scenario.id} value={scenario.id}>
+                                          {scenario.skuName} - {scenario.scenarioName} - ASP: ${parseFloat(scenario.asp).toFixed(2)} ({scenario.channel})
+                                        </SelectItem>
+                                      ))}
+                                      {scenarios.length > matchingScenarios.length && (
+                                        <>
+                                          <SelectItem value="divider" disabled>─── Other SKUs ───</SelectItem>
+                                          {scenarios.filter(s => !matchingScenarios.includes(s)).map((scenario) => (
+                                            <SelectItem key={scenario.id} value={scenario.id}>
+                                              {scenario.skuName} - {scenario.scenarioName} - ASP: ${parseFloat(scenario.asp).toFixed(2)}
+                                            </SelectItem>
+                                          ))}
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </>
+                          );
+                        })()}
 
                         {selectedScenarioId && scenarios.find(s => s.id === selectedScenarioId) && (
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
