@@ -289,14 +289,23 @@ export default function SalesForecastAnalysisPage() {
         const data = await response.json();
         const allScenarios = data.scenarios || [];
         
+        console.log('🔍 ALL SCENARIOS FROM API:', allScenarios.length);
+        console.log('🔍 First scenario sample:', allScenarios[0]);
+        console.log('🔍 Forecast SKU to match:', forecast.sku?.sku);
+        
         // Filter to ONLY this SKU's scenarios
         const forecastSKU = forecast.sku?.sku?.toLowerCase() || '';
         const matchingScenarios = allScenarios.filter((scenario: any) => {
           const scenarioSKU = scenario.skuName?.toLowerCase() || '';
-          return scenarioSKU === forecastSKU || scenarioSKU.includes(forecastSKU) || forecastSKU.includes(scenarioSKU);
+          const matches = scenarioSKU === forecastSKU || scenarioSKU.includes(forecastSKU) || forecastSKU.includes(scenarioSKU);
+          if (matches) {
+            console.log('✅ MATCH:', scenarioSKU, 'matches', forecastSKU);
+          }
+          return matches;
         });
         
         console.log(`📊 Forecast SKU: ${forecast.sku?.sku}, Filtered to ${matchingScenarios.length} matching scenarios out of ${allScenarios.length} total`);
+        console.log('📊 Matching scenarios:', matchingScenarios);
         setScenarios(matchingScenarios);
       }
     } catch (error) {
@@ -1134,7 +1143,7 @@ export default function SalesForecastAnalysisPage() {
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder={scenarios.length > 0 ? "Select a scenario" : "No scenarios available"} />
                           </SelectTrigger>
-                          <SelectContent className="max-h-[300px]">
+                          <SelectContent className="max-h-[300px] z-[70]" position="popper" sideOffset={5}>
                             {scenarios.length === 0 ? (
                               <SelectItem value="none" disabled>No scenarios match this SKU</SelectItem>
                             ) : (

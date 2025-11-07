@@ -406,17 +406,27 @@ function SKUWorksheetPageContent() {
 
   const syncSalesCommissions = (percent?: number, amount?: number) => {
     if (percent !== undefined) {
-      setWorksheetData(prev => ({
-        ...prev,
-        salesCommissionsPercent: percent,
-        salesCommissionsAmount: (prev.asp * percent) / 100
-      }));
+      setWorksheetData(prev => {
+        // Calculate Net Sales from prev state
+        const otherFeesTotal = prev.otherFeesAndAdvertising.reduce((sum, item) => sum + item.value, 0);
+        const netSales = prev.asp - prev.fbaFeeAmount - prev.amazonReferralFeeAmount - prev.acosAmount - otherFeesTotal;
+        return {
+          ...prev,
+          salesCommissionsPercent: percent,
+          salesCommissionsAmount: (netSales * percent) / 100
+        };
+      });
     } else if (amount !== undefined) {
-      setWorksheetData(prev => ({
-        ...prev,
-        salesCommissionsAmount: amount,
-        salesCommissionsPercent: prev.asp > 0 ? (amount / prev.asp) * 100 : 0
-      }));
+      setWorksheetData(prev => {
+        // Calculate Net Sales from prev state
+        const otherFeesTotal = prev.otherFeesAndAdvertising.reduce((sum, item) => sum + item.value, 0);
+        const netSales = prev.asp - prev.fbaFeeAmount - prev.amazonReferralFeeAmount - prev.acosAmount - otherFeesTotal;
+        return {
+          ...prev,
+          salesCommissionsAmount: amount,
+          salesCommissionsPercent: netSales > 0 ? (amount / netSales) * 100 : 0
+        };
+      });
     }
   };
 
@@ -1470,7 +1480,7 @@ function SKUWorksheetPageContent() {
                   </div>
                 </div>
                 <div className="text-sm text-gray-500 italic">
-                  % of ASP
+                  % of Net Sales
                 </div>
               </div>
 
