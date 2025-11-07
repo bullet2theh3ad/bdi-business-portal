@@ -256,7 +256,7 @@ export default function BusinessAnalysisPage() {
           Planned Analysis Modules
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Cash Flow Analysis */}
+          {/* NRE & Inventory Only */}
           <Card 
             className="hover:shadow-lg transition-shadow border-t-4 border-t-green-500 cursor-pointer"
             onClick={() => router.push('/admin/business-analysis/cash-flow')}
@@ -264,7 +264,7 @@ export default function BusinessAnalysisPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <DollarSign className="h-5 w-5 text-green-600" />
-                Cash Flow Analysis
+                NRE & Inventory Only
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -285,7 +285,7 @@ export default function BusinessAnalysisPage() {
             </CardContent>
           </Card>
 
-          {/* Cash Flow Runway */}
+          {/* Weekly Cash Flow Summary */}
           <Card 
             className="hover:shadow-lg transition-shadow border-t-4 border-t-teal-500 cursor-pointer"
             onClick={() => router.push('/admin/business-analysis/cash-flow-runway')}
@@ -293,7 +293,7 @@ export default function BusinessAnalysisPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <TrendingUp className="h-5 w-5 text-teal-600" />
-                Cash Flow Runway
+                Weekly Cash Flow Summary
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -307,8 +307,8 @@ export default function BusinessAnalysisPage() {
                 <li>• Visualize total weekly outflows</li>
               </ul>
               <div className="mt-4 pt-4 border-t">
-                <span className="inline-block px-3 py-1 bg-teal-100 text-teal-800 text-xs font-semibold rounded-full">
-                  Testing
+                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                  Active
                 </span>
               </div>
             </CardContent>

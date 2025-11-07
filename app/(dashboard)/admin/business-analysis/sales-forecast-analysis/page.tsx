@@ -13,7 +13,7 @@ interface Forecast {
   id: string;
   skuId: string;
   sku: {
-    skuCode: string;
+    sku: string;
     name: string;
   };
   deliveryWeek: string; // ISO week format: 2025-W12
@@ -135,12 +135,12 @@ export default function SalesForecastAnalysisPage() {
     const end = new Date(endDate);
     
     if (weekDate < start || weekDate > end) return false;
-    if (selectedSKU !== 'all' && f.sku?.skuCode !== selectedSKU) return false;
+    if (selectedSKU !== 'all' && f.sku?.sku !== selectedSKU) return false;
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
-        f.sku?.skuCode?.toLowerCase().includes(query) ||
+        f.sku?.sku?.toLowerCase().includes(query) ||
         f.sku?.name?.toLowerCase().includes(query)
       );
     }
@@ -168,7 +168,7 @@ export default function SalesForecastAnalysisPage() {
     const week = weekMap.get(weekStart)!;
     week.totalQuantity += f.quantity;
     
-    const skuCode = f.sku?.skuCode || 'Unknown';
+    const skuCode = f.sku?.sku || 'Unknown';
     week.skuBreakdown[skuCode] = (week.skuBreakdown[skuCode] || 0) + f.quantity;
   });
 
@@ -190,7 +190,7 @@ export default function SalesForecastAnalysisPage() {
     week.totalQuantity > max.totalQuantity ? week : max, 
     { totalQuantity: 0, weekLabel: '-', weekStart: '', skuBreakdown: {} }
   );
-  const uniqueSKUs = new Set(filteredForecasts.map(f => f.sku?.skuCode)).size;
+  const uniqueSKUs = new Set(filteredForecasts.map(f => f.sku?.sku).filter(Boolean)).size;
 
   // Handle 13-week button
   const handleThirteenWeeks = () => {
@@ -219,7 +219,7 @@ export default function SalesForecastAnalysisPage() {
     const headers = ['Week', 'SKU', 'Quantity', 'Sales Signal', 'Factory Signal', 'Shipping Signal'];
     const rows = filteredForecasts.map(f => [
       f.deliveryWeek,
-      f.sku?.skuCode || '',
+      f.sku?.sku || '',
       f.quantity,
       f.salesSignal,
       f.factorySignal,
@@ -309,8 +309,8 @@ export default function SalesForecastAnalysisPage() {
                 <SelectContent>
                   <SelectItem value="all">All SKUs</SelectItem>
                   {skus.map(sku => (
-                    <SelectItem key={sku.id} value={sku.skuCode}>
-                      {sku.skuCode} - {sku.name}
+                    <SelectItem key={sku.id} value={sku.sku}>
+                      {sku.sku} - {sku.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -489,7 +489,7 @@ export default function SalesForecastAnalysisPage() {
                 <div className="mt-8 flex flex-wrap gap-4 justify-center">
                   {(() => {
                     const allSkus = Array.from(new Set(
-                      filteredForecasts.map(f => f.sku?.skuCode).filter(Boolean)
+                      filteredForecasts.map(f => f.sku?.sku).filter(Boolean)
                     ));
                     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'];
                     
@@ -540,7 +540,7 @@ export default function SalesForecastAnalysisPage() {
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-4 py-2">{forecast.deliveryWeek}</td>
                       <td className="px-4 py-2 font-mono text-xs">
-                        {forecast.sku?.skuCode || '-'}
+                        {forecast.sku?.sku || '-'}
                       </td>
                       <td className="px-4 py-2 text-right font-semibold">
                         {forecast.quantity.toLocaleString()}
