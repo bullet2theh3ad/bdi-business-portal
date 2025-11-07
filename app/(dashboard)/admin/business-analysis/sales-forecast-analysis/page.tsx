@@ -1272,80 +1272,111 @@ export default function SalesForecastAnalysisPage() {
                                   
                                   {/* Factoring Fields */}
                                   {useFactoring && (
-                                    <div className="bg-purple-50 rounded p-4 border-2 border-purple-300">
-                                      <h5 className="text-sm font-semibold text-purple-900 mb-3">💳 Factoring Terms</h5>
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                          <Label className="text-xs">Initial Cash %</Label>
-                                          <div className="flex gap-2 mt-1">
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              max="100"
-                                              step="1"
-                                              value={factoringInitialPercent}
-                                              onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
-                                              className="flex-1"
-                                            />
-                                            <span className="flex items-center text-sm text-gray-600">%</span>
-                                          </div>
-                                          <p className="text-xs text-green-600 mt-1">
-                                            = ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                          </p>
+                                    <div className="bg-purple-50 rounded p-3 border-2 border-purple-300">
+                                      <h5 className="text-sm font-semibold text-purple-900 mb-2">💳 Factoring Terms</h5>
+                                      
+                                      {/* Initial Cash Row */}
+                                      <div className="grid grid-cols-12 gap-2 items-center mb-2 bg-white rounded p-2">
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Initial %</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="1"
+                                            value={factoringInitialPercent}
+                                            onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
+                                            className="h-8 text-xs"
+                                          />
                                         </div>
-                                        
-                                        <div>
-                                          <Label className="text-xs">Days to Initial Cash</Label>
-                                          <div className="flex gap-2 mt-1">
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              step="1"
-                                              value={factoringInitialDays}
-                                              onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
-                                              className="flex-1"
-                                            />
-                                            <span className="flex items-center text-sm text-gray-600">days</span>
+                                        <div className="col-span-1 text-center text-lg text-gray-400">=</div>
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">Amount</Label>
+                                          <div className="text-sm font-bold text-green-600 mt-1">
+                                            ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                           </div>
                                         </div>
-                                        
-                                        <div>
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Days</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            value={factoringInitialDays}
+                                            onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
+                                            className="h-8 text-xs"
+                                          />
+                                        </div>
+                                        <div className="col-span-1 text-center text-lg text-gray-400">→</div>
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">AR Date</Label>
+                                          <div className="text-sm font-bold text-purple-600 mt-1">
+                                            {(() => {
+                                              if (!selectedForecast?.deliveryWeek) return 'N/A';
+                                              const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                              const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                              const day = date.getDay();
+                                              const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                              const monday = new Date(date.setDate(diff));
+                                              monday.setDate(monday.getDate() + factoringInitialDays);
+                                              return monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                            })()}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Remainder Cash Row */}
+                                      <div className="grid grid-cols-12 gap-2 items-center mb-2 bg-white rounded p-2">
+                                        <div className="col-span-2">
                                           <Label className="text-xs">Remainder %</Label>
-                                          <div className="flex gap-2 mt-1">
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              max="100"
-                                              step="1"
-                                              value={factoringRemainderPercent}
-                                              onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
-                                              className="flex-1"
-                                            />
-                                            <span className="flex items-center text-sm text-gray-600">%</span>
-                                          </div>
-                                          <p className="text-xs text-blue-600 mt-1">
-                                            = ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                          </p>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="1"
+                                            value={factoringRemainderPercent}
+                                            onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
+                                            className="h-8 text-xs"
+                                          />
                                         </div>
-                                        
-                                        <div>
-                                          <Label className="text-xs">Days to Remainder</Label>
-                                          <div className="flex gap-2 mt-1">
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              step="1"
-                                              value={factoringRemainderDays}
-                                              onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
-                                              className="flex-1"
-                                            />
-                                            <span className="flex items-center text-sm text-gray-600">days</span>
+                                        <div className="col-span-1 text-center text-lg text-gray-400">=</div>
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">Amount</Label>
+                                          <div className="text-sm font-bold text-blue-600 mt-1">
+                                            ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Days</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            value={factoringRemainderDays}
+                                            onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
+                                            className="h-8 text-xs"
+                                          />
+                                        </div>
+                                        <div className="col-span-1 text-center text-lg text-gray-400">→</div>
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">AR Date</Label>
+                                          <div className="text-sm font-bold text-purple-600 mt-1">
+                                            {(() => {
+                                              if (!selectedForecast?.deliveryWeek) return 'N/A';
+                                              const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                              const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                              const day = date.getDay();
+                                              const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                              const monday = new Date(date.setDate(diff));
+                                              monday.setDate(monday.getDate() + factoringRemainderDays);
+                                              return monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                            })()}
                                           </div>
                                         </div>
                                       </div>
                                       
                                       {/* Factoring Summary */}
-                                      <div className="mt-3 pt-3 border-t border-purple-200">
+                                      <div className="pt-2 border-t border-purple-200">
                                         <div className="flex justify-between text-xs">
                                           <span className="font-medium">Total Factored:</span>
                                           <span className="font-bold text-purple-700">
