@@ -83,6 +83,11 @@ export default function SalesForecastAnalysisPage() {
   const [insurancePercent, setInsurancePercent] = useState<number>(0);
   const [pickupLocation, setPickupLocation] = useState<string>('Vietnam');
   
+  // New fields for Sales Velocity, Lead Time, BOL Date, and Reorder Date
+  const [salesVelocityUnitsPerDay, setSalesVelocityUnitsPerDay] = useState<number>(0);
+  const [leadTimeDays, setLeadTimeDays] = useState<number>(90);
+  const [bolHandoverDate, setBolHandoverDate] = useState<string>('');
+  
   const [savingConfig, setSavingConfig] = useState(false);
   
   // Chart ref
@@ -338,6 +343,9 @@ export default function SalesForecastAnalysisPage() {
           setFactoringRemainderDays(config.factoring_remainder_days || 30);
           setInsurancePercent(config.insurance_percent || 0);
           setPickupLocation(config.pickup_location || 'Vietnam');
+          setSalesVelocityUnitsPerDay(config.sales_velocity_units_per_day || 0);
+          setLeadTimeDays(config.lead_time_days || 90);
+          setBolHandoverDate(config.bol_handover_date || '');
         } else {
           // Reset to defaults for new configuration
           resetConfigForm();
@@ -366,6 +374,9 @@ export default function SalesForecastAnalysisPage() {
     setFactoringRemainderDays(30);
     setInsurancePercent(0);
     setPickupLocation('Vietnam');
+    setSalesVelocityUnitsPerDay(0);
+    setLeadTimeDays(90);
+    setBolHandoverDate('');
   };
 
   const saveConfiguration = async () => {
@@ -391,6 +402,9 @@ export default function SalesForecastAnalysisPage() {
         factoring_remainder_days: useFactoring ? factoringRemainderDays : null,
         insurance_percent: insurancePercent || null,
         pickup_location: channelType === 'B2B' ? pickupLocation : null,
+        sales_velocity_units_per_day: salesVelocityUnitsPerDay || null,
+        lead_time_days: leadTimeDays || null,
+        bol_handover_date: bolHandoverDate || null,
       };
 
       // Check if configuration exists
@@ -1149,17 +1163,17 @@ export default function SalesForecastAnalysisPage() {
                           const totalGrossProfit = gp * quantity;
                           
                           return (
-                            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-4 shadow-lg">
+                            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-3 shadow-lg">
                               <div className="flex items-center justify-between mb-3">
                                 <h4 className="font-semibold text-gray-900">💰 Profitability Analysis</h4>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                   {channelType === 'B2B' && (
-                                    <label className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-purple-300 cursor-pointer hover:bg-purple-50">
+                                    <label className="flex items-center gap-1 bg-white px-2 py-1 rounded-full border border-purple-300 cursor-pointer hover:bg-purple-50">
                                       <input
                                         type="checkbox"
                                         checked={useFactoring}
                                         onChange={(e) => setUseFactoring(e.target.checked)}
-                                        className="w-4 h-4"
+                                        className="w-3 h-3"
                                       />
                                       <span className="text-xs font-medium">💳 Use Factoring</span>
                                     </label>
@@ -1170,89 +1184,49 @@ export default function SalesForecastAnalysisPage() {
                                 </div>
                               </div>
                               
-                              <div className="grid grid-cols-3 gap-4 mb-3">
-                                {/* Per Unit Metrics */}
-                                <div className="bg-white rounded p-3 border border-gray-200">
-                                  <p className="text-xs text-gray-500 mb-1">Per Unit</p>
-                                  <div className="space-y-1">
+                              {/* Main Grid - Compact Layout */}
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">
+                                {/* Per Unit Metrics - Compact */}
+                                <div className="md:col-span-3 bg-white rounded p-2 border border-gray-200">
+                                  <p className="text-xs text-gray-500 mb-2 font-semibold">Per Unit</p>
+                                  <div className="space-y-1.5">
                                     <div>
                                       <p className="text-xs text-gray-600">ASP:</p>
-                                      <p className="text-lg font-bold text-green-600">${asp.toFixed(2)}</p>
+                                      <p className="text-base font-bold text-green-600">${asp.toFixed(2)}</p>
                                     </div>
                                     <div>
                                       <p className="text-xs text-gray-600">GP:</p>
-                                      <p className="text-lg font-bold text-blue-600">${gp.toFixed(2)}</p>
+                                      <p className="text-base font-bold text-blue-600">${gp.toFixed(2)}</p>
                                     </div>
                                     <div>
                                       <p className="text-xs text-gray-600">GP %:</p>
-                                      <p className="text-lg font-bold text-purple-600">{gpPercent.toFixed(2)}%</p>
+                                      <p className="text-base font-bold text-purple-600">{gpPercent.toFixed(2)}%</p>
                                     </div>
                                   </div>
                                 </div>
                                 
-                                {/* Total Forecast Impact */}
-                                <div className="bg-white rounded p-3 border-2 border-green-300 col-span-2">
-                                  <p className="text-xs text-gray-500 mb-1">Total Forecast Impact</p>
-                                  <div className="grid grid-cols-2 gap-3">
+                                {/* Total Forecast Impact + BOL Date + Sales Velocity + Lead Time */}
+                                <div className="md:col-span-9 bg-white rounded p-2 border-2 border-green-300">
+                                  <p className="text-xs text-gray-500 mb-2 font-semibold">Total Forecast Impact</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
                                     <div>
                                       <p className="text-xs text-gray-600">Total Revenue:</p>
-                                      <p className="text-2xl font-bold text-green-600">${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                                      <p className="text-xs text-gray-500 mt-1">{quantity.toLocaleString()} × ${asp.toFixed(2)}</p>
+                                      <p className="text-lg font-bold text-green-600">${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                                      <p className="text-xs text-gray-500">{quantity.toLocaleString()} × ${asp.toFixed(2)}</p>
                                     </div>
                                     <div>
                                       <p className="text-xs text-gray-600">Total Gross Profit:</p>
-                                      <p className="text-2xl font-bold text-blue-600">${totalGrossProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                                      <p className="text-xs text-gray-500 mt-1">{quantity.toLocaleString()} × ${gp.toFixed(2)}</p>
+                                      <p className="text-lg font-bold text-blue-600">${totalGrossProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                                      <p className="text-xs text-gray-500">{quantity.toLocaleString()} × ${gp.toFixed(2)}</p>
                                     </div>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="text-xs text-gray-600 bg-white rounded p-2 border border-gray-200">
-                                <strong>Selected Scenario:</strong> {selectedScenario.scenarioName} ({selectedScenario.channel})
-                              </div>
-                              
-                              {/* B2B: BOL Handover Date & Factoring */}
-                              {channelType === 'B2B' && (
-                                <div className="mt-4 space-y-3">
-                                  {/* BOL Handover Date */}
-                                  <div className="bg-white rounded p-3 border border-gray-200">
-                                    <Label className="text-sm font-semibold text-gray-700">📦 BOL Handover Date</Label>
-                                    <p className="text-xs text-gray-500 mb-2">
-                                      Forecast Week: <span className="font-semibold text-purple-600">{selectedForecast?.deliveryWeek}</span>
-                                    </p>
                                     
-                                    <div className="grid grid-cols-2 gap-3 mt-2">
-                                      {/* Week Picker */}
+                                    {/* BOL Handover Date - Compact */}
+                                    {channelType === 'B2B' && (
                                       <div>
-                                        <Label className="text-xs text-gray-600">Select by Week</Label>
-                                        <Input
-                                          type="week"
-                                          value={selectedForecast?.deliveryWeek || ''}
-                                          onChange={(e) => {
-                                            // Custom week override logic can be added here if needed
-                                          }}
-                                          className="mt-1"
-                                        />
-                                      </div>
-                                      
-                                      {/* Date Picker */}
-                                      <div>
-                                        <Label className="text-xs text-gray-600">
-                                          Select by Date (Monday: {(() => {
-                                            if (!selectedForecast?.deliveryWeek) return 'N/A';
-                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                            const day = date.getDay();
-                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-                                            const monday = new Date(date.setDate(diff));
-                                            return monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                          })()})
-                                        </Label>
+                                        <Label className="text-xs text-gray-600">📦 BOL Handover Date</Label>
                                         <Input
                                           type="date"
-                                          value={(() => {
-                                            // Calculate Monday of the forecast week
+                                          value={bolHandoverDate || (() => {
                                             if (!selectedForecast?.deliveryWeek) return '';
                                             const [year, week] = selectedForecast.deliveryWeek.split('-W');
                                             const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
@@ -1261,131 +1235,212 @@ export default function SalesForecastAnalysisPage() {
                                             const monday = new Date(date.setDate(diff));
                                             return monday.toISOString().split('T')[0];
                                           })()}
-                                          onChange={(e) => {
-                                            // Custom BOL date override logic can be added here if needed
-                                          }}
-                                          className="mt-1"
+                                          onChange={(e) => setBolHandoverDate(e.target.value)}
+                                          className="h-8 text-xs mt-1"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">Week: {selectedForecast?.deliveryWeek}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Sales Velocity */}
+                                    <div>
+                                      <Label className="text-xs text-gray-600">📊 Sales Velocity</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={salesVelocityUnitsPerDay || ''}
+                                        onChange={(e) => setSalesVelocityUnitsPerDay(parseFloat(e.target.value) || 0)}
+                                        placeholder="0"
+                                        className="h-8 text-xs mt-1"
+                                      />
+                                      <p className="text-xs text-gray-500 mt-1">units/day</p>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Second row - Lead Time and Reorder Date */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                                    {/* Lead Time */}
+                                    <div>
+                                      <Label className="text-xs text-gray-600">⏱️ Lead Time</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={leadTimeDays || ''}
+                                        onChange={(e) => setLeadTimeDays(parseInt(e.target.value) || 90)}
+                                        placeholder="90"
+                                        className="h-8 text-xs mt-1"
+                                      />
+                                      <p className="text-xs text-gray-500 mt-1">days (typically 90)</p>
+                                    </div>
+                                    
+                                    {/* Reorder Date - Calculated */}
+                                    <div className="bg-purple-50 rounded p-2 border border-purple-300">
+                                      <Label className="text-xs text-purple-700 font-semibold">🔔 Reorder Date</Label>
+                                      <p className="text-base font-bold text-purple-600 mt-1">
+                                        {(() => {
+                                          if (!bolHandoverDate && !selectedForecast?.deliveryWeek) return 'N/A';
+                                          if (salesVelocityUnitsPerDay <= 0 || leadTimeDays <= 0) return 'Set velocity & lead time';
+                                          
+                                          // Use BOL date if set, otherwise calculate from delivery week
+                                          let baseDate: Date;
+                                          if (bolHandoverDate) {
+                                            baseDate = new Date(bolHandoverDate);
+                                          } else {
+                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                            const day = date.getDay();
+                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                            baseDate = new Date(date.setDate(diff));
+                                          }
+                                          
+                                          // Calculate days of stock on hand
+                                          const daysOfStock = quantity / salesVelocityUnitsPerDay;
+                                          
+                                          // Reorder date = BOL date + days of stock - lead time
+                                          const reorderDate = new Date(baseDate);
+                                          reorderDate.setDate(reorderDate.getDate() + daysOfStock - leadTimeDays);
+                                          
+                                          return reorderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                        })()}
+                                      </p>
+                                      <p className="text-xs text-purple-600 mt-1">
+                                        {salesVelocityUnitsPerDay > 0 ? `${(quantity / salesVelocityUnitsPerDay).toFixed(1)} days of stock` : ''}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="text-xs text-gray-600 bg-white rounded px-2 py-1 border border-gray-200 mb-2">
+                                <strong>Scenario:</strong> {selectedScenario.scenarioName} ({selectedScenario.channel})
+                              </div>
+                              
+                              {/* Factoring Section - Pulled up closer */}
+                              {channelType === 'B2B' && useFactoring && (
+                                <div className="bg-purple-50 rounded p-2 border-2 border-purple-300">
+                                  <h5 className="text-sm font-semibold text-purple-900 mb-2">💳 Factoring Terms</h5>
+                                  
+                                  {/* Initial Cash Row - More Compact */}
+                                  <div className="grid grid-cols-12 gap-1 items-center mb-2 bg-white rounded p-2 text-xs">
+                                    <div className="col-span-2">
+                                      <Label className="text-xs">Initial %</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        value={factoringInitialPercent}
+                                        onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="col-span-1 text-center text-sm text-gray-400">=</div>
+                                    <div className="col-span-3">
+                                      <Label className="text-xs">Amount</Label>
+                                      <div className="text-sm font-bold text-green-600 mt-1">
+                                        ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                      </div>
+                                    </div>
+                                    <div className="col-span-2">
+                                      <Label className="text-xs">Days</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={factoringInitialDays}
+                                        onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="col-span-1 text-center text-sm text-gray-400">→</div>
+                                    <div className="col-span-3">
+                                      <Label className="text-xs">AR Date</Label>
+                                      <div className="text-xs font-bold text-purple-600 mt-1">
+                                        {(() => {
+                                          const baseDateStr = bolHandoverDate || (() => {
+                                            if (!selectedForecast?.deliveryWeek) return '';
+                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                            const day = date.getDay();
+                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                            const monday = new Date(date.setDate(diff));
+                                            return monday.toISOString().split('T')[0];
+                                          })();
+                                          if (!baseDateStr) return 'N/A';
+                                          const arDate = new Date(baseDateStr);
+                                          arDate.setDate(arDate.getDate() + factoringInitialDays);
+                                          return arDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                        })()}
                                       </div>
                                     </div>
                                   </div>
                                   
-                                  {/* Factoring Fields */}
-                                  {useFactoring && (
-                                    <div className="bg-purple-50 rounded p-3 border-2 border-purple-300">
-                                      <h5 className="text-sm font-semibold text-purple-900 mb-2">💳 Factoring Terms</h5>
-                                      
-                                      {/* Initial Cash Row */}
-                                      <div className="grid grid-cols-12 gap-2 items-center mb-2 bg-white rounded p-2">
-                                        <div className="col-span-2">
-                                          <Label className="text-xs">Initial %</Label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="1"
-                                            value={factoringInitialPercent}
-                                            onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
-                                            className="h-8 text-xs"
-                                          />
-                                        </div>
-                                        <div className="col-span-1 text-center text-lg text-gray-400">=</div>
-                                        <div className="col-span-3">
-                                          <Label className="text-xs">Amount</Label>
-                                          <div className="text-sm font-bold text-green-600 mt-1">
-                                            ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                          </div>
-                                        </div>
-                                        <div className="col-span-2">
-                                          <Label className="text-xs">Days</Label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            step="1"
-                                            value={factoringInitialDays}
-                                            onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
-                                            className="h-8 text-xs"
-                                          />
-                                        </div>
-                                        <div className="col-span-1 text-center text-lg text-gray-400">→</div>
-                                        <div className="col-span-3">
-                                          <Label className="text-xs">AR Date</Label>
-                                          <div className="text-sm font-bold text-purple-600 mt-1">
-                                            {(() => {
-                                              if (!selectedForecast?.deliveryWeek) return 'N/A';
-                                              const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                              const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                              const day = date.getDay();
-                                              const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-                                              const monday = new Date(date.setDate(diff));
-                                              monday.setDate(monday.getDate() + factoringInitialDays);
-                                              return monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                            })()}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      {/* Remainder Cash Row */}
-                                      <div className="grid grid-cols-12 gap-2 items-center mb-2 bg-white rounded p-2">
-                                        <div className="col-span-2">
-                                          <Label className="text-xs">Remainder %</Label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="1"
-                                            value={factoringRemainderPercent}
-                                            onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
-                                            className="h-8 text-xs"
-                                          />
-                                        </div>
-                                        <div className="col-span-1 text-center text-lg text-gray-400">=</div>
-                                        <div className="col-span-3">
-                                          <Label className="text-xs">Amount</Label>
-                                          <div className="text-sm font-bold text-blue-600 mt-1">
-                                            ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                          </div>
-                                        </div>
-                                        <div className="col-span-2">
-                                          <Label className="text-xs">Days</Label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            step="1"
-                                            value={factoringRemainderDays}
-                                            onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
-                                            className="h-8 text-xs"
-                                          />
-                                        </div>
-                                        <div className="col-span-1 text-center text-lg text-gray-400">→</div>
-                                        <div className="col-span-3">
-                                          <Label className="text-xs">AR Date</Label>
-                                          <div className="text-sm font-bold text-purple-600 mt-1">
-                                            {(() => {
-                                              if (!selectedForecast?.deliveryWeek) return 'N/A';
-                                              const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                              const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                              const day = date.getDay();
-                                              const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-                                              const monday = new Date(date.setDate(diff));
-                                              monday.setDate(monday.getDate() + factoringRemainderDays);
-                                              return monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                            })()}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      {/* Factoring Summary */}
-                                      <div className="pt-2 border-t border-purple-200">
-                                        <div className="flex justify-between text-xs">
-                                          <span className="font-medium">Total Factored:</span>
-                                          <span className="font-bold text-purple-700">
-                                            {factoringInitialPercent + factoringRemainderPercent}% = ${((totalRevenue * (factoringInitialPercent + factoringRemainderPercent)) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                          </span>
-                                        </div>
+                                  {/* Remainder Cash Row - More Compact */}
+                                  <div className="grid grid-cols-12 gap-1 items-center mb-2 bg-white rounded p-2 text-xs">
+                                    <div className="col-span-2">
+                                      <Label className="text-xs">Remainder %</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        value={factoringRemainderPercent}
+                                        onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="col-span-1 text-center text-sm text-gray-400">=</div>
+                                    <div className="col-span-3">
+                                      <Label className="text-xs">Amount</Label>
+                                      <div className="text-sm font-bold text-blue-600 mt-1">
+                                        ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                       </div>
                                     </div>
-                                  )}
+                                    <div className="col-span-2">
+                                      <Label className="text-xs">Days</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={factoringRemainderDays}
+                                        onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="col-span-1 text-center text-sm text-gray-400">→</div>
+                                    <div className="col-span-3">
+                                      <Label className="text-xs">AR Date</Label>
+                                      <div className="text-xs font-bold text-purple-600 mt-1">
+                                        {(() => {
+                                          const baseDateStr = bolHandoverDate || (() => {
+                                            if (!selectedForecast?.deliveryWeek) return '';
+                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                            const day = date.getDay();
+                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                            const monday = new Date(date.setDate(diff));
+                                            return monday.toISOString().split('T')[0];
+                                          })();
+                                          if (!baseDateStr) return 'N/A';
+                                          const arDate = new Date(baseDateStr);
+                                          arDate.setDate(arDate.getDate() + factoringRemainderDays);
+                                          return arDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                        })()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Factoring Summary */}
+                                  <div className="pt-2 border-t border-purple-200">
+                                    <div className="flex justify-between text-xs">
+                                      <span className="font-medium">Total Factored:</span>
+                                      <span className="font-bold text-purple-700">
+                                        {factoringInitialPercent + factoringRemainderPercent}% = ${((totalRevenue * (factoringInitialPercent + factoringRemainderPercent)) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </div>
