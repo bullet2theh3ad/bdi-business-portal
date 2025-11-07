@@ -1081,44 +1081,21 @@ export default function SalesForecastAnalysisPage() {
             {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-6">
-                {/* Channel Type Selection */}
-                <Card className="border-2 border-purple-200">
-                  <CardHeader>
-                    <CardTitle className="text-base">📡 Channel Type</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => setChannelType('D2C')}
-                        className={`flex-1 p-4 rounded-lg border-2 transition-all ${
-                          channelType === 'D2C'
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 hover:border-purple-300'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="text-2xl mb-2">🛒</div>
-                          <div className="font-semibold">D2C</div>
-                          <div className="text-xs text-gray-600 mt-1">Direct to Consumer</div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => setChannelType('B2B')}
-                        className={`flex-1 p-4 rounded-lg border-2 transition-all ${
-                          channelType === 'B2B'
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 hover:border-purple-300'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="text-2xl mb-2">🏢</div>
-                          <div className="font-semibold">B2B</div>
-                          <div className="text-xs text-gray-600 mt-1">Business to Business</div>
-                        </div>
-                      </button>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Channel Type Selection - Compact */}
+                <div className="grid grid-cols-2 gap-4 items-end">
+                  <div>
+                    <Label>📡 Channel Type</Label>
+                    <Select value={channelType} onValueChange={(value: 'D2C' | 'B2B') => setChannelType(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select channel type" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" sideOffset={5} className="z-[70]">
+                        <SelectItem value="D2C">🛒 D2C - Direct to Consumer</SelectItem>
+                        <SelectItem value="B2B">🏢 B2B - Business to Business</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
                 {/* SKU Financial Scenario */}
                 <Card>
@@ -1175,9 +1152,22 @@ export default function SalesForecastAnalysisPage() {
                             <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-4 shadow-lg">
                               <div className="flex items-center justify-between mb-3">
                                 <h4 className="font-semibold text-gray-900">💰 Profitability Analysis</h4>
-                                <span className="text-xs bg-white px-2 py-1 rounded-full border border-gray-300">
-                                  {quantity.toLocaleString()} units
-                                </span>
+                                <div className="flex items-center gap-3">
+                                  {channelType === 'B2B' && (
+                                    <label className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-purple-300 cursor-pointer hover:bg-purple-50">
+                                      <input
+                                        type="checkbox"
+                                        checked={useFactoring}
+                                        onChange={(e) => setUseFactoring(e.target.checked)}
+                                        className="w-4 h-4"
+                                      />
+                                      <span className="text-xs font-medium">💳 Use Factoring</span>
+                                    </label>
+                                  )}
+                                  <span className="text-xs bg-white px-2 py-1 rounded-full border border-gray-300">
+                                    {quantity.toLocaleString()} units
+                                  </span>
+                                </div>
                               </div>
                               
                               <div className="grid grid-cols-3 gap-4 mb-3">
@@ -1221,6 +1211,152 @@ export default function SalesForecastAnalysisPage() {
                               <div className="text-xs text-gray-600 bg-white rounded p-2 border border-gray-200">
                                 <strong>Selected Scenario:</strong> {selectedScenario.scenarioName} ({selectedScenario.channel})
                               </div>
+                              
+                              {/* B2B: BOL Handover Date & Factoring */}
+                              {channelType === 'B2B' && (
+                                <div className="mt-4 space-y-3">
+                                  {/* BOL Handover Date */}
+                                  <div className="bg-white rounded p-3 border border-gray-200">
+                                    <Label className="text-sm font-semibold text-gray-700">📦 BOL Handover Date</Label>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                      Forecast Week: <span className="font-semibold text-purple-600">{selectedForecast?.deliveryWeek}</span>
+                                    </p>
+                                    
+                                    <div className="grid grid-cols-2 gap-3 mt-2">
+                                      {/* Week Picker */}
+                                      <div>
+                                        <Label className="text-xs text-gray-600">Select by Week</Label>
+                                        <Input
+                                          type="week"
+                                          value={selectedForecast?.deliveryWeek || ''}
+                                          onChange={(e) => {
+                                            // Custom week override logic can be added here if needed
+                                          }}
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                      
+                                      {/* Date Picker */}
+                                      <div>
+                                        <Label className="text-xs text-gray-600">
+                                          Select by Date (Monday: {(() => {
+                                            if (!selectedForecast?.deliveryWeek) return 'N/A';
+                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                            const day = date.getDay();
+                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                            const monday = new Date(date.setDate(diff));
+                                            return monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                          })()})
+                                        </Label>
+                                        <Input
+                                          type="date"
+                                          value={(() => {
+                                            // Calculate Monday of the forecast week
+                                            if (!selectedForecast?.deliveryWeek) return '';
+                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                            const day = date.getDay();
+                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                            const monday = new Date(date.setDate(diff));
+                                            return monday.toISOString().split('T')[0];
+                                          })()}
+                                          onChange={(e) => {
+                                            // Custom BOL date override logic can be added here if needed
+                                          }}
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Factoring Fields */}
+                                  {useFactoring && (
+                                    <div className="bg-purple-50 rounded p-4 border-2 border-purple-300">
+                                      <h5 className="text-sm font-semibold text-purple-900 mb-3">💳 Factoring Terms</h5>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <Label className="text-xs">Initial Cash %</Label>
+                                          <div className="flex gap-2 mt-1">
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              step="1"
+                                              value={factoringInitialPercent}
+                                              onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
+                                              className="flex-1"
+                                            />
+                                            <span className="flex items-center text-sm text-gray-600">%</span>
+                                          </div>
+                                          <p className="text-xs text-green-600 mt-1">
+                                            = ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </p>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Days to Initial Cash</Label>
+                                          <div className="flex gap-2 mt-1">
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              step="1"
+                                              value={factoringInitialDays}
+                                              onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
+                                              className="flex-1"
+                                            />
+                                            <span className="flex items-center text-sm text-gray-600">days</span>
+                                          </div>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Remainder %</Label>
+                                          <div className="flex gap-2 mt-1">
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              step="1"
+                                              value={factoringRemainderPercent}
+                                              onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
+                                              className="flex-1"
+                                            />
+                                            <span className="flex items-center text-sm text-gray-600">%</span>
+                                          </div>
+                                          <p className="text-xs text-blue-600 mt-1">
+                                            = ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </p>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Days to Remainder</Label>
+                                          <div className="flex gap-2 mt-1">
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              step="1"
+                                              value={factoringRemainderDays}
+                                              onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
+                                              className="flex-1"
+                                            />
+                                            <span className="flex items-center text-sm text-gray-600">days</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Factoring Summary */}
+                                      <div className="mt-3 pt-3 border-t border-purple-200">
+                                        <div className="flex justify-between text-xs">
+                                          <span className="font-medium">Total Factored:</span>
+                                          <span className="font-bold text-purple-700">
+                                            {factoringInitialPercent + factoringRemainderPercent}% = ${((totalRevenue * (factoringInitialPercent + factoringRemainderPercent)) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
@@ -1229,194 +1365,6 @@ export default function SalesForecastAnalysisPage() {
                   </CardContent>
                 </Card>
 
-                {/* D2C-Specific Fields */}
-                {channelType === 'D2C' && (
-                  <>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">🚀 Sales Velocity</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Velocity</Label>
-                            <Input
-                              type="number"
-                              value={salesVelocity}
-                              onChange={(e) => setSalesVelocity(parseFloat(e.target.value) || 0)}
-                              placeholder="0"
-                            />
-                          </div>
-                          <div>
-                            <Label>Unit</Label>
-                            <Select value={velocityUnit} onValueChange={(value: 'per_day' | 'per_week') => setVelocityUnit(value)}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="per_day">Units per Day</SelectItem>
-                                <SelectItem value="per_week">Units per Week</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">💵 Cash Flow Timing</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Days to Receive Cash</Label>
-                            <Input
-                              type="number"
-                              value={daysToCash}
-                              onChange={(e) => setDaysToCash(parseFloat(e.target.value) || 0)}
-                              placeholder="0"
-                            />
-                          </div>
-                          <div>
-                            <Label>Warehouse</Label>
-                            <Input
-                              type="text"
-                              value={warehouse}
-                              onChange={(e) => setWarehouse(e.target.value)}
-                              placeholder="e.g., EMG, OL-USA"
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-
-                {/* B2B-Specific Fields */}
-                {channelType === 'B2B' && (
-                  <>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">📦 Pickup & Location</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <Label>Pickup Location</Label>
-                            <Input
-                              type="text"
-                              value={pickupLocation}
-                              onChange={(e) => setPickupLocation(e.target.value)}
-                              placeholder="e.g., Vietnam"
-                            />
-                          </div>
-                          <div>
-                            <Label>Sales Velocity (for reorders)</Label>
-                            <div className="grid grid-cols-2 gap-4">
-                              <Input
-                                type="number"
-                                value={salesVelocity}
-                                onChange={(e) => setSalesVelocity(parseFloat(e.target.value) || 0)}
-                                placeholder="0"
-                              />
-                              <Select value={velocityUnit} onValueChange={(value: 'per_day' | 'per_week') => setVelocityUnit(value)}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="per_day">Units/Day</SelectItem>
-                                  <SelectItem value="per_week">Units/Week</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center justify-between">
-                          💳 Factoring
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={useFactoring}
-                              onChange={(e) => setUseFactoring(e.target.checked)}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm font-normal">Use Factoring</span>
-                          </label>
-                        </CardTitle>
-                      </CardHeader>
-                      {useFactoring && (
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Initial Cash %</Label>
-                                <Input
-                                  type="number"
-                                  value={factoringInitialPercent}
-                                  onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
-                                  placeholder="85"
-                                />
-                              </div>
-                              <div>
-                                <Label>Days to Initial Cash</Label>
-                                <Input
-                                  type="number"
-                                  value={factoringInitialDays}
-                                  onChange={(e) => setFactoringInitialDays(parseFloat(e.target.value) || 0)}
-                                  placeholder="3"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Remainder %</Label>
-                                <Input
-                                  type="number"
-                                  value={factoringRemainderPercent}
-                                  onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
-                                  placeholder="15"
-                                />
-                              </div>
-                              <div>
-                                <Label>Days to Remainder</Label>
-                                <Input
-                                  type="number"
-                                  value={factoringRemainderDays}
-                                  onChange={(e) => setFactoringRemainderDays(parseFloat(e.target.value) || 0)}
-                                  placeholder="30"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      )}
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">🛡️ Insurance</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div>
-                          <Label>Insurance %</Label>
-                          <Input
-                            type="number"
-                            value={insurancePercent}
-                            onChange={(e) => setInsurancePercent(parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                            step="0.1"
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
 
                 {/* Customer & Notes (Both Channels) */}
                 <Card>
