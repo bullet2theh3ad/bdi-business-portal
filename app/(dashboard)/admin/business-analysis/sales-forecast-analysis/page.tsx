@@ -1159,24 +1159,71 @@ export default function SalesForecastAnalysisPage() {
                           </SelectContent>
                         </Select>
 
-                        {selectedScenarioId && scenarios.find(s => s.id === selectedScenarioId) && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-gray-600">Scenario ASP:</span>
-                                <span className="ml-2 font-semibold text-green-600">
-                                  ${parseFloat(scenarios.find(s => s.id === selectedScenarioId)?.asp || '0').toFixed(2)}
+                        {selectedScenarioId && scenarios.find(s => s.id === selectedScenarioId) && (() => {
+                          const selectedScenario = scenarios.find(s => s.id === selectedScenarioId);
+                          if (!selectedScenario) return null;
+                          
+                          const asp = parseFloat(selectedScenario.asp || '0');
+                          const gp = parseFloat(selectedScenario.grossProfit || '0');
+                          const gpPercent = parseFloat(selectedScenario.grossMarginPercent || '0');
+                          const quantity = selectedForecast?.quantity || 0;
+                          
+                          const totalRevenue = asp * quantity;
+                          const totalGrossProfit = gp * quantity;
+                          
+                          return (
+                            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-4 shadow-lg">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-gray-900">💰 Profitability Analysis</h4>
+                                <span className="text-xs bg-white px-2 py-1 rounded-full border border-gray-300">
+                                  {quantity.toLocaleString()} units
                                 </span>
                               </div>
-                              <div>
-                                <span className="text-gray-600">Standard Cost:</span>
-                                <span className="ml-2 font-semibold text-blue-600">
-                                  (from SKU table)
-                                </span>
+                              
+                              <div className="grid grid-cols-3 gap-4 mb-3">
+                                {/* Per Unit Metrics */}
+                                <div className="bg-white rounded p-3 border border-gray-200">
+                                  <p className="text-xs text-gray-500 mb-1">Per Unit</p>
+                                  <div className="space-y-1">
+                                    <div>
+                                      <p className="text-xs text-gray-600">ASP:</p>
+                                      <p className="text-lg font-bold text-green-600">${asp.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-600">GP:</p>
+                                      <p className="text-lg font-bold text-blue-600">${gp.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-600">GP %:</p>
+                                      <p className="text-lg font-bold text-purple-600">{gpPercent.toFixed(2)}%</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Total Forecast Impact */}
+                                <div className="bg-white rounded p-3 border-2 border-green-300 col-span-2">
+                                  <p className="text-xs text-gray-500 mb-1">Total Forecast Impact</p>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                      <p className="text-xs text-gray-600">Total Revenue:</p>
+                                      <p className="text-2xl font-bold text-green-600">${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                                      <p className="text-xs text-gray-500 mt-1">{quantity.toLocaleString()} × ${asp.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-600">Total Gross Profit:</p>
+                                      <p className="text-2xl font-bold text-blue-600">${totalGrossProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                                      <p className="text-xs text-gray-500 mt-1">{quantity.toLocaleString()} × ${gp.toFixed(2)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="text-xs text-gray-600 bg-white rounded p-2 border border-gray-200">
+                                <strong>Selected Scenario:</strong> {selectedScenario.scenarioName} ({selectedScenario.channel})
                               </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
                   </CardContent>
