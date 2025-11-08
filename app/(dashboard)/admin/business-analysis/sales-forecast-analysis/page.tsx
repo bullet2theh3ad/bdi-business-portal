@@ -29,6 +29,7 @@ interface Forecast {
   notes?: string;
   createdBy: string;
   createdAt: string;
+  selectedScenarioId?: string; // Link to SKU Financial Scenario
 }
 
 interface WeeklyData {
@@ -47,14 +48,93 @@ export default function SalesForecastAnalysisPage() {
   // Data state with SWR
   const { data: forecasts, mutate: mutateForecasts, isLoading: loadingForecasts } = useSWR<Forecast[]>('/api/cpfr/forecasts', fetcher);
   const { data: skus, isLoading: loadingSkus } = useSWR<any[]>('/api/admin/skus', fetcher);
+  const { data: scenariosResponse, isLoading: loadingScenarios } = useSWR<{scenarios: any[], count: number}>('/api/business-analysis/sku-scenarios', fetcher);
+  const scenarios = scenariosResponse?.scenarios;
   const [organizationId, setOrganizationId] = useState<string>('');
+  
+  // Track scenario selections for each forecast
+  const [forecastScenarios, setForecastScenarios] = useState<Record<string, string>>({});
+  
+  // Track manual ASP entries for each forecast (overrides scenario ASP)
+  const [manualASPs, setManualASPs] = useState<Record<string, number>>({});
   
   // UI state
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [selectedSKU, setSelectedSKU] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const loading = loadingForecasts || loadingSkus;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 100;
+  const loading = loadingForecasts || loadingSkus || loadingScenarios;
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate, selectedSKU, searchQuery]);
+  
+  // Helper function to get scenarios for a specific SKU
+  const getScenariosForSKU = (skuCode: string) => {
+    if (!scenarios || !Array.isArray(scenarios)) return [];
+    const skuCodeLower = skuCode?.toLowerCase() || '';
+    return scenarios.filter((scenario: any) => {
+      const scenarioSKU = scenario.skuName?.toLowerCase() || '';
+      return scenarioSKU === skuCodeLower || scenarioSKU.includes(skuCodeLower) || skuCodeLower.includes(scenarioSKU);
+    });
+  };
+  
+  // Helper function to get selected scenario for a forecast
+  const getSelectedScenario = (forecastId: string) => {
+    const scenarioId = forecastScenarios[forecastId];
+    if (!scenarioId || !scenarios || !Array.isArray(scenarios)) return null;
+    return scenarios.find((s: any) => s.id === scenarioId);
+  };
+  
+  // Helper function to get effective ASP (manual entry overrides scenario)
+  const getEffectiveASP = (forecastId: string): number => {
+    // Manual entry takes priority
+    if (manualASPs[forecastId] !== undefined && manualASPs[forecastId] > 0) {
+      return manualASPs[forecastId];
+    }
+    // Otherwise use scenario ASP
+    const scenario = getSelectedScenario(forecastId);
+    return scenario ? parseFloat(scenario.asp || '0') : 0;
+  };
+  
+  // Handle scenario selection for a forecast
+  const handleScenarioChange = async (forecastId: string, scenarioId: string) => {
+    setForecastScenarios(prev => ({
+      ...prev,
+      [forecastId]: scenarioId
+    }));
+    
+    // Clear manual ASP when scenario changes
+    setManualASPs(prev => {
+      const newManualASPs = { ...prev };
+      delete newManualASPs[forecastId];
+      return newManualASPs;
+    });
+    
+    // TODO: Persist to database via forecast-scenarios API
+    // For now, just update local state
+  };
+  
+  // Handle manual ASP entry
+  const handleManualASPChange = (forecastId: string, value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setManualASPs(prev => ({
+        ...prev,
+        [forecastId]: numValue
+      }));
+    } else if (value === '') {
+      // Clear manual entry
+      setManualASPs(prev => {
+        const newManualASPs = { ...prev };
+        delete newManualASPs[forecastId];
+        return newManualASPs;
+      });
+    }
+  };
   const [showWorksheetModal, setShowWorksheetModal] = useState(false);
   
   // Worksheet modal filters
@@ -65,8 +145,6 @@ export default function SalesForecastAnalysisPage() {
   // Configuration modal
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedForecast, setSelectedForecast] = useState<Forecast | null>(null);
-  const [scenarios, setScenarios] = useState<any[]>([]);
-  const [loadingScenarios, setLoadingScenarios] = useState(false);
   
   // Configuration form state
   const [channelType, setChannelType] = useState<'D2C' | 'B2B'>('D2C');
@@ -231,6 +309,41 @@ export default function SalesForecastAnalysisPage() {
       }, 0);
     return weekValue > max.value ? { value: weekValue, weekLabel: week.weekLabel } : max;
   }, { value: 0, weekLabel: '-' });
+  
+  // Calculate revenue amounts using ASP from selected scenarios or manual entry
+  const totalRevenue = filteredForecasts.reduce((sum, f) => {
+    const asp = getEffectiveASP(f.id);
+    return sum + (f.quantity * asp);
+  }, 0);
+  const avgWeeklyRevenue = weeklyData.length > 0 ? totalRevenue / weeklyData.length : 0;
+  
+  // Calculate peak week revenue
+  const peakWeekRevenue = weeklyData.reduce((max, week) => {
+    const weekRevenue = filteredForecasts
+      .filter(f => {
+        const weekDate = isoWeekToDate(f.deliveryWeek);
+        return weekDate.toISOString().split('T')[0] === week.weekStart;
+      })
+      .reduce((sum, f) => {
+        const asp = getEffectiveASP(f.id);
+        return sum + (f.quantity * asp);
+      }, 0);
+    return weekRevenue > max.value ? { value: weekRevenue, weekLabel: week.weekLabel } : max;
+  }, { value: 0, weekLabel: '-' });
+  
+  // Calculate gross profit (Revenue - Cost)
+  const totalGrossProfit = totalRevenue - totalValue;
+  const avgWeeklyGrossProfit = weeklyData.length > 0 ? totalGrossProfit / weeklyData.length : 0;
+  const grossProfitPercent = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
+  
+  // Count forecasts with ASP assigned (either from scenario or manual)
+  const forecastsWithASP = filteredForecasts.filter(f => getEffectiveASP(f.id) > 0).length;
+  const avgUnitASP = forecastsWithASP > 0 && totalRevenue > 0 
+    ? totalRevenue / filteredForecasts.filter(f => getEffectiveASP(f.id) > 0).reduce((sum, f) => sum + f.quantity, 0)
+    : 0;
+  
+  // Count forecasts with scenarios assigned
+  const scenariosAssignedCount = filteredForecasts.filter(f => !!forecastScenarios[f.id]).length;
 
   // Handle 13-week button
   const handleThirteenWeeks = () => {
@@ -273,19 +386,24 @@ export default function SalesForecastAnalysisPage() {
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Week', 'SKU', 'Quantity', 'Standard Cost', 'Extended Cost', 'Sales Signal', 'Factory Signal', 'Shipping Signal'];
+    const headers = ['Week', 'SKU', 'Quantity', 'Standard Cost', 'Std Cost Total', 'Sales Scenario', 'ASP', 'ASP Source', 'ASP Revenue Total'];
     const rows = filteredForecasts.map(f => {
       const standardCost = parseFloat(f.sku?.standardCost || '0');
       const extendedCost = f.quantity * standardCost;
+      const selectedScenario = getSelectedScenario(f.id);
+      const hasManualASP = manualASPs[f.id] !== undefined;
+      const asp = getEffectiveASP(f.id);
+      const extendedRevenue = f.quantity * asp;
       return [
         f.deliveryWeek,
         f.sku?.sku || '',
         f.quantity,
         standardCost.toFixed(2),
         extendedCost.toFixed(2),
-        f.salesSignal,
-        f.factorySignal,
-        f.shippingSignal,
+        selectedScenario?.scenarioName || '',
+        asp.toFixed(2),
+        hasManualASP ? 'Manual Entry' : (selectedScenario ? 'Scenario' : 'None'),
+        extendedRevenue.toFixed(2),
       ];
     });
     
@@ -308,38 +426,8 @@ export default function SalesForecastAnalysisPage() {
     setSelectedForecast(forecast);
     setShowConfigModal(true);
     
-    // Load SKU Financial Scenarios - filter to match this forecast's SKU
-    setLoadingScenarios(true);
-    try {
-      const response = await fetch('/api/business-analysis/sku-scenarios');
-      if (response.ok) {
-        const data = await response.json();
-        const allScenarios = data.scenarios || [];
-        
-        console.log('🔍 ALL SCENARIOS FROM API:', allScenarios.length);
-        console.log('🔍 First scenario sample:', allScenarios[0]);
-        console.log('🔍 Forecast SKU to match:', forecast.sku?.sku);
-        
-        // Filter to ONLY this SKU's scenarios
-        const forecastSKU = forecast.sku?.sku?.toLowerCase() || '';
-        const matchingScenarios = allScenarios.filter((scenario: any) => {
-          const scenarioSKU = scenario.skuName?.toLowerCase() || '';
-          const matches = scenarioSKU === forecastSKU || scenarioSKU.includes(forecastSKU) || forecastSKU.includes(scenarioSKU);
-          if (matches) {
-            console.log('✅ MATCH:', scenarioSKU, 'matches', forecastSKU);
-          }
-          return matches;
-        });
-        
-        console.log(`📊 Forecast SKU: ${forecast.sku?.sku}, Filtered to ${matchingScenarios.length} matching scenarios out of ${allScenarios.length} total`);
-        console.log('📊 Matching scenarios:', matchingScenarios);
-        setScenarios(matchingScenarios);
-      }
-    } catch (error) {
-      console.error('Error loading scenarios:', error);
-    } finally {
-      setLoadingScenarios(false);
-    }
+    // Scenarios are already loaded via SWR at the top level
+    // Filter logic is now in getScenariosForSKU() helper function
     
     // Check if this forecast already has a configuration
     try {
@@ -651,6 +739,41 @@ export default function SalesForecastAnalysisPage() {
         </Card>
       </div>
 
+      {/* Summary Cards - Revenue Metrics (ASP-based) */}
+      <div className="mb-2">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">💰 Revenue Metrics (ASP-based)</h3>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Total Revenue</div>
+            <div className="text-2xl font-bold text-blue-600">${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">{forecastsWithASP}/{filteredForecasts.length} with ASP</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Avg Weekly Revenue</div>
+            <div className="text-2xl font-bold text-green-600">${avgWeeklyRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">revenue/week</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Peak Week Revenue</div>
+            <div className="text-2xl font-bold text-orange-600">${peakWeekRevenue.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">{peakWeekRevenue.weekLabel}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Avg Unit ASP</div>
+            <div className="text-2xl font-bold text-purple-600">${avgUnitASP.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">per unit</div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Chart Card */}
       <Card className="mb-6">
         <CardHeader>
@@ -819,10 +942,10 @@ export default function SalesForecastAnalysisPage() {
                   <th className="px-4 py-2 text-left font-semibold">SKU</th>
                   <th className="px-4 py-2 text-right font-semibold">Quantity</th>
                   <th className="px-4 py-2 text-right font-semibold">Std Cost</th>
-                  <th className="px-4 py-2 text-right font-semibold">Extended Cost</th>
-                  <th className="px-4 py-2 text-center font-semibold">Sales</th>
-                  <th className="px-4 py-2 text-center font-semibold">Factory</th>
-                  <th className="px-4 py-2 text-center font-semibold">Shipping</th>
+                  <th className="px-4 py-2 text-right font-semibold">Std Cost Total</th>
+                  <th className="px-4 py-2 text-left font-semibold">Sales Scenario</th>
+                  <th className="px-4 py-2 text-right font-semibold">ASP</th>
+                  <th className="px-4 py-2 text-right font-semibold">ASP Revenue Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -833,10 +956,19 @@ export default function SalesForecastAnalysisPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredForecasts.slice(0, 100).map((forecast, idx) => {
+                  filteredForecasts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((forecast, idx) => {
                     const standardCost = parseFloat(forecast.sku?.standardCost || '0');
                     const extendedCost = forecast.quantity * standardCost;
                     const isMissingCost = standardCost === 0;
+                    
+                    // Get effective ASP (manual entry or from scenario)
+                    const asp = getEffectiveASP(forecast.id);
+                    const extendedRevenue = forecast.quantity * asp;
+                    const hasManualASP = manualASPs[forecast.id] !== undefined;
+                    
+                    // Get available scenarios for this SKU
+                    const skuScenarios = getScenariosForSKU(forecast.sku?.sku || '');
+                    
                     return (
                       <tr key={idx} className={`hover:bg-gray-50 ${isMissingCost ? 'bg-red-50' : ''}`}>
                         <td className="px-4 py-2">{forecast.deliveryWeek}</td>
@@ -859,35 +991,49 @@ export default function SalesForecastAnalysisPage() {
                         <td className={`px-4 py-2 text-right font-semibold ${isMissingCost ? 'text-red-600' : 'text-green-700'}`}>
                           ${extendedCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                            forecast.salesSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                            forecast.salesSignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {forecast.salesSignal}
-                          </span>
+                        <td className="px-2 py-2">
+                          <Select 
+                            value={forecastScenarios[forecast.id] || ''} 
+                            onValueChange={(value) => handleScenarioChange(forecast.id, value)}
+                          >
+                            <SelectTrigger className="h-7 text-xs min-w-[200px]">
+                              <SelectValue placeholder={skuScenarios.length > 0 ? "Select scenario..." : "No scenarios"} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[200px]" position="popper" sideOffset={5}>
+                              {skuScenarios.length === 0 ? (
+                                <SelectItem value="none" disabled>No scenarios available</SelectItem>
+                              ) : (
+                                skuScenarios.map((scenario: any) => (
+                                  <SelectItem key={scenario.id} value={scenario.id} className="text-xs">
+                                    {scenario.scenarioName} - ${parseFloat(scenario.asp || '0').toFixed(2)}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
                         </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                            forecast.factorySignal === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            forecast.factorySignal === 'reviewing' ? 'bg-yellow-100 text-yellow-800' :
-                            forecast.factorySignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {forecast.factorySignal}
-                          </span>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-500">$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Manual"
+                              value={manualASPs[forecast.id] || ''}
+                              onChange={(e) => handleManualASPChange(forecast.id, e.target.value)}
+                              className={`h-7 text-xs w-24 text-right ${hasManualASP ? 'bg-yellow-50 border-yellow-400' : ''}`}
+                            />
+                            {hasManualASP && (
+                              <span className="text-xs text-yellow-600 font-semibold">✏️</span>
+                            )}
+                            {!hasManualASP && asp > 0 && (
+                              <span className="text-xs text-blue-600 font-semibold">${asp.toFixed(2)}</span>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                            forecast.shippingSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            forecast.shippingSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                            forecast.shippingSignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {forecast.shippingSignal}
-                          </span>
+                        <td className="px-4 py-2 text-right font-semibold text-blue-700">
+                          {asp > 0 ? `$${extendedRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                         </td>
                       </tr>
                     );
@@ -895,9 +1041,34 @@ export default function SalesForecastAnalysisPage() {
                 )}
               </tbody>
             </table>
-            {filteredForecasts.length > 100 && (
-              <div className="text-center py-4 text-sm text-gray-500">
-                Showing first 100 of {filteredForecasts.length} forecasts
+            {filteredForecasts.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredForecasts.length)} of {filteredForecasts.length} forecasts
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-2 px-3">
+                    <span className="text-sm text-gray-600">
+                      Page {currentPage} of {Math.ceil(filteredForecasts.length / itemsPerPage)}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredForecasts.length / itemsPerPage), prev + 1))}
+                    disabled={currentPage >= Math.ceil(filteredForecasts.length / itemsPerPage)}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -1226,37 +1397,44 @@ export default function SalesForecastAnalysisPage() {
                       <div className="text-center py-4 text-gray-500">Loading scenarios...</div>
                     ) : (
                       <div className="space-y-4">
-                        {scenarios.length > 0 ? (
-                          <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded p-2 mb-2">
-                            ✓ Found {scenarios.length} scenario{scenarios.length !== 1 ? 's' : ''} for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-2">
-                            ⚠️ No scenarios found for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
-                          </div>
-                        )}
-                        <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder={scenarios.length > 0 ? "Select a scenario" : "No scenarios available"} />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[300px] z-[70]" position="popper" sideOffset={5}>
-                            {scenarios.length === 0 ? (
-                              <SelectItem value="none" disabled>No scenarios match this SKU</SelectItem>
-                            ) : (
-                              scenarios.map((scenario, index) => {
-                                console.log(`Rendering scenario ${index + 1}:`, scenario.scenarioName, scenario.skuName, scenario.asp);
-                                return (
-                                  <SelectItem key={scenario.id} value={scenario.id}>
-                                    {scenario.scenarioName} - {scenario.skuName} - ${parseFloat(scenario.asp || '0').toFixed(2)} ({scenario.channel || 'N/A'})
-                                  </SelectItem>
-                                );
-                              })
-                            )}
-                          </SelectContent>
-                        </Select>
+                        {(() => {
+                          const skuScenarios = selectedForecast ? getScenariosForSKU(selectedForecast.sku?.sku || '') : [];
+                          return (
+                            <>
+                              {skuScenarios.length > 0 ? (
+                                <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded p-2 mb-2">
+                                  ✓ Found {skuScenarios.length} scenario{skuScenarios.length !== 1 ? 's' : ''} for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-2">
+                                  ⚠️ No scenarios found for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
+                                </div>
+                              )}
+                              <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder={skuScenarios.length > 0 ? "Select a scenario" : "No scenarios available"} />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px] z-[70]" position="popper" sideOffset={5}>
+                                  {skuScenarios.length === 0 ? (
+                                    <SelectItem value="none" disabled>No scenarios match this SKU</SelectItem>
+                                  ) : (
+                                    skuScenarios.map((scenario, index) => {
+                                      console.log(`Rendering scenario ${index + 1}:`, scenario.scenarioName, scenario.skuName, scenario.asp);
+                                      return (
+                                        <SelectItem key={scenario.id} value={scenario.id}>
+                                          {scenario.scenarioName} - {scenario.skuName} - ${parseFloat(scenario.asp || '0').toFixed(2)} ({scenario.channel || 'N/A'})
+                                        </SelectItem>
+                                      );
+                                    })
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </>
+                          );
+                        })()}
 
-                        {selectedScenarioId && scenarios.find(s => s.id === selectedScenarioId) && (() => {
-                          const selectedScenario = scenarios.find(s => s.id === selectedScenarioId);
+                        {selectedScenarioId && scenarios && scenarios.find((s: any) => s.id === selectedScenarioId) && (() => {
+                          const selectedScenario = scenarios.find((s: any) => s.id === selectedScenarioId);
                           if (!selectedScenario) return null;
                           
                           const asp = parseFloat(selectedScenario.asp || '0');
