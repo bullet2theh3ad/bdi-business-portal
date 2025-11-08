@@ -758,9 +758,9 @@ export default function SalesForecastAnalysisPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Revenue */}
+            {/* Total ASP Revenue */}
             <div className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
-              <div className="text-xs font-medium text-gray-500 mb-1">Total Revenue</div>
+              <div className="text-xs font-medium text-gray-500 mb-1">Total ASP Revenue</div>
               <div className="text-2xl font-bold text-green-600 mb-1">
                 ${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </div>
@@ -895,7 +895,7 @@ export default function SalesForecastAnalysisPage() {
             </div>
           ) : (
             <div ref={chartRef} className="overflow-x-auto bg-white p-4" style={{ overflow: 'visible' }}>
-              <div className="min-w-[800px]" style={{ paddingTop: '120px', paddingBottom: '20px' }}>
+              <div className="min-w-[800px]" style={{ paddingTop: '120px', paddingBottom: '50px' }}>
                 {/* Simple Stacked Bar Chart with Line Overlays */}
                 <div className="relative" style={{ height: '400px' }}>
                   {/* Left Y-axis (Units) */}
@@ -937,7 +937,7 @@ export default function SalesForecastAnalysisPage() {
                         const skus = Object.keys(week.skuBreakdown);
                         
                         return (
-                          <div key={idx} className="flex flex-col items-center flex-1 max-w-[80px]">
+                          <div key={idx} className="relative flex flex-col items-center flex-1 max-w-[80px]">
                             {/* Bar container */}
                             <div 
                               className="w-full relative group cursor-pointer"
@@ -987,8 +987,13 @@ export default function SalesForecastAnalysisPage() {
                               </div>
                             </div>
                             
-                            {/* Week label */}
-                            <div className="text-xs text-gray-600 mt-2 font-medium">
+                            {/* Week label - rotated at 45 degrees */}
+                            <div className="absolute text-xs text-gray-600 font-medium whitespace-nowrap" style={{ 
+                              bottom: '-35px',
+                              left: '50%',
+                              transform: 'rotate(-45deg) translateX(-50%)',
+                              transformOrigin: 'top left'
+                            }}>
                               {week.weekLabel}
                             </div>
                           </div>
