@@ -155,6 +155,7 @@ export async function GET(request: NextRequest) {
           sku: productSkus.sku,
           name: productSkus.name,
           mfg: productSkus.mfg, // ✅ Added manufacturer field for filtering
+          standardCost: productSkus.standardCost, // ✅ Added standard cost for cost analysis
           htsCode: productSkus.htsCode,
           boxLengthCm: productSkus.boxLengthCm,
           boxWidthCm: productSkus.boxWidthCm,

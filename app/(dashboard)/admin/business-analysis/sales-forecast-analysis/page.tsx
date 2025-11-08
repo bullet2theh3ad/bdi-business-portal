@@ -18,6 +18,7 @@ interface Forecast {
     sku: string;
     name: string;
     mfg?: string;
+    standardCost?: string;
   };
   deliveryWeek: string; // ISO week format: 2025-W12
   quantity: number;
@@ -203,6 +204,33 @@ export default function SalesForecastAnalysisPage() {
     { totalQuantity: 0, weekLabel: '-', weekStart: '', skuBreakdown: {} }
   );
   const uniqueSKUs = new Set(filteredForecasts.map(f => f.sku?.sku).filter(Boolean)).size;
+  
+  // Count SKUs missing standard cost
+  const missingCostCount = filteredForecasts.filter(f => {
+    const standardCost = parseFloat(f.sku?.standardCost || '0');
+    return standardCost === 0;
+  }).length;
+  
+  // Calculate dollar amounts using Standard Cost
+  const totalValue = filteredForecasts.reduce((sum, f) => {
+    const standardCost = parseFloat(f.sku?.standardCost || '0');
+    return sum + (f.quantity * standardCost);
+  }, 0);
+  const avgWeeklyValue = weeklyData.length > 0 ? totalValue / weeklyData.length : 0;
+  
+  // Calculate peak week value
+  const peakWeekValue = weeklyData.reduce((max, week) => {
+    const weekValue = filteredForecasts
+      .filter(f => {
+        const weekDate = isoWeekToDate(f.deliveryWeek);
+        return weekDate.toISOString().split('T')[0] === week.weekStart;
+      })
+      .reduce((sum, f) => {
+        const standardCost = parseFloat(f.sku?.standardCost || '0');
+        return sum + (f.quantity * standardCost);
+      }, 0);
+    return weekValue > max.value ? { value: weekValue, weekLabel: week.weekLabel } : max;
+  }, { value: 0, weekLabel: '-' });
 
   // Handle 13-week button
   const handleThirteenWeeks = () => {
@@ -245,15 +273,21 @@ export default function SalesForecastAnalysisPage() {
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Week', 'SKU', 'Quantity', 'Sales Signal', 'Factory Signal', 'Shipping Signal'];
-    const rows = filteredForecasts.map(f => [
-      f.deliveryWeek,
-      f.sku?.sku || '',
-      f.quantity,
-      f.salesSignal,
-      f.factorySignal,
-      f.shippingSignal,
-    ]);
+    const headers = ['Week', 'SKU', 'Quantity', 'Standard Cost', 'Extended Cost', 'Sales Signal', 'Factory Signal', 'Shipping Signal'];
+    const rows = filteredForecasts.map(f => {
+      const standardCost = parseFloat(f.sku?.standardCost || '0');
+      const extendedCost = f.quantity * standardCost;
+      return [
+        f.deliveryWeek,
+        f.sku?.sku || '',
+        f.quantity,
+        standardCost.toFixed(2),
+        extendedCost.toFixed(2),
+        f.salesSignal,
+        f.factorySignal,
+        f.shippingSignal,
+      ];
+    });
     
     const csvContent = [
       headers.join(','),
@@ -542,7 +576,10 @@ export default function SalesForecastAnalysisPage() {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Units */}
+      <div className="mb-2">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">📦 Unit Metrics</h3>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="pt-6">
@@ -570,6 +607,46 @@ export default function SalesForecastAnalysisPage() {
             <div className="text-sm text-gray-600 mb-1">SKUs</div>
             <div className="text-2xl font-bold text-purple-600">{uniqueSKUs}</div>
             <div className="text-xs text-gray-500">unique products</div>
+            {missingCostCount > 0 && (
+              <div className="mt-2 px-2 py-1 bg-red-50 border border-red-300 rounded">
+                <p className="text-xs text-red-700 font-semibold">⚠️ {missingCostCount} missing cost{missingCostCount !== 1 ? 's' : ''}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Summary Cards - Dollar Values */}
+      <div className="mb-2">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">💵 Cost Metrics (Standard Cost)</h3>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Total Value</div>
+            <div className="text-2xl font-bold text-blue-600">${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">total cost</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Avg Weekly Value</div>
+            <div className="text-2xl font-bold text-green-600">${avgWeeklyValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">cost/week</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Peak Week Value</div>
+            <div className="text-2xl font-bold text-orange-600">${peakWeekValue.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-xs text-gray-500">{peakWeekValue.weekLabel}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-1">Avg Unit Cost</div>
+            <div className="text-2xl font-bold text-purple-600">${totalQuantity > 0 ? (totalValue / totalQuantity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</div>
+            <div className="text-xs text-gray-500">per unit</div>
           </CardContent>
         </Card>
       </div>
@@ -718,6 +795,22 @@ export default function SalesForecastAnalysisPage() {
           <CardTitle className="text-lg">Forecast Details</CardTitle>
         </CardHeader>
         <CardContent>
+          {missingCostCount > 0 && (
+            <div className="mb-4 px-4 py-3 bg-red-50 border-l-4 border-red-500 rounded">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <span className="text-red-600 text-xl">⚠️</span>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-semibold text-red-800">Missing Standard Costs</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    {missingCostCount} forecast{missingCostCount !== 1 ? 's have' : ' has'} SKUs with no Standard Cost set. 
+                    These rows are highlighted in red below. Please update the SKU Standard Cost in the SKU management page.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
@@ -725,6 +818,8 @@ export default function SalesForecastAnalysisPage() {
                   <th className="px-4 py-2 text-left font-semibold">Week</th>
                   <th className="px-4 py-2 text-left font-semibold">SKU</th>
                   <th className="px-4 py-2 text-right font-semibold">Quantity</th>
+                  <th className="px-4 py-2 text-right font-semibold">Std Cost</th>
+                  <th className="px-4 py-2 text-right font-semibold">Extended Cost</th>
                   <th className="px-4 py-2 text-center font-semibold">Sales</th>
                   <th className="px-4 py-2 text-center font-semibold">Factory</th>
                   <th className="px-4 py-2 text-center font-semibold">Shipping</th>
@@ -733,52 +828,70 @@ export default function SalesForecastAnalysisPage() {
               <tbody className="divide-y divide-gray-200">
                 {filteredForecasts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                       No forecasts match your filters
                     </td>
                   </tr>
                 ) : (
-                  filteredForecasts.slice(0, 100).map((forecast, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-2">{forecast.deliveryWeek}</td>
-                      <td className="px-4 py-2 font-mono text-xs">
-                        {forecast.sku?.sku || '-'}
-                      </td>
-                      <td className="px-4 py-2 text-right font-semibold">
-                        {forecast.quantity.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                          forecast.salesSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                          forecast.salesSignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {forecast.salesSignal}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                          forecast.factorySignal === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          forecast.factorySignal === 'reviewing' ? 'bg-yellow-100 text-yellow-800' :
-                          forecast.factorySignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {forecast.factorySignal}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                          forecast.shippingSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          forecast.shippingSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                          forecast.shippingSignal === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {forecast.shippingSignal}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  filteredForecasts.slice(0, 100).map((forecast, idx) => {
+                    const standardCost = parseFloat(forecast.sku?.standardCost || '0');
+                    const extendedCost = forecast.quantity * standardCost;
+                    const isMissingCost = standardCost === 0;
+                    return (
+                      <tr key={idx} className={`hover:bg-gray-50 ${isMissingCost ? 'bg-red-50' : ''}`}>
+                        <td className="px-4 py-2">{forecast.deliveryWeek}</td>
+                        <td className="px-4 py-2 font-mono text-xs">
+                          {forecast.sku?.sku || '-'}
+                        </td>
+                        <td className="px-4 py-2 text-right font-semibold">
+                          {forecast.quantity.toLocaleString()}
+                        </td>
+                        <td className={`px-4 py-2 text-right ${isMissingCost ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
+                          {isMissingCost ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-xs bg-red-100 px-2 py-1 rounded">⚠️ Not Set</span>
+                              <span>${standardCost.toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            `$${standardCost.toFixed(2)}`
+                          )}
+                        </td>
+                        <td className={`px-4 py-2 text-right font-semibold ${isMissingCost ? 'text-red-600' : 'text-green-700'}`}>
+                          ${extendedCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                            forecast.salesSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            forecast.salesSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                            forecast.salesSignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {forecast.salesSignal}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                            forecast.factorySignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            forecast.factorySignal === 'reviewing' ? 'bg-yellow-100 text-yellow-800' :
+                            forecast.factorySignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {forecast.factorySignal}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                            forecast.shippingSignal === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            forecast.shippingSignal === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                            forecast.shippingSignal === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {forecast.shippingSignal}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
