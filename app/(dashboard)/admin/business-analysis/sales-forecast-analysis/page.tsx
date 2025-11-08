@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft, FileSpreadsheet } from 'lucide-react';
+import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 
 // Interfaces
 interface Forecast {
@@ -36,12 +37,15 @@ interface WeeklyData {
   skuBreakdown: { [skuCode: string]: number };
 }
 
+// Fetcher for SWR
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function SalesForecastAnalysisPage() {
   const router = useRouter();
   
-  // Data state
-  const [forecasts, setForecasts] = useState<Forecast[]>([]);
-  const [skus, setSkus] = useState<any[]>([]);
+  // Data state with SWR
+  const { data: forecasts, mutate: mutateForecasts, isLoading: loadingForecasts } = useSWR<Forecast[]>('/api/cpfr/forecasts', fetcher);
+  const { data: skus, isLoading: loadingSkus } = useSWR<any[]>('/api/admin/skus', fetcher);
   const [organizationId, setOrganizationId] = useState<string>('');
   
   // UI state
@@ -49,7 +53,7 @@ export default function SalesForecastAnalysisPage() {
   const [endDate, setEndDate] = useState<string>('');
   const [selectedSKU, setSelectedSKU] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const loading = loadingForecasts || loadingSkus;
   const [showWorksheetModal, setShowWorksheetModal] = useState(false);
   
   // Worksheet modal filters
@@ -121,39 +125,6 @@ export default function SalesForecastAnalysisPage() {
     fetchUserData();
   }, []);
 
-  // Fetch forecasts and SKUs
-  useEffect(() => {
-    if (!organizationId) return;
-    
-    async function loadData() {
-      try {
-        setLoading(true);
-        
-        // Fetch forecasts
-        const forecastsRes = await fetch('/api/cpfr/forecasts');
-        if (forecastsRes.ok) {
-          const forecastsData = await forecastsRes.json();
-          console.log('Forecasts loaded:', forecastsData.length);
-          setForecasts(forecastsData);
-        }
-        
-        // Fetch SKUs
-        const skusRes = await fetch('/api/admin/skus');
-        if (skusRes.ok) {
-          const skusData = await skusRes.json();
-          console.log('SKUs loaded:', skusData.length);
-          setSkus(skusData);
-        }
-      } catch (error) {
-        console.error('Failed to load data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    loadData();
-  }, [organizationId]);
-
   // Convert ISO week (2025-W12) to date
   const isoWeekToDate = (isoWeek: string): Date => {
     const [year, week] = isoWeek.split('-W').map(Number);
@@ -167,8 +138,8 @@ export default function SalesForecastAnalysisPage() {
     return ISOweekStart;
   };
 
-  // Filter forecasts
-  const filteredForecasts = forecasts.filter(f => {
+  // Filter forecasts (handle undefined from SWR)
+  const filteredForecasts = (forecasts || []).filter(f => {
     if (!f.deliveryWeek) return false;
     
     const weekDate = isoWeekToDate(f.deliveryWeek);
@@ -219,7 +190,7 @@ export default function SalesForecastAnalysisPage() {
 
   // Debug logging
   console.log('📊 Sales Forecast Debug:');
-  console.log('Total forecasts:', forecasts.length);
+  console.log('Total forecasts:', forecasts?.length || 0);
   console.log('Filtered forecasts:', filteredForecasts.length);
   console.log('Weekly data:', weeklyData.length);
   console.log('Weekly data sample:', weeklyData.slice(0, 3));
@@ -243,16 +214,33 @@ export default function SalesForecastAnalysisPage() {
     setEndDate(thirteenWeeksLater.toISOString().split('T')[0]);
   };
 
-  // Handle reset to all
-  const handleResetToAll = () => {
-    if (forecasts.length === 0) return;
+  // Handle reset to all - refresh data and set date range
+  const handleResetToAll = async () => {
+    // Refresh data from API first
+    await mutateForecasts();
+    
+    if (!forecasts || forecasts.length === 0) return;
     
     const allWeeks = forecasts.map(f => isoWeekToDate(f.deliveryWeek));
     const minDate = new Date(Math.min(...allWeeks.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...allWeeks.map(d => d.getTime())));
     
+    // Add 6 days to maxDate to include the entire last week (Monday + 6 days = Sunday)
+    maxDate.setDate(maxDate.getDate() + 6);
+    
     setStartDate(minDate.toISOString().split('T')[0]);
     setEndDate(maxDate.toISOString().split('T')[0]);
+    
+    console.log('📅 Reset to All - Date range:', {
+      start: minDate.toISOString().split('T')[0],
+      end: maxDate.toISOString().split('T')[0],
+      totalForecasts: forecasts.length
+    });
+  };
+  
+  // Manual refresh function
+  const handleRefresh = async () => {
+    await mutateForecasts();
   };
 
   // Export to CSV
@@ -512,7 +500,7 @@ export default function SalesForecastAnalysisPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All SKUs</SelectItem>
-                  {skus.map(sku => (
+                  {(skus || []).map(sku => (
                     <SelectItem key={sku.id} value={sku.sku}>
                       {sku.sku} - {sku.name}
                     </SelectItem>
@@ -538,11 +526,15 @@ export default function SalesForecastAnalysisPage() {
 
             {/* Actions */}
             <div className="flex flex-col justify-end gap-2">
+              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loadingForecasts}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loadingForecasts ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
               <Button onClick={handleThirteenWeeks} variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
                 13-Week
               </Button>
-              <Button onClick={handleResetToAll} variant="outline" size="sm">
+              <Button onClick={handleResetToAll} variant="outline" size="sm" disabled={loadingForecasts}>
                 Reset to All
               </Button>
             </div>
