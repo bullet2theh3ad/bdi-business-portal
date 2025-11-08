@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, ArrowLeft, FileSpreadsheet, RefreshCw, Save, Image as ImageIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
+import html2canvas from 'html2canvas';
 
 // Interfaces
 interface Forecast {
@@ -143,6 +144,14 @@ export default function SalesForecastAnalysisPage() {
   const [worksheetSortOrder, setWorksheetSortOrder] = useState<'asc' | 'desc'>('asc');
   const [worksheetSKUFilter, setWorksheetSKUFilter] = useState<string>('all');
   const [worksheetManufacturerFilter, setWorksheetManufacturerFilter] = useState<string>('all');
+  
+  // Save/Load session modals
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [sessionName, setSessionName] = useState('');
+  const [sessionDescription, setSessionDescription] = useState('');
+  const [savedSessions, setSavedSessions] = useState<any[]>([]);
+  const [savingSession, setSavingSession] = useState(false);
   
   // Configuration modal
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -430,6 +439,135 @@ export default function SalesForecastAnalysisPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // Export chart as PNG
+  const exportChartAsPNG = async () => {
+    if (!chartRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher quality
+        logging: false,
+      });
+      
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `forecast-chart-${startDate}-to-${endDate}.png`;
+      a.click();
+    } catch (error) {
+      console.error('Error exporting chart:', error);
+      alert('Failed to export chart as PNG');
+    }
+  };
+
+  // Save current analysis session
+  const saveAnalysisSession = async () => {
+    if (!sessionName.trim()) {
+      alert('Please enter a session name');
+      return;
+    }
+
+    setSavingSession(true);
+    try {
+      // Prepare selections data
+      const selections = filteredForecasts.map(f => ({
+        forecastId: f.id,
+        skuScenarioId: forecastScenarios[f.id] || null,
+        manualAsp: manualASPs[f.id] || null,
+      }));
+
+      const response = await fetch('/api/forecast-analysis-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionName,
+          description: sessionDescription,
+          startDate,
+          endDate,
+          selectedSku: selectedSKU,
+          searchQuery,
+          filters: {},
+          selections,
+        }),
+      });
+
+      if (response.ok) {
+        alert('✅ Session saved successfully!');
+        setShowSaveModal(false);
+        setSessionName('');
+        setSessionDescription('');
+      } else {
+        const error = await response.text();
+        alert(`❌ Failed to save session: ${error}`);
+      }
+    } catch (error) {
+      console.error('Error saving session:', error);
+      alert('❌ Error saving session');
+    } finally {
+      setSavingSession(false);
+    }
+  };
+
+  // Load saved sessions
+  const loadSavedSessions = async () => {
+    try {
+      const response = await fetch('/api/forecast-analysis-sessions');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedSessions(data.sessions || []);
+      }
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+    }
+  };
+
+  // Load a specific session
+  const loadAnalysisSession = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/forecast-analysis-sessions/${sessionId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const { session, selections } = data;
+
+        // Restore filters
+        setStartDate(session.startDate || '');
+        setEndDate(session.endDate || '');
+        setSelectedSKU(session.selectedSku || 'all');
+        setSearchQuery(session.searchQuery || '');
+
+        // Restore scenario selections and manual ASPs
+        const newForecastScenarios: Record<string, string> = {};
+        const newManualASPs: Record<string, number> = {};
+
+        selections.forEach((sel: any) => {
+          if (sel.skuScenarioId) {
+            newForecastScenarios[sel.forecastId] = sel.skuScenarioId;
+          }
+          if (sel.manualAsp) {
+            newManualASPs[sel.forecastId] = parseFloat(sel.manualAsp);
+          }
+        });
+
+        setForecastScenarios(newForecastScenarios);
+        setManualASPs(newManualASPs);
+
+        setShowLoadModal(false);
+        alert('✅ Session loaded successfully!');
+      }
+    } catch (error) {
+      console.error('Error loading session:', error);
+      alert('❌ Error loading session');
+    }
+  };
+
+  // Load sessions when load modal opens
+  useEffect(() => {
+    if (showLoadModal) {
+      loadSavedSessions();
+    }
+  }, [showLoadModal]);
 
   // Open configuration modal for a forecast
   const handleConfigure = async (forecast: Forecast) => {
@@ -877,9 +1015,21 @@ export default function SalesForecastAnalysisPage() {
               Weekly Forecast Timeline
             </CardTitle>
             <div className="flex gap-2">
+              <Button onClick={() => setShowSaveModal(true)} variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700">
+                <Save className="w-4 h-4 mr-2" />
+                Save Session
+              </Button>
+              <Button onClick={() => setShowLoadModal(true)} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Load Session
+              </Button>
               <Button onClick={() => setShowWorksheetModal(true)} variant="default" size="sm" className="bg-green-600 hover:bg-green-700">
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Worksheet
+              </Button>
+              <Button onClick={exportChartAsPNG} variant="outline" size="sm">
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Export PNG
               </Button>
               <Button onClick={exportToCSV} variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
@@ -1999,6 +2149,124 @@ export default function SalesForecastAnalysisPage() {
                 disabled={savingConfig}
               >
                 {savingConfig ? 'Saving...' : '💾 Save Configuration'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Session Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Save Analysis Session</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="sessionName">Session Name *</Label>
+                <Input
+                  id="sessionName"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  placeholder="e.g., Q1 2026 Forecast Analysis"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="sessionDesc">Description (Optional)</Label>
+                <Input
+                  id="sessionDesc"
+                  value={sessionDescription}
+                  onChange={(e) => setSessionDescription(e.target.value)}
+                  placeholder="Notes about this analysis..."
+                />
+              </div>
+              
+              <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                This will save:
+                <ul className="list-disc list-inside mt-1">
+                  <li>Date range and filters</li>
+                  <li>SKU scenario selections</li>
+                  <li>Manual ASP entries</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 justify-end mt-6">
+              <Button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setSessionName('');
+                  setSessionDescription('');
+                }}
+                variant="outline"
+                disabled={savingSession}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveAnalysisSession}
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={savingSession || !sessionName.trim()}
+              >
+                {savingSession ? 'Saving...' : '💾 Save Session'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Load Session Modal */}
+      {showLoadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">Load Saved Session</h2>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {savedSessions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No saved sessions found
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {savedSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => loadAnalysisSession(session.id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{session.sessionName}</h3>
+                          {session.description && (
+                            <p className="text-sm text-gray-600 mt-1">{session.description}</p>
+                          )}
+                          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                            <span>📅 {new Date(session.createdAt).toLocaleDateString()}</span>
+                            {session.startDate && session.endDate && (
+                              <span>📊 {session.startDate} to {session.endDate}</span>
+                            )}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Load
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 border-t">
+              <Button
+                onClick={() => setShowLoadModal(false)}
+                variant="outline"
+                className="w-full"
+              >
+                Close
               </Button>
             </div>
           </div>

@@ -1664,6 +1664,70 @@ export type NewInventoryPaymentLineItem = typeof inventoryPaymentLineItems.$infe
 export type InventoryPaymentDocument = typeof inventoryPaymentDocuments.$inferSelect;
 export type NewInventoryPaymentDocument = typeof inventoryPaymentDocuments.$inferInsert;
 
+// ===== FORECAST ANALYSIS SESSIONS =====
+
+export const forecastAnalysisSessions = pgTable('forecast_analysis_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Session metadata
+  sessionName: varchar('session_name', { length: 255 }).notNull(),
+  description: text('description'),
+  
+  // User & Organization
+  userId: uuid('user_id').notNull().references(() => users.authId, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Analysis configuration
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  selectedSku: varchar('selected_sku', { length: 255 }), // 'all' or specific SKU code
+  searchQuery: text('search_query'),
+  
+  // Additional filters (JSON for flexibility)
+  filters: jsonb('filters').default({}),
+  
+  // Audit fields
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  lastAccessedAt: timestamp('last_accessed_at').notNull().defaultNow(),
+  
+  // Soft delete
+  isActive: boolean('is_active').notNull().default(true),
+});
+
+export const forecastAnalysisSelections = pgTable('forecast_analysis_selections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Link to session
+  sessionId: uuid('session_id').notNull().references(() => forecastAnalysisSessions.id, { onDelete: 'cascade' }),
+  
+  // Link to forecast
+  forecastId: uuid('forecast_id').notNull().references(() => forecasts.id, { onDelete: 'cascade' }),
+  
+  // Link to SKU financial scenario (optional)
+  skuScenarioId: uuid('sku_scenario_id').references(() => skuFinancialScenarios.id, { onDelete: 'set null' }),
+  
+  // Manual ASP override (takes precedence over scenario ASP)
+  manualAsp: numeric('manual_asp', { precision: 12, scale: 2 }),
+  
+  // Notes for this specific forecast in the analysis
+  notes: text('notes'),
+  
+  // Audit
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => {
+  return {
+    // Ensure one selection per forecast per session
+    uniqueSessionForecast: unique().on(table.sessionId, table.forecastId),
+  };
+});
+
+export type ForecastAnalysisSession = typeof forecastAnalysisSessions.$inferSelect;
+export type NewForecastAnalysisSession = typeof forecastAnalysisSessions.$inferInsert;
+export type ForecastAnalysisSelection = typeof forecastAnalysisSelections.$inferSelect;
+export type NewForecastAnalysisSelection = typeof forecastAnalysisSelections.$inferInsert;
+
 // ===== CASH FLOW MUST PAYS =====
 export const mustPayCategoryEnum = pgEnum('must_pay_category', [
   'labor',
