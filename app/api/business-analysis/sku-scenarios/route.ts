@@ -238,6 +238,7 @@ export async function GET(request: NextRequest) {
       
       return {
         ...scenario,
+        netSales: netSales.toFixed(2),
         grossProfit: grossProfit.toFixed(2),
         grossMarginPercent: grossMarginPercent.toFixed(2),
       };

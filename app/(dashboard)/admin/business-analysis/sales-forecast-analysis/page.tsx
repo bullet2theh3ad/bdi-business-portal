@@ -37,6 +37,8 @@ interface WeeklyData {
   weekLabel: string; // Display: W40 2025
   totalQuantity: number;
   skuBreakdown: { [skuCode: string]: number };
+  totalCost: number; // Sum of (quantity * standardCost) for the week
+  totalRevenue: number; // Sum of (quantity * asp) for the week
 }
 
 // Fetcher for SWR
@@ -253,6 +255,8 @@ export default function SalesForecastAnalysisPage() {
         weekLabel: f.deliveryWeek,
         totalQuantity: 0,
         skuBreakdown: {},
+        totalCost: 0,
+        totalRevenue: 0,
       });
     }
     
@@ -261,6 +265,12 @@ export default function SalesForecastAnalysisPage() {
     
     const skuCode = f.sku?.sku || 'Unknown';
     week.skuBreakdown[skuCode] = (week.skuBreakdown[skuCode] || 0) + f.quantity;
+    
+    // Calculate cost and revenue for this forecast
+    const standardCost = parseFloat(f.sku?.standardCost || '0');
+    const asp = getEffectiveASP(f.id);
+    week.totalCost += f.quantity * standardCost;
+    week.totalRevenue += f.quantity * asp;
   });
 
   weeklyData.push(...Array.from(weekMap.values()).sort((a, b) => 
@@ -395,9 +405,9 @@ export default function SalesForecastAnalysisPage() {
       const asp = getEffectiveASP(f.id);
       const extendedRevenue = f.quantity * asp;
       return [
-        f.deliveryWeek,
-        f.sku?.sku || '',
-        f.quantity,
+      f.deliveryWeek,
+      f.sku?.sku || '',
+      f.quantity,
         standardCost.toFixed(2),
         extendedCost.toFixed(2),
         selectedScenario?.scenarioName || '',
@@ -739,40 +749,124 @@ export default function SalesForecastAnalysisPage() {
         </Card>
       </div>
 
-      {/* Summary Cards - Revenue Metrics (ASP-based) */}
-      <div className="mb-2">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">💰 Revenue Metrics (ASP-based)</h3>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-gray-600 mb-1">Total Revenue</div>
-            <div className="text-2xl font-bold text-blue-600">${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-            <div className="text-xs text-gray-500">{forecastsWithASP}/{filteredForecasts.length} with ASP</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-gray-600 mb-1">Avg Weekly Revenue</div>
-            <div className="text-2xl font-bold text-green-600">${avgWeeklyRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-            <div className="text-xs text-gray-500">revenue/week</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-gray-600 mb-1">Peak Week Revenue</div>
-            <div className="text-2xl font-bold text-orange-600">${peakWeekRevenue.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-            <div className="text-xs text-gray-500">{peakWeekRevenue.weekLabel}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-gray-600 mb-1">Avg Unit ASP</div>
-            <div className="text-2xl font-bold text-purple-600">${avgUnitASP.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-            <div className="text-xs text-gray-500">per unit</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Revenue Metrics Card - Styled like Profitability Analysis */}
+      <Card className="mb-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            💰 Revenue Metrics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Revenue */}
+            <div className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
+              <div className="text-xs font-medium text-gray-500 mb-1">Total Revenue</div>
+              <div className="text-2xl font-bold text-green-600 mb-1">
+                ${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div className="text-xs text-gray-400">{forecastsWithASP}/{filteredForecasts.length} with ASP</div>
+            </div>
+            
+            {/* Avg Weekly Revenue */}
+            <div className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
+              <div className="text-xs font-medium text-gray-500 mb-1">Avg Weekly Revenue</div>
+              <div className="text-2xl font-bold text-blue-600 mb-1">
+                ${avgWeeklyRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div className="text-xs text-gray-400">revenue/week</div>
+            </div>
+            
+            {/* Peak Week Revenue */}
+            <div className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
+              <div className="text-xs font-medium text-gray-500 mb-1">Peak Week Revenue</div>
+              <div className="text-2xl font-bold text-orange-600 mb-1">
+                ${peakWeekRevenue.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div className="text-xs text-gray-400">{peakWeekRevenue.weekLabel}</div>
+            </div>
+            
+            {/* Avg Unit ASP */}
+            <div className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
+              <div className="text-xs font-medium text-gray-500 mb-1">Avg Unit ASP</div>
+              <div className="text-2xl font-bold text-purple-600 mb-1">
+                ${avgUnitASP.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div className="text-xs text-gray-400">per unit</div>
+            </div>
+          </div>
+          
+          {/* SKU Financial Scenario Metrics */}
+          <div className="mt-6 pt-6 border-t border-green-200">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4">📊 SKU Financial Scenario Metrics</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Net Sales Revenue from Scenarios (using netSales field from API) */}
+              <div className="bg-white rounded-lg p-4 border border-emerald-100 shadow-sm">
+                <div className="text-xs font-medium text-gray-500 mb-1">Net Sales Revenue</div>
+                <div className="text-2xl font-bold text-emerald-600 mb-1">
+                  ${(() => {
+                    const netSalesTotal = filteredForecasts.reduce((sum, f) => {
+                      const scenario = getSelectedScenario(f.id);
+                      if (scenario && scenario.netSales) {
+                        const unitNetSales = parseFloat(scenario.netSales);
+                        return sum + (f.quantity * unitNetSales);
+                      }
+                      return sum;
+                    }, 0);
+                    return netSalesTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                  })()}
+                </div>
+                <div className="text-xs text-gray-400">from scenarios</div>
+              </div>
+              
+              {/* Gross Profit - use grossProfit directly from scenario */}
+              <div className="bg-white rounded-lg p-4 border border-emerald-100 shadow-sm">
+                <div className="text-xs font-medium text-gray-500 mb-1">Gross Profit (GP)</div>
+                <div className="text-2xl font-bold text-blue-600 mb-1">
+                  ${(() => {
+                    const totalGP = filteredForecasts.reduce((sum, f) => {
+                      const scenario = getSelectedScenario(f.id);
+                      if (scenario && scenario.grossProfit) {
+                        const unitGP = parseFloat(scenario.grossProfit);
+                        return sum + (f.quantity * unitGP);
+                      }
+                      return sum;
+                    }, 0);
+                    return totalGP.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                  })()}
+                </div>
+                <div className="text-xs text-gray-400">from scenarios</div>
+              </div>
+              
+              {/* Gross Margin - use grossMarginPercent directly from scenario (already calculated) */}
+              <div className="bg-white rounded-lg p-4 border border-emerald-100 shadow-sm">
+                <div className="text-xs font-medium text-gray-500 mb-1">Gross Margin (GM)</div>
+                <div className="text-2xl font-bold text-purple-600 mb-1">
+                  {(() => {
+                    // Calculate weighted average GM% across all forecasts with scenarios
+                    const totalGP = filteredForecasts.reduce((sum, f) => {
+                      const scenario = getSelectedScenario(f.id);
+                      if (scenario && scenario.grossProfit) {
+                        return sum + (f.quantity * parseFloat(scenario.grossProfit));
+                      }
+                      return sum;
+                    }, 0);
+                    const totalNetSales = filteredForecasts.reduce((sum, f) => {
+                      const scenario = getSelectedScenario(f.id);
+                      if (scenario && scenario.netSales) {
+                        return sum + (f.quantity * parseFloat(scenario.netSales));
+                      }
+                      return sum;
+                    }, 0);
+                    const weightedGM = totalNetSales > 0 ? (totalGP / totalNetSales) * 100 : 0;
+                    return weightedGM.toFixed(2);
+                  })()}%
+                </div>
+                <div className="text-xs text-gray-400">from scenarios</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Chart Card */}
       <Card className="mb-6">
@@ -800,11 +894,11 @@ export default function SalesForecastAnalysisPage() {
               No forecast data available for the selected period
             </div>
           ) : (
-            <div ref={chartRef} className="overflow-x-auto bg-white p-4">
-              <div className="min-w-[800px]">
-                {/* Simple Stacked Bar Chart */}
+            <div ref={chartRef} className="overflow-x-auto bg-white p-4" style={{ overflow: 'visible' }}>
+              <div className="min-w-[800px]" style={{ paddingTop: '120px', paddingBottom: '20px' }}>
+                {/* Simple Stacked Bar Chart with Line Overlays */}
                 <div className="relative" style={{ height: '400px' }}>
-                  {/* Y-axis */}
+                  {/* Left Y-axis (Units) */}
                   <div className="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-xs text-gray-600 text-right pr-2">
                     {(() => {
                       const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity), 1);
@@ -816,10 +910,25 @@ export default function SalesForecastAnalysisPage() {
                     })()}
                   </div>
 
+                  {/* Right Y-axis (Dollars) */}
+                  <div className="absolute right-0 top-0 bottom-8 w-16 flex flex-col justify-between text-xs text-gray-600 text-left pl-2">
+                    {(() => {
+                      const maxCost = Math.max(...weeklyData.map(w => w.totalCost), 1);
+                      const maxRevenue = Math.max(...weeklyData.map(w => w.totalRevenue), 1);
+                      const maxDollar = Math.max(maxCost, maxRevenue);
+                      const steps = 5;
+                      return Array.from({ length: steps + 1 }, (_, i) => {
+                        const value = Math.round((maxDollar / steps) * (steps - i));
+                        return <div key={i} className="text-green-600">${(value / 1000).toFixed(0)}K</div>;
+                      });
+                    })()}
+                  </div>
+
                   {/* Chart bars */}
-                  <div className="absolute left-12 right-0 top-0 bottom-8 border-l-2 border-b-2 border-gray-300">
-                    <div className="flex items-end justify-around h-full gap-2 px-4">
+                  <div className="absolute left-12 right-16 top-0 bottom-8 border-l-2 border-r-2 border-b-2 border-gray-300">
+                    <div className="flex items-end justify-around h-full gap-2 px-4" style={{ position: 'relative' }}>
                       {weeklyData.map((week, idx) => {
+                        // Bars use unit scale only
                         const maxQty = Math.max(...weeklyData.map(w => w.totalQuantity), 1);
                         const barHeightPx = (week.totalQuantity / maxQty) * 350; // 350px max height
                         
@@ -856,10 +965,12 @@ export default function SalesForecastAnalysisPage() {
                                 })}
                               </div>
                               
-                              {/* Tooltip */}
-                              <div className="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-20 shadow-lg">
+                              {/* Tooltip - shows above for short bars, below for tall bars */}
+                              <div className={`hidden group-hover:block absolute left-1/2 transform -translate-x-1/2 ${barHeightPx > 250 ? 'top-full mt-2' : 'bottom-full mb-2'} bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-20 shadow-lg`}>
                                 <div className="font-bold mb-1">{week.weekLabel}</div>
-                                <div className="text-blue-300 mb-2">{week.totalQuantity.toLocaleString()} units</div>
+                                <div className="text-blue-300 mb-1">{week.totalQuantity.toLocaleString()} units</div>
+                                <div className="text-green-300 mb-1">💰 Cost: ${week.totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                                <div className="text-purple-300 mb-2">💵 Revenue: ${week.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
                                 <div className="border-t border-gray-600 pt-1 space-y-1">
                                   {Object.entries(week.skuBreakdown)
                                     .sort((a, b) => b[1] - a[1])
@@ -884,27 +995,93 @@ export default function SalesForecastAnalysisPage() {
                         );
                       })}
                     </div>
+                    
+                    {/* Line Overlays for Cost and Revenue - use dollar scale */}
+                    <svg className="absolute left-0 top-0 w-full h-full pointer-events-none" style={{ overflow: 'visible' }}>
+                      {(() => {
+                        // Use dollar values for line scaling (separate from unit bars)
+                        const maxCost = Math.max(...weeklyData.map(w => w.totalCost), 1);
+                        const maxRevenue = Math.max(...weeklyData.map(w => w.totalRevenue), 1);
+                        const maxDollar = Math.max(maxCost, maxRevenue);
+                        
+                        // Get the SVG dimensions (match the chart area)
+                        const chartHeight = 350; // pixels (matching bar max height)
+                        const padding = 16; // px-4 = 16px padding on each side
+                        const chartWidth = 100; // We'll use percentage for proper alignment with justify-around
+                        
+                        return (
+                          <>
+                            {/* Cost Points */}
+                            {weeklyData.map((week, idx) => {
+                              const xPercent = ((2 * idx + 1) / (2 * weeklyData.length)) * chartWidth;
+                              const y = chartHeight - ((week.totalCost / maxDollar) * chartHeight);
+                              return (
+                                <circle
+                                  key={`cost-${idx}`}
+                                  cx={`${xPercent}%`}
+                                  cy={y}
+                                  r="6"
+                                  fill="#10B981"
+                                  stroke="white"
+                                  strokeWidth="2"
+                                />
+                              );
+                            })}
+                            
+                            {/* Revenue Points */}
+                            {weeklyData.map((week, idx) => {
+                              const xPercent = ((2 * idx + 1) / (2 * weeklyData.length)) * chartWidth;
+                              const y = chartHeight - ((week.totalRevenue / maxDollar) * chartHeight);
+                              return (
+                                <circle
+                                  key={`revenue-${idx}`}
+                                  cx={`${xPercent}%`}
+                                  cy={y}
+                                  r="6"
+                                  fill="#8B5CF6"
+                                  stroke="white"
+                                  strokeWidth="2"
+                                />
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </svg>
                   </div>
                 </div>
 
                 {/* Legend */}
-                <div className="mt-8 flex flex-wrap gap-4 justify-center">
-                  {(() => {
-                    const allSkus = Array.from(new Set(
-                      filteredForecasts.map(f => f.sku?.sku).filter(Boolean)
-                    ));
-                    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'];
-                    
-                    return allSkus.map((sku, i) => (
-                      <div key={sku} className="flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded" 
-                          style={{ backgroundColor: colors[i % colors.length] }}
-                        />
-                        <span className="text-sm font-mono font-medium">{sku}</span>
-                      </div>
-                    ));
-                  })()}
+                <div className="mt-8">
+                  <div className="flex flex-wrap gap-6 justify-center mb-4">
+                    {/* Dot Legend */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white"></div>
+                      <span className="text-sm font-medium text-gray-700">💰 Std Cost Total (right axis)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-white"></div>
+                      <span className="text-sm font-medium text-gray-700">💵 ASP Revenue Total (right axis)</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    {(() => {
+                      const allSkus = Array.from(new Set(
+                        filteredForecasts.map(f => f.sku?.sku).filter(Boolean)
+                      ));
+                      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'];
+                      
+                      return allSkus.map((sku, i) => (
+                        <div key={sku} className="flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded" 
+                            style={{ backgroundColor: colors[i % colors.length] }}
+                          />
+                          <span className="text-sm font-mono font-medium">{sku}</span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
@@ -971,13 +1148,13 @@ export default function SalesForecastAnalysisPage() {
                     
                     return (
                       <tr key={idx} className={`hover:bg-gray-50 ${isMissingCost ? 'bg-red-50' : ''}`}>
-                        <td className="px-4 py-2">{forecast.deliveryWeek}</td>
-                        <td className="px-4 py-2 font-mono text-xs">
-                          {forecast.sku?.sku || '-'}
-                        </td>
-                        <td className="px-4 py-2 text-right font-semibold">
-                          {forecast.quantity.toLocaleString()}
-                        </td>
+                      <td className="px-4 py-2">{forecast.deliveryWeek}</td>
+                      <td className="px-4 py-2 font-mono text-xs">
+                        {forecast.sku?.sku || '-'}
+                      </td>
+                      <td className="px-4 py-2 text-right font-semibold">
+                        {forecast.quantity.toLocaleString()}
+                      </td>
                         <td className={`px-4 py-2 text-right ${isMissingCost ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
                           {isMissingCost ? (
                             <div className="flex items-center justify-end gap-2">
@@ -987,10 +1164,10 @@ export default function SalesForecastAnalysisPage() {
                           ) : (
                             `$${standardCost.toFixed(2)}`
                           )}
-                        </td>
+                      </td>
                         <td className={`px-4 py-2 text-right font-semibold ${isMissingCost ? 'text-red-600' : 'text-green-700'}`}>
                           ${extendedCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </td>
+                      </td>
                         <td className="px-2 py-2">
                           <Select 
                             value={forecastScenarios[forecast.id] || ''} 
@@ -1034,8 +1211,8 @@ export default function SalesForecastAnalysisPage() {
                         </td>
                         <td className="px-4 py-2 text-right font-semibold text-blue-700">
                           {asp > 0 ? `$${extendedRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
-                        </td>
-                      </tr>
+                      </td>
+                    </tr>
                     );
                   })
                 )}
@@ -1402,33 +1579,33 @@ export default function SalesForecastAnalysisPage() {
                           return (
                             <>
                               {skuScenarios.length > 0 ? (
-                                <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded p-2 mb-2">
+                          <div className="text-xs text-green-600 bg-green-50 border border-green-200 rounded p-2 mb-2">
                                   ✓ Found {skuScenarios.length} scenario{skuScenarios.length !== 1 ? 's' : ''} for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-2">
-                                  ⚠️ No scenarios found for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
-                                </div>
-                              )}
-                              <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
-                                <SelectTrigger className="w-full">
+                          </div>
+                        ) : (
+                          <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2 mb-2">
+                            ⚠️ No scenarios found for SKU: <strong>{selectedForecast?.sku?.sku}</strong>
+                          </div>
+                        )}
+                        <Select value={selectedScenarioId} onValueChange={setSelectedScenarioId}>
+                          <SelectTrigger className="w-full">
                                   <SelectValue placeholder={skuScenarios.length > 0 ? "Select a scenario" : "No scenarios available"} />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px] z-[70]" position="popper" sideOffset={5}>
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px] z-[70]" position="popper" sideOffset={5}>
                                   {skuScenarios.length === 0 ? (
-                                    <SelectItem value="none" disabled>No scenarios match this SKU</SelectItem>
-                                  ) : (
+                              <SelectItem value="none" disabled>No scenarios match this SKU</SelectItem>
+                            ) : (
                                     skuScenarios.map((scenario, index) => {
-                                      console.log(`Rendering scenario ${index + 1}:`, scenario.scenarioName, scenario.skuName, scenario.asp);
-                                      return (
-                                        <SelectItem key={scenario.id} value={scenario.id}>
-                                          {scenario.scenarioName} - {scenario.skuName} - ${parseFloat(scenario.asp || '0').toFixed(2)} ({scenario.channel || 'N/A'})
-                                        </SelectItem>
-                                      );
-                                    })
-                                  )}
-                                </SelectContent>
-                              </Select>
+                                console.log(`Rendering scenario ${index + 1}:`, scenario.scenarioName, scenario.skuName, scenario.asp);
+                                return (
+                                  <SelectItem key={scenario.id} value={scenario.id}>
+                                    {scenario.scenarioName} - {scenario.skuName} - ${parseFloat(scenario.asp || '0').toFixed(2)} ({scenario.channel || 'N/A'})
+                                  </SelectItem>
+                                );
+                              })
+                            )}
+                          </SelectContent>
+                        </Select>
                             </>
                           );
                         })()}
@@ -1501,10 +1678,10 @@ export default function SalesForecastAnalysisPage() {
                                       <p className="text-xs text-gray-600">Total Gross Profit:</p>
                                       <p className="text-lg font-bold text-blue-600">${totalGrossProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                                       <p className="text-xs text-gray-500">{quantity.toLocaleString()} × ${gp.toFixed(2)}</p>
-                                    </div>
-                                    
+                              </div>
+                              
                                     {/* BOL Handover Date - Compact */}
-                                    {channelType === 'B2B' && (
+                              {channelType === 'B2B' && (
                                       <div>
                                         <Label className="text-xs text-gray-600">📦 BOL Handover Date</Label>
                                         <Input
@@ -1528,7 +1705,7 @@ export default function SalesForecastAnalysisPage() {
                                     {/* Sales Velocity */}
                                     <div>
                                       <Label className="text-xs text-gray-600">📊 Sales Velocity</Label>
-                                      <Input
+                                        <Input
                                         type="number"
                                         min="0"
                                         step="0.1"
@@ -1570,10 +1747,10 @@ export default function SalesForecastAnalysisPage() {
                                         if (bolHandoverDate) {
                                           baseDate = new Date(bolHandoverDate);
                                         } else {
-                                          const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                          const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                          const day = date.getDay();
-                                          const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                            const day = date.getDay();
+                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
                                           baseDate = new Date(date.setDate(diff));
                                         }
                                         
@@ -1615,12 +1792,12 @@ export default function SalesForecastAnalysisPage() {
                                             )}
                                           </div>
                                         );
-                                      })()}
+                                          })()}
+                                    </div>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              </div>
-                              
+                                  
                               <div className="text-xs text-gray-600 bg-white rounded px-2 py-1 border border-gray-200 mb-2">
                                 <strong>Scenario:</strong> {selectedScenario.scenarioName} ({selectedScenario.channel})
                               </div>
@@ -1628,127 +1805,127 @@ export default function SalesForecastAnalysisPage() {
                               {/* Factoring Section - Pulled up closer */}
                               {channelType === 'B2B' && useFactoring && (
                                 <div className="bg-purple-50 rounded p-2 border-2 border-purple-300">
-                                  <h5 className="text-sm font-semibold text-purple-900 mb-2">💳 Factoring Terms</h5>
-                                  
+                                      <h5 className="text-sm font-semibold text-purple-900 mb-2">💳 Factoring Terms</h5>
+                                      
                                   {/* Initial Cash Row - More Compact */}
                                   <div className="grid grid-cols-12 gap-1 items-center mb-2 bg-white rounded p-2 text-xs">
-                                    <div className="col-span-2">
-                                      <Label className="text-xs">Initial %</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="1"
-                                        value={factoringInitialPercent}
-                                        onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Initial %</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="1"
+                                            value={factoringInitialPercent}
+                                            onChange={(e) => setFactoringInitialPercent(parseFloat(e.target.value) || 0)}
                                         className="h-7 text-xs"
-                                      />
-                                    </div>
+                                          />
+                                        </div>
                                     <div className="col-span-1 text-center text-sm text-gray-400">=</div>
-                                    <div className="col-span-3">
-                                      <Label className="text-xs">Amount</Label>
-                                      <div className="text-sm font-bold text-green-600 mt-1">
-                                        ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                      </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                      <Label className="text-xs">Days</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        value={factoringInitialDays}
-                                        onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">Amount</Label>
+                                          <div className="text-sm font-bold text-green-600 mt-1">
+                                            ${((totalRevenue * factoringInitialPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Days</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            value={factoringInitialDays}
+                                            onChange={(e) => setFactoringInitialDays(parseInt(e.target.value) || 0)}
                                         className="h-7 text-xs"
-                                      />
-                                    </div>
+                                          />
+                                        </div>
                                     <div className="col-span-1 text-center text-sm text-gray-400">→</div>
-                                    <div className="col-span-3">
-                                      <Label className="text-xs">AR Date</Label>
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">AR Date</Label>
                                       <div className="text-xs font-bold text-purple-600 mt-1">
-                                        {(() => {
+                                            {(() => {
                                           const baseDateStr = bolHandoverDate || (() => {
                                             if (!selectedForecast?.deliveryWeek) return '';
-                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                            const day = date.getDay();
-                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-                                            const monday = new Date(date.setDate(diff));
+                                              const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                              const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                              const day = date.getDay();
+                                              const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                              const monday = new Date(date.setDate(diff));
                                             return monday.toISOString().split('T')[0];
                                           })();
                                           if (!baseDateStr) return 'N/A';
                                           const arDate = new Date(baseDateStr);
                                           arDate.setDate(arDate.getDate() + factoringInitialDays);
                                           return arDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                        })()}
+                                            })()}
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                  </div>
-                                  
+                                      
                                   {/* Remainder Cash Row - More Compact */}
                                   <div className="grid grid-cols-12 gap-1 items-center mb-2 bg-white rounded p-2 text-xs">
-                                    <div className="col-span-2">
-                                      <Label className="text-xs">Remainder %</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="1"
-                                        value={factoringRemainderPercent}
-                                        onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Remainder %</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="1"
+                                            value={factoringRemainderPercent}
+                                            onChange={(e) => setFactoringRemainderPercent(parseFloat(e.target.value) || 0)}
                                         className="h-7 text-xs"
-                                      />
-                                    </div>
+                                          />
+                                        </div>
                                     <div className="col-span-1 text-center text-sm text-gray-400">=</div>
-                                    <div className="col-span-3">
-                                      <Label className="text-xs">Amount</Label>
-                                      <div className="text-sm font-bold text-blue-600 mt-1">
-                                        ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                      </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                      <Label className="text-xs">Days</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        value={factoringRemainderDays}
-                                        onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">Amount</Label>
+                                          <div className="text-sm font-bold text-blue-600 mt-1">
+                                            ${((totalRevenue * factoringRemainderPercent) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Label className="text-xs">Days</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            value={factoringRemainderDays}
+                                            onChange={(e) => setFactoringRemainderDays(parseInt(e.target.value) || 0)}
                                         className="h-7 text-xs"
-                                      />
-                                    </div>
+                                          />
+                                        </div>
                                     <div className="col-span-1 text-center text-sm text-gray-400">→</div>
-                                    <div className="col-span-3">
-                                      <Label className="text-xs">AR Date</Label>
+                                        <div className="col-span-3">
+                                          <Label className="text-xs">AR Date</Label>
                                       <div className="text-xs font-bold text-purple-600 mt-1">
-                                        {(() => {
+                                            {(() => {
                                           const baseDateStr = bolHandoverDate || (() => {
                                             if (!selectedForecast?.deliveryWeek) return '';
-                                            const [year, week] = selectedForecast.deliveryWeek.split('-W');
-                                            const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-                                            const day = date.getDay();
-                                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-                                            const monday = new Date(date.setDate(diff));
+                                              const [year, week] = selectedForecast.deliveryWeek.split('-W');
+                                              const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                                              const day = date.getDay();
+                                              const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                                              const monday = new Date(date.setDate(diff));
                                             return monday.toISOString().split('T')[0];
                                           })();
                                           if (!baseDateStr) return 'N/A';
                                           const arDate = new Date(baseDateStr);
                                           arDate.setDate(arDate.getDate() + factoringRemainderDays);
                                           return arDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                        })()}
+                                            })()}
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Factoring Summary */}
-                                  <div className="pt-2 border-t border-purple-200">
-                                    <div className="flex justify-between text-xs">
-                                      <span className="font-medium">Total Factored:</span>
-                                      <span className="font-bold text-purple-700">
-                                        {factoringInitialPercent + factoringRemainderPercent}% = ${((totalRevenue * (factoringInitialPercent + factoringRemainderPercent)) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                      </span>
-                                    </div>
-                                  </div>
+                                      
+                                      {/* Factoring Summary */}
+                                      <div className="pt-2 border-t border-purple-200">
+                                        <div className="flex justify-between text-xs">
+                                          <span className="font-medium">Total Factored:</span>
+                                          <span className="font-bold text-purple-700">
+                                            {factoringInitialPercent + factoringRemainderPercent}% = ${((totalRevenue * (factoringInitialPercent + factoringRemainderPercent)) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                          </span>
+                                        </div>
+                                      </div>
                                 </div>
                               )}
                             </div>
