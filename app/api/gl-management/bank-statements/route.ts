@@ -110,6 +110,109 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * PUT /api/gl-management/bank-statements
+ * Update individual bank statement (simplified interface)
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check feature flag access
+    if (!canAccessQuickBooks(user.email)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Use service role for data access
+    const supabaseService = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesArray) => {
+            cookiesArray.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const body = await request.json();
+    const { id, account_type, category, notes, balance, is_matched } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Statement ID required' }, { status: 400 });
+    }
+
+    const updates: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (account_type !== undefined) updates.account_type = account_type;
+    if (category !== undefined) updates.category = category;
+    if (notes !== undefined) updates.notes = notes;
+    if (balance !== undefined) updates.balance = balance;
+    if (is_matched !== undefined) updates.is_matched = is_matched;
+
+    // If marking as matched, set matched_at and matched_by
+    if (is_matched === true) {
+      updates.matched_at = new Date().toISOString();
+      updates.matched_by = user.id;
+    } else if (is_matched === false) {
+      updates.matched_at = null;
+      updates.matched_by = null;
+      updates.matched_qb_transaction_type = null;
+      updates.matched_qb_transaction_id = null;
+    }
+
+    const { data: updated, error } = await supabaseService
+      .from('bank_statements')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating bank statement:', error);
+      throw error;
+    }
+
+    return NextResponse.json({
+      statement: updated,
+      message: 'Bank statement updated successfully',
+    });
+
+  } catch (error) {
+    console.error('Error in PUT /api/gl-management/bank-statements:', error);
+    return NextResponse.json(
+      { error: 'Failed to update bank statement', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * PATCH /api/gl-management/bank-statements
  * Update individual bank statement
  */

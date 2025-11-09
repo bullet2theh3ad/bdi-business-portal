@@ -81,6 +81,18 @@ export async function GET(request: NextRequest) {
       supabaseService.from('inventory_payment_line_items').select('*'),
     ]);
 
+    // Debug: Log raw data fetched
+    console.log('🔍 [GL Summary] Raw data fetched:');
+    console.log('  - Expenses:', expensesRes.data?.length || 0);
+    console.log('  - Bills:', billsRes.data?.length || 0);
+    console.log('  - Deposits:', depositsRes.data?.length || 0);
+    console.log('  - Payments:', paymentsRes.data?.length || 0);
+    console.log('  - Bill Payments:', billPaymentsRes.data?.length || 0);
+    console.log('  - Bank Statements:', bankStatementsRes.data?.length || 0);
+    console.log('  - Overrides:', overridesRes.data?.length || 0);
+    console.log('  - NRE Payments:', nrePaymentsRes.data?.length || 0);
+    console.log('  - Inventory Payments:', inventoryPaymentsRes.data?.length || 0);
+
     // Create overrides map
     const overridesMap = new Map();
     (overridesRes.data || []).forEach((override: any) => {
@@ -108,6 +120,13 @@ export async function GET(request: NextRequest) {
       inventory: { paid: 0, overdue: 0, toBePaid: 0 },
     };
     
+    // Initialize labor breakdown
+    const laborBreakdown = {
+      payroll: 0,
+      taxes: 0,
+      overhead: 0,
+    };
+    
     // Initialize revenue breakdown by channel
     const revenueBreakdown = {
       d2c: 0,
@@ -133,17 +152,21 @@ export async function GET(request: NextRequest) {
     };
 
     // Process expenses
+    let expenseCount = 0;
+    let expenseLineItemCount = 0;
     (expensesRes.data || []).forEach((exp: any) => {
       if (!isInDateRange(exp.expense_date)) return;
+      expenseCount++;
 
       const lineItems = exp.line_items ? (typeof exp.line_items === 'string' ? JSON.parse(exp.line_items) : exp.line_items) : [];
       
       if (lineItems.length > 0) {
         lineItems.forEach((line: any, index: number) => {
+          expenseLineItemCount++;
           const overrideKey = `expense:${exp.qb_expense_id}:${index}`;
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || line.category || exp.category || 'unassigned';
-          const amount = parseFloat(line.amount || '0');
+          const amount = parseFloat(line.Amount || '0');
           addToCategory(category, amount);
         });
       } else {
@@ -154,6 +177,7 @@ export async function GET(request: NextRequest) {
         addToCategory(category, amount);
       }
     });
+    console.log(`✅ Processed ${expenseCount} expenses (${expenseLineItemCount} line items)`);
 
     // Process bills
     (billsRes.data || []).forEach((bill: any) => {
@@ -166,7 +190,7 @@ export async function GET(request: NextRequest) {
           const overrideKey = `bill:${bill.qb_bill_id}:${index}`;
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'unassigned';
-          const amount = parseFloat(line.amount || '0');
+          const amount = parseFloat(line.Amount || '0');
           addToCategory(category, amount);
         });
       } else {
@@ -189,7 +213,7 @@ export async function GET(request: NextRequest) {
           const overrideKey = `deposit:${dep.qb_deposit_id}:${index}`;
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'revenue';
-          const amount = parseFloat(line.amount || '0');
+          const amount = parseFloat(line.Amount || '0');
           addToCategory(category, -amount); // Negative because it's income
         });
       } else {
@@ -224,6 +248,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Process bank statements
+    let laborCount = 0;
+    let laborTotal = 0;
+    let bankStatementSampleCount = 0;
     (bankStatementsRes.data || []).forEach((stmt: any) => {
       if (!isInDateRange(stmt.transaction_date)) return;
 
@@ -234,7 +261,13 @@ export async function GET(request: NextRequest) {
       const debit = parseFloat(stmt.debit || '0');
       const credit = parseFloat(stmt.credit || '0');
       
-      // Auto-categorize Tide Rock loan transactions
+      // Debug: Show first 10 bank statement descriptions to help identify patterns
+      if (bankStatementSampleCount < 10) {
+        console.log(`🏦 [Bank Statement ${bankStatementSampleCount + 1}] ${stmt.description?.substring(0, 80)} | Debit: ${debit} | Credit: ${credit}`);
+        bankStatementSampleCount++;
+      }
+      
+      // Auto-categorize transactions
       let category = stmt.category || stmt.high_level_category;
       
       if (description.includes('CORPORATE XFER TO DDA TIDE ROCK')) {
@@ -251,6 +284,39 @@ export async function GET(request: NextRequest) {
           addToCategory(category, -credit); // Negative because it's income/loan proceeds
         }
         return;
+      } else if (description.includes('334843 BOUNDLESS')) {
+        // Direct deposit payroll (labor cost) - matches "334843 BOUNDLESS1364227403DIR..."
+        category = 'labor';
+        if (debit > 0) {
+          laborCount++;
+          laborTotal += debit;
+          laborBreakdown.payroll += debit;
+          addToCategory(category, debit);
+          console.log(`💼 [Labor - Payroll] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
+        }
+        return;
+      } else if (description.includes('PAYLOCITY') && (description.includes('CORPOR') || description.includes('COPOR')) && description.includes('TAX')) {
+        // Payroll taxes - matches "PAYLOCITY CORPOR7364227403TAX..."
+        category = 'labor';
+        if (debit > 0) {
+          laborCount++;
+          laborTotal += debit;
+          laborBreakdown.taxes += debit;
+          addToCategory(category, debit);
+          console.log(`💼 [Labor - Taxes] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
+        }
+        return;
+      } else if (description.includes('EMPOWER') || description.includes('WEX HEALTH') || description.includes('COLONIAL LIFE') || description.includes('UNITED HEALTHCAR')) {
+        // Labor overhead - benefits and insurance
+        category = 'labor';
+        if (debit > 0) {
+          laborCount++;
+          laborTotal += debit;
+          laborBreakdown.overhead += debit;
+          addToCategory(category, debit);
+          console.log(`💼 [Labor - Overhead] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
+        }
+        return;
       }
       
       // For other transactions, use the assigned category
@@ -259,6 +325,14 @@ export async function GET(request: NextRequest) {
       
       addToCategory(category, netAmount);
     });
+    
+    // Debug: Log labor totals
+    if (laborCount > 0) {
+      console.log(`💼 [Labor Summary] Found ${laborCount} labor transactions totaling $${laborTotal.toFixed(2)}`);
+      console.log(`  - Payroll: $${laborBreakdown.payroll.toFixed(2)}`);
+      console.log(`  - Taxes: $${laborBreakdown.taxes.toFixed(2)}`);
+      console.log(`  - Overhead: $${laborBreakdown.overhead.toFixed(2)}`);
+    }
 
     // Process NRE payments
     const today = new Date();
@@ -310,19 +384,32 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate totals
-    const totalOutflows = summary.nre + summary.inventory + summary.opex + summary.labor + summary.loans + summary.investments + summary.other + summary.unassigned;
+    const totalOutflows = summary.nre + summary.inventory + summary.opex + summary.labor + summary.loans + summary.loan_interest + summary.investments + summary.other + summary.unassigned;
     const totalInflows = Math.abs(summary.revenue);
     const netCashFlow = totalInflows - totalOutflows;
 
-    // Debug logging
-    console.log('NRE Breakdown:', breakdown.nre);
-    console.log('Inventory Breakdown:', breakdown.inventory);
-    console.log('NRE Payments count:', nrePaymentsRes.data?.length);
-    console.log('Inventory Payments count:', inventoryPaymentsRes.data?.length);
+    // Debug: Final summary totals
+    console.log('📊 [GL Summary] Final category totals:');
+    Object.keys(summary).forEach(cat => {
+      if (cat === 'labor' && summary[cat] > 0) {
+        console.log(`  - ${cat}: $${summary[cat].toFixed(2)} ⭐ (from ${laborCount} payroll transactions)`);
+      } else {
+        console.log(`  - ${cat}: $${summary[cat].toFixed(2)}`);
+      }
+    });
+    console.log('💰 [GL Summary] Aggregated totals:');
+    console.log(`  - Total Outflows: $${totalOutflows.toFixed(2)}`);
+    console.log(`  - Total Inflows: $${totalInflows.toFixed(2)}`);
+    console.log(`  - Net Cash Flow: $${netCashFlow.toFixed(2)}`);
+    
+    // Debug: Breakdown details
+    console.log('📈 [GL Summary] NRE Breakdown:', breakdown.nre);
+    console.log('📈 [GL Summary] Inventory Breakdown:', breakdown.inventory);
 
     return NextResponse.json({
       summary,
       breakdown,
+      laborBreakdown, // Payroll, Taxes, Overhead
       revenueBreakdown, // D2C, B2B, B2B (factored)
       totalOutflows,
       totalInflows,

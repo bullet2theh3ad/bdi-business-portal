@@ -11,6 +11,12 @@ import {
   DollarSign, TrendingUp, TrendingDown, FileText, AlertCircle, Check, X
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { 
+  ACCOUNT_TYPE_MAPPINGS, 
+  getCategoryForAccountType, 
+  getAccountTypesByCategory,
+  getCategoryDisplayName as getDisplayName
+} from '@/lib/account-type-mappings';
 
 // Types
 interface Transaction {
@@ -24,7 +30,8 @@ interface Transaction {
   amount: number;
   glCode: string;
   glCodeName: string;
-  category: string;
+  accountType?: string; // Detailed account type (Contract, Services, etc.)
+  category: string; // High-level category (opex, nre, inventory, etc.)
   notes: string;
   bankTransactionNumber: string;
   hasOverride: boolean;
@@ -39,7 +46,8 @@ interface BankStatement {
   balance: number | null;
   check_number: string | null;
   bank_transaction_number: string | null;
-  category: string;
+  account_type: string | null; // Detailed account type (Contract, Services, etc.)
+  category: string; // High-level category (opex, nre, inventory, etc.)
   gl_code_assignment: string | null;
   high_level_category: string;
   notes: string | null;
@@ -105,6 +113,11 @@ export default function GLTransactionManagementPage() {
     d2c: 0,
     b2b: 0,
     b2b_factored: 0,
+  });
+  const [laborBreakdown, setLaborBreakdown] = useState({
+    payroll: 0,
+    taxes: 0,
+    overhead: 0,
   });
   
   // UI State
@@ -227,6 +240,7 @@ export default function GLTransactionManagementPage() {
       setCategorySummary(data.summary || {});
       setCategoryBreakdown(data.breakdown || { nre: { paid: 0, overdue: 0, toBePaid: 0 }, inventory: { paid: 0, overdue: 0, toBePaid: 0 } });
       setRevenueBreakdown(data.revenueBreakdown || { d2c: 0, b2b: 0, b2b_factored: 0 });
+      setLaborBreakdown(data.laborBreakdown || { payroll: 0, taxes: 0, overhead: 0 });
     } catch (error) {
       console.error('Error loading summary:', error);
     }
@@ -531,8 +545,8 @@ export default function GLTransactionManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Define card order: NRE, Inventory, Revenue, RLOC, then OPEX, Labor, etc. */}
-            {['nre', 'inventory', 'revenue', 'loans', 'opex', 'labor', 'investments', 'other', 'unassigned'].map((key) => {
+            {/* Define card order: NRE, Inventory, Net Revenue, RLOC, Labor, then OPEX, etc. */}
+            {['nre', 'inventory', 'revenue', 'loans', 'labor', 'opex', 'investments', 'other', 'unassigned'].map((key) => {
               const value = categorySummary[key] || 0;
               // Skip loan_interest as standalone - it's shown within RLOC card
               if (key === 'loan_interest') return null;
@@ -541,6 +555,7 @@ export default function GLTransactionManagementPage() {
               const breakdown = hasBreakdown ? categoryBreakdown[key as 'nre' | 'inventory'] : null;
               const hasRevenueBreakdown = key === 'revenue';
               const hasRlocBreakdown = key === 'loans';
+              const hasLaborBreakdown = key === 'labor';
               const isLoans = key === 'loans';
               
               return (
@@ -607,6 +622,26 @@ export default function GLTransactionManagementPage() {
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
                           <span className="text-[10px] font-medium text-pink-700">Loan Interest Paid:</span>
                           <span className="text-base font-bold">{formatCurrency(categorySummary.loan_interest)}</span>
+                        </div>
+                      </div>
+                    ) : hasLaborBreakdown ? (
+                      /* Show breakdown for Labor - Payroll, Taxes/Overhead, Overhead Charges */
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-blue-700">Labor:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.payroll)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-orange-700">Taxes/Overhead:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.taxes)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-purple-700">Overhead Charges:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.overhead)}</span>
+                        </div>
+                        <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
+                          <span className="text-[10px] font-medium">Total:</span>
+                          <span className="text-base font-bold">{formatCurrency(value)}</span>
                         </div>
                       </div>
                     ) : (
@@ -955,14 +990,25 @@ function TransactionRow({
   onUpdate: (txn: Transaction, updates: Partial<Transaction>) => Promise<boolean>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [editedAccountType, setEditedAccountType] = useState(transaction.accountType || 'Unclassified');
   const [editedCategory, setEditedCategory] = useState(transaction.category);
   const [editedNotes, setEditedNotes] = useState(transaction.notes);
   const [editedBankTxn, setEditedBankTxn] = useState(transaction.bankTransactionNumber);
   const [isSaving, setIsSaving] = useState(false);
 
+  // When account type changes, auto-set the category
+  const handleAccountTypeChange = (accountType: string) => {
+    setEditedAccountType(accountType);
+    const category = getCategoryForAccountType(accountType);
+    if (category) {
+      setEditedCategory(category);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     const success = await onUpdate(transaction, {
+      accountType: editedAccountType,
       category: editedCategory,
       notes: editedNotes,
       bankTransactionNumber: editedBankTxn,
@@ -974,11 +1020,15 @@ function TransactionRow({
   };
 
   const handleCancel = () => {
+    setEditedAccountType(transaction.accountType || 'Unclassified');
     setEditedCategory(transaction.category);
     setEditedNotes(transaction.notes);
     setEditedBankTxn(transaction.bankTransactionNumber);
     setIsEditing(false);
   };
+
+  // Group account types by category for display
+  const accountTypesByCategory = getAccountTypesByCategory();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -1012,24 +1062,26 @@ function TransactionRow({
         {isEditing ? (
           <>
             <div className="col-span-2">
-              <Select value={editedCategory} onValueChange={setEditedCategory}>
+              <Select value={editedAccountType} onValueChange={handleAccountTypeChange}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-                  <SelectItem value="nre">NRE</SelectItem>
-            <SelectItem value="inventory">Inventory</SelectItem>
-                  <SelectItem value="opex">Opex</SelectItem>
-                  <SelectItem value="labor">Labor</SelectItem>
-                  <SelectItem value="loans">Loans</SelectItem>
-                  <SelectItem value="loan_interest">Loan Interest Paid</SelectItem>
-                  <SelectItem value="investments">Investments</SelectItem>
-                  <SelectItem value="revenue">Revenue</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(accountTypesByCategory).map(([category, types]) => (
+                    <div key={category}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                        {getDisplayName(category)}
+                      </div>
+                      {types.map((mapping) => (
+                        <SelectItem key={mapping.accountType} value={mapping.accountType}>
+                          {mapping.accountType}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="col-span-1">
               <Input
                 value={editedBankTxn}
@@ -1059,8 +1111,15 @@ function TransactionRow({
           </>
         ) : (
           <>
-            <div className="col-span-2 text-xs truncate" title={transaction.notes}>
-              {transaction.notes || '-'}
+            <div className="col-span-2">
+              <div className="flex flex-col gap-0.5">
+                <Badge variant="outline" className="text-xs font-medium w-fit">
+                  {transaction.accountType || 'Unclassified'}
+                </Badge>
+                <span className="text-[9px] text-gray-400">
+                  → {getDisplayName(transaction.category || 'unassigned')}
+                </span>
+              </div>
             </div>
             <div className="col-span-1 text-xs text-center">
               {transaction.bankTransactionNumber || '-'}
@@ -1076,6 +1135,211 @@ function TransactionRow({
               </Button>
             </div>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Bank Statement Row Component with inline editing
+function BankStatementRow({ 
+  statement, 
+  onUpdate,
+  onSummaryUpdate,
+}: { 
+  statement: BankStatement; 
+  onUpdate: () => void;
+  onSummaryUpdate: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedAccountType, setEditedAccountType] = useState(statement.account_type || 'Unclassified');
+  const [editedCategory, setEditedCategory] = useState(statement.category || 'unassigned');
+  const [editedNotes, setEditedNotes] = useState(statement.notes || '');
+  const [editedBalance, setEditedBalance] = useState(statement.balance?.toString() || '');
+  const [editedIsMatched, setEditedIsMatched] = useState(statement.is_matched || false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  // When account type changes, auto-set the category
+  const handleAccountTypeChange = (accountType: string) => {
+    setEditedAccountType(accountType);
+    const category = getCategoryForAccountType(accountType);
+    if (category) {
+      setEditedCategory(category);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/gl-management/bank-statements`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: statement.id,
+          account_type: editedAccountType,
+          category: editedCategory,
+          notes: editedNotes,
+          balance: editedBalance ? parseFloat(editedBalance) : null,
+          is_matched: editedIsMatched,
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        onUpdate();
+        onSummaryUpdate();
+      } else {
+        console.error('Failed to update bank statement');
+      }
+    } catch (error) {
+      console.error('Error updating bank statement:', error);
+    }
+    setIsSaving(false);
+  };
+
+  const handleCancel = () => {
+    setEditedAccountType(statement.account_type || 'Unclassified');
+    setEditedCategory(statement.category || 'unassigned');
+    setEditedNotes(statement.notes || '');
+    setEditedBalance(statement.balance?.toString() || '');
+    setEditedIsMatched(statement.is_matched || false);
+    setIsEditing(false);
+  };
+
+  // Group account types by category for display
+  const accountTypesByCategory = getAccountTypesByCategory();
+
+  return (
+    <div className="grid grid-cols-13 gap-2 p-3 border rounded hover:bg-gray-50 text-xs items-center">
+      <div className="col-span-1">{new Date(statement.transaction_date).toLocaleDateString()}</div>
+      <div className="col-span-3 truncate" title={statement.description}>{statement.description}</div>
+      <div className="col-span-1 text-right text-red-600">{statement.debit > 0 ? formatCurrency(statement.debit) : '-'}</div>
+      <div className="col-span-1 text-right text-green-600">{statement.credit > 0 ? formatCurrency(statement.credit) : '-'}</div>
+      
+      {/* Balance - editable */}
+      <div className="col-span-1 text-right font-semibold">
+        {isEditing ? (
+          <Input
+            type="number"
+            step="0.01"
+            value={editedBalance}
+            onChange={(e) => setEditedBalance(e.target.value)}
+            className="h-7 text-xs text-right"
+          />
+        ) : (
+          statement.balance ? formatCurrency(statement.balance) : '-'
+        )}
+      </div>
+      
+      {/* Account Type - editable (grouped by category) */}
+      <div className="col-span-2">
+        {isEditing ? (
+          <Select value={editedAccountType} onValueChange={handleAccountTypeChange}>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(accountTypesByCategory).map(([category, types]) => (
+                <div key={category}>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                    {getDisplayName(category)}
+                  </div>
+                  {types.map((mapping) => (
+                    <SelectItem key={mapping.accountType} value={mapping.accountType}>
+                      {mapping.accountType}
+                    </SelectItem>
+                  ))}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <Badge variant="outline" className="text-xs font-medium">
+              {statement.account_type || 'Unclassified'}
+            </Badge>
+            <span className="text-[9px] text-gray-400">
+              → {getDisplayName(statement.category || 'unassigned')}
+            </span>
+          </div>
+        )}
+      </div>
+      
+      {/* Matched - editable checkbox */}
+      <div className="col-span-1 text-center">
+        {isEditing ? (
+          <input
+            type="checkbox"
+            checked={editedIsMatched}
+            onChange={(e) => setEditedIsMatched(e.target.checked)}
+            className="h-4 w-4"
+          />
+        ) : (
+          statement.is_matched ? (
+            <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs">-</Badge>
+          )
+        )}
+      </div>
+      
+      {/* Notes - editable */}
+      <div className="col-span-2">
+        {isEditing ? (
+          <Input
+            type="text"
+            value={editedNotes}
+            onChange={(e) => setEditedNotes(e.target.value)}
+            placeholder="Add notes..."
+            className="h-7 text-xs"
+          />
+        ) : (
+          <div className="truncate text-xs" title={statement.notes || ''}>
+            {statement.notes || '-'}
+          </div>
+        )}
+      </div>
+      
+      {/* Action buttons */}
+      <div className="col-span-1 text-center">
+        {isEditing ? (
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="h-6 w-6 p-0"
+            >
+              {isSaving ? '...' : '✓'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="h-6 w-6 p-0"
+            >
+              ✕
+            </Button>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsEditing(true)}
+            className="h-6 w-6 p-0"
+          >
+            ✏️
+          </Button>
         )}
       </div>
     </div>
@@ -1114,39 +1378,24 @@ function BankStatementsView({
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="grid grid-cols-12 gap-2 p-3 bg-gray-50 rounded font-semibold text-xs">
+            <div className="grid grid-cols-13 gap-2 p-3 bg-gray-50 rounded font-semibold text-xs">
               <div className="col-span-1">Date</div>
               <div className="col-span-3">Description</div>
               <div className="col-span-1 text-right">Debit</div>
               <div className="col-span-1 text-right">Credit</div>
               <div className="col-span-1 text-right">Balance</div>
-              <div className="col-span-2">Category</div>
+              <div className="col-span-2">Account Type → Category</div>
               <div className="col-span-1 text-center">Matched</div>
               <div className="col-span-2">Notes</div>
+              <div className="col-span-1 text-center">Actions</div>
             </div>
             {statements.map((stmt) => (
-              <div key={stmt.id} className="grid grid-cols-12 gap-2 p-3 border rounded hover:bg-gray-50 text-xs items-center">
-                <div className="col-span-1">{new Date(stmt.transaction_date).toLocaleDateString()}</div>
-                <div className="col-span-3 truncate" title={stmt.description}>{stmt.description}</div>
-                <div className="col-span-1 text-right text-red-600">{stmt.debit > 0 ? formatCurrency(stmt.debit) : '-'}</div>
-                <div className="col-span-1 text-right text-green-600">{stmt.credit > 0 ? formatCurrency(stmt.credit) : '-'}</div>
-                <div className="col-span-1 text-right font-semibold">{stmt.balance ? formatCurrency(stmt.balance) : '-'}</div>
-                <div className="col-span-2">
-                  <Badge variant="outline" className="text-xs">
-                    {stmt.category || 'unassigned'}
-                  </Badge>
-                </div>
-                <div className="col-span-1 text-center">
-                  {stmt.is_matched ? (
-                    <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs">-</Badge>
-                  )}
-                </div>
-                <div className="col-span-2 truncate text-xs" title={stmt.notes || ''}>
-                  {stmt.notes || '-'}
-                </div>
-              </div>
+              <BankStatementRow 
+                key={stmt.id} 
+                statement={stmt}
+                onUpdate={onUpdate}
+                onSummaryUpdate={onSummaryUpdate}
+              />
             ))}
             </div>
           )}

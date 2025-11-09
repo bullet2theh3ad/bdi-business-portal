@@ -72,6 +72,23 @@ export async function GET(request: NextRequest) {
       supabaseService.from('quickbooks_accounts').select('qb_account_id, name, account_number'),
     ]);
 
+    // Debug: Log raw data fetched
+    console.log('🔍 [GL Transactions] Raw data fetched:');
+    console.log('  - Expenses:', expensesRes.data?.length || 0, 'records');
+    console.log('  - Bills:', billsRes.data?.length || 0, 'records');
+    console.log('  - Deposits:', depositsRes.data?.length || 0, 'records');
+    console.log('  - Payments:', paymentsRes.data?.length || 0, 'records');
+    console.log('  - Bill Payments:', billPaymentsRes.data?.length || 0, 'records');
+    console.log('  - Overrides:', overridesRes.data?.length || 0, 'records');
+    console.log('  - GL Codes:', glCodesRes.data?.length || 0, 'records');
+    
+    // Debug: Check for errors
+    if (expensesRes.error) console.error('❌ Expenses fetch error:', expensesRes.error);
+    if (billsRes.error) console.error('❌ Bills fetch error:', billsRes.error);
+    if (depositsRes.error) console.error('❌ Deposits fetch error:', depositsRes.error);
+    if (paymentsRes.error) console.error('❌ Payments fetch error:', paymentsRes.error);
+    if (billPaymentsRes.error) console.error('❌ Bill Payments fetch error:', billPaymentsRes.error);
+
     // Create maps for quick lookups
     const overridesMap = new Map();
     (overridesRes.data || []).forEach((override: any) => {
@@ -89,6 +106,22 @@ export async function GET(request: NextRequest) {
       // Parse line items if they exist
       const lineItems = exp.line_items ? (typeof exp.line_items === 'string' ? JSON.parse(exp.line_items) : exp.line_items) : [];
       
+      // Debug: Log first expense record structure
+      if (expensesRes.data?.indexOf(exp) === 0) {
+        console.log('🔍 [DEBUG] First expense record structure:');
+        console.log('  - qb_expense_id:', exp.qb_expense_id);
+        console.log('  - expense_date:', exp.expense_date);
+        console.log('  - vendor_name:', exp.vendor_name);
+        console.log('  - total_amount:', exp.total_amount);
+        console.log('  - category:', exp.category);
+        console.log('  - line_items type:', typeof exp.line_items);
+        console.log('  - line_items length:', lineItems.length);
+        if (lineItems.length > 0) {
+          console.log('  - First line item keys:', Object.keys(lineItems[0]));
+          console.log('  - First line item:', JSON.stringify(lineItems[0], null, 2));
+        }
+      }
+      
       // If line items exist, expand them
       if (lineItems.length > 0) {
         return lineItems.map((line: any, index: number) => {
@@ -102,10 +135,10 @@ export async function GET(request: NextRequest) {
             lineItemIndex: index,
             date: exp.expense_date,
             vendor: exp.vendor_name,
-            description: override?.override_description || line.description || exp.memo || '',
-            amount: parseFloat(line.amount || '0'),
-            glCode: override?.assigned_gl_code || line.account_ref || exp.account_ref,
-            glCodeName: glCodesMap.get(override?.assigned_gl_code || line.account_ref || exp.account_ref)?.name || '',
+            description: override?.override_description || line.Description || exp.memo || '',
+            amount: parseFloat(line.Amount || '0'),
+            glCode: override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value || exp.account_ref,
+            glCodeName: glCodesMap.get(override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value || exp.account_ref)?.name || '',
             category: override?.override_category || line.category || exp.category || 'unassigned',
             notes: override?.notes || '',
             bankTransactionNumber: override?.bank_transaction_number || '',
@@ -140,6 +173,21 @@ export async function GET(request: NextRequest) {
     const bills = (billsRes.data || []).map((bill: any) => {
       const lineItems = bill.line_items ? (typeof bill.line_items === 'string' ? JSON.parse(bill.line_items) : bill.line_items) : [];
       
+      // Debug: Log first bill record structure
+      if (billsRes.data?.indexOf(bill) === 0) {
+        console.log('🔍 [DEBUG] First bill record structure:');
+        console.log('  - qb_bill_id:', bill.qb_bill_id);
+        console.log('  - bill_date:', bill.bill_date);
+        console.log('  - vendor_name:', bill.vendor_name);
+        console.log('  - total_amount:', bill.total_amount);
+        console.log('  - line_items type:', typeof bill.line_items);
+        console.log('  - line_items length:', lineItems.length);
+        if (lineItems.length > 0) {
+          console.log('  - First line item keys:', Object.keys(lineItems[0]));
+          console.log('  - First line item:', JSON.stringify(lineItems[0], null, 2));
+        }
+      }
+      
       if (lineItems.length > 0) {
         return lineItems.map((line: any, index: number) => {
           const overrideKey = `bill:${bill.qb_bill_id}:${index}`;
@@ -152,10 +200,10 @@ export async function GET(request: NextRequest) {
             lineItemIndex: index,
             date: bill.bill_date,
             vendor: bill.vendor_name,
-            description: override?.override_description || line.description || '',
-            amount: parseFloat(line.amount || '0'),
-            glCode: override?.assigned_gl_code || line.account_ref,
-            glCodeName: glCodesMap.get(override?.assigned_gl_code || line.account_ref)?.name || '',
+            description: override?.override_description || line.Description || '',
+            amount: parseFloat(line.Amount || '0'),
+            glCode: override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value,
+            glCodeName: glCodesMap.get(override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value)?.name || '',
             category: override?.override_category || 'unassigned',
             notes: override?.notes || '',
             bankTransactionNumber: override?.bank_transaction_number || '',
@@ -201,8 +249,8 @@ export async function GET(request: NextRequest) {
             lineItemIndex: index,
             date: dep.txn_date,
             vendor: line.entity_name || dep.deposit_to_account_name || '',
-            description: override?.override_description || line.description || dep.private_note || '',
-            amount: parseFloat(line.amount || '0'),
+            description: override?.override_description || line.Description || dep.private_note || '',
+            amount: parseFloat(line.Amount || '0'),
             glCode: override?.assigned_gl_code || line.account_ref,
             glCodeName: glCodesMap.get(override?.assigned_gl_code || line.account_ref)?.name || '',
             category: override?.override_category || 'revenue',
@@ -282,6 +330,37 @@ export async function GET(request: NextRequest) {
 
     // Combine all transactions
     let allTransactions = [...expenses, ...bills, ...deposits, ...payments, ...billPayments];
+
+    // Debug: Log processed transactions by category
+    console.log('📊 [GL Transactions] Processed transaction counts:');
+    console.log('  - Total expenses processed:', expenses.length);
+    console.log('  - Total bills processed:', bills.length);
+    console.log('  - Total deposits processed:', deposits.length);
+    console.log('  - Total payments processed:', payments.length);
+    console.log('  - Total bill payments processed:', billPayments.length);
+    console.log('  - Combined total:', allTransactions.length);
+    
+    // Debug: Categorize and show amounts
+    const categoryCounts: any = {};
+    const categoryTotals: any = {};
+    allTransactions.forEach(t => {
+      const cat = t.category || 'null';
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
+    });
+    console.log('📈 [GL Transactions] By category:');
+    Object.keys(categoryCounts).forEach(cat => {
+      console.log(`  - ${cat}: ${categoryCounts[cat]} transactions, Total: $${categoryTotals[cat].toFixed(2)}`);
+    });
+    
+    // Debug: Sample some unassigned transactions
+    const unassignedSample = allTransactions.filter(t => t.category === 'unassigned').slice(0, 5);
+    if (unassignedSample.length > 0) {
+      console.log('🔍 [GL Transactions] Sample unassigned transactions:');
+      unassignedSample.forEach((t, i) => {
+        console.log(`  ${i + 1}. Source: ${t.source}, Amount: $${t.amount}, Date: ${t.date}, Vendor: ${t.vendor}`);
+      });
+    }
 
     // Apply filters
     if (startDate) {
