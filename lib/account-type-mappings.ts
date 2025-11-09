@@ -22,6 +22,10 @@ export const ACCOUNT_TYPE_MAPPINGS: AccountTypeMapping[] = [
   { accountType: 'Utilities', category: 'opex', description: 'Power, water, internet, etc.' },
   { accountType: 'Office Supplies', category: 'opex', description: 'General office supplies and equipment' },
   { accountType: 'Professional Fees', category: 'opex', description: 'Legal, accounting, consulting fees' },
+  { accountType: 'Contract Labor', category: 'opex', description: 'Contract and freelance labor costs' },
+  { accountType: 'Consulting Services', category: 'opex', description: 'Independent contractor consulting' },
+  { accountType: 'Freelance Labor', category: 'opex', description: 'Freelance and gig workers' },
+  { accountType: 'Temporary Staffing', category: 'opex', description: 'Temporary staffing agency costs' },
   
   // Marketing Account Types
   { accountType: 'Advertising', category: 'marketing', description: 'Paid advertising and promotions' },

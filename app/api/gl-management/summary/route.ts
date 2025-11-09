@@ -98,6 +98,8 @@ export async function GET(request: NextRequest) {
     (overridesRes.data || []).forEach((override: any) => {
       const key = `${override.transaction_source}:${override.transaction_id}:${override.line_item_index || ''}`;
       overridesMap.set(key, override);
+      // Debug: Log each override for verification
+      console.log(`🔧 [Override] Key: ${key}, Category: ${override.override_category}`);
     });
 
     // Initialize category totals from MANUAL CATEGORIZATION (QB + Bank Statements)
