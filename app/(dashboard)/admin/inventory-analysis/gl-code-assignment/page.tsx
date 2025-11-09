@@ -92,6 +92,7 @@ interface ReconciliationStatus {
 interface Reconciliation {
   nre: ReconciliationStatus;
   inventory: ReconciliationStatus;
+  loan_interest: ReconciliationStatus;
 }
 
 interface GLCodeGroup {
@@ -134,6 +135,7 @@ export default function GLTransactionManagementPage() {
   const [reconciliation, setReconciliation] = useState<Reconciliation>({
     nre: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
     inventory: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    loan_interest: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
   });
   
   // UI State
@@ -260,6 +262,7 @@ export default function GLTransactionManagementPage() {
       setReconciliation(data.reconciliation || {
         nre: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
         inventory: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+        loan_interest: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
       });
     } catch (error) {
       console.error('Error loading summary:', error);
@@ -600,7 +603,7 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(breakdown.toBePaid)}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium">Internal DB:</span>
+                          <span className="text-[10px] font-medium">Paid (DB):</span>
                           <span className="text-base font-bold">{formatCurrency(value)}</span>
                         </div>
                         {/* Reconciliation Status */}
@@ -672,21 +675,29 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(5000000 - Math.abs(value))}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium">Categorized:</span>
-                          <span className="text-base font-bold">{formatCurrency(Math.abs(value))}</span>
+                          <span className="text-[10px] font-medium text-pink-700">Interest (Bank):</span>
+                          <span className="text-base font-bold">{formatCurrency(categorySummary.loan_interest)}</span>
                         </div>
-                        {/* Reconciliation Status */}
-                        <div className="flex justify-between items-center text-[9px] text-gray-600">
-                          <span>From Bank/QB:</span>
-                          <span>{formatCurrency(Math.abs(value))}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
-                          <span className="flex items-center gap-1.5">
-                            ✅
-                            <span className="ml-0.5">Delta:</span>
-                          </span>
-                          <span>$0.00</span>
-                        </div>
+                        {/* Reconciliation Status for Loan Interest */}
+                        {reconciliation.loan_interest && (
+                          <>
+                            <div className="flex justify-between items-center text-[9px] text-gray-600">
+                              <span>Categorized:</span>
+                              <span>{formatCurrency(reconciliation.loan_interest.categorized)}</span>
+                            </div>
+                            <div className={`flex justify-between items-center text-[10px] font-semibold ${
+                              reconciliation.loan_interest.isReconciled 
+                                ? 'text-green-700' 
+                                : 'text-red-700'
+                            }`}>
+                              <span className="flex items-center gap-1.5">
+                                {reconciliation.loan_interest.isReconciled ? '✅' : '🚩'}
+                                <span className="ml-0.5">Delta:</span>
+                              </span>
+                              <span>{formatCurrency(Math.abs(reconciliation.loan_interest.delta))}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : hasLaborBreakdown ? (
                       /* Show breakdown for Labor - Payroll, Taxes/Overhead, Overhead Charges */

@@ -404,18 +404,25 @@ export async function GET(request: NextRequest) {
     };
 
     // Calculate reconciliation deltas for NRE and Inventory
+    // Compare categorized amounts (as positive) to PAID amounts only
     const reconciliation = {
       nre: {
-        internalDB: internalDBTotals.nre,
-        categorized: categorizedTotals.nre,
-        delta: internalDBTotals.nre - categorizedTotals.nre,
-        isReconciled: Math.abs(internalDBTotals.nre - categorizedTotals.nre) < 1, // Within $1
+        internalDB: breakdown.nre.paid, // Compare to Paid, not total
+        categorized: Math.abs(categorizedTotals.nre), // Categorized as positive
+        delta: breakdown.nre.paid - Math.abs(categorizedTotals.nre),
+        isReconciled: Math.abs(breakdown.nre.paid - Math.abs(categorizedTotals.nre)) < 1, // Within $1
       },
       inventory: {
-        internalDB: internalDBTotals.inventory,
-        categorized: categorizedTotals.inventory,
-        delta: internalDBTotals.inventory - categorizedTotals.inventory,
-        isReconciled: Math.abs(internalDBTotals.inventory - categorizedTotals.inventory) < 1, // Within $1
+        internalDB: breakdown.inventory.paid, // Compare to Paid, not total
+        categorized: Math.abs(categorizedTotals.inventory), // Categorized as positive
+        delta: breakdown.inventory.paid - Math.abs(categorizedTotals.inventory),
+        isReconciled: Math.abs(breakdown.inventory.paid - Math.abs(categorizedTotals.inventory)) < 1, // Within $1
+      },
+      loan_interest: {
+        internalDB: categorizedTotals.loan_interest, // Loan interest from bank (auto-categorized)
+        categorized: Math.abs(categorizedTotals.loan_interest), // Same source for now
+        delta: 0, // No delta since we only have one source
+        isReconciled: true, // Always reconciled since only one source
       },
     };
 
@@ -440,8 +447,9 @@ export async function GET(request: NextRequest) {
     
     // Debug: Reconciliation status
     console.log('🔄 [GL Summary] Reconciliation Status:');
-    console.log(`  - NRE: Internal DB = $${reconciliation.nre.internalDB.toFixed(2)}, Categorized = $${reconciliation.nre.categorized.toFixed(2)}, Delta = $${reconciliation.nre.delta.toFixed(2)} ${reconciliation.nre.isReconciled ? '✅' : '⚠️'}`);
-    console.log(`  - Inventory: Internal DB = $${reconciliation.inventory.internalDB.toFixed(2)}, Categorized = $${reconciliation.inventory.categorized.toFixed(2)}, Delta = $${reconciliation.inventory.delta.toFixed(2)} ${reconciliation.inventory.isReconciled ? '✅' : '⚠️'}`);
+    console.log(`  - NRE: Paid (DB) = $${reconciliation.nre.internalDB.toFixed(2)}, Categorized = $${reconciliation.nre.categorized.toFixed(2)}, Delta = $${reconciliation.nre.delta.toFixed(2)} ${reconciliation.nre.isReconciled ? '✅' : '⚠️'}`);
+    console.log(`  - Inventory: Paid (DB) = $${reconciliation.inventory.internalDB.toFixed(2)}, Categorized = $${reconciliation.inventory.categorized.toFixed(2)}, Delta = $${reconciliation.inventory.delta.toFixed(2)} ${reconciliation.inventory.isReconciled ? '✅' : '⚠️'}`);
+    console.log(`  - Loan Interest: From Bank = $${reconciliation.loan_interest.internalDB.toFixed(2)}, Categorized = $${reconciliation.loan_interest.categorized.toFixed(2)}, Delta = $${reconciliation.loan_interest.delta.toFixed(2)} ${reconciliation.loan_interest.isReconciled ? '✅' : '⚠️'}`);
     
     // Debug: Breakdown details
     console.log('📈 [GL Summary] NRE Breakdown:', breakdown.nre);
