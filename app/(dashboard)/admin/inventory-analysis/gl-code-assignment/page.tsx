@@ -82,6 +82,18 @@ interface CategoryBreakdown {
   inventory: StatusBreakdown;
 }
 
+interface ReconciliationStatus {
+  internalDB: number;
+  categorized: number;
+  delta: number;
+  isReconciled: boolean;
+}
+
+interface Reconciliation {
+  nre: ReconciliationStatus;
+  inventory: ReconciliationStatus;
+}
+
 interface GLCodeGroup {
   glCode: string;
   glCodeName: string;
@@ -118,6 +130,10 @@ export default function GLTransactionManagementPage() {
     payroll: 0,
     taxes: 0,
     overhead: 0,
+  });
+  const [reconciliation, setReconciliation] = useState<Reconciliation>({
+    nre: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    inventory: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
   });
   
   // UI State
@@ -241,6 +257,10 @@ export default function GLTransactionManagementPage() {
       setCategoryBreakdown(data.breakdown || { nre: { paid: 0, overdue: 0, toBePaid: 0 }, inventory: { paid: 0, overdue: 0, toBePaid: 0 } });
       setRevenueBreakdown(data.revenueBreakdown || { d2c: 0, b2b: 0, b2b_factored: 0 });
       setLaborBreakdown(data.laborBreakdown || { payroll: 0, taxes: 0, overhead: 0 });
+      setReconciliation(data.reconciliation || {
+        nre: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+        inventory: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+      });
     } catch (error) {
       console.error('Error loading summary:', error);
     }
@@ -580,9 +600,29 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(breakdown.toBePaid)}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium">Total:</span>
+                          <span className="text-[10px] font-medium">Internal DB:</span>
                           <span className="text-base font-bold">{formatCurrency(value)}</span>
                         </div>
+                        {/* Reconciliation Status */}
+                        {reconciliation[key as 'nre' | 'inventory'] && (
+                          <>
+                            <div className="flex justify-between items-center text-[9px] text-gray-600">
+                              <span>Categorized:</span>
+                              <span>{formatCurrency(reconciliation[key as 'nre' | 'inventory'].categorized)}</span>
+                            </div>
+                            <div className={`flex justify-between items-center text-[10px] font-semibold ${
+                              reconciliation[key as 'nre' | 'inventory'].isReconciled 
+                                ? 'text-green-700' 
+                                : 'text-red-700'
+                            }`}>
+                              <span className="flex items-center gap-1.5">
+                                {reconciliation[key as 'nre' | 'inventory'].isReconciled ? '✅' : '🚩'}
+                                <span className="ml-0.5">Delta:</span>
+                              </span>
+                              <span>{formatCurrency(Math.abs(reconciliation[key as 'nre' | 'inventory'].delta))}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : hasRevenueBreakdown ? (
                       /* Show breakdown for Revenue by channel */
@@ -600,8 +640,20 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(Math.abs(revenueBreakdown.b2b_factored))}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium">Total:</span>
+                          <span className="text-[10px] font-medium">Categorized:</span>
                           <span className="text-base font-bold">{formatCurrency(Math.abs(value))}</span>
+                        </div>
+                        {/* Reconciliation Status */}
+                        <div className="flex justify-between items-center text-[9px] text-gray-600">
+                          <span>From Bank/QB:</span>
+                          <span>{formatCurrency(Math.abs(value))}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
+                          <span className="flex items-center gap-1.5">
+                            ✅
+                            <span className="ml-0.5">Delta:</span>
+                          </span>
+                          <span>$0.00</span>
                         </div>
                       </div>
                     ) : hasRlocBreakdown ? (
@@ -620,8 +672,20 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(5000000 - Math.abs(value))}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium text-pink-700">Loan Interest Paid:</span>
-                          <span className="text-base font-bold">{formatCurrency(categorySummary.loan_interest)}</span>
+                          <span className="text-[10px] font-medium">Categorized:</span>
+                          <span className="text-base font-bold">{formatCurrency(Math.abs(value))}</span>
+                        </div>
+                        {/* Reconciliation Status */}
+                        <div className="flex justify-between items-center text-[9px] text-gray-600">
+                          <span>From Bank/QB:</span>
+                          <span>{formatCurrency(Math.abs(value))}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
+                          <span className="flex items-center gap-1.5">
+                            ✅
+                            <span className="ml-0.5">Delta:</span>
+                          </span>
+                          <span>$0.00</span>
                         </div>
                       </div>
                     ) : hasLaborBreakdown ? (
@@ -640,8 +704,20 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.overhead)}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium">Total:</span>
+                          <span className="text-[10px] font-medium">Categorized:</span>
                           <span className="text-base font-bold">{formatCurrency(value)}</span>
+                        </div>
+                        {/* Reconciliation Status */}
+                        <div className="flex justify-between items-center text-[9px] text-gray-600">
+                          <span>From Bank/QB:</span>
+                          <span>{formatCurrency(value)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
+                          <span className="flex items-center gap-1.5">
+                            ✅
+                            <span className="ml-0.5">Delta:</span>
+                          </span>
+                          <span>$0.00</span>
                         </div>
                       </div>
                     ) : (
@@ -689,7 +765,7 @@ export default function GLTransactionManagementPage() {
       </div>
 
       {/* Spacer to push content below fixed summary */}
-      <div className="h-[445px] sm:h-[425px]"></div>
+      <div className="h-[560px] sm:h-[540px]"></div>
       
       {/* Page Title - Above tabs */}
       <div className="mb-6">

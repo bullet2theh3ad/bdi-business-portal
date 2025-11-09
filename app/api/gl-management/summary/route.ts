@@ -100,21 +100,27 @@ export async function GET(request: NextRequest) {
       overridesMap.set(key, override);
     });
 
-    // Initialize category totals
-    const summary: { [key: string]: number } = {
+    // Initialize category totals from MANUAL CATEGORIZATION (QB + Bank Statements)
+    const categorizedTotals: { [key: string]: number } = {
       nre: 0,
       inventory: 0,
       opex: 0,
       labor: 0,
       loans: 0,
-      loan_interest: 0, // Interest paid on Tide Rock loans
+      loan_interest: 0,
       investments: 0,
       revenue: 0,
       other: 0,
       unassigned: 0,
     };
 
-    // Initialize breakdown by status
+    // Initialize category totals from INTERNAL DB (Trusted Source)
+    const internalDBTotals: { [key: string]: number } = {
+      nre: 0,
+      inventory: 0,
+    };
+
+    // Initialize breakdown by status (for internal DB only)
     const breakdown: { [category: string]: { paid: number; overdue: number; toBePaid: number } } = {
       nre: { paid: 0, overdue: 0, toBePaid: 0 },
       inventory: { paid: 0, overdue: 0, toBePaid: 0 },
@@ -134,12 +140,12 @@ export async function GET(request: NextRequest) {
       b2b_factored: 0,
     };
 
-    // Helper function to add to category
-    const addToCategory = (category: string, amount: number) => {
-      if (category && summary.hasOwnProperty(category)) {
-        summary[category] += amount;
+    // Helper function to add to CATEGORIZED totals (manual assignments)
+    const addToCategorized = (category: string, amount: number) => {
+      if (category && categorizedTotals.hasOwnProperty(category)) {
+        categorizedTotals[category] += amount;
       } else {
-        summary.unassigned += amount;
+        categorizedTotals.unassigned += amount;
       }
     };
 
@@ -167,14 +173,14 @@ export async function GET(request: NextRequest) {
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || line.category || exp.category || 'unassigned';
           const amount = parseFloat(line.Amount || '0');
-          addToCategory(category, amount);
+          addToCategorized(category, amount);
         });
       } else {
         const overrideKey = `expense:${exp.qb_expense_id}:`;
         const override = overridesMap.get(overrideKey);
         const category = override?.override_category || exp.category || 'unassigned';
         const amount = parseFloat(exp.total_amount || '0');
-        addToCategory(category, amount);
+        addToCategorized(category, amount);
       }
     });
     console.log(`✅ Processed ${expenseCount} expenses (${expenseLineItemCount} line items)`);
@@ -191,14 +197,14 @@ export async function GET(request: NextRequest) {
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'unassigned';
           const amount = parseFloat(line.Amount || '0');
-          addToCategory(category, amount);
+          addToCategorized(category, amount);
         });
       } else {
         const overrideKey = `bill:${bill.qb_bill_id}:`;
         const override = overridesMap.get(overrideKey);
         const category = override?.override_category || 'unassigned';
         const amount = parseFloat(bill.total_amount || '0');
-        addToCategory(category, amount);
+        addToCategorized(category, amount);
       }
     });
 
@@ -214,14 +220,14 @@ export async function GET(request: NextRequest) {
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'revenue';
           const amount = parseFloat(line.Amount || '0');
-          addToCategory(category, -amount); // Negative because it's income
+          addToCategorized(category, -amount); // Negative because it's income
         });
       } else {
         const overrideKey = `deposit:${dep.qb_deposit_id}:`;
         const override = overridesMap.get(overrideKey);
         const category = override?.override_category || 'revenue';
         const amount = parseFloat(dep.total_amount || '0');
-        addToCategory(category, -amount); // Negative because it's income
+        addToCategorized(category, -amount); // Negative because it's income
       }
     });
 
@@ -233,7 +239,7 @@ export async function GET(request: NextRequest) {
       const override = overridesMap.get(overrideKey);
       const category = override?.override_category || 'revenue';
       const amount = parseFloat(pmt.total_amount || '0');
-      addToCategory(category, -amount); // Negative because it's income
+      addToCategorized(category, -amount); // Negative because it's income
     });
 
     // Process bill payments
@@ -244,7 +250,7 @@ export async function GET(request: NextRequest) {
       const override = overridesMap.get(overrideKey);
       const category = override?.override_category || 'unassigned';
       const amount = parseFloat(bp.total_amount || '0');
-      addToCategory(category, amount);
+      addToCategorized(category, amount);
     });
 
     // Process bank statements
@@ -274,14 +280,14 @@ export async function GET(request: NextRequest) {
         // Interest payment (debit = money out)
         category = 'loan_interest';
         if (debit > 0) {
-          addToCategory(category, debit);
+          addToCategorized(category, debit);
         }
         return;
       } else if (description.includes('CORPORATE XFER FROM DDA TIDE RO')) {
         // Loan received (credit = money in)
         category = 'loans';
         if (credit > 0) {
-          addToCategory(category, -credit); // Negative because it's income/loan proceeds
+          addToCategorized(category, -credit); // Negative because it's income/loan proceeds
         }
         return;
       } else if (description.includes('334843 BOUNDLESS')) {
@@ -291,7 +297,7 @@ export async function GET(request: NextRequest) {
           laborCount++;
           laborTotal += debit;
           laborBreakdown.payroll += debit;
-          addToCategory(category, debit);
+          addToCategorized(category, debit);
           console.log(`💼 [Labor - Payroll] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
         }
         return;
@@ -302,7 +308,7 @@ export async function GET(request: NextRequest) {
           laborCount++;
           laborTotal += debit;
           laborBreakdown.taxes += debit;
-          addToCategory(category, debit);
+          addToCategorized(category, debit);
           console.log(`💼 [Labor - Taxes] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
         }
         return;
@@ -313,7 +319,7 @@ export async function GET(request: NextRequest) {
           laborCount++;
           laborTotal += debit;
           laborBreakdown.overhead += debit;
-          addToCategory(category, debit);
+          addToCategorized(category, debit);
           console.log(`💼 [Labor - Overhead] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
         }
         return;
@@ -323,7 +329,7 @@ export async function GET(request: NextRequest) {
       category = category || 'unassigned';
       const netAmount = debit - credit; // debit is outflow (positive), credit is inflow (negative)
       
-      addToCategory(category, netAmount);
+      addToCategorized(category, netAmount);
     });
     
     // Debug: Log labor totals
@@ -334,7 +340,7 @@ export async function GET(request: NextRequest) {
       console.log(`  - Overhead: $${laborBreakdown.overhead.toFixed(2)}`);
     }
 
-    // Process NRE payments
+    // Process NRE payments from INTERNAL DB (Trusted Source)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -345,8 +351,8 @@ export async function GET(request: NextRequest) {
       const paymentDate = new Date(payment.payment_date);
       paymentDate.setHours(0, 0, 0, 0);
 
-      // Add to NRE category total
-      summary.nre += amount;
+      // Add to INTERNAL DB total (trusted source)
+      internalDBTotals.nre += amount;
 
       // Categorize by status - check explicitly for true
       if (payment.is_paid === true || payment.isPaid === true) {
@@ -360,7 +366,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Process Inventory payments
+    // Process Inventory payments from INTERNAL DB (Trusted Source)
     (inventoryPaymentsRes.data || []).forEach((payment: any) => {
       if (!isInDateRange(payment.payment_date)) return;
 
@@ -368,8 +374,8 @@ export async function GET(request: NextRequest) {
       const paymentDate = new Date(payment.payment_date);
       paymentDate.setHours(0, 0, 0, 0);
 
-      // Add to Inventory category total
-      summary.inventory += amount;
+      // Add to INTERNAL DB total (trusted source)
+      internalDBTotals.inventory += amount;
 
       // Categorize by status - check explicitly for true
       if (payment.is_paid === true || payment.isPaid === true) {
@@ -382,6 +388,36 @@ export async function GET(request: NextRequest) {
         breakdown.inventory.toBePaid += amount;
       }
     });
+
+    // Create combined summary for display (using internal DB where available, categorized otherwise)
+    const summary: { [key: string]: number } = {
+      nre: internalDBTotals.nre, // Use internal DB
+      inventory: internalDBTotals.inventory, // Use internal DB
+      opex: categorizedTotals.opex,
+      labor: categorizedTotals.labor,
+      loans: categorizedTotals.loans,
+      loan_interest: categorizedTotals.loan_interest,
+      investments: categorizedTotals.investments,
+      revenue: categorizedTotals.revenue,
+      other: categorizedTotals.other,
+      unassigned: categorizedTotals.unassigned,
+    };
+
+    // Calculate reconciliation deltas for NRE and Inventory
+    const reconciliation = {
+      nre: {
+        internalDB: internalDBTotals.nre,
+        categorized: categorizedTotals.nre,
+        delta: internalDBTotals.nre - categorizedTotals.nre,
+        isReconciled: Math.abs(internalDBTotals.nre - categorizedTotals.nre) < 1, // Within $1
+      },
+      inventory: {
+        internalDB: internalDBTotals.inventory,
+        categorized: categorizedTotals.inventory,
+        delta: internalDBTotals.inventory - categorizedTotals.inventory,
+        isReconciled: Math.abs(internalDBTotals.inventory - categorizedTotals.inventory) < 1, // Within $1
+      },
+    };
 
     // Calculate totals
     const totalOutflows = summary.nre + summary.inventory + summary.opex + summary.labor + summary.loans + summary.loan_interest + summary.investments + summary.other + summary.unassigned;
@@ -402,12 +438,20 @@ export async function GET(request: NextRequest) {
     console.log(`  - Total Inflows: $${totalInflows.toFixed(2)}`);
     console.log(`  - Net Cash Flow: $${netCashFlow.toFixed(2)}`);
     
+    // Debug: Reconciliation status
+    console.log('🔄 [GL Summary] Reconciliation Status:');
+    console.log(`  - NRE: Internal DB = $${reconciliation.nre.internalDB.toFixed(2)}, Categorized = $${reconciliation.nre.categorized.toFixed(2)}, Delta = $${reconciliation.nre.delta.toFixed(2)} ${reconciliation.nre.isReconciled ? '✅' : '⚠️'}`);
+    console.log(`  - Inventory: Internal DB = $${reconciliation.inventory.internalDB.toFixed(2)}, Categorized = $${reconciliation.inventory.categorized.toFixed(2)}, Delta = $${reconciliation.inventory.delta.toFixed(2)} ${reconciliation.inventory.isReconciled ? '✅' : '⚠️'}`);
+    
     // Debug: Breakdown details
     console.log('📈 [GL Summary] NRE Breakdown:', breakdown.nre);
     console.log('📈 [GL Summary] Inventory Breakdown:', breakdown.inventory);
 
     return NextResponse.json({
       summary,
+      categorizedTotals, // For debugging
+      internalDBTotals, // For debugging
+      reconciliation, // Deltas and status
       breakdown,
       laborBreakdown, // Payroll, Taxes, Overhead
       revenueBreakdown, // D2C, B2B, B2B (factored)
