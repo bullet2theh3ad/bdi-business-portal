@@ -355,7 +355,7 @@ const getNavigationItems = (tn: (key: string, fallback?: string) => string): Nav
           {
             title: 'GL Code Assignment',
             href: '/admin/inventory-analysis/gl-code-assignment',
-            icon: 'settings',
+            icon: 'calculator',
           },
         ],
       },

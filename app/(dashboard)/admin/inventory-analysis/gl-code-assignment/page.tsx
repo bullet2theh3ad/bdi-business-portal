@@ -6,443 +6,1151 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, RefreshCw, Save, Search, Download, CheckCircle2 } from 'lucide-react';
+import { 
+  Calculator, RefreshCw, Save, Search, Download, Upload, ChevronDown, ChevronRight,
+  DollarSign, TrendingUp, TrendingDown, FileText, AlertCircle, Check, X
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-interface GLCode {
-  id: string; // UUID from database
-  qbAccountId: string;
-  code: string;
-  name: string;
-  fullyQualifiedName: string;
-  accountType: string;
-  classification: string;
-  description?: string;
-  category: 'opex' | 'cogs' | 'inventory' | 'nre' | 'ignore' | 'unassigned';
-  includeInCashFlow: boolean;
-  isActive: boolean;
-  currentBalance?: number;
+// Types
+interface Transaction {
+  id: string;
+  source: 'expense' | 'bill' | 'deposit' | 'payment' | 'bill_payment';
+  sourceId: string;
+  lineItemIndex: number | null;
+  date: string;
+  vendor: string;
+  description: string;
+  amount: number;
+  glCode: string;
+  glCodeName: string;
+  category: string;
+  notes: string;
+  bankTransactionNumber: string;
+  hasOverride: boolean;
 }
 
-export default function GLCodeAssignmentPage() {
-  const [glCodes, setGLCodes] = useState<GLCode[]>([]);
-  const [filteredCodes, setFilteredCodes] = useState<GLCode[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+interface BankStatement {
+  id: string;
+  transaction_date: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number | null;
+  check_number: string | null;
+  bank_transaction_number: string | null;
+  category: string;
+  gl_code_assignment: string | null;
+  high_level_category: string;
+  notes: string | null;
+  is_matched: boolean;
+  matched_qb_transaction_type: string | null;
+  matched_qb_transaction_id: string | null;
+  upload_batch_id: string;
+}
 
-  // Load GL codes from QuickBooks on mount
+interface CategorySummary {
+  nre: number;
+  inventory: number;
+  opex: number;
+  labor: number;
+  loans: number;
+  loan_interest: number;
+  investments: number;
+  revenue: number;
+  other: number;
+  unassigned: number;
+  [key: string]: number;
+}
+
+interface StatusBreakdown {
+  paid: number;
+  overdue: number;
+  toBePaid: number;
+}
+
+interface CategoryBreakdown {
+  nre: StatusBreakdown;
+  inventory: StatusBreakdown;
+}
+
+interface GLCodeGroup {
+  glCode: string;
+  glCodeName: string;
+  transactions: Transaction[];
+  total: number;
+}
+
+interface CategoryGroup {
+  category: string;
+  glCodes: GLCodeGroup[];
+  total: number;
+  transactionCount: number;
+}
+
+export default function GLTransactionManagementPage() {
+  // Component state
+  const [isLoading, setIsLoading] = useState(true);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [bankStatements, setBankStatements] = useState<BankStatement[]>([]);
+  const [categorySummary, setCategorySummary] = useState<CategorySummary>({
+    nre: 0, inventory: 0, opex: 0, labor: 0, loans: 0, loan_interest: 0,
+    investments: 0, revenue: 0, other: 0, unassigned: 0
+  });
+  const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown>({
+    nre: { paid: 0, overdue: 0, toBePaid: 0 },
+    inventory: { paid: 0, overdue: 0, toBePaid: 0 },
+  });
+  const [revenueBreakdown, setRevenueBreakdown] = useState({
+    d2c: 0,
+    b2b: 0,
+    b2b_factored: 0,
+  });
+  
+  // UI State
+  const [viewMode, setViewMode] = useState<'transactions' | 'bank'>('transactions');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [collapsedGLCodes, setCollapsedGLCodes] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  
+  // Date range tracking
+  const [qbDateRange, setQbDateRange] = useState<{ earliest: string; latest: string } | null>(null);
+  const [bankDateRange, setBankDateRange] = useState<{ earliest: string; latest: string } | null>(null);
+
+  // Load data on mount
   useEffect(() => {
-    loadGLCodes();
+    loadAllData();
   }, []);
 
-  async function loadGLCodes() {
+  // Reload summary when filters change
+  useEffect(() => {
+    if (!isLoading) {
+      loadSummary();
+    }
+  }, [startDate, endDate]);
+
+  async function loadAllData() {
     try {
       setIsLoading(true);
-      setError(null);
-
-      // Fetch QuickBooks accounts
-      const qbResponse = await fetch('/api/quickbooks/accounts');
-      if (!qbResponse.ok) {
-        throw new Error('Failed to fetch QuickBooks accounts');
-      }
-      const qbAccounts = await qbResponse.json();
-
-      // Fetch existing assignments
-      const assignmentsResponse = await fetch('/api/gl-code-assignments');
-      const assignments = assignmentsResponse.ok ? await assignmentsResponse.json() : [];
-
-      // Create a map of assignments by QB account ID
-      const assignmentMap = new Map(
-        assignments.map((a: any) => [a.qbAccountId, a])
-      );
-
-      // Merge QuickBooks accounts with assignments
-      const mergedGLCodes: GLCode[] = qbAccounts.map((account: any) => {
-        const assignment: any = assignmentMap.get(account.qb_account_id);
-        
-        return {
-          id: assignment?.id || account.id,
-          qbAccountId: account.qb_account_id,
-          code: account.account_number || account.qb_account_id,
-          name: account.name,
-          fullyQualifiedName: account.fully_qualified_name || account.name,
-          accountType: account.account_type,
-          classification: account.classification,
-          description: account.description,
-          category: (assignment?.category as GLCode['category']) || 'unassigned',
-          includeInCashFlow: assignment?.include_in_cash_flow ?? true,
-          isActive: account.is_active,
-          currentBalance: parseFloat(account.current_balance || '0'),
-        };
-      });
-
-      setGLCodes(mergedGLCodes);
-      setFilteredCodes(mergedGLCodes);
-      setLastSyncTime(new Date().toISOString());
-    } catch (err) {
-      console.error('Error loading GL codes:', err);
-      setError('Failed to load GL codes from QuickBooks. Please check your connection.');
+      await Promise.all([
+        loadTransactions(),
+        loadBankStatements(),
+        loadSummary(),
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
     }
   }
 
-  useEffect(() => {
-    // Apply filters
-    let filtered = glCodes;
+  async function loadTransactions() {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/gl-management/transactions?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      
+      const data = await response.json();
+      const txns = data.transactions || [];
+      setTransactions(txns);
+      
+      // Calculate date range from actual data
+      if (txns.length > 0) {
+        const dates = txns.map((t: Transaction) => new Date(t.date)).filter((d: Date) => !isNaN(d.getTime()));
+        if (dates.length > 0) {
+          const earliest = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
+          const latest = new Date(Math.max(...dates.map((d: Date) => d.getTime())));
+          setQbDateRange({
+            earliest: earliest.toISOString().split('T')[0],
+            latest: latest.toISOString().split('T')[0]
+          });
+        }
+      } else {
+        setQbDateRange(null);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  }
 
-    if (searchTerm) {
-      filtered = filtered.filter(code =>
-        code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        code.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        code.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  async function loadBankStatements() {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/gl-management/bank-statements?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch bank statements');
+      
+      const data = await response.json();
+      const statements = data.statements || [];
+      setBankStatements(statements);
+      
+      // Calculate date range from actual data
+      if (statements.length > 0) {
+        const dates = statements.map((s: BankStatement) => new Date(s.transaction_date)).filter((d: Date) => !isNaN(d.getTime()));
+        if (dates.length > 0) {
+          const earliest = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
+          const latest = new Date(Math.max(...dates.map((d: Date) => d.getTime())));
+          setBankDateRange({
+            earliest: earliest.toISOString().split('T')[0],
+            latest: latest.toISOString().split('T')[0]
+          });
+        }
+      } else {
+        setBankDateRange(null);
+      }
+    } catch (error) {
+      console.error('Error loading bank statements:', error);
+    }
+  }
+
+  async function loadSummary() {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/gl-management/summary?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch summary');
+      
+      const data = await response.json();
+      setCategorySummary(data.summary || {});
+      setCategoryBreakdown(data.breakdown || { nre: { paid: 0, overdue: 0, toBePaid: 0 }, inventory: { paid: 0, overdue: 0, toBePaid: 0 } });
+      setRevenueBreakdown(data.revenueBreakdown || { d2c: 0, b2b: 0, b2b_factored: 0 });
+    } catch (error) {
+      console.error('Error loading summary:', error);
+    }
+  }
+
+  // Group transactions by category and GL code
+  const groupedData: CategoryGroup[] = (() => {
+    let filtered = transactions;
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(t =>
+        t.description.toLowerCase().includes(query) ||
+        t.vendor.toLowerCase().includes(query) ||
+        t.glCodeName.toLowerCase().includes(query) ||
+        t.notes.toLowerCase().includes(query)
       );
     }
 
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(code => code.category === filterCategory);
+    // Apply category filter
+    if (categoryFilter && categoryFilter !== 'all') {
+      filtered = filtered.filter(t => t.category === categoryFilter);
     }
 
-    setFilteredCodes(filtered);
-  }, [searchTerm, filterCategory, glCodes]);
+    // Group by category
+    const categoryMap = new Map<string, Transaction[]>();
+    filtered.forEach(t => {
+      const cat = t.category || 'unassigned';
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, []);
+      }
+      categoryMap.get(cat)!.push(t);
+    });
 
-  // Handle refresh from QuickBooks
-  const handleRefresh = async () => {
-    await loadGLCodes();
-    alert('GL codes refreshed from QuickBooks');
-  };
-
-  // Update GL code category
-  const handleCategoryChange = (qbAccountId: string, newCategory: string) => {
-    setGLCodes(glCodes.map(glCode =>
-      glCode.qbAccountId === qbAccountId
-        ? { ...glCode, category: newCategory as GLCode['category'] }
-        : glCode
-    ));
-  };
-
-  // Toggle cash flow inclusion
-  const handleToggleCashFlow = (qbAccountId: string) => {
-    setGLCodes(glCodes.map(glCode =>
-      glCode.qbAccountId === qbAccountId
-        ? { ...glCode, includeInCashFlow: !glCode.includeInCashFlow }
-        : glCode
-    ));
-  };
-
-  // Save mappings
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      setError(null);
-
-      // Prepare assignments data
-      const assignments = glCodes.map(code => ({
-        qbAccountId: code.qbAccountId,
-        category: code.category,
-        includeInCashFlow: code.includeInCashFlow,
-      }));
-
-      const response = await fetch('/api/gl-code-assignments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignments }),
+    // For each category, group by GL code
+    const result: CategoryGroup[] = [];
+    categoryMap.forEach((txns, category) => {
+      const glCodeMap = new Map<string, Transaction[]>();
+      
+      txns.forEach(t => {
+        const key = `${t.glCode}:${t.glCodeName}`;
+        if (!glCodeMap.has(key)) {
+          glCodeMap.set(key, []);
+        }
+        glCodeMap.get(key)!.push(t);
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save GL code assignments');
-      }
+      const glCodes: GLCodeGroup[] = [];
+      glCodeMap.forEach((glTxns, key) => {
+        const [glCode, glCodeName] = key.split(':');
+        const total = glTxns.reduce((sum, t) => sum + t.amount, 0);
+        glCodes.push({
+          glCode,
+          glCodeName,
+          transactions: glTxns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+          total,
+        });
+      });
 
-      alert('GL code assignments saved successfully');
-    } catch (err) {
-      console.error('Error saving GL code assignments:', err);
-      setError('Failed to save GL code assignments. Please try again.');
-    } finally {
-      setIsSaving(false);
+      // Sort GL codes by total amount (descending)
+      glCodes.sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+
+      const categoryTotal = txns.reduce((sum, t) => sum + t.amount, 0);
+      result.push({
+        category,
+        glCodes,
+        total: categoryTotal,
+        transactionCount: txns.length,
+      });
+    });
+
+    // Sort categories by total amount (descending)
+    result.sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+
+    return result;
+  })();
+
+  // Toggle collapse functions
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleGLCode = (category: string, glCode: string) => {
+    const key = `${category}:${glCode}`;
+    setCollapsedGLCodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  // Update transaction
+  const updateTransaction = async (transaction: Transaction, updates: Partial<Transaction>) => {
+    try {
+      const override = {
+        transaction_source: transaction.source,
+        transaction_id: transaction.sourceId,
+        line_item_index: transaction.lineItemIndex,
+        original_category: transaction.category,
+        override_category: updates.category,
+        original_gl_code: transaction.glCode,
+        assigned_gl_code: updates.glCode,
+        notes: updates.notes,
+        bank_transaction_number: updates.bankTransactionNumber,
+        original_description: transaction.description,
+        override_description: updates.description,
+      };
+
+      const response = await fetch('/api/gl-management/overrides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overrides: override }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save override');
+
+      // Update local state
+      setTransactions(prev => prev.map(t => 
+        t.id === transaction.id ? { ...t, ...updates, hasOverride: true } : t
+      ));
+
+      // Reload summary
+      await loadSummary();
+
+      return true;
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      return false;
     }
   };
 
-  // Export mappings
-  const handleExport = () => {
-    const csvContent = [
-      ['GL Code', 'Name', 'Description', 'Category', 'Include in Cash Flow'].join(','),
-      ...glCodes.map(code =>
-        [
-          code.code,
-          `"${code.name}"`,
-          `"${code.description || ''}"`,
-          code.category,
-          code.includeInCashFlow ? 'Yes' : 'No'
-        ].join(',')
-      )
-    ].join('\n');
+  // Handle CSV upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
+    try {
+      setUploadError(null);
+      setUploadSuccess(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/gl-management/bank-statements/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Show detailed error information
+        let errorMsg = data.error || 'Upload failed';
+        if (data.headers) {
+          errorMsg += `\n\nFound columns: ${data.headers.join(', ')}`;
+        }
+        if (data.foundColumns) {
+          errorMsg += `\n\nColumn mapping: ${JSON.stringify(data.foundColumns, null, 2)}`;
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Show detailed success message with warnings if rows were skipped
+      let successMsg = data.message || `Successfully imported ${data.imported} transactions`;
+      if (data.skipped > 0) {
+        successMsg += ` (${data.skipped} rows skipped)`;
+      }
+      if (data.totalErrors > 0) {
+        successMsg += `\n\n⚠️ ${data.totalErrors} errors found`;
+        if (data.errors && data.errors.length > 0) {
+          successMsg += ':\n' + data.errors.map((e: any) => `Line ${e.line}: ${e.error}`).slice(0, 5).join('\n');
+          if (data.totalErrors > 5) {
+            successMsg += `\n... and ${data.totalErrors - 5} more`;
+          }
+        }
+      }
+      
+      console.log('CSV Upload Result:', data); // Log full response for debugging
+      
+      setUploadSuccess(successMsg);
+      await loadBankStatements();
+      await loadSummary();
+
+      // Clear file input
+      event.target.value = '';
+    } catch (error: any) {
+      console.error('CSV Upload Error:', error);
+      setUploadError(error.message || 'Failed to upload file');
+    }
+  };
+
+  // Export to CSV
+  const handleExport = () => {
+    const csvRows = [
+      ['Date', 'Source', 'Vendor/Customer', 'Description', 'Amount', 'GL Code', 'GL Code Name', 'Category', 'Bank Txn #', 'Notes'].join(',')
+    ];
+
+    transactions.forEach(t => {
+      csvRows.push([
+        t.date,
+        t.source,
+        `"${t.vendor}"`,
+        `"${t.description}"`,
+        t.amount.toFixed(2),
+        t.glCode,
+        `"${t.glCodeName}"`,
+        t.category,
+        t.bankTransactionNumber || '',
+        `"${t.notes || ''}"`
+      ].join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `gl-code-mappings-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `gl-transactions-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
-  const getCategoryBadge = (category: GLCode['category']) => {
-    const styles = {
-      opex: 'bg-orange-100 text-orange-800',
-      cogs: 'bg-purple-100 text-purple-800',
-      inventory: 'bg-blue-100 text-blue-800',
-      nre: 'bg-green-100 text-green-800',
-      ignore: 'bg-gray-100 text-gray-800',
-      unassigned: 'bg-yellow-100 text-yellow-800',
-    };
-
-    return <Badge className={styles[category]}>{category.toUpperCase()}</Badge>;
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const getCategoryStats = () => {
-    const stats = {
-      opex: glCodes.filter(c => c.category === 'opex').length,
-      cogs: glCodes.filter(c => c.category === 'cogs').length,
-      inventory: glCodes.filter(c => c.category === 'inventory').length,
-      nre: glCodes.filter(c => c.category === 'nre').length,
-      ignore: glCodes.filter(c => c.category === 'ignore').length,
-      unassigned: glCodes.filter(c => c.category === 'unassigned').length,
+  // Category badge color
+  const getCategoryColor = (category: string) => {
+    const colors: {[key: string]: string} = {
+      nre: 'bg-purple-100 text-purple-800 border-purple-200',
+      inventory: 'bg-blue-100 text-blue-800 border-blue-200',
+      opex: 'bg-orange-100 text-orange-800 border-orange-200',
+      labor: 'bg-green-100 text-green-800 border-green-200',
+      loans: 'bg-red-100 text-red-800 border-red-200',
+      loan_interest: 'bg-pink-100 text-pink-800 border-pink-200',
+      investments: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      revenue: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      other: 'bg-gray-100 text-gray-800 border-gray-200',
+      unassigned: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     };
-    return stats;
+    return colors[category] || colors.unassigned;
   };
-
-  const stats = getCategoryStats();
+  
+  // Category display name
+  const getCategoryDisplayName = (category: string) => {
+    const names: {[key: string]: string} = {
+      nre: 'NRE',
+      inventory: 'Inventory',
+      opex: 'OPEX',
+      labor: 'Labor',
+      loans: 'RLOC',
+      loan_interest: 'Loan Interest Paid',
+      investments: 'Investments',
+      revenue: 'Net Revenue',
+      other: 'Other',
+      unassigned: 'Unassigned',
+    };
+    return names[category] || category.toUpperCase();
+  };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Fixed Floating Summary Window - Stays at top, matches content width */}
+      <div className="fixed top-20 left-64 right-4 z-40 px-4 sm:px-6 lg:px-8">
+      <Card className="shadow-xl border-2 border-blue-200 bg-white">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Category Summary
+            </CardTitle>
+            <div className="text-xs font-medium text-gray-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+              {startDate && endDate ? (
+                <span>{startDate} to {endDate}</span>
+              ) : startDate ? (
+                <span>From {startDate}</span>
+              ) : endDate ? (
+                <span>Until {endDate}</span>
+              ) : (
+                <span>All Time</span>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Define card order: NRE, Inventory, Revenue, RLOC, then OPEX, Labor, etc. */}
+            {['nre', 'inventory', 'revenue', 'loans', 'opex', 'labor', 'investments', 'other', 'unassigned'].map((key) => {
+              const value = categorySummary[key] || 0;
+              // Skip loan_interest as standalone - it's shown within RLOC card
+              if (key === 'loan_interest') return null;
+              
+              const hasBreakdown = key === 'nre' || key === 'inventory';
+              const breakdown = hasBreakdown ? categoryBreakdown[key as 'nre' | 'inventory'] : null;
+              const hasRevenueBreakdown = key === 'revenue';
+              const hasRlocBreakdown = key === 'loans';
+              const isLoans = key === 'loans';
+              
+              return (
+                <div key={key}>
+                  {/* Main category card */}
+                  <div className={`p-3 rounded-lg border ${getCategoryColor(key)}`}>
+                    <div className="text-xs font-medium mb-1">{getCategoryDisplayName(key)}</div>
+                    
+                    {/* Show breakdown for NRE and Inventory */}
+                    {hasBreakdown && breakdown ? (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-green-700">Paid:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(breakdown.paid)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-red-700">Past Due:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(breakdown.overdue)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-blue-700">To Be Paid:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(breakdown.toBePaid)}</span>
+                        </div>
+                        <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
+                          <span className="text-[10px] font-medium">Total:</span>
+                          <span className="text-base font-bold">{formatCurrency(value)}</span>
+                        </div>
+                      </div>
+                    ) : hasRevenueBreakdown ? (
+                      /* Show breakdown for Revenue by channel */
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-emerald-700">D2C:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(Math.abs(revenueBreakdown.d2c))}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-emerald-700">B2B:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(Math.abs(revenueBreakdown.b2b))}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-emerald-700">B2B (factored):</span>
+                          <span className="text-sm font-semibold">{formatCurrency(Math.abs(revenueBreakdown.b2b_factored))}</span>
+                        </div>
+                        <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
+                          <span className="text-[10px] font-medium">Total:</span>
+                          <span className="text-base font-bold">{formatCurrency(Math.abs(value))}</span>
+                        </div>
+                      </div>
+                    ) : hasRlocBreakdown ? (
+                      /* Show breakdown for RLOC - Loan Total, Loans Applied, RLOC Available, then Loan Interest */
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-blue-700">Loan Total:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(5000000)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-red-700">Loans Applied:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(Math.abs(value))}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-green-700">RLOC Available:</span>
+                          <span className="text-sm font-semibold">{formatCurrency(5000000 - Math.abs(value))}</span>
+                        </div>
+                        <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
+                          <span className="text-[10px] font-medium text-pink-700">Loan Interest Paid:</span>
+                          <span className="text-base font-bold">{formatCurrency(categorySummary.loan_interest)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-lg font-bold">{formatCurrency(value)}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-xs text-gray-600 mb-1">Total Outflows</div>
+              <div className="text-xl font-bold text-red-600">
+                {formatCurrency(
+                  categorySummary.nre + categorySummary.inventory + categorySummary.opex + 
+                  categorySummary.labor + categorySummary.loans + categorySummary.loan_interest + 
+                  categorySummary.investments + categorySummary.other + categorySummary.unassigned
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-600 mb-1">Total Inflows</div>
+              <div className="text-xl font-bold text-green-600">
+                {formatCurrency(Math.abs(categorySummary.revenue))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-600 mb-1">Net Cash Flow</div>
+              <div className={`text-xl font-bold ${
+                (Math.abs(categorySummary.revenue) - (categorySummary.nre + categorySummary.inventory + categorySummary.opex + categorySummary.labor + categorySummary.loans + categorySummary.investments + categorySummary.other + categorySummary.unassigned)) >= 0 
+                  ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {formatCurrency(
+                  Math.abs(categorySummary.revenue) - 
+                  (categorySummary.nre + categorySummary.inventory + categorySummary.opex + 
+                  categorySummary.labor + categorySummary.loans + categorySummary.investments + 
+                  categorySummary.other + categorySummary.unassigned)
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      </div>
+
+      {/* Spacer to push content below fixed summary */}
+      <div className="h-[445px] sm:h-[425px]"></div>
+      
+      {/* Page Title - Above tabs */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Settings className="h-8 w-8 text-blue-600" />
-          GL Code Assignment
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+          <Calculator className="h-8 w-8 text-blue-600" />
+          GL Transaction Management
         </h1>
-        <p className="text-gray-600 mt-2">
-          Map QuickBooks GL codes to categories for cash flow analysis
+        <p className="text-sm sm:text-base text-gray-600">
+          Categorize and reconcile QuickBooks transactions with bank statements
         </p>
       </div>
+      
+      {/* Controls */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            {/* View Mode Toggle */}
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setViewMode('transactions')}
+                  variant={viewMode === 'transactions' ? 'default' : 'outline'}
+                  className="flex-1"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  QuickBooks Transactions
+                </Button>
+                <Button
+                  onClick={() => setViewMode('bank')}
+                  variant={viewMode === 'bank' ? 'default' : 'outline'}
+                  className="flex-1"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Bank Statements
+                </Button>
+              </div>
+              
+              {/* Date Range Indicators - Both visible, aligned under respective tabs */}
+              <div className="flex gap-2 text-xs">
+                <div className="flex-1 flex items-center gap-2 text-gray-600">
+                  <span className="font-medium">QB Data Range:</span>
+                  {qbDateRange ? (
+                    <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">
+                      {qbDateRange.earliest} to {qbDateRange.latest}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 italic">No data</span>
+                  )}
+                </div>
+                <div className="flex-1 flex items-center gap-2 text-gray-600">
+                  <span className="font-medium">Bank Data Range:</span>
+                  {bankDateRange ? (
+                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">
+                      {bankDateRange.earliest} to {bankDateRange.latest}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 italic">No data</span>
+                  )}
+                </div>
+              </div>
+            </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
-          <p className="font-semibold">Error</p>
-          <p className="text-sm">{error}</p>
+            {/* Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <Label className="text-sm mb-1">Start Date</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-sm mb-1">End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-sm mb-1">Category</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="nre">NRE</SelectItem>
+                    <SelectItem value="inventory">Inventory</SelectItem>
+                    <SelectItem value="opex">Opex</SelectItem>
+                    <SelectItem value="labor">Labor</SelectItem>
+                    <SelectItem value="loans">Loans</SelectItem>
+                    <SelectItem value="loan_interest">Loan Interest Paid</SelectItem>
+                    <SelectItem value="investments">Investments</SelectItem>
+                    <SelectItem value="revenue">Revenue</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm mb-1">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end gap-2">
+                <Button onClick={loadAllData} variant="outline" className="flex-1" disabled={isLoading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 flex-wrap">
+              <input
+                type="file"
+                accept=".csv,.xls,.xlsx"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="csv-upload"
+                ref={(input) => {
+                  if (input) {
+                    (window as any).csvUploadInput = input;
+                  }
+                }}
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => document.getElementById('csv-upload')?.click()}
+                type="button"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Bank File (CSV/Excel)
+              </Button>
+              <Button onClick={handleExport} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Export to CSV
+              </Button>
+            </div>
+
+            {/* Upload feedback */}
+            {uploadSuccess && (
+              <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800">
+                <Check className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="text-sm whitespace-pre-wrap flex-1">{uploadSuccess}</div>
+                <button onClick={() => setUploadSuccess(null)} className="flex-shrink-0">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {uploadError && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
+                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="text-sm whitespace-pre-wrap flex-1">{uploadError}</div>
+                <button onClick={() => setUploadError(null)} className="flex-shrink-0">
+                  <X className="h-4 w-4" />
+                </button>
         </div>
       )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Loading State */}
-      {isLoading && glCodes.length === 0 && (
+      {isLoading && (
         <div className="text-center py-12">
           <RefreshCw className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-spin" />
-          <p className="text-gray-600">Loading GL codes from QuickBooks...</p>
+          <p className="text-gray-600">Loading transactions...</p>
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+      {/* Transactions View - Hierarchical */}
+      {!isLoading && viewMode === 'transactions' && (
+        <div className="space-y-4">
+          {groupedData.length === 0 ? (
         <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{stats.opex}</div>
-              <div className="text-xs text-gray-600">OpEx</div>
-            </div>
+              <CardContent className="py-12 text-center text-gray-500">
+                <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p>No transactions found matching your filters</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{stats.cogs}</div>
-              <div className="text-xs text-gray-600">COGS</div>
+          ) : (
+            groupedData.map((categoryGroup) => (
+              <Card key={categoryGroup.category} className="overflow-hidden">
+                {/* Level 1: Category */}
+                <div
+                  className="p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => toggleCategory(categoryGroup.category)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {collapsedCategories.has(categoryGroup.category) ? (
+                        <ChevronRight className="h-5 w-5 text-gray-600" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-gray-600" />
+                      )}
+                      <Badge className={`${getCategoryColor(categoryGroup.category)} border`}>
+                        {categoryGroup.category.toUpperCase()}
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        ({categoryGroup.transactionCount} transactions)
+                      </span>
+                    </div>
+                    <div className="font-bold text-lg">
+                      {formatCurrency(categoryGroup.total)}
+                    </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats.inventory}</div>
-              <div className="text-xs text-gray-600">Inventory</div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{stats.nre}</div>
-              <div className="text-xs text-gray-600">NRE</div>
+
+                {/* Level 2: GL Codes */}
+                {!collapsedCategories.has(categoryGroup.category) && (
+                  <div className="border-t">
+                    {categoryGroup.glCodes.map((glCodeGroup) => {
+                      const glKey = `${categoryGroup.category}:${glCodeGroup.glCode}`;
+                      const isGLCollapsed = collapsedGLCodes.has(glKey);
+
+                      return (
+                        <div key={glKey} className="border-b last:border-b-0">
+                          <div
+                            className="p-3 pl-12 bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() => toggleGLCode(categoryGroup.category, glCodeGroup.glCode)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {isGLCollapsed ? (
+                                  <ChevronRight className="h-4 w-4 text-gray-500" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                                )}
+                                <span className="font-mono text-sm font-medium text-blue-600">
+                                  {glCodeGroup.glCode}
+                                </span>
+                                <span className="text-sm text-gray-700">
+                                  {glCodeGroup.glCodeName}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  ({glCodeGroup.transactions.length})
+                                </span>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{stats.ignore}</div>
-              <div className="text-xs text-gray-600">Ignore</div>
+                              <div className="font-semibold">
+                                {formatCurrency(glCodeGroup.total)}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{stats.unassigned}</div>
-              <div className="text-xs text-gray-600">Unassigned</div>
             </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Actions */}
-      <div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex gap-3">
-          <Button onClick={handleRefresh} disabled={isLoading} variant="outline" className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh from QuickBooks
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-            <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : 'Save Mappings'}
-          </Button>
-          <Button onClick={handleExport} variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+                          {/* Level 3: Transactions */}
+                          {!isGLCollapsed && (
+                            <div className="pl-16 pr-4 pb-2 bg-gray-50">
+                              <div className="space-y-2">
+                                {glCodeGroup.transactions.map((txn) => (
+                                  <TransactionRow
+                                    key={txn.id}
+                                    transaction={txn}
+                                    onUpdate={updateTransaction}
+                                  />
+                                ))}
         </div>
-        {lastSyncTime && (
-          <div className="text-sm text-gray-600">
-            Last synced: {new Date(lastSyncTime).toLocaleString()}
           </div>
         )}
       </div>
-
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search GL codes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="opex">OpEx</SelectItem>
-            <SelectItem value="cogs">COGS</SelectItem>
-            <SelectItem value="inventory">Inventory</SelectItem>
-            <SelectItem value="nre">NRE</SelectItem>
-            <SelectItem value="ignore">Ignore</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* GL Codes Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>GL Code Mappings ({filteredCodes.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {/* Header */}
-            <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50 rounded-lg font-semibold text-sm">
-              <div className="col-span-1">Code</div>
-              <div className="col-span-3">Name</div>
-              <div className="col-span-3">Description</div>
-              <div className="col-span-2">Category</div>
-              <div className="col-span-2">Cash Flow</div>
-              <div className="col-span-1">Actions</div>
-            </div>
-
-            {/* Rows */}
-            {filteredCodes.map((code) => (
-              <div
-                key={code.qbAccountId}
-                className="grid grid-cols-12 gap-4 px-4 py-3 border rounded-lg hover:bg-gray-50 transition-colors items-center"
-              >
-                <div className="col-span-1 font-mono font-semibold text-xs">{code.code}</div>
-                <div className="col-span-3">
-                  <div className="font-medium text-sm">{code.name}</div>
-                  <div className="text-xs text-gray-500">{code.fullyQualifiedName}</div>
-                </div>
-                <div className="col-span-3 text-sm text-gray-600">
-                  {code.classification && (
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded mr-2">{code.classification}</span>
-                  )}
-                  {code.accountType}
-                </div>
-                <div className="col-span-2">
-                  <Select
-                    value={code.category}
-                    onValueChange={(value) => handleCategoryChange(code.qbAccountId, value)}
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="opex">OpEx</SelectItem>
-                      <SelectItem value="cogs">COGS</SelectItem>
-                      <SelectItem value="inventory">Inventory</SelectItem>
-                      <SelectItem value="nre">NRE</SelectItem>
-                      <SelectItem value="ignore">Ignore</SelectItem>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2">
-                  <button
-                    onClick={() => handleToggleCashFlow(code.qbAccountId)}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      code.includeInCashFlow
-                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {code.includeInCashFlow && <CheckCircle2 className="h-3 w-3" />}
-                    {code.includeInCashFlow ? 'Included' : 'Excluded'}
-                  </button>
-                </div>
-                <div className="col-span-1">
-                  {getCategoryBadge(code.category)}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredCodes.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <Settings className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-              <p>No GL codes found matching your filters</p>
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* Info Card */}
-      <Card className="mt-6 border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <h3 className="font-semibold mb-2 text-blue-900">Category Descriptions:</h3>
-          <ul className="text-sm space-y-1 text-blue-800">
-            <li><strong>OpEx:</strong> Operating expenses that will be included in cash flow analysis</li>
-            <li><strong>COGS:</strong> Cost of goods sold - direct product costs</li>
-            <li><strong>Inventory:</strong> Inventory purchases tracked via PO payment schedules</li>
-            <li><strong>NRE:</strong> Non-recurring engineering expenses tracked separately</li>
-            <li><strong>Ignore:</strong> Revenue, depreciation, and other non-cash items</li>
-            <li><strong>Unassigned:</strong> Codes that haven't been categorized yet</li>
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Bank Statements View */}
+      {!isLoading && viewMode === 'bank' && (
+        <BankStatementsView
+          statements={bankStatements}
+          onUpdate={loadBankStatements}
+          onSummaryUpdate={loadSummary}
+        />
+      )}
     </div>
   );
 }
 
+// Transaction Row Component
+function TransactionRow({ 
+  transaction, 
+  onUpdate 
+}: { 
+  transaction: Transaction; 
+  onUpdate: (txn: Transaction, updates: Partial<Transaction>) => Promise<boolean>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCategory, setEditedCategory] = useState(transaction.category);
+  const [editedNotes, setEditedNotes] = useState(transaction.notes);
+  const [editedBankTxn, setEditedBankTxn] = useState(transaction.bankTransactionNumber);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const success = await onUpdate(transaction, {
+      category: editedCategory,
+      notes: editedNotes,
+      bankTransactionNumber: editedBankTxn,
+    });
+    if (success) {
+      setIsEditing(false);
+    }
+    setIsSaving(false);
+  };
+
+  const handleCancel = () => {
+    setEditedCategory(transaction.category);
+    setEditedNotes(transaction.notes);
+    setEditedBankTxn(transaction.bankTransactionNumber);
+    setIsEditing(false);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  return (
+    <div className="p-3 bg-white rounded border hover:shadow-sm transition-shadow">
+      <div className="grid grid-cols-12 gap-2 items-center text-sm">
+        <div className="col-span-1 text-xs text-gray-600">
+          {new Date(transaction.date).toLocaleDateString()}
+        </div>
+        <div className="col-span-1">
+          <Badge variant="outline" className="text-xs">
+            {transaction.source}
+          </Badge>
+        </div>
+        <div className="col-span-2 text-xs truncate" title={transaction.vendor}>
+          {transaction.vendor}
+        </div>
+        <div className="col-span-2 text-xs truncate" title={transaction.description}>
+          {transaction.description}
+        </div>
+        <div className="col-span-1 font-semibold text-right">
+          {formatCurrency(transaction.amount)}
+        </div>
+        
+        {isEditing ? (
+          <>
+            <div className="col-span-2">
+              <Select value={editedCategory} onValueChange={setEditedCategory}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+                  <SelectItem value="nre">NRE</SelectItem>
+            <SelectItem value="inventory">Inventory</SelectItem>
+                  <SelectItem value="opex">Opex</SelectItem>
+                  <SelectItem value="labor">Labor</SelectItem>
+                  <SelectItem value="loans">Loans</SelectItem>
+                  <SelectItem value="loan_interest">Loan Interest Paid</SelectItem>
+                  <SelectItem value="investments">Investments</SelectItem>
+                  <SelectItem value="revenue">Revenue</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+            <div className="col-span-1">
+              <Input
+                value={editedBankTxn}
+                onChange={(e) => setEditedBankTxn(e.target.value)}
+                placeholder="Bank Txn #"
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="col-span-2 flex gap-1">
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="h-7 px-2 text-xs"
+              >
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCancel}
+                className="h-7 px-2 text-xs"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="col-span-2 text-xs truncate" title={transaction.notes}>
+              {transaction.notes || '-'}
+            </div>
+            <div className="col-span-1 text-xs text-center">
+              {transaction.bankTransactionNumber || '-'}
+            </div>
+            <div className="col-span-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+                className="h-7 px-2 text-xs w-full"
+              >
+                Edit
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Bank Statements View Component  
+function BankStatementsView({
+  statements,
+  onUpdate,
+  onSummaryUpdate,
+}: {
+  statements: BankStatement[];
+  onUpdate: () => void;
+  onSummaryUpdate: () => void;
+}) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  return (
+      <Card>
+        <CardHeader>
+        <CardTitle>Bank Statements ({statements.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+        {statements.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <Upload className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <p>No bank statements uploaded yet</p>
+            <p className="text-sm mt-2">Click "Upload Bank CSV" to import statements</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid grid-cols-12 gap-2 p-3 bg-gray-50 rounded font-semibold text-xs">
+              <div className="col-span-1">Date</div>
+              <div className="col-span-3">Description</div>
+              <div className="col-span-1 text-right">Debit</div>
+              <div className="col-span-1 text-right">Credit</div>
+              <div className="col-span-1 text-right">Balance</div>
+              <div className="col-span-2">Category</div>
+              <div className="col-span-1 text-center">Matched</div>
+              <div className="col-span-2">Notes</div>
+            </div>
+            {statements.map((stmt) => (
+              <div key={stmt.id} className="grid grid-cols-12 gap-2 p-3 border rounded hover:bg-gray-50 text-xs items-center">
+                <div className="col-span-1">{new Date(stmt.transaction_date).toLocaleDateString()}</div>
+                <div className="col-span-3 truncate" title={stmt.description}>{stmt.description}</div>
+                <div className="col-span-1 text-right text-red-600">{stmt.debit > 0 ? formatCurrency(stmt.debit) : '-'}</div>
+                <div className="col-span-1 text-right text-green-600">{stmt.credit > 0 ? formatCurrency(stmt.credit) : '-'}</div>
+                <div className="col-span-1 text-right font-semibold">{stmt.balance ? formatCurrency(stmt.balance) : '-'}</div>
+                <div className="col-span-2">
+                  <Badge variant="outline" className="text-xs">
+                    {stmt.category || 'unassigned'}
+                  </Badge>
+                </div>
+                <div className="col-span-1 text-center">
+                  {stmt.is_matched ? (
+                    <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs">-</Badge>
+                  )}
+                </div>
+                <div className="col-span-2 truncate text-xs" title={stmt.notes || ''}>
+                  {stmt.notes || '-'}
+                </div>
+              </div>
+            ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+  );
+}
