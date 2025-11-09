@@ -385,6 +385,12 @@ export default function GLTransactionManagementPage() {
         override_description: updates.description,
       };
 
+      console.log('💾 [Frontend] Saving override:', {
+        key: `${override.transaction_source}:${override.transaction_id}:${override.line_item_index || ''}`,
+        category: override.override_category,
+        amount: transaction.amount,
+      });
+
       const response = await fetch('/api/gl-management/overrides', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

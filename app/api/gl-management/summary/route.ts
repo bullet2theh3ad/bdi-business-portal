@@ -175,6 +175,9 @@ export async function GET(request: NextRequest) {
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || line.category || exp.category || 'unassigned';
           const amount = parseFloat(line.Amount || '0');
+          if (override) {
+            console.log(`✏️  [Applied Override] ${overrideKey} → ${category} ($${amount.toFixed(2)})`);
+          }
           addToCategorized(category, amount);
         });
       } else {
@@ -199,6 +202,9 @@ export async function GET(request: NextRequest) {
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'unassigned';
           const amount = parseFloat(line.Amount || '0');
+          if (override) {
+            console.log(`✏️  [Applied Override] ${overrideKey} → ${category} ($${amount.toFixed(2)})`);
+          }
           addToCategorized(category, amount);
         });
       } else {
