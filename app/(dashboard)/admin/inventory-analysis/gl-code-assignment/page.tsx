@@ -719,7 +719,7 @@ export default function GLTransactionManagementPage() {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-blue-700">Loan Total:</span>
-                          <span className="text-sm font-semibold">{formatCurrency(5000000)}</span>
+                          <span className="text-sm font-semibold">{formatCurrency(6242000)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-red-700">Loans Applied:</span>
@@ -727,7 +727,7 @@ export default function GLTransactionManagementPage() {
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-green-700">RLOC Available:</span>
-                          <span className="text-sm font-semibold">{formatCurrency(5000000 - Math.abs(value))}</span>
+                          <span className="text-sm font-semibold">{formatCurrency(6242000 - Math.abs(value))}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
                           <span className="text-[10px] font-medium text-pink-700">Interest (Bank):</span>
