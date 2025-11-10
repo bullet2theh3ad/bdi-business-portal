@@ -466,6 +466,11 @@ export async function GET(request: NextRequest) {
     console.log(`\n🔍 [NRE CATEGORIZED TOTAL] = $${categorizedTotals.nre.toFixed(2)} (raw, before Math.abs)`);
     console.log(`🔍 [NRE CATEGORIZED TOTAL] = $${Math.abs(categorizedTotals.nre).toFixed(2)} (after Math.abs, this is what shows as "Categorized")`);
     console.log(`ℹ️  This represents ALL transactions YOU manually categorized as NRE (expenses + bills combined)\n`);
+    
+    // Debug: Log Inventory final total
+    console.log(`📦 [INVENTORY CATEGORIZED TOTAL] = $${categorizedTotals.inventory.toFixed(2)} (raw, before Math.abs)`);
+    console.log(`📦 [INVENTORY CATEGORIZED TOTAL] = $${Math.abs(categorizedTotals.inventory).toFixed(2)} (after Math.abs, this is what shows as "Categorized")`);
+    console.log(`ℹ️  This represents ALL transactions YOU manually categorized as Inventory (expenses + bills combined)\n`);
 
     // Process NRE payments from INTERNAL DB (Trusted Source)
     const today = new Date();
