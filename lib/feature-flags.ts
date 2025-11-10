@@ -8,6 +8,7 @@ export const QUICKBOOKS_WHITELIST = [
   'scistulli@boundlessdevices.com',
   'dzand@boundlessdevices.com',
   'sjin@boundlessdevices.com',
+  'hmitchem@boundlessdevices.com',
 ];
 
 export function canAccessQuickBooks(userEmail: string | null | undefined): boolean {
