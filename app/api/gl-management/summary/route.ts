@@ -238,13 +238,16 @@ export async function GET(request: NextRequest) {
       if (lineItems.length > 0) {
         lineItems.forEach((line: any, index: number) => {
           expenseLineItemCount++;
-          const overrideKey = `expense:${exp.qb_expense_id}:${index}`;
-          const override = overridesMap.get(overrideKey);
+          // Try line-specific override first, then parent-level override
+          const lineNum = line.LineNum || line.Id || (index + 1); // Use QB LineNum (1-based)
+          const lineOverrideKey = `expense:${exp.qb_expense_id}:${lineNum}`;
+          const parentOverrideKey = `expense:${exp.qb_expense_id}:`;
+          const override = overridesMap.get(lineOverrideKey) || overridesMap.get(parentOverrideKey);
           const category = override?.override_category || line.category || exp.category || 'unassigned';
           const accountType = override?.override_account_type;
           const amount = parseFloat(line.Amount || '0');
           if (override) {
-            console.log(`✏️  [Applied Override] ${overrideKey} → ${category} ($${amount.toFixed(2)})`);
+            console.log(`✏️  [Applied Override] expense:${exp.qb_expense_id}:${lineNum} → ${category} ($${amount.toFixed(2)}) AccountType: ${accountType || 'NONE'}`);
           }
           addToCategorized(category, amount, accountType);
         });
@@ -267,13 +270,16 @@ export async function GET(request: NextRequest) {
       
       if (lineItems.length > 0) {
         lineItems.forEach((line: any, index: number) => {
-          const overrideKey = `bill:${bill.qb_bill_id}:${index}`;
-          const override = overridesMap.get(overrideKey);
+          // Try line-specific override first, then parent-level override
+          const lineNum = line.LineNum || line.Id || (index + 1); // Use QB LineNum (1-based)
+          const lineOverrideKey = `bill:${bill.qb_bill_id}:${lineNum}`;
+          const parentOverrideKey = `bill:${bill.qb_bill_id}:`;
+          const override = overridesMap.get(lineOverrideKey) || overridesMap.get(parentOverrideKey);
           const category = override?.override_category || 'unassigned';
           const accountType = override?.override_account_type;
           const amount = parseFloat(line.Amount || '0');
           if (override) {
-            console.log(`✏️  [Applied Override] ${overrideKey} → ${category} ($${amount.toFixed(2)})`);
+            console.log(`✏️  [Applied Override] bill:${bill.qb_bill_id}:${lineNum} → ${category} ($${amount.toFixed(2)}) AccountType: ${accountType || 'NONE'}`);
           }
           addToCategorized(category, amount, accountType);
         });
@@ -439,10 +445,21 @@ export async function GET(request: NextRequest) {
     
     // Debug: Log labor totals
     if (laborCount > 0) {
-      console.log(`💼 [Labor Summary] Found ${laborCount} labor transactions totaling $${laborTotal.toFixed(2)}`);
+      console.log(`\n💼 [Labor Bank Auto-Detection] Found ${laborCount} labor transactions totaling $${laborTotal.toFixed(2)}`);
       console.log(`  - Payroll: $${laborBankBreakdown.payroll.toFixed(2)}`);
       console.log(`  - Taxes: $${laborBankBreakdown.taxes.toFixed(2)}`);
       console.log(`  - Overhead: $${laborBankBreakdown.overhead.toFixed(2)}`);
+    }
+    
+    // Debug: Log manual labor categorizations
+    const manualLaborTotal = laborManualBreakdown.payroll + laborManualBreakdown.taxes + laborManualBreakdown.overhead;
+    if (manualLaborTotal > 0) {
+      console.log(`\n👤 [Labor Manual Categorizations] Total: $${manualLaborTotal.toFixed(2)}`);
+      console.log(`  - Payroll: $${laborManualBreakdown.payroll.toFixed(2)}`);
+      console.log(`  - Taxes/Overhead: $${laborManualBreakdown.taxes.toFixed(2)}`);
+      console.log(`  - Overhead Charges: $${laborManualBreakdown.overhead.toFixed(2)}\n`);
+    } else {
+      console.log(`\n👤 [Labor Manual Categorizations] No manual labor categorizations found\n`);
     }
     
     // Debug: Log NRE final total BEFORE processing internal DB
