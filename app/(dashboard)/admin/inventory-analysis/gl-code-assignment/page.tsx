@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Calculator, RefreshCw, Save, Search, Download, Upload, ChevronDown, ChevronRight,
+  Calculator, RefreshCw, Save, Search, Download, Upload, ChevronDown, ChevronRight, ChevronUp,
   DollarSign, TrendingUp, TrendingDown, FileText, AlertCircle, Check, X, CreditCard
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -191,6 +191,7 @@ export default function GLTransactionManagementPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all'); // Filter by user-assigned categories
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [collapsedGLCodes, setCollapsedGLCodes] = useState<Set<string>>(new Set());
+  const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -717,10 +718,24 @@ export default function GLTransactionManagementPage() {
       <Card className="shadow-xl border-2 border-blue-200 bg-white">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Category Summary
-            </CardTitle>
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Category Summary
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
+                className="h-7 w-7 p-0 hover:bg-blue-100"
+              >
+                {isSummaryCollapsed ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronUp className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
             <div className="text-xs font-medium text-gray-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
               {startDate && endDate ? (
                 <span>{startDate} to {endDate}</span>
@@ -734,6 +749,7 @@ export default function GLTransactionManagementPage() {
             </div>
           </div>
         </CardHeader>
+        {!isSummaryCollapsed && (
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* Define card order: Top Row (big cards), Bottom Row (smaller cards) */}
@@ -946,11 +962,12 @@ export default function GLTransactionManagementPage() {
             </div>
           </div>
         </CardContent>
+        )}
       </Card>
       </div>
 
-      {/* Spacer to push content below fixed summary */}
-      <div className="h-[560px] sm:h-[540px]"></div>
+      {/* Spacer to push content below fixed summary - smaller when collapsed */}
+      <div className={isSummaryCollapsed ? "h-[100px]" : "h-[560px] sm:h-[540px]"}></div>
       
       {/* Page Title - Above tabs */}
       <div className="mb-6">
