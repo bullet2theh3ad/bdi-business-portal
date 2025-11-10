@@ -125,6 +125,14 @@ export async function GET(request: NextRequest) {
         console.log(`  - ${key} (${o.override_account_type})`);
       });
     }
+    
+    // Debug: Check for Askey transaction override specifically
+    const askeyOverrides = (overridesRes.data || []).filter((o: any) => o.transaction_id === '1150040076');
+    console.log(`🔍 [ASKEY] Found ${askeyOverrides.length} override(s) for transaction 1150040076 in database:`);
+    askeyOverrides.forEach((o: any) => {
+      const key = `${o.transaction_source}:${o.transaction_id}:${o.line_item_index || ''}`;
+      console.log(`  - Key: ${key}, Category: ${o.override_category}, AccountType: ${o.override_account_type || 'NULL'}, ID: ${o.id}`);
+    });
 
     const glCodesMap = new Map();
     (glCodesRes.data || []).forEach((gl: any) => {
@@ -237,6 +245,20 @@ export async function GET(request: NextRequest) {
           const lineOverrideKey = `bill:${bill.qb_bill_id}:${lineNum}`;
           const parentOverrideKey = `bill:${bill.qb_bill_id}:`;
           const override = overridesMap.get(lineOverrideKey) || overridesMap.get(parentOverrideKey);
+          
+          // Debug: Askey transaction specifically
+          if (bill.qb_bill_id === '1150040076') {
+            console.log(`🔍 [ASKEY ${bill.qb_bill_id}] Line ${index} (LineNum: ${lineNum})`);
+            console.log(`  - Looking for: ${lineOverrideKey}`);
+            console.log(`  - Or parent: ${parentOverrideKey}`);
+            console.log(`  - Line override found: ${overridesMap.has(lineOverrideKey)}`);
+            console.log(`  - Parent override found: ${overridesMap.has(parentOverrideKey)}`);
+            if (override) {
+              console.log(`  - Using override: Category=${override.override_category}, AccountType=${override.override_account_type || 'NULL'}`);
+            } else {
+              console.log(`  - NO OVERRIDE FOUND!`);
+            }
+          }
           
           // Debug: Log when we use parent fallback for inventory
           if (override && !overridesMap.get(lineOverrideKey) && override.override_category === 'inventory') {

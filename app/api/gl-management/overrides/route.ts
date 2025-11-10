@@ -155,8 +155,15 @@ export async function POST(request: NextRequest) {
     // Debug: Log what we're saving
     console.log(`💾 [Override POST] Saving ${overrideArray.length} override(s)`);
     overrideArray.forEach((o: any, i: number) => {
+      // Debug Askey transaction specifically
+      if (o.transaction_id === '1150040076') {
+        console.log(`  🔍 [ASKEY ${o.transaction_id}] Source: ${o.transaction_source}, LineItem: ${o.line_item_index || 'null'}, Category: ${o.override_category}, AccountType: ${o.override_account_type || 'MISSING'}`);
+      }
       if (o.override_category === 'revenue') {
         console.log(`  ${i + 1}. Revenue: ${o.transaction_source}:${o.transaction_id} → Category: ${o.override_category}, AccountType: ${o.override_account_type || 'MISSING'}`);
+      }
+      if (o.override_category === 'inventory') {
+        console.log(`  ${i + 1}. Inventory: ${o.transaction_source}:${o.transaction_id} → Category: ${o.override_category}, AccountType: ${o.override_account_type || 'MISSING'}`);
       }
     });
 
@@ -201,8 +208,15 @@ export async function POST(request: NextRequest) {
     // Debug: Confirm what was saved
     console.log(`✅ [Override POST] Successfully saved ${saved?.length || 0} override(s)`);
     (saved || []).forEach((s: any) => {
+      // Debug Askey transaction specifically
+      if (s.transaction_id === '1150040076') {
+        console.log(`  ✓ [ASKEY ${s.transaction_id}] SAVED TO DB: Source: ${s.transaction_source}, LineItem: ${s.line_item_index || 'null'}, Category: ${s.override_category}, AccountType: ${s.override_account_type || 'NULL IN DB'}, ID: ${s.id}`);
+      }
       if (s.override_category === 'revenue') {
         console.log(`  ✓ Revenue saved: ${s.transaction_source}:${s.transaction_id} → AccountType: ${s.override_account_type || 'NULL IN DB'}`);
+      }
+      if (s.override_category === 'inventory') {
+        console.log(`  ✓ Inventory saved: ${s.transaction_source}:${s.transaction_id} → AccountType: ${s.override_account_type || 'NULL IN DB'}`);
       }
     });
 
