@@ -49,6 +49,7 @@ export const ACCOUNT_TYPE_MAPPINGS: AccountTypeMapping[] = [
   { accountType: 'Components', category: 'inventory', description: 'Component and part purchases' },
   { accountType: 'Packaging', category: 'inventory', description: 'Packaging materials' },
   { accountType: 'Freight In', category: 'inventory', description: 'Inbound shipping costs' },
+  { accountType: 'RTV', category: 'inventory', description: 'Return to Vendor' },
   
   // Labor Account Types
   { accountType: 'Payroll', category: 'labor', description: 'Employee salaries and wages' },
