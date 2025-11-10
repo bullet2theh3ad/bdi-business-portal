@@ -146,3 +146,48 @@ export function getAccountTypesByCategory(): Record<string, AccountTypeMapping[]
   return grouped;
 }
 
+/**
+ * Merge built-in mappings with custom mappings
+ */
+export function mergeWithCustomMappings(customMappings: any[]): AccountTypeMapping[] {
+  const customConverted: AccountTypeMapping[] = customMappings.map(cm => ({
+    accountType: cm.account_type,
+    category: cm.category,
+    description: cm.description || undefined,
+  }));
+  
+  return [...ACCOUNT_TYPE_MAPPINGS, ...customConverted];
+}
+
+/**
+ * Group account types by category including custom ones
+ */
+export function getAccountTypesByCategoryWithCustom(customMappings: any[]): Record<string, AccountTypeMapping[]> {
+  const allMappings = mergeWithCustomMappings(customMappings);
+  const grouped: Record<string, AccountTypeMapping[]> = {};
+  
+  allMappings.forEach(mapping => {
+    if (!grouped[mapping.category]) {
+      grouped[mapping.category] = [];
+    }
+    grouped[mapping.category].push(mapping);
+  });
+  
+  return grouped;
+}
+
+/**
+ * Get display name for category including custom ones
+ */
+export function getCategoryDisplayNameWithCustom(category: string, customMappings: any[]): string {
+  // First check built-in categories
+  const builtInName = getCategoryDisplayName(category);
+  if (builtInName !== category) {
+    return builtInName;
+  }
+  
+  // Check custom categories
+  const customMapping = customMappings.find(cm => cm.category === category);
+  return customMapping?.category_display_name || category;
+}
+

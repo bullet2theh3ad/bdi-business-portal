@@ -201,6 +201,14 @@ export default function GLTransactionManagementPage() {
   const [bankDateRange, setBankDateRange] = useState<{ earliest: string; latest: string } | null>(null);
   const [rampDateRange, setRampDateRange] = useState<{ earliest: string; latest: string } | null>(null);
 
+  // Custom categories management
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [selectedCategoryForSub, setSelectedCategoryForSub] = useState('');
+  const [newSubCategoryName, setNewSubCategoryName] = useState('');
+  const [subCategoryDescription, setSubCategoryDescription] = useState('');
+
   // Load data on mount
   useEffect(() => {
     loadAllData();
@@ -221,11 +229,24 @@ export default function GLTransactionManagementPage() {
         loadBankStatements(),
         loadRampTransactions(),
         loadSummary(),
+        loadCustomCategories(),
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function loadCustomCategories() {
+    try {
+      const response = await fetch('/api/gl-management/custom-categories');
+      if (response.ok) {
+        const result = await response.json();
+        setCustomCategories(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading custom categories:', error);
     }
   }
 
@@ -663,6 +684,94 @@ export default function GLTransactionManagementPage() {
     link.click();
   };
 
+  // Create new category
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert('Please enter a category name');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/gl-management/custom-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryDisplayName: newCategoryName,
+          accountType: newCategoryName, // Initially, the category itself is also a sub-category
+          description: `Main category: ${newCategoryName}`,
+        }),
+      });
+
+      if (response.ok) {
+        setNewCategoryName('');
+        await loadCustomCategories();
+        alert(`Category "${newCategoryName}" created successfully!`);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
+      alert('Failed to create category');
+    }
+  };
+
+  // Create new sub-category
+  const handleCreateSubCategory = async () => {
+    if (!selectedCategoryForSub || !newSubCategoryName.trim()) {
+      alert('Please select a category and enter a sub-category name');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/gl-management/custom-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryDisplayName: selectedCategoryForSub,
+          accountType: newSubCategoryName,
+          description: subCategoryDescription || `Sub-category under ${selectedCategoryForSub}`,
+        }),
+      });
+
+      if (response.ok) {
+        setNewSubCategoryName('');
+        setSubCategoryDescription('');
+        await loadCustomCategories();
+        alert(`Sub-category "${newSubCategoryName}" added to "${selectedCategoryForSub}" successfully!`);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating sub-category:', error);
+      alert('Failed to create sub-category');
+    }
+  };
+
+  // Delete custom category/sub-category
+  const handleDeleteCustomCategory = async (id: string, accountType: string) => {
+    if (!confirm(`Are you sure you want to delete "${accountType}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/gl-management/custom-categories?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await loadCustomCategories();
+        alert(`"${accountType}" deleted successfully!`);
+      } else {
+        alert('Failed to delete');
+      }
+    } catch (error) {
+      console.error('Error deleting custom category:', error);
+      alert('Failed to delete');
+    }
+  };
+
   // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -1047,6 +1156,124 @@ export default function GLTransactionManagementPage() {
                 </div>
               </div>
             </div>
+
+            {/* Category Management Section */}
+            <Card className="mb-6 border-purple-200 bg-purple-50/30">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-purple-600" />
+                    Category Management
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCategoryManager(!showCategoryManager)}
+                    className="h-7 w-7 p-0"
+                  >
+                    {showCategoryManager ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {showCategoryManager && (
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Add New Category */}
+                    <div className="p-4 bg-white rounded-lg border border-purple-200">
+                      <h3 className="font-semibold text-sm mb-3 text-purple-800">Add New Category</h3>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Category Name (e.g., 'Special Projects')"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button onClick={handleCreateCategory} className="bg-purple-600 hover:bg-purple-700">
+                          Add Category
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Add Sub-Category to Existing Category */}
+                    <div className="p-4 bg-white rounded-lg border border-purple-200">
+                      <h3 className="font-semibold text-sm mb-3 text-purple-800">Add Sub-Category</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                        <Select value={selectedCategoryForSub} onValueChange={setSelectedCategoryForSub}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Category..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {/* Show all unique categories (both built-in and custom) */}
+                            {Array.from(new Set([
+                              ...['opex', 'marketing', 'nre', 'inventory', 'cogs', 'labor', 'loans', 'revenue'],
+                              ...customCategories.map(cc => cc.category_display_name)
+                            ])).sort().map(cat => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          placeholder="Sub-Category Name"
+                          value={newSubCategoryName}
+                          onChange={(e) => setNewSubCategoryName(e.target.value)}
+                        />
+                        <Input
+                          placeholder="Description (optional)"
+                          value={subCategoryDescription}
+                          onChange={(e) => setSubCategoryDescription(e.target.value)}
+                        />
+                      </div>
+                      <Button onClick={handleCreateSubCategory} className="bg-purple-600 hover:bg-purple-700 w-full">
+                        Add Sub-Category
+                      </Button>
+                    </div>
+
+                    {/* List of Custom Categories */}
+                    {customCategories.length > 0 && (
+                      <div className="p-4 bg-white rounded-lg border border-purple-200">
+                        <h3 className="font-semibold text-sm mb-3 text-purple-800">Custom Categories & Sub-Categories</h3>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {Object.entries(
+                            customCategories.reduce((acc: any, cc) => {
+                              if (!acc[cc.category_display_name]) {
+                                acc[cc.category_display_name] = [];
+                              }
+                              acc[cc.category_display_name].push(cc);
+                              return acc;
+                            }, {})
+                          ).map(([categoryName, items]: [string, any]) => (
+                            <div key={categoryName} className="p-2 bg-purple-50 rounded">
+                              <div className="font-medium text-sm mb-1">{categoryName}</div>
+                              <div className="ml-4 space-y-1">
+                                {items.map((item: any) => (
+                                  <div key={item.id} className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-700">• {item.account_type}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteCustomCategory(item.id, item.account_type)}
+                                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
 
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
