@@ -536,6 +536,10 @@ export async function GET(request: NextRequest) {
       unassigned: categorizedTotals.unassigned,
     };
 
+    // Calculate total labor from bank auto-detection and manual categorizations
+    const laborBankTotal = laborBankBreakdown.payroll + laborBankBreakdown.taxes + laborBankBreakdown.overhead;
+    const laborManualTotal = laborManualBreakdown.payroll + laborManualBreakdown.taxes + laborManualBreakdown.overhead;
+
     // Calculate reconciliation deltas for NRE and Inventory
     // Compare categorized amounts (as positive) to PAID amounts only
     const reconciliation = {
@@ -570,10 +574,10 @@ export async function GET(request: NextRequest) {
         isReconciled: true, // Always reconciled since only one source
       },
       labor: {
-        internalDB: categorizedTotals.labor, // From bank statements only (auto-categorized)
-        categorized: categorizedTotals.labor, // Same source
-        delta: 0, // No delta since we only have one source
-        isReconciled: true, // Always reconciled since only one source
+        internalDB: laborBankTotal, // From bank auto-detection (payroll + taxes + overhead)
+        categorized: laborManualTotal, // From manual categorizations (payroll + taxes/overhead + overhead charges)
+        delta: laborBankTotal - laborManualTotal, // Actual delta between bank and manual
+        isReconciled: Math.abs(laborBankTotal - laborManualTotal) < 1, // Within $1
       },
       marketing: {
         internalDB: Math.abs(categorizedTotals.marketing), // From manual categorizations only
