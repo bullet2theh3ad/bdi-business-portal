@@ -59,6 +59,30 @@ interface BankStatement {
   upload_batch_id: string;
 }
 
+interface RampTransaction {
+  id: string;
+  transaction_date: string;
+  ref_no: string | null;
+  payee: string | null;
+  memo: string | null;
+  class: string | null;
+  foreign_currency: string | null;
+  charge_usd: number | null;
+  payment_usd: number | null;
+  reconciliation_status: string | null;
+  balance_usd: number | null;
+  type: string | null;
+  account: string | null;
+  store: string | null;
+  exchange_rate: string | null;
+  added_in_banking: string | null;
+  category: string;
+  account_type: string | null;
+  notes: string | null;
+  is_matched: boolean;
+  matched_qb_transaction_id: string | null;
+}
+
 interface CategorySummary {
   nre: number;
   inventory: number;
