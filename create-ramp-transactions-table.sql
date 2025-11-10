@@ -68,14 +68,15 @@ COMMENT ON COLUMN ramp_transactions.original_line IS 'Original line from uploade
 -- Enable Row Level Security
 ALTER TABLE ramp_transactions ENABLE ROW LEVEL SECURITY;
 
--- RLS Policy: Allow service role full access
-CREATE POLICY "Allow service role full access to ramp_transactions"
+-- RLS Policy: Simple policy allowing all operations (access control handled at API level)
+DROP POLICY IF EXISTS "Allow service role full access to ramp_transactions" ON ramp_transactions;
+CREATE POLICY "Allow all operations on ramp_transactions"
   ON ramp_transactions
   FOR ALL
-  TO service_role
   USING (true)
   WITH CHECK (true);
 
 -- Grant permissions
 GRANT ALL ON ramp_transactions TO service_role;
+GRANT ALL ON ramp_transactions TO authenticated;
 
