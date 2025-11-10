@@ -62,6 +62,7 @@ interface CategorySummary {
   nre: number;
   inventory: number;
   opex: number;
+  marketing: number;
   labor: number;
   loans: number;
   loan_interest: number;
@@ -93,7 +94,12 @@ interface ReconciliationStatus {
 interface Reconciliation {
   nre: ReconciliationStatus;
   inventory: ReconciliationStatus;
+  revenue: ReconciliationStatus;
+  loans: ReconciliationStatus;
   loan_interest: ReconciliationStatus;
+  labor: ReconciliationStatus;
+  marketing: ReconciliationStatus;
+  opex: ReconciliationStatus;
 }
 
 interface GLCodeGroup {
@@ -116,7 +122,7 @@ export default function GLTransactionManagementPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bankStatements, setBankStatements] = useState<BankStatement[]>([]);
   const [categorySummary, setCategorySummary] = useState<CategorySummary>({
-    nre: 0, inventory: 0, opex: 0, labor: 0, loans: 0, loan_interest: 0,
+    nre: 0, inventory: 0, opex: 0, marketing: 0, labor: 0, loans: 0, loan_interest: 0,
     investments: 0, revenue: 0, other: 0, unassigned: 0
   });
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown>({
@@ -136,7 +142,12 @@ export default function GLTransactionManagementPage() {
   const [reconciliation, setReconciliation] = useState<Reconciliation>({
     nre: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
     inventory: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    revenue: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    loans: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
     loan_interest: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    labor: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    marketing: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
+    opex: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
   });
   
   // UI State
@@ -529,6 +540,7 @@ export default function GLTransactionManagementPage() {
       nre: 'bg-purple-100 text-purple-800 border-purple-200',
       inventory: 'bg-blue-100 text-blue-800 border-blue-200',
       opex: 'bg-orange-100 text-orange-800 border-orange-200',
+      marketing: 'bg-pink-100 text-pink-800 border-pink-200',
       labor: 'bg-green-100 text-green-800 border-green-200',
       loans: 'bg-red-100 text-red-800 border-red-200',
       loan_interest: 'bg-pink-100 text-pink-800 border-pink-200',
@@ -546,6 +558,7 @@ export default function GLTransactionManagementPage() {
       nre: 'NRE',
       inventory: 'Inventory',
       opex: 'OPEX',
+      marketing: 'Marketing',
       labor: 'Labor',
       loans: 'RLOC',
       loan_interest: 'Loan Interest Paid',
