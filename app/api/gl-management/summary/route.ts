@@ -10,6 +10,8 @@ import { canAccessQuickBooks } from '@/lib/feature-flags';
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔵 [GL Summary] API Request received');
+    
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,14 +29,25 @@ export async function GET(request: NextRequest) {
     );
 
     // Check authentication
+    console.log('🔵 [GL Summary] Checking authentication...');
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    if (authError) {
+      console.error('🔴 [GL Summary] Auth error:', authError.message);
+      return NextResponse.json({ error: 'Unauthorized', details: authError.message }, { status: 401 });
+    }
+    
+    if (!user) {
+      console.error('🔴 [GL Summary] No user found in session');
+      return NextResponse.json({ error: 'Unauthorized', details: 'No user session' }, { status: 401 });
     }
 
+    console.log(`🟢 [GL Summary] User authenticated: ${user.email} (ID: ${user.id})`);
+
     // Check feature flag access
+    console.log(`🔵 [GL Summary] Checking whitelist for: ${user.email}`);
     if (!canAccessQuickBooks(user.email)) {
-      console.error(`[GL Summary] Access denied for user: ${user.email}`);
+      console.error(`🔴 [GL Summary] Access denied for user: ${user.email}`);
       return NextResponse.json({ 
         error: 'Access denied', 
         details: 'User does not have permission to access GL Management data. Contact admin if you believe this is an error.',
@@ -42,7 +55,7 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
     
-    console.log(`[GL Summary] Access granted for user: ${user.email}`);
+    console.log(`✅ [GL Summary] Access granted for user: ${user.email}`);
 
     // Use service role for data access
     const supabaseService = createServerClient(
