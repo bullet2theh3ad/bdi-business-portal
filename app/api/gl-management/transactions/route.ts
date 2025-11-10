@@ -34,8 +34,15 @@ export async function GET(request: NextRequest) {
 
     // Check feature flag access
     if (!canAccessQuickBooks(user.email)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      console.error(`[GL Transactions] Access denied for user: ${user.email}`);
+      return NextResponse.json({ 
+        error: 'Access denied', 
+        details: 'User does not have permission to access GL Management data. Contact admin if you believe this is an error.',
+        userEmail: user.email 
+      }, { status: 403 });
     }
+    
+    console.log(`[GL Transactions] Access granted for user: ${user.email}`);
 
     // Use service role for data access
     const supabaseService = createServerClient(

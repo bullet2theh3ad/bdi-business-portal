@@ -3,12 +3,13 @@
  * Controls access to experimental/beta features
  */
 
-// QuickBooks Integration Feature Flag
+// QuickBooks Integration Feature Flag (for GL Management data access)
 export const QUICKBOOKS_WHITELIST = [
   'scistulli@boundlessdevices.com',
   'dzand@boundlessdevices.com',
   'sjin@boundlessdevices.com',
-  'hmitchem@boundlessdevices.com',
+  'hmitchem@boundlessdevices.com',  // Heather Mitchell
+  'hmitcehm@boundlessdevices.com',  // Alternative spelling in case of typo
 ];
 
 export function canAccessQuickBooks(userEmail: string | null | undefined): boolean {
@@ -21,7 +22,8 @@ export const BUSINESS_ANALYSIS_WHITELIST = [
   'scistulli@boundlessdevices.com',
   'dzand@boundlessdevices.com',
   'sjin@boundlessdevices.com',
-  'hmitchem@boundlessdevices.com',
+  'hmitchem@boundlessdevices.com',  // Heather Mitchell
+  'hmitcehm@boundlessdevices.com',  // Alternative spelling
   'jeskelson@boundlessdevices.com',
   'amartinez@boundlessdevices.com',
   'kdrennan@boundlessdevices.com',
