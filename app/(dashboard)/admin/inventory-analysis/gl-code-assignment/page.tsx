@@ -288,6 +288,25 @@ export default function GLTransactionManagementPage() {
     }
   }
 
+  // Filter bank statements based on search query
+  const filteredBankStatements = (() => {
+    let filtered = bankStatements;
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(s =>
+        (s.description || '').toLowerCase().includes(query) ||
+        (s.account_type || '').toLowerCase().includes(query) ||
+        (s.category || '').toLowerCase().includes(query) ||
+        (s.notes || '').toLowerCase().includes(query) ||
+        (s.reference_number || '').toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  })();
+
   // Group transactions by category and GL code
   const groupedData: CategoryGroup[] = (() => {
     let filtered = transactions;
@@ -1116,7 +1135,7 @@ export default function GLTransactionManagementPage() {
       {/* Bank Statements View */}
       {!isLoading && viewMode === 'bank' && (
         <BankStatementsView
-          statements={bankStatements}
+          statements={filteredBankStatements}
           onUpdate={loadBankStatements}
           onSummaryUpdate={loadSummary}
         />
