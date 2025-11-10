@@ -95,6 +95,36 @@ export async function GET(request: NextRequest) {
       const key = `${override.transaction_source}:${override.transaction_id}:${override.line_item_index || ''}`;
       overridesMap.set(key, override);
     });
+    
+    // Debug: Log overrides loaded
+    console.log(`📋 [Transactions API] Loaded ${overridesMap.size} overrides from database`);
+    
+    // Debug: Show sample overrides by category
+    const overridesByCategory: any = {};
+    (overridesRes.data || []).forEach((override: any) => {
+      const cat = override.override_category || 'none';
+      if (!overridesByCategory[cat]) overridesByCategory[cat] = 0;
+      overridesByCategory[cat]++;
+    });
+    console.log('📋 [Transactions API] Overrides by category:', overridesByCategory);
+    
+    // Debug: Show sample inventory overrides
+    const inventoryOverrides = (overridesRes.data || []).filter((o: any) => o.override_category === 'inventory');
+    console.log(`📦 [Transactions API] Found ${inventoryOverrides.length} inventory overrides`);
+    if (inventoryOverrides.length > 0) {
+      console.log('📦 [Transactions API] Sample inventory override:', {
+        source: inventoryOverrides[0].transaction_source,
+        id: inventoryOverrides[0].transaction_id,
+        lineItem: inventoryOverrides[0].line_item_index,
+        category: inventoryOverrides[0].override_category,
+        accountType: inventoryOverrides[0].override_account_type,
+      });
+      console.log('📦 [Transactions API] First 5 inventory override keys:');
+      inventoryOverrides.slice(0, 5).forEach((o: any) => {
+        const key = `${o.transaction_source}:${o.transaction_id}:${o.line_item_index || ''}`;
+        console.log(`  - ${key} (${o.override_account_type})`);
+      });
+    }
 
     const glCodesMap = new Map();
     (glCodesRes.data || []).forEach((gl: any) => {
@@ -125,8 +155,16 @@ export async function GET(request: NextRequest) {
       // If line items exist, expand them
       if (lineItems.length > 0) {
         return lineItems.map((line: any, index: number) => {
-          const overrideKey = `expense:${exp.qb_expense_id}:${index}`;
-          const override = overridesMap.get(overrideKey);
+          // Try line-specific override first, then parent-level override
+          const lineNum = line.LineNum || line.Id || (index + 1); // Use QB LineNum (1-based)
+          const lineOverrideKey = `expense:${exp.qb_expense_id}:${lineNum}`;
+          const parentOverrideKey = `expense:${exp.qb_expense_id}:`;
+          const override = overridesMap.get(lineOverrideKey) || overridesMap.get(parentOverrideKey);
+          
+          // Debug: Log when we use parent fallback for inventory
+          if (override && !overridesMap.get(lineOverrideKey) && override.override_category === 'inventory') {
+            console.log(`🔄 [Parent Fallback] expense:${exp.qb_expense_id}: → ${override.override_account_type}`);
+          }
           
           return {
             id: `${exp.qb_expense_id}-${index}`,
@@ -139,6 +177,8 @@ export async function GET(request: NextRequest) {
             amount: parseFloat(line.Amount || '0'),
             glCode: override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value || exp.account_ref,
             glCodeName: glCodesMap.get(override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value || exp.account_ref)?.name || '',
+            accountType: override?.override_account_type, // NEW: Apply override_account_type
+            originalCategory: line.category || exp.category || 'unassigned', // NEW: Store original category
             category: override?.override_category || line.category || exp.category || 'unassigned',
             notes: override?.notes || '',
             bankTransactionNumber: override?.bank_transaction_number || '',
@@ -161,6 +201,8 @@ export async function GET(request: NextRequest) {
           amount: parseFloat(exp.total_amount || '0'),
           glCode: override?.assigned_gl_code || exp.account_ref,
           glCodeName: glCodesMap.get(override?.assigned_gl_code || exp.account_ref)?.name || '',
+          accountType: override?.override_account_type, // NEW: Apply override_account_type
+          originalCategory: exp.category || 'unassigned', // NEW: Store original category
           category: override?.override_category || exp.category || 'unassigned',
           notes: override?.notes || '',
           bankTransactionNumber: override?.bank_transaction_number || '',
@@ -190,8 +232,16 @@ export async function GET(request: NextRequest) {
       
       if (lineItems.length > 0) {
         return lineItems.map((line: any, index: number) => {
-          const overrideKey = `bill:${bill.qb_bill_id}:${index}`;
-          const override = overridesMap.get(overrideKey);
+          // Try line-specific override first, then parent-level override
+          const lineNum = line.LineNum || line.Id || (index + 1); // Use QB LineNum (1-based)
+          const lineOverrideKey = `bill:${bill.qb_bill_id}:${lineNum}`;
+          const parentOverrideKey = `bill:${bill.qb_bill_id}:`;
+          const override = overridesMap.get(lineOverrideKey) || overridesMap.get(parentOverrideKey);
+          
+          // Debug: Log when we use parent fallback for inventory
+          if (override && !overridesMap.get(lineOverrideKey) && override.override_category === 'inventory') {
+            console.log(`🔄 [Parent Fallback] bill:${bill.qb_bill_id}: → ${override.override_account_type}`);
+          }
           
           return {
             id: `${bill.qb_bill_id}-${index}`,
@@ -204,6 +254,8 @@ export async function GET(request: NextRequest) {
             amount: parseFloat(line.Amount || '0'),
             glCode: override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value,
             glCodeName: glCodesMap.get(override?.assigned_gl_code || line.AccountBasedExpenseLineDetail?.AccountRef?.value)?.name || '',
+            accountType: override?.override_account_type, // NEW: Apply override_account_type
+            originalCategory: 'unassigned', // NEW: Store original category
             category: override?.override_category || 'unassigned',
             notes: override?.notes || '',
             bankTransactionNumber: override?.bank_transaction_number || '',
@@ -225,6 +277,8 @@ export async function GET(request: NextRequest) {
           amount: parseFloat(bill.total_amount || '0'),
           glCode: override?.assigned_gl_code || '',
           glCodeName: glCodesMap.get(override?.assigned_gl_code || '')?.name || '',
+          accountType: override?.override_account_type, // NEW: Apply override_account_type
+          originalCategory: 'unassigned', // NEW: Store original category
           category: override?.override_category || 'unassigned',
           notes: override?.notes || '',
           bankTransactionNumber: override?.bank_transaction_number || '',
@@ -253,6 +307,8 @@ export async function GET(request: NextRequest) {
             amount: parseFloat(line.Amount || '0'),
             glCode: override?.assigned_gl_code || line.account_ref,
             glCodeName: glCodesMap.get(override?.assigned_gl_code || line.account_ref)?.name || '',
+            accountType: override?.override_account_type, // NEW: Apply override_account_type
+            originalCategory: 'revenue', // NEW: Store original category
             category: override?.override_category || 'revenue',
             notes: override?.notes || '',
             bankTransactionNumber: override?.bank_transaction_number || '',
@@ -274,6 +330,8 @@ export async function GET(request: NextRequest) {
           amount: parseFloat(dep.total_amount || '0'),
           glCode: override?.assigned_gl_code || dep.deposit_to_account_ref,
           glCodeName: glCodesMap.get(override?.assigned_gl_code || dep.deposit_to_account_ref)?.name || '',
+          accountType: override?.override_account_type, // NEW: Apply override_account_type
+          originalCategory: 'revenue', // NEW: Store original category
           category: override?.override_category || 'revenue',
           notes: override?.notes || '',
           bankTransactionNumber: override?.bank_transaction_number || '',
@@ -298,6 +356,8 @@ export async function GET(request: NextRequest) {
         amount: parseFloat(pmt.total_amount || '0'),
         glCode: override?.assigned_gl_code || pmt.deposit_to_account,
         glCodeName: glCodesMap.get(override?.assigned_gl_code || pmt.deposit_to_account)?.name || '',
+        accountType: override?.override_account_type, // NEW: Apply override_account_type
+        originalCategory: 'revenue', // NEW: Store original category
         category: override?.override_category || 'revenue',
         notes: override?.notes || '',
         bankTransactionNumber: override?.bank_transaction_number || pmt.reference_number || '',
@@ -321,6 +381,8 @@ export async function GET(request: NextRequest) {
         amount: parseFloat(bp.total_amount || '0'),
         glCode: override?.assigned_gl_code || bp.payment_account_ref,
         glCodeName: glCodesMap.get(override?.assigned_gl_code || bp.payment_account_ref)?.name || '',
+        accountType: override?.override_account_type, // NEW: Apply override_account_type
+        originalCategory: 'unassigned', // NEW: Store original category
         category: override?.override_category || 'unassigned',
         notes: override?.notes || '',
         bankTransactionNumber: override?.bank_transaction_number || bp.check_num || '',
@@ -359,6 +421,16 @@ export async function GET(request: NextRequest) {
       console.log('🔍 [GL Transactions] Sample unassigned transactions:');
       unassignedSample.forEach((t, i) => {
         console.log(`  ${i + 1}. Source: ${t.source}, Amount: $${t.amount}, Date: ${t.date}, Vendor: ${t.vendor}`);
+      });
+    }
+    
+    // Debug: Sample inventory transactions to check accountType
+    const inventorySample = allTransactions.filter(t => t.category === 'inventory').slice(0, 5);
+    console.log(`📦 [GL Transactions] Found ${allTransactions.filter(t => t.category === 'inventory').length} inventory transactions`);
+    if (inventorySample.length > 0) {
+      console.log('📦 [GL Transactions] Sample inventory transactions:');
+      inventorySample.forEach((t, i) => {
+        console.log(`  ${i + 1}. Source: ${t.source}, ID: ${t.id}, Amount: $${t.amount}, AccountType: ${t.accountType || 'NULL'}, Category: ${t.category}`);
       });
     }
 

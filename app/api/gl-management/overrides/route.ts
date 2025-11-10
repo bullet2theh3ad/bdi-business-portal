@@ -151,6 +151,14 @@ export async function POST(request: NextRequest) {
     if (overrideArray.length === 0) {
       return NextResponse.json({ error: 'No overrides provided' }, { status: 400 });
     }
+    
+    // Debug: Log what we're saving
+    console.log(`💾 [Override POST] Saving ${overrideArray.length} override(s)`);
+    overrideArray.forEach((o: any, i: number) => {
+      if (o.override_category === 'revenue') {
+        console.log(`  ${i + 1}. Revenue: ${o.transaction_source}:${o.transaction_id} → Category: ${o.override_category}, AccountType: ${o.override_account_type || 'MISSING'}`);
+      }
+    });
 
     // Validate and prepare overrides
     const preparedOverrides = overrideArray.map((override: any) => {
@@ -164,6 +172,7 @@ export async function POST(request: NextRequest) {
         line_item_index: override.line_item_index || null,
         original_category: override.original_category || null,
         override_category: override.override_category || null,
+        override_account_type: override.override_account_type || null, // NEW: Save account type
         original_gl_code: override.original_gl_code || null,
         assigned_gl_code: override.assigned_gl_code || null,
         notes: override.notes || null,
@@ -185,9 +194,17 @@ export async function POST(request: NextRequest) {
       .select();
 
     if (error) {
-      console.error('Error saving overrides:', error);
+      console.error('❌ [Override POST] Error saving overrides:', error);
       throw error;
     }
+
+    // Debug: Confirm what was saved
+    console.log(`✅ [Override POST] Successfully saved ${saved?.length || 0} override(s)`);
+    (saved || []).forEach((s: any) => {
+      if (s.override_category === 'revenue') {
+        console.log(`  ✓ Revenue saved: ${s.transaction_source}:${s.transaction_id} → AccountType: ${s.override_account_type || 'NULL IN DB'}`);
+      }
+    });
 
     return NextResponse.json({
       overrides: saved,

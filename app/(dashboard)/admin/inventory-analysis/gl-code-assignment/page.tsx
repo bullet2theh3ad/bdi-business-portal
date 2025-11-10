@@ -31,6 +31,7 @@ interface Transaction {
   glCode: string;
   glCodeName: string;
   accountType?: string; // Detailed account type (Contract, Services, etc.)
+  originalCategory: string; // Original QB category before override
   category: string; // High-level category (opex, nre, inventory, etc.)
   notes: string;
   bankTransactionNumber: string;
@@ -143,7 +144,8 @@ export default function GLTransactionManagementPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [originalCategoryFilter, setOriginalCategoryFilter] = useState<string>('all'); // Filter by QB original categories
+  const [categoryFilter, setCategoryFilter] = useState<string>('all'); // Filter by user-assigned categories
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [collapsedGLCodes, setCollapsedGLCodes] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
@@ -284,7 +286,12 @@ export default function GLTransactionManagementPage() {
       );
     }
 
-    // Apply category filter
+    // Apply original category filter (QB categories before overrides)
+    if (originalCategoryFilter && originalCategoryFilter !== 'all') {
+      filtered = filtered.filter(t => t.originalCategory === originalCategoryFilter);
+    }
+
+    // Apply user-assigned category filter (your new categorizations)
     if (categoryFilter && categoryFilter !== 'all') {
       filtered = filtered.filter(t => t.category === categoryFilter);
     }
@@ -377,6 +384,7 @@ export default function GLTransactionManagementPage() {
         line_item_index: transaction.lineItemIndex,
         original_category: transaction.category,
         override_category: updates.category,
+        override_account_type: updates.accountType, // CRITICAL: Save account type!
         original_gl_code: transaction.glCode,
         assigned_gl_code: updates.glCode,
         notes: updates.notes,
@@ -388,6 +396,7 @@ export default function GLTransactionManagementPage() {
       console.log('💾 [Frontend] Saving override:', {
         key: `${override.transaction_source}:${override.transaction_id}:${override.line_item_index || ''}`,
         category: override.override_category,
+        accountType: override.override_account_type, // Log account type
         amount: transaction.amount,
       });
 
@@ -574,8 +583,8 @@ export default function GLTransactionManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Define card order: NRE, Inventory, Net Revenue, RLOC, Labor, then OPEX, etc. */}
-            {['nre', 'inventory', 'revenue', 'loans', 'labor', 'opex', 'investments', 'other', 'unassigned'].map((key) => {
+            {/* Define card order: NRE, Inventory, Net Revenue, RLOC, Labor, Marketing, OPEX, etc. */}
+            {['nre', 'inventory', 'revenue', 'loans', 'labor', 'marketing', 'opex', 'investments', 'other', 'unassigned'].map((key) => {
               const value = categorySummary[key] || 0;
               // Skip loan_interest as standalone - it's shown within RLOC card
               if (key === 'loan_interest') return null;
@@ -650,7 +659,7 @@ export default function GLTransactionManagementPage() {
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
                           <span className="text-[10px] font-medium">Categorized:</span>
-                          <span className="text-base font-bold">{formatCurrency(Math.abs(value))}</span>
+                          <span className="text-base font-bold">{formatCurrency(Math.abs(revenueBreakdown.d2c + revenueBreakdown.b2b + revenueBreakdown.b2b_factored))}</span>
                         </div>
                         {/* Reconciliation Status */}
                         <div className="flex justify-between items-center text-[9px] text-gray-600">
@@ -751,7 +760,7 @@ export default function GLTransactionManagementPage() {
               <div className="text-xl font-bold text-red-600">
                 {formatCurrency(
                   categorySummary.nre + categorySummary.inventory + categorySummary.opex + 
-                  categorySummary.labor + categorySummary.loans + categorySummary.loan_interest + 
+                  categorySummary.marketing + categorySummary.labor + categorySummary.loans + categorySummary.loan_interest + 
                   categorySummary.investments + categorySummary.other + categorySummary.unassigned
                 )}
               </div>
@@ -765,13 +774,13 @@ export default function GLTransactionManagementPage() {
             <div>
               <div className="text-xs text-gray-600 mb-1">Net Cash Flow</div>
               <div className={`text-xl font-bold ${
-                (Math.abs(categorySummary.revenue) - (categorySummary.nre + categorySummary.inventory + categorySummary.opex + categorySummary.labor + categorySummary.loans + categorySummary.investments + categorySummary.other + categorySummary.unassigned)) >= 0 
+                (Math.abs(categorySummary.revenue) - (categorySummary.nre + categorySummary.inventory + categorySummary.opex + categorySummary.marketing + categorySummary.labor + categorySummary.loans + categorySummary.investments + categorySummary.other + categorySummary.unassigned)) >= 0 
                   ? 'text-green-600' : 'text-red-600'
               }`}>
                 {formatCurrency(
                   Math.abs(categorySummary.revenue) - 
                   (categorySummary.nre + categorySummary.inventory + categorySummary.opex + 
-                  categorySummary.labor + categorySummary.loans + categorySummary.investments + 
+                  categorySummary.marketing + categorySummary.labor + categorySummary.loans + categorySummary.investments + 
                   categorySummary.other + categorySummary.unassigned)
                 )}
               </div>
@@ -864,23 +873,40 @@ export default function GLTransactionManagementPage() {
                 />
               </div>
               <div>
-                <Label className="text-sm mb-1">Category</Label>
+                <Label className="text-sm mb-1">Original QB Category</Label>
+                <Select value={originalCategoryFilter} onValueChange={setOriginalCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {/* Dynamically show unique original categories from transactions */}
+                    {Array.from(new Set(transactions.map(t => t.originalCategory || 'unassigned')))
+                      .sort()
+                      .map(cat => (
+                        <SelectItem key={cat} value={cat}>
+                          {getCategoryDisplayName(cat)} ({transactions.filter(t => (t.originalCategory || 'unassigned') === cat).length})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm mb-1">My New Category</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="nre">NRE</SelectItem>
-                    <SelectItem value="inventory">Inventory</SelectItem>
-                    <SelectItem value="opex">Opex</SelectItem>
-                    <SelectItem value="labor">Labor</SelectItem>
-                    <SelectItem value="loans">Loans</SelectItem>
-                    <SelectItem value="loan_interest">Loan Interest Paid</SelectItem>
-                    <SelectItem value="investments">Investments</SelectItem>
-                    <SelectItem value="revenue">Revenue</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {/* Dynamically show unique user-assigned categories from transactions */}
+                    {Array.from(new Set(transactions.map(t => t.category || 'unassigned')))
+                      .sort()
+                      .map(cat => (
+                        <SelectItem key={cat} value={cat}>
+                          {getCategoryDisplayName(cat)} ({transactions.filter(t => (t.category || 'unassigned') === cat).length})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

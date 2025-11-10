@@ -95,18 +95,42 @@ export async function GET(request: NextRequest) {
 
     // Create overrides map
     const overridesMap = new Map();
+    let revenueOverrideCount = 0;
+    let revenueWithAccountTypeCount = 0;
     (overridesRes.data || []).forEach((override: any) => {
       const key = `${override.transaction_source}:${override.transaction_id}:${override.line_item_index || ''}`;
       overridesMap.set(key, override);
+      
+      // Count revenue overrides and those with account types
+      if (override.override_category === 'revenue') {
+        revenueOverrideCount++;
+        if (override.override_account_type) {
+          revenueWithAccountTypeCount++;
+          if (revenueWithAccountTypeCount <= 5) {
+            console.log(`✅ [Revenue Override] Key: ${key}, AccountType: ${override.override_account_type}`);
+          }
+        } else {
+          if (revenueOverrideCount - revenueWithAccountTypeCount <= 5) {
+            console.log(`❌ [Revenue Override] Key: ${key}, AccountType: MISSING`);
+          }
+        }
+      }
+      
       // Debug: Log each override for verification
       console.log(`🔧 [Override] Key: ${key}, Category: ${override.override_category}`);
     });
+    
+    console.log(`\n📊 [Revenue Overrides Summary]`);
+    console.log(`  - Total revenue overrides: ${revenueOverrideCount}`);
+    console.log(`  - With accountType: ${revenueWithAccountTypeCount}`);
+    console.log(`  - Missing accountType: ${revenueOverrideCount - revenueWithAccountTypeCount}\n`);
 
     // Initialize category totals from MANUAL CATEGORIZATION (QB + Bank Statements)
     const categorizedTotals: { [key: string]: number } = {
       nre: 0,
       inventory: 0,
       opex: 0,
+      marketing: 0,
       labor: 0,
       loans: 0,
       loan_interest: 0,
@@ -143,11 +167,35 @@ export async function GET(request: NextRequest) {
     };
 
     // Helper function to add to CATEGORIZED totals (manual assignments)
-    const addToCategorized = (category: string, amount: number) => {
+    const addToCategorized = (category: string, amount: number, accountType?: string) => {
+      // Debug: Log NRE additions
+      if (category === 'nre' && amount !== 0) {
+        console.log(`➕ [NRE Add] Amount: $${amount.toFixed(2)} (before: $${categorizedTotals.nre.toFixed(2)}, after: $${(categorizedTotals.nre + amount).toFixed(2)})`);
+      }
+      
       if (category && categorizedTotals.hasOwnProperty(category)) {
         categorizedTotals[category] += amount;
       } else {
         categorizedTotals.unassigned += amount;
+      }
+      
+      // Track revenue breakdown by account type
+      if (category === 'revenue' && accountType) {
+        const absAmount = Math.abs(amount);
+        if (accountType === 'D2C Sales') {
+          console.log(`💰 [Revenue Breakdown] D2C += $${absAmount.toFixed(2)} (total now: $${(revenueBreakdown.d2c + absAmount).toFixed(2)})`);
+          revenueBreakdown.d2c += absAmount; // Revenue is negative, so use abs
+        } else if (accountType === 'B2B Sales') {
+          console.log(`💰 [Revenue Breakdown] B2B += $${absAmount.toFixed(2)} (total now: $${(revenueBreakdown.b2b + absAmount).toFixed(2)})`);
+          revenueBreakdown.b2b += absAmount;
+        } else if (accountType === 'B2B Factored Sales') {
+          console.log(`💰 [Revenue Breakdown] B2B Factored += $${absAmount.toFixed(2)} (total now: $${(revenueBreakdown.b2b_factored + absAmount).toFixed(2)})`);
+          revenueBreakdown.b2b_factored += absAmount;
+        } else {
+          console.log(`⚠️  [Revenue Breakdown] Unknown accountType: "${accountType}" for amount $${absAmount.toFixed(2)}`);
+        }
+      } else if (category === 'revenue' && !accountType) {
+        console.log(`⚠️  [Revenue Breakdown] MISSING accountType for revenue amount $${Math.abs(amount).toFixed(2)}`);
       }
     };
 
@@ -174,18 +222,20 @@ export async function GET(request: NextRequest) {
           const overrideKey = `expense:${exp.qb_expense_id}:${index}`;
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || line.category || exp.category || 'unassigned';
+          const accountType = override?.override_account_type;
           const amount = parseFloat(line.Amount || '0');
           if (override) {
             console.log(`✏️  [Applied Override] ${overrideKey} → ${category} ($${amount.toFixed(2)})`);
           }
-          addToCategorized(category, amount);
+          addToCategorized(category, amount, accountType);
         });
       } else {
         const overrideKey = `expense:${exp.qb_expense_id}:`;
         const override = overridesMap.get(overrideKey);
         const category = override?.override_category || exp.category || 'unassigned';
+        const accountType = override?.override_account_type;
         const amount = parseFloat(exp.total_amount || '0');
-        addToCategorized(category, amount);
+        addToCategorized(category, amount, accountType);
       }
     });
     console.log(`✅ Processed ${expenseCount} expenses (${expenseLineItemCount} line items)`);
@@ -201,18 +251,20 @@ export async function GET(request: NextRequest) {
           const overrideKey = `bill:${bill.qb_bill_id}:${index}`;
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'unassigned';
+          const accountType = override?.override_account_type;
           const amount = parseFloat(line.Amount || '0');
           if (override) {
             console.log(`✏️  [Applied Override] ${overrideKey} → ${category} ($${amount.toFixed(2)})`);
           }
-          addToCategorized(category, amount);
+          addToCategorized(category, amount, accountType);
         });
       } else {
         const overrideKey = `bill:${bill.qb_bill_id}:`;
         const override = overridesMap.get(overrideKey);
         const category = override?.override_category || 'unassigned';
+        const accountType = override?.override_account_type;
         const amount = parseFloat(bill.total_amount || '0');
-        addToCategorized(category, amount);
+        addToCategorized(category, amount, accountType);
       }
     });
 
@@ -227,28 +279,43 @@ export async function GET(request: NextRequest) {
           const overrideKey = `deposit:${dep.qb_deposit_id}:${index}`;
           const override = overridesMap.get(overrideKey);
           const category = override?.override_category || 'revenue';
+          const accountType = override?.override_account_type;
           const amount = parseFloat(line.Amount || '0');
-          addToCategorized(category, -amount); // Negative because it's income
+          addToCategorized(category, -amount, accountType); // Negative because it's income
         });
       } else {
         const overrideKey = `deposit:${dep.qb_deposit_id}:`;
         const override = overridesMap.get(overrideKey);
         const category = override?.override_category || 'revenue';
+        const accountType = override?.override_account_type;
         const amount = parseFloat(dep.total_amount || '0');
-        addToCategorized(category, -amount); // Negative because it's income
+        addToCategorized(category, -amount, accountType); // Negative because it's income
       }
     });
 
     // Process payments (revenue - negative in cash flow context)
+    let paymentRevenueCount = 0;
     (paymentsRes.data || []).forEach((pmt: any) => {
       if (!isInDateRange(pmt.payment_date)) return;
 
       const overrideKey = `payment:${pmt.qb_payment_id}:`;
       const override = overridesMap.get(overrideKey);
       const category = override?.override_category || 'revenue';
+      const accountType = override?.override_account_type;
       const amount = parseFloat(pmt.total_amount || '0');
-      addToCategorized(category, -amount); // Negative because it's income
+      
+      // Debug: Log revenue payments
+      if (category === 'revenue') {
+        paymentRevenueCount++;
+        if (paymentRevenueCount <= 5) {
+          console.log(`💵 [QB Payment ${paymentRevenueCount}] $${amount.toFixed(2)} - AccountType: ${accountType || 'MISSING'} - Payment ID: ${pmt.qb_payment_id}`);
+        }
+      }
+      
+      addToCategorized(category, -amount, accountType); // Negative because it's income
     });
+    
+    console.log(`💵 [QB Payments] Found ${paymentRevenueCount} revenue payments`);
 
     // Process bill payments
     (billPaymentsRes.data || []).forEach((bp: any) => {
@@ -257,8 +324,9 @@ export async function GET(request: NextRequest) {
       const overrideKey = `bill_payment:${bp.qb_payment_id}:`;
       const override = overridesMap.get(overrideKey);
       const category = override?.override_category || 'unassigned';
+      const accountType = override?.override_account_type;
       const amount = parseFloat(bp.total_amount || '0');
-      addToCategorized(category, amount);
+      addToCategorized(category, amount, accountType);
     });
 
     // Process bank statements
@@ -269,7 +337,11 @@ export async function GET(request: NextRequest) {
       if (!isInDateRange(stmt.transaction_date)) return;
 
       // Skip if already matched to QB transaction to avoid double counting
-      if (stmt.is_matched) return;
+      // ONLY skip if actually linked to a QB transaction (not just checkbox marked)
+      if (stmt.is_matched && stmt.matched_qb_transaction_id) {
+        console.log(`⏭️  [Skip Matched] Bank statement ${stmt.id} matched to QB transaction ${stmt.matched_qb_transaction_id}`);
+        return;
+      }
 
       const description = (stmt.description || '').toUpperCase();
       const debit = parseFloat(stmt.debit || '0');
@@ -335,9 +407,15 @@ export async function GET(request: NextRequest) {
       
       // For other transactions, use the assigned category
       category = category || 'unassigned';
+      const accountType = stmt.account_type; // Get account type from bank statement
       const netAmount = debit - credit; // debit is outflow (positive), credit is inflow (negative)
       
-      addToCategorized(category, netAmount);
+      // Debug: Log revenue bank statements
+      if (category === 'revenue') {
+        console.log(`💰 [Bank Revenue] $${netAmount.toFixed(2)} - ${accountType || 'No Account Type'} - ${stmt.description?.substring(0, 60)} - Matched: ${stmt.is_matched ? 'YES' : 'NO'}`);
+      }
+      
+      addToCategorized(category, netAmount, accountType);
     });
     
     // Debug: Log labor totals
@@ -347,6 +425,11 @@ export async function GET(request: NextRequest) {
       console.log(`  - Taxes: $${laborBreakdown.taxes.toFixed(2)}`);
       console.log(`  - Overhead: $${laborBreakdown.overhead.toFixed(2)}`);
     }
+    
+    // Debug: Log NRE final total BEFORE processing internal DB
+    console.log(`\n🔍 [NRE CATEGORIZED TOTAL] = $${categorizedTotals.nre.toFixed(2)} (raw, before Math.abs)`);
+    console.log(`🔍 [NRE CATEGORIZED TOTAL] = $${Math.abs(categorizedTotals.nre).toFixed(2)} (after Math.abs, this is what shows as "Categorized")`);
+    console.log(`ℹ️  This represents ALL transactions YOU manually categorized as NRE (expenses + bills combined)\n`);
 
     // Process NRE payments from INTERNAL DB (Trusted Source)
     const today = new Date();
@@ -402,6 +485,7 @@ export async function GET(request: NextRequest) {
       nre: internalDBTotals.nre, // Use internal DB
       inventory: internalDBTotals.inventory, // Use internal DB
       opex: categorizedTotals.opex,
+      marketing: categorizedTotals.marketing,
       labor: categorizedTotals.labor,
       loans: categorizedTotals.loans,
       loan_interest: categorizedTotals.loan_interest,
@@ -426,16 +510,46 @@ export async function GET(request: NextRequest) {
         delta: breakdown.inventory.paid - Math.abs(categorizedTotals.inventory),
         isReconciled: Math.abs(breakdown.inventory.paid - Math.abs(categorizedTotals.inventory)) < 1, // Within $1
       },
+      revenue: {
+        internalDB: Math.abs(categorizedTotals.revenue), // From QB/Bank only
+        categorized: Math.abs(categorizedTotals.revenue), // Same source
+        delta: 0, // No delta since we only have one source
+        isReconciled: true, // Always reconciled since only one source
+      },
+      loans: {
+        internalDB: Math.abs(categorizedTotals.loans), // From bank statements only
+        categorized: Math.abs(categorizedTotals.loans), // Same source
+        delta: 0, // No delta since we only have one source
+        isReconciled: true, // Always reconciled since only one source
+      },
       loan_interest: {
         internalDB: categorizedTotals.loan_interest, // Loan interest from bank (auto-categorized)
         categorized: Math.abs(categorizedTotals.loan_interest), // Same source for now
         delta: 0, // No delta since we only have one source
         isReconciled: true, // Always reconciled since only one source
       },
+      labor: {
+        internalDB: categorizedTotals.labor, // From bank statements only (auto-categorized)
+        categorized: categorizedTotals.labor, // Same source
+        delta: 0, // No delta since we only have one source
+        isReconciled: true, // Always reconciled since only one source
+      },
+      marketing: {
+        internalDB: Math.abs(categorizedTotals.marketing), // From manual categorizations only
+        categorized: Math.abs(categorizedTotals.marketing), // Same source
+        delta: 0, // No delta since we only have one source
+        isReconciled: true, // Always reconciled since only one source
+      },
+      opex: {
+        internalDB: Math.abs(categorizedTotals.opex), // From manual categorizations only
+        categorized: Math.abs(categorizedTotals.opex), // Same source
+        delta: 0, // No delta since we only have one source
+        isReconciled: true, // Always reconciled since only one source
+      },
     };
 
     // Calculate totals
-    const totalOutflows = summary.nre + summary.inventory + summary.opex + summary.labor + summary.loans + summary.loan_interest + summary.investments + summary.other + summary.unassigned;
+    const totalOutflows = summary.nre + summary.inventory + summary.opex + summary.marketing + summary.labor + summary.loans + summary.loan_interest + summary.investments + summary.other + summary.unassigned;
     const totalInflows = Math.abs(summary.revenue);
     const netCashFlow = totalInflows - totalOutflows;
 
@@ -456,12 +570,15 @@ export async function GET(request: NextRequest) {
     // Debug: Reconciliation status
     console.log('🔄 [GL Summary] Reconciliation Status:');
     console.log(`  - NRE: Paid (DB) = $${reconciliation.nre.internalDB.toFixed(2)}, Categorized = $${reconciliation.nre.categorized.toFixed(2)}, Delta = $${reconciliation.nre.delta.toFixed(2)} ${reconciliation.nre.isReconciled ? '✅' : '⚠️'}`);
+    console.log(`     ⚠️  NRE RAW categorizedTotals.nre = $${categorizedTotals.nre.toFixed(2)} (before Math.abs)`);
     console.log(`  - Inventory: Paid (DB) = $${reconciliation.inventory.internalDB.toFixed(2)}, Categorized = $${reconciliation.inventory.categorized.toFixed(2)}, Delta = $${reconciliation.inventory.delta.toFixed(2)} ${reconciliation.inventory.isReconciled ? '✅' : '⚠️'}`);
+    console.log(`     ⚠️  Inventory RAW categorizedTotals.inventory = $${categorizedTotals.inventory.toFixed(2)} (before Math.abs)`);
     console.log(`  - Loan Interest: From Bank = $${reconciliation.loan_interest.internalDB.toFixed(2)}, Categorized = $${reconciliation.loan_interest.categorized.toFixed(2)}, Delta = $${reconciliation.loan_interest.delta.toFixed(2)} ${reconciliation.loan_interest.isReconciled ? '✅' : '⚠️'}`);
     
     // Debug: Breakdown details
     console.log('📈 [GL Summary] NRE Breakdown:', breakdown.nre);
     console.log('📈 [GL Summary] Inventory Breakdown:', breakdown.inventory);
+    console.log('💰 [GL Summary] Revenue Breakdown:', revenueBreakdown);
 
     return NextResponse.json({
       summary,

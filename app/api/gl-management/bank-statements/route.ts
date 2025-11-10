@@ -161,6 +161,13 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, account_type, category, notes, balance, is_matched } = body;
 
+    // Debug: Log incoming update request
+    console.log(`💾 [Bank Statement PUT] ID: ${id}`);
+    console.log(`  - account_type: ${account_type}`);
+    console.log(`  - category: ${category}`);
+    console.log(`  - is_matched: ${is_matched}`);
+    console.log(`  - balance: ${balance}`);
+
     if (!id) {
       return NextResponse.json({ error: 'Statement ID required' }, { status: 400 });
     }
@@ -194,9 +201,15 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating bank statement:', error);
+      console.error('❌ [Bank Statement PUT] Error updating:', error);
       throw error;
     }
+
+    // Debug: Confirm save
+    console.log(`✅ [Bank Statement PUT] Successfully saved ID: ${id}`);
+    console.log(`  - Saved category: ${updated.category}`);
+    console.log(`  - Saved account_type: ${updated.account_type}`);
+    console.log(`  - Saved is_matched: ${updated.is_matched}`);
 
     return NextResponse.json({
       statement: updated,
