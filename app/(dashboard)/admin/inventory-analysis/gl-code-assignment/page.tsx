@@ -918,14 +918,16 @@ export default function GLTransactionManagementPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {/* Dynamically show unique user-assigned categories from transactions */}
-                    {Array.from(new Set(transactions.map(t => t.category || 'unassigned')))
-                      .sort()
-                      .map(cat => (
-                        <SelectItem key={cat} value={cat}>
-                          {getCategoryDisplayName(cat)} ({transactions.filter(t => (t.category || 'unassigned') === cat).length})
-                        </SelectItem>
-                      ))}
+                    {/* Show ALL possible categories (even if 0 transactions) */}
+                    {['nre', 'inventory', 'revenue', 'opex', 'marketing', 'labor', 'loans', 'loan_interest', 'investments', 'other', 'unassigned']
+                      .map(cat => {
+                        const count = transactions.filter(t => (t.category || 'unassigned') === cat).length;
+                        return (
+                          <SelectItem key={cat} value={cat}>
+                            {getCategoryDisplayName(cat)} ({count})
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>
