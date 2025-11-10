@@ -10,9 +10,18 @@ import { canAccessQuickBooks } from '@/lib/feature-flags';
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔵 [GL Transactions] API Request received');
+    // Log IMMEDIATELY - this will show in production logs
+    const timestamp = new Date().toISOString();
+    console.log('═══════════════════════════════════════════════════════');
+    console.log(`🔵 [GL Transactions] API Request received at ${timestamp}`);
+    console.log(`🔵 [GL Transactions] Request URL: ${request.url}`);
+    console.log(`🔵 [GL Transactions] Request method: ${request.method}`);
     
     const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    console.log(`🍪 [GL Transactions] Found ${allCookies.length} cookies`);
+    console.log(`🍪 [GL Transactions] Cookie names: ${allCookies.map(c => c.name).join(', ')}`);
+    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -507,7 +516,12 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in GET /api/gl-management/transactions:', error);
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('🔴 [GL Transactions] ERROR CAUGHT in API route');
+    console.error('🔴 [GL Transactions] Error type:', error?.constructor?.name);
+    console.error('🔴 [GL Transactions] Error message:', error instanceof Error ? error.message : String(error));
+    console.error('🔴 [GL Transactions] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('═══════════════════════════════════════════════════════');
     return NextResponse.json(
       { error: 'Failed to fetch transactions', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

@@ -10,9 +10,18 @@ import { canAccessQuickBooks } from '@/lib/feature-flags';
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔵 [GL Summary] API Request received');
+    // Log IMMEDIATELY - this will show in production logs
+    const timestamp = new Date().toISOString();
+    console.log('═══════════════════════════════════════════════════════');
+    console.log(`🔵 [GL Summary] API Request received at ${timestamp}`);
+    console.log(`🔵 [GL Summary] Request URL: ${request.url}`);
+    console.log(`🔵 [GL Summary] Request method: ${request.method}`);
     
     const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    console.log(`🍪 [GL Summary] Found ${allCookies.length} cookies`);
+    console.log(`🍪 [GL Summary] Cookie names: ${allCookies.map(c => c.name).join(', ')}`);
+    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -665,7 +674,12 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in GET /api/gl-management/summary:', error);
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('🔴 [GL Summary] ERROR CAUGHT in API route');
+    console.error('🔴 [GL Summary] Error type:', error?.constructor?.name);
+    console.error('🔴 [GL Summary] Error message:', error instanceof Error ? error.message : String(error));
+    console.error('🔴 [GL Summary] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('═══════════════════════════════════════════════════════');
     return NextResponse.json(
       { error: 'Failed to calculate summary', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
