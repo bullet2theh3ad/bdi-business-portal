@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Calculator, RefreshCw, Save, Search, Download, Upload, ChevronDown, ChevronRight,
-  DollarSign, TrendingUp, TrendingDown, FileText, AlertCircle, Check, X
+  DollarSign, TrendingUp, TrendingDown, FileText, AlertCircle, Check, X, CreditCard
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -959,6 +959,14 @@ export default function GLTransactionManagementPage() {
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
                   Bank Statements
+                </Button>
+                <Button
+                  onClick={() => setViewMode('ramp')}
+                  variant={viewMode === 'ramp' ? 'default' : 'outline'}
+                  className="flex-1"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Ramp
                 </Button>
               </div>
               
