@@ -970,7 +970,7 @@ export default function GLTransactionManagementPage() {
                 </Button>
               </div>
               
-              {/* Date Range Indicators - Both visible, aligned under respective tabs */}
+              {/* Date Range Indicators - All visible, aligned under respective tabs */}
               <div className="flex gap-2 text-xs">
                 <div className="flex-1 flex items-center gap-2 text-gray-600">
                   <span className="font-medium">QB Data Range:</span>
@@ -987,6 +987,16 @@ export default function GLTransactionManagementPage() {
                   {bankDateRange ? (
                     <span className="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">
                       {bankDateRange.earliest} to {bankDateRange.latest}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 italic">No data</span>
+                  )}
+                </div>
+                <div className="flex-1 flex items-center gap-2 text-gray-600">
+                  <span className="font-medium">Ramp Data Range:</span>
+                  {rampDateRange ? (
+                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                      {rampDateRange.earliest} to {rampDateRange.latest}
                     </span>
                   ) : (
                     <span className="text-gray-400 italic">No data</span>
@@ -1075,6 +1085,7 @@ export default function GLTransactionManagementPage() {
 
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
+              {/* Bank CSV Upload */}
               <input
                 type="file"
                 accept=".csv,.xls,.xlsx"
@@ -1087,14 +1098,37 @@ export default function GLTransactionManagementPage() {
                   }
                 }}
               />
-              <Button 
-                variant="outline" 
-                onClick={() => document.getElementById('csv-upload')?.click()}
-                type="button"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Bank File (CSV/Excel)
-              </Button>
+              {/* Ramp XLS Upload */}
+              <input
+                type="file"
+                accept=".xls,.xlsx"
+                onChange={handleRampFileUpload}
+                className="hidden"
+                id="ramp-upload"
+              />
+              
+              {viewMode === 'bank' && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => document.getElementById('csv-upload')?.click()}
+                  type="button"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Bank File (CSV/Excel)
+                </Button>
+              )}
+              
+              {viewMode === 'ramp' && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => document.getElementById('ramp-upload')?.click()}
+                  type="button"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Ramp File (XLS/XLSX)
+                </Button>
+              )}
+              
               <Button onClick={handleExport} variant="outline">
                 <Download className="h-4 w-4 mr-2" />
                 Export to CSV
