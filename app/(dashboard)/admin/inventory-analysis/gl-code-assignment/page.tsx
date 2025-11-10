@@ -296,10 +296,10 @@ export default function GLTransactionManagementPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(t =>
-        t.description.toLowerCase().includes(query) ||
-        t.vendor.toLowerCase().includes(query) ||
-        t.glCodeName.toLowerCase().includes(query) ||
-        t.notes.toLowerCase().includes(query)
+        (t.description || '').toLowerCase().includes(query) ||
+        (t.vendor || '').toLowerCase().includes(query) ||
+        (t.glCodeName || '').toLowerCase().includes(query) ||
+        (t.notes || '').toLowerCase().includes(query)
       );
     }
 
