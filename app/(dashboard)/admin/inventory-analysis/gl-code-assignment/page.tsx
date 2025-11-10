@@ -86,6 +86,7 @@ interface RampTransaction {
 interface CategorySummary {
   nre: number;
   inventory: number;
+  cogs: number;
   opex: number;
   marketing: number;
   labor: number;
@@ -148,7 +149,7 @@ export default function GLTransactionManagementPage() {
   const [bankStatements, setBankStatements] = useState<BankStatement[]>([]);
   const [rampTransactions, setRampTransactions] = useState<RampTransaction[]>([]);
   const [categorySummary, setCategorySummary] = useState<CategorySummary>({
-    nre: 0, inventory: 0, opex: 0, marketing: 0, labor: 0, loans: 0, loan_interest: 0,
+    nre: 0, inventory: 0, cogs: 0, opex: 0, marketing: 0, labor: 0, loans: 0, loan_interest: 0,
     investments: 0, revenue: 0, other: 0, unassigned: 0
   });
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown>({
@@ -676,6 +677,7 @@ export default function GLTransactionManagementPage() {
     const colors: {[key: string]: string} = {
       nre: 'bg-purple-100 text-purple-800 border-purple-200',
       inventory: 'bg-blue-100 text-blue-800 border-blue-200',
+      cogs: 'bg-cyan-100 text-cyan-800 border-cyan-200',
       opex: 'bg-orange-100 text-orange-800 border-orange-200',
       marketing: 'bg-pink-100 text-pink-800 border-pink-200',
       labor: 'bg-green-100 text-green-800 border-green-200',
@@ -694,6 +696,7 @@ export default function GLTransactionManagementPage() {
     const names: {[key: string]: string} = {
       nre: 'NRE',
       inventory: 'Inventory',
+      cogs: 'CoGS',
       opex: 'OPEX',
       marketing: 'Marketing',
       labor: 'Labor',
@@ -733,8 +736,8 @@ export default function GLTransactionManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Define card order: NRE, Inventory, Net Revenue, RLOC, Labor, Marketing, OPEX, etc. */}
-            {['nre', 'inventory', 'revenue', 'loans', 'labor', 'marketing', 'opex', 'investments', 'other', 'unassigned'].map((key) => {
+            {/* Define card order: NRE, Inventory, CoGS, Net Revenue, RLOC, Labor, Marketing, OPEX, etc. */}
+            {['nre', 'inventory', 'cogs', 'revenue', 'loans', 'labor', 'marketing', 'opex', 'investments', 'other', 'unassigned'].map((key) => {
               const value = categorySummary[key] || 0;
               // Skip loan_interest as standalone - it's shown within RLOC card
               if (key === 'loan_interest') return null;
@@ -1072,7 +1075,7 @@ export default function GLTransactionManagementPage() {
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {/* Show ALL possible categories (even if 0 transactions) */}
-                    {['nre', 'inventory', 'revenue', 'opex', 'marketing', 'labor', 'loans', 'loan_interest', 'investments', 'other', 'unassigned']
+                    {['nre', 'inventory', 'cogs', 'revenue', 'opex', 'marketing', 'labor', 'loans', 'loan_interest', 'investments', 'other', 'unassigned']
                       .map(cat => {
                         const count = transactions.filter(t => (t.category || 'unassigned') === cat).length;
                         return (

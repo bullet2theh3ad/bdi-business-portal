@@ -129,6 +129,7 @@ export async function GET(request: NextRequest) {
     const categorizedTotals: { [key: string]: number } = {
       nre: 0,
       inventory: 0,
+      cogs: 0,
       opex: 0,
       marketing: 0,
       labor: 0,

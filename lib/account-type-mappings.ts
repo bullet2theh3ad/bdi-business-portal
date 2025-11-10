@@ -54,6 +54,9 @@ export const ACCOUNT_TYPE_MAPPINGS: AccountTypeMapping[] = [
   { accountType: 'Freight In', category: 'inventory', description: 'Inbound shipping costs' },
   { accountType: 'RTV', category: 'inventory', description: 'Return to Vendor' },
   
+  // CoGS (Cost of Goods Sold) Account Types
+  { accountType: 'SW Licensing', category: 'cogs', description: 'Software licensing costs' },
+  
   // Labor Account Types
   { accountType: 'Payroll', category: 'labor', description: 'Employee salaries and wages' },
   { accountType: 'Payroll Taxes', category: 'labor', description: 'Employer payroll taxes' },
@@ -115,6 +118,7 @@ export function getCategoryDisplayName(category: string): string {
     'marketing': 'Marketing',
     'nre': 'NRE',
     'inventory': 'Inventory',
+    'cogs': 'CoGS',
     'labor': 'Labor',
     'loans': 'RLOC',
     'loan_interest': 'Loan Interest Paid',
