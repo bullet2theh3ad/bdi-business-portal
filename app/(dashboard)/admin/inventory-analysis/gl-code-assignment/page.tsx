@@ -146,6 +146,7 @@ export default function GLTransactionManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bankStatements, setBankStatements] = useState<BankStatement[]>([]);
+  const [rampTransactions, setRampTransactions] = useState<RampTransaction[]>([]);
   const [categorySummary, setCategorySummary] = useState<CategorySummary>({
     nre: 0, inventory: 0, opex: 0, marketing: 0, labor: 0, loans: 0, loan_interest: 0,
     investments: 0, revenue: 0, other: 0, unassigned: 0
@@ -181,7 +182,7 @@ export default function GLTransactionManagementPage() {
   });
   
   // UI State
-  const [viewMode, setViewMode] = useState<'transactions' | 'bank'>('transactions');
+  const [viewMode, setViewMode] = useState<'transactions' | 'bank' | 'ramp'>('transactions');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -196,6 +197,7 @@ export default function GLTransactionManagementPage() {
   // Date range tracking
   const [qbDateRange, setQbDateRange] = useState<{ earliest: string; latest: string } | null>(null);
   const [bankDateRange, setBankDateRange] = useState<{ earliest: string; latest: string } | null>(null);
+  const [rampDateRange, setRampDateRange] = useState<{ earliest: string; latest: string } | null>(null);
 
   // Load data on mount
   useEffect(() => {
@@ -215,6 +217,7 @@ export default function GLTransactionManagementPage() {
       await Promise.all([
         loadTransactions(),
         loadBankStatements(),
+        loadRampTransactions(),
         loadSummary(),
       ]);
     } catch (error) {
@@ -285,6 +288,32 @@ export default function GLTransactionManagementPage() {
       }
     } catch (error) {
       console.error('Error loading bank statements:', error);
+    }
+  }
+
+  async function loadRampTransactions() {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/gl-management/ramp-transactions?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch Ramp transactions');
+      
+      const data = await response.json();
+      setRampTransactions(data);
+      
+      // Calculate date range
+      if (data.length > 0) {
+        const dates = data.map((t: RampTransaction) => t.transaction_date).sort();
+        setRampDateRange({ earliest: dates[0], latest: dates[dates.length - 1] });
+      } else {
+        setRampDateRange(null);
+      }
+      
+      console.log(`✅ Loaded ${data.length} Ramp transactions`);
+    } catch (error) {
+      console.error('Error loading Ramp transactions:', error);
     }
   }
 
