@@ -735,9 +735,11 @@ export default function GLTransactionManagementPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Define card order: NRE, Inventory, CoGS, Net Revenue, RLOC, Labor, Marketing, OPEX, etc. */}
-            {['nre', 'inventory', 'cogs', 'revenue', 'loans', 'labor', 'marketing', 'opex', 'investments', 'other', 'unassigned'].map((key) => {
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Define card order: Top Row (big cards), Bottom Row (smaller cards) */}
+            {/* Big cards: NRE, Inventory, Labor, RLOC, Net Revenue */}
+            {/* Smaller cards: CoGS, Marketing, OPEX, Investments, Unassigned */}
+            {['nre', 'inventory', 'labor', 'loans', 'revenue', 'cogs', 'marketing', 'opex', 'investments', 'unassigned'].map((key) => {
               const value = categorySummary[key] || 0;
               // Skip loan_interest as standalone - it's shown within RLOC card
               if (key === 'loan_interest') return null;
@@ -1074,8 +1076,8 @@ export default function GLTransactionManagementPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {/* Show ALL possible categories (even if 0 transactions) */}
-                    {['nre', 'inventory', 'cogs', 'revenue', 'opex', 'marketing', 'labor', 'loans', 'loan_interest', 'investments', 'other', 'unassigned']
+                    {/* Show ALL possible categories (even if 0 transactions) - ordered to match card layout */}
+                    {['nre', 'inventory', 'labor', 'loans', 'revenue', 'cogs', 'marketing', 'opex', 'investments', 'unassigned']
                       .map(cat => {
                         const count = transactions.filter(t => (t.category || 'unassigned') === cat).length;
                         return (
