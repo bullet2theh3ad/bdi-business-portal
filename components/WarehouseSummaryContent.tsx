@@ -22,6 +22,7 @@ import {
   Cloud
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import WarehouseAgingChart from '@/components/WarehouseAgingChart';
 
 interface WarehouseSummaryData {
   emg: {
@@ -163,6 +164,29 @@ interface WarehouseSummaryContentProps {
   onClose: () => void;
 }
 
+interface AgingBucket {
+  bucket: string;
+  days: string;
+  totalUnits: number;
+  totalValue: number;
+  skuCount: number;
+}
+
+interface AgingData {
+  emg: {
+    buckets: AgingBucket[];
+    totalValue: number;
+    totalUnits: number;
+    lastUpdated: string | null;
+  };
+  catv: {
+    buckets: AgingBucket[];
+    totalValue: number;
+    totalUnits: number;
+    lastUpdated: string | null;
+  };
+}
+
 const COLORS = {
   emg: {
     primary: '#3B82F6', // Blue
@@ -179,7 +203,9 @@ const COLORS = {
 
 export default function WarehouseSummaryContent({ emgData, catvData, onClose }: WarehouseSummaryContentProps) {
   const [summaryData, setSummaryData] = useState<WarehouseSummaryData | null>(null);
+  const [agingData, setAgingData] = useState<AgingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingAging, setLoadingAging] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
@@ -188,6 +214,7 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
 
   useEffect(() => {
     fetchSummaryData();
+    fetchAgingData();
   }, []);
 
   const fetchSummaryData = async () => {
@@ -203,6 +230,22 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
       console.error('Error fetching warehouse summary:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAgingData = async () => {
+    try {
+      setLoadingAging(true);
+      const response = await fetch('/api/inventory/warehouse-aging');
+      const result = await response.json();
+      
+      if (result.success) {
+        setAgingData(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching warehouse aging data:', error);
+    } finally {
+      setLoadingAging(false);
     }
   };
 
@@ -1352,9 +1395,42 @@ export default function WarehouseSummaryContent({ emgData, catvData, onClose }: 
         </TabsContent>
       </Tabs>
 
+      {/* Warehouse Aging Charts - Stacked Vertically */}
+      {loadingAging ? (
+        <div className="mt-6 text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading aging data...</p>
+        </div>
+      ) : agingData ? (
+        <div className="mt-6 space-y-6">
+          {/* EMG Warehouse Aging Chart */}
+          <WarehouseAgingChart
+            title="EMG Warehouse Inventory Aging"
+            warehouse="EMG"
+            buckets={agingData.emg.buckets}
+            totalValue={agingData.emg.totalValue}
+            totalUnits={agingData.emg.totalUnits}
+            lastUpdated={agingData.emg.lastUpdated}
+          />
+
+          {/* CATV Warehouse Aging Chart */}
+          <WarehouseAgingChart
+            title="CATV Warehouse Inventory Aging"
+            warehouse="CATV"
+            buckets={agingData.catv.buckets}
+            totalValue={agingData.catv.totalValue}
+            totalUnits={agingData.catv.totalUnits}
+            lastUpdated={agingData.catv.lastUpdated}
+          />
+        </div>
+      ) : null}
+
       {/* Footer Actions */}
       <div className="flex justify-end space-x-4 pt-6 border-t">
-        <Button variant="outline" onClick={fetchSummaryData}>
+        <Button variant="outline" onClick={() => {
+          fetchSummaryData();
+          fetchAgingData();
+        }}>
           Refresh Data
         </Button>
         <Button onClick={onClose}>
