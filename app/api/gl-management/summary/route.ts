@@ -152,8 +152,15 @@ export async function GET(request: NextRequest) {
       inventory: { paid: 0, overdue: 0, toBePaid: 0 },
     };
     
-    // Initialize labor breakdown
-    const laborBreakdown = {
+    // Initialize labor breakdown from bank auto-detection (for "From Bank/QB")
+    const laborBankBreakdown = {
+      payroll: 0,
+      taxes: 0,
+      overhead: 0,
+    };
+    
+    // Initialize labor breakdown from manual categorizations (for "Categorized")
+    const laborManualBreakdown = {
       payroll: 0,
       taxes: 0,
       overhead: 0,
@@ -196,6 +203,18 @@ export async function GET(request: NextRequest) {
         }
       } else if (category === 'revenue' && !accountType) {
         console.log(`⚠️  [Revenue Breakdown] MISSING accountType for revenue amount $${Math.abs(amount).toFixed(2)}`);
+      }
+      
+      // Track labor breakdown by account type (manual categorizations)
+      if (category === 'labor' && accountType) {
+        const absAmount = Math.abs(amount);
+        if (accountType === 'Payroll') {
+          laborManualBreakdown.payroll += absAmount;
+        } else if (accountType === 'Payroll Taxes' || accountType === 'Benefits') {
+          laborManualBreakdown.taxes += absAmount; // Combine Payroll Taxes + Benefits into Taxes/Overhead
+        } else if (accountType === 'Payroll Charges') {
+          laborManualBreakdown.overhead += absAmount;
+        }
       }
     };
 
@@ -376,7 +395,7 @@ export async function GET(request: NextRequest) {
         if (debit > 0) {
           laborCount++;
           laborTotal += debit;
-          laborBreakdown.payroll += debit;
+          laborBankBreakdown.payroll += debit;
           addToCategorized(category, debit);
           console.log(`💼 [Labor - Payroll] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
         }
@@ -387,7 +406,7 @@ export async function GET(request: NextRequest) {
         if (debit > 0) {
           laborCount++;
           laborTotal += debit;
-          laborBreakdown.taxes += debit;
+          laborBankBreakdown.taxes += debit;
           addToCategorized(category, debit);
           console.log(`💼 [Labor - Taxes] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
         }
@@ -398,7 +417,7 @@ export async function GET(request: NextRequest) {
         if (debit > 0) {
           laborCount++;
           laborTotal += debit;
-          laborBreakdown.overhead += debit;
+          laborBankBreakdown.overhead += debit;
           addToCategorized(category, debit);
           console.log(`💼 [Labor - Overhead] $${debit.toFixed(2)} - ${stmt.description?.substring(0, 60)}`);
         }
@@ -421,9 +440,9 @@ export async function GET(request: NextRequest) {
     // Debug: Log labor totals
     if (laborCount > 0) {
       console.log(`💼 [Labor Summary] Found ${laborCount} labor transactions totaling $${laborTotal.toFixed(2)}`);
-      console.log(`  - Payroll: $${laborBreakdown.payroll.toFixed(2)}`);
-      console.log(`  - Taxes: $${laborBreakdown.taxes.toFixed(2)}`);
-      console.log(`  - Overhead: $${laborBreakdown.overhead.toFixed(2)}`);
+      console.log(`  - Payroll: $${laborBankBreakdown.payroll.toFixed(2)}`);
+      console.log(`  - Taxes: $${laborBankBreakdown.taxes.toFixed(2)}`);
+      console.log(`  - Overhead: $${laborBankBreakdown.overhead.toFixed(2)}`);
     }
     
     // Debug: Log NRE final total BEFORE processing internal DB
@@ -586,7 +605,8 @@ export async function GET(request: NextRequest) {
       internalDBTotals, // For debugging
       reconciliation, // Deltas and status
       breakdown,
-      laborBreakdown, // Payroll, Taxes, Overhead
+      laborBankBreakdown, // Bank auto-detected labor (for "From Bank/QB")
+      laborManualBreakdown, // Manual categorizations (for "Categorized")
       revenueBreakdown, // D2C, B2B, B2B (factored)
       totalOutflows,
       totalInflows,

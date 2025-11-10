@@ -51,6 +51,7 @@ export const ACCOUNT_TYPE_MAPPINGS: AccountTypeMapping[] = [
   { accountType: 'Payroll', category: 'labor', description: 'Employee salaries and wages' },
   { accountType: 'Payroll Taxes', category: 'labor', description: 'Employer payroll taxes' },
   { accountType: 'Benefits', category: 'labor', description: 'Health insurance and benefits' },
+  { accountType: 'Payroll Charges', category: 'labor', description: 'Payroll processing and overhead charges' },
   { accountType: 'Retirement', category: 'labor', description: '401k and retirement contributions' },
   
   // RLOC/Loans Account Types

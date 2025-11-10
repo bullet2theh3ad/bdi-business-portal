@@ -134,7 +134,12 @@ export default function GLTransactionManagementPage() {
     b2b: 0,
     b2b_factored: 0,
   });
-  const [laborBreakdown, setLaborBreakdown] = useState({
+  const [laborBankBreakdown, setLaborBankBreakdown] = useState({
+    payroll: 0,
+    taxes: 0,
+    overhead: 0,
+  });
+  const [laborManualBreakdown, setLaborManualBreakdown] = useState({
     payroll: 0,
     taxes: 0,
     overhead: 0,
@@ -271,7 +276,8 @@ export default function GLTransactionManagementPage() {
       setCategorySummary(data.summary || {});
       setCategoryBreakdown(data.breakdown || { nre: { paid: 0, overdue: 0, toBePaid: 0 }, inventory: { paid: 0, overdue: 0, toBePaid: 0 } });
       setRevenueBreakdown(data.revenueBreakdown || { d2c: 0, b2b: 0, b2b_factored: 0 });
-      setLaborBreakdown(data.laborBreakdown || { payroll: 0, taxes: 0, overhead: 0 });
+      setLaborBankBreakdown(data.laborBankBreakdown || { payroll: 0, taxes: 0, overhead: 0 });
+      setLaborManualBreakdown(data.laborManualBreakdown || { payroll: 0, taxes: 0, overhead: 0 });
       setReconciliation(data.reconciliation || {
         nre: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
         inventory: { internalDB: 0, categorized: 0, delta: 0, isReconciled: true },
@@ -732,24 +738,24 @@ export default function GLTransactionManagementPage() {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-blue-700">Labor:</span>
-                          <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.payroll)}</span>
+                          <span className="text-sm font-semibold">{formatCurrency(laborManualBreakdown.payroll)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-orange-700">Taxes/Overhead:</span>
-                          <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.taxes)}</span>
+                          <span className="text-sm font-semibold">{formatCurrency(laborManualBreakdown.taxes)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-purple-700">Overhead Charges:</span>
-                          <span className="text-sm font-semibold">{formatCurrency(laborBreakdown.overhead)}</span>
+                          <span className="text-sm font-semibold">{formatCurrency(laborManualBreakdown.overhead)}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
                           <span className="text-[10px] font-medium">Categorized:</span>
-                          <span className="text-base font-bold">{formatCurrency(value)}</span>
+                          <span className="text-base font-bold">{formatCurrency(laborManualBreakdown.payroll + laborManualBreakdown.taxes + laborManualBreakdown.overhead)}</span>
                         </div>
                         {/* Reconciliation Status */}
                         <div className="flex justify-between items-center text-[9px] text-gray-600">
                           <span>From Bank/QB:</span>
-                          <span>{formatCurrency(value)}</span>
+                          <span>{formatCurrency(laborBankBreakdown.payroll + laborBankBreakdown.taxes + laborBankBreakdown.overhead)}</span>
                         </div>
                         <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
                           <span className="flex items-center gap-1.5">
