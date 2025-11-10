@@ -618,7 +618,7 @@ export default function GLTransactionManagementPage() {
                           <span className="text-sm font-semibold">{formatCurrency(breakdown.toBePaid)}</span>
                         </div>
                         <div className="pt-1 mt-1 border-t border-current/20 flex justify-between items-center">
-                          <span className="text-[10px] font-medium">Paid (DB):</span>
+                          <span className="text-[10px] font-medium">Total (DB):</span>
                           <span className="text-base font-bold">{formatCurrency(value)}</span>
                         </div>
                         {/* Reconciliation Status */}

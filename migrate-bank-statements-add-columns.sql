@@ -18,9 +18,9 @@ ADD COLUMN IF NOT EXISTS bank_account_name TEXT;
 ALTER TABLE bank_statements 
 ADD COLUMN IF NOT EXISTS original_line TEXT;
 
--- Add created_by column (stores Supabase auth user ID, not DB user table ID)
+-- Add created_by column (was using uploaded_by but API uses created_by)
 ALTER TABLE bank_statements 
-ADD COLUMN IF NOT EXISTS created_by UUID;
+ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id);
 
 -- Make uploaded_by nullable (API uses created_by instead)
 ALTER TABLE bank_statements 
@@ -45,5 +45,5 @@ COMMENT ON COLUMN bank_statements.amount IS 'Net amount: credit - debit (positiv
 COMMENT ON COLUMN bank_statements.reference_number IS 'Combined reference: check number, bank reference, or customer reference';
 COMMENT ON COLUMN bank_statements.bank_account_name IS 'Name of the bank account from the statement';
 COMMENT ON COLUMN bank_statements.original_line IS 'Original CSV/Excel row data for debugging';
-COMMENT ON COLUMN bank_statements.created_by IS 'Supabase auth user ID who uploaded this transaction (not FK to users table)';
+COMMENT ON COLUMN bank_statements.created_by IS 'User who uploaded this transaction';
 
