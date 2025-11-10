@@ -47,6 +47,7 @@ interface BankStatement {
   balance: number | null;
   check_number: string | null;
   bank_transaction_number: string | null;
+  reference_number: string | null; // Customer/Bank reference number
   account_type: string | null; // Detailed account type (Contract, Services, etc.)
   category: string; // High-level category (opex, nre, inventory, etc.)
   gl_code_assignment: string | null;

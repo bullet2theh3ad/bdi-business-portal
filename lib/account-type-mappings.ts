@@ -39,6 +39,9 @@ export const ACCOUNT_TYPE_MAPPINGS: AccountTypeMapping[] = [
   { accountType: 'Testing & Certification', category: 'nre', description: 'Product testing and compliance' },
   { accountType: 'Tooling', category: 'nre', description: 'Manufacturing tooling and molds' },
   { accountType: 'R&D Services', category: 'nre', description: 'Research and development expenses' },
+  { accountType: 'DevOps', category: 'nre', description: 'DevOps infrastructure and development operations' },
+  { accountType: 'Firmware Development', category: 'nre', description: 'Firmware and embedded software development' },
+  { accountType: 'Certifications', category: 'nre', description: 'Certification costs and fees' },
   
   // Inventory Account Types
   { accountType: 'Raw Materials', category: 'inventory', description: 'Raw material purchases' },
