@@ -573,6 +573,43 @@ export default function GLTransactionManagementPage() {
     }
   };
 
+  // Handle Ramp file upload
+  const handleRampFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadError(null);
+      setUploadSuccess(null);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/gl-management/ramp-transactions/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setUploadSuccess(`✅ Imported ${result.imported} Ramp transactions${result.skipped ? `, skipped ${result.skipped}` : ''}`);
+      
+      // Reload data
+      await loadRampTransactions();
+      await loadSummary();
+      
+      // Clear file input
+      event.target.value = '';
+    } catch (error: any) {
+      console.error('Error uploading Ramp file:', error);
+      setUploadError(error.message || 'Failed to upload Ramp file');
+    }
+  };
+
   // Export to CSV
   const handleExport = () => {
     const csvRows = [
