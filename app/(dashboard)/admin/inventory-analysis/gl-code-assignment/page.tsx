@@ -685,12 +685,14 @@ export default function GLTransactionManagementPage() {
                           <span>From Bank/QB:</span>
                           <span>{formatCurrency(Math.abs(value))}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
+                        <div className={`flex justify-between items-center text-[10px] font-semibold ${
+                          reconciliation.revenue.isReconciled ? 'text-green-700' : 'text-red-700'
+                        }`}>
                           <span className="flex items-center gap-1.5">
-                            ✅
+                            {reconciliation.revenue.isReconciled ? '✅' : '🚩'}
                             <span className="ml-0.5">Delta:</span>
                           </span>
-                          <span>$0.00</span>
+                          <span>{formatCurrency(Math.abs(reconciliation.revenue.delta))}</span>
                         </div>
                       </div>
                     ) : hasRlocBreakdown ? (
@@ -757,12 +759,14 @@ export default function GLTransactionManagementPage() {
                           <span>From Bank/QB:</span>
                           <span>{formatCurrency(laborBankBreakdown.payroll + laborBankBreakdown.taxes + laborBankBreakdown.overhead)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[10px] font-semibold text-green-700">
+                        <div className={`flex justify-between items-center text-[10px] font-semibold ${
+                          reconciliation.labor.isReconciled ? 'text-green-700' : 'text-red-700'
+                        }`}>
                           <span className="flex items-center gap-1.5">
-                            ✅
+                            {reconciliation.labor.isReconciled ? '✅' : '🚩'}
                             <span className="ml-0.5">Delta:</span>
                           </span>
-                          <span>$0.00</span>
+                          <span>{formatCurrency(Math.abs(reconciliation.labor.delta))}</span>
                         </div>
                       </div>
                     ) : (
