@@ -26,6 +26,9 @@ export const ACCOUNT_TYPE_MAPPINGS: AccountTypeMapping[] = [
   { accountType: 'Consulting Services', category: 'opex', description: 'Independent contractor consulting' },
   { accountType: 'Freelance Labor', category: 'opex', description: 'Freelance and gig workers' },
   { accountType: 'Temporary Staffing', category: 'opex', description: 'Temporary staffing agency costs' },
+  { accountType: 'Travel (Project)', category: 'opex', description: 'Project-related travel expenses' },
+  { accountType: 'Travel (Marketing)', category: 'opex', description: 'Marketing and sales travel expenses' },
+  { accountType: 'Travel (G&A)', category: 'opex', description: 'General and administrative travel expenses' },
   
   // Marketing Account Types
   { accountType: 'Advertising', category: 'marketing', description: 'Paid advertising and promotions' },
