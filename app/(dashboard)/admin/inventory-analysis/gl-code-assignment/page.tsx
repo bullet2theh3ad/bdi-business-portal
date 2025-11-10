@@ -361,6 +361,27 @@ export default function GLTransactionManagementPage() {
     return filtered;
   })();
 
+  // Filter Ramp transactions based on search query
+  const filteredRampTransactions = (() => {
+    let filtered = rampTransactions;
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(t =>
+        (t.payee || '').toLowerCase().includes(query) ||
+        (t.memo || '').toLowerCase().includes(query) ||
+        (t.account_type || '').toLowerCase().includes(query) ||
+        (t.category || '').toLowerCase().includes(query) ||
+        (t.notes || '').toLowerCase().includes(query) ||
+        (t.ref_no || '').toLowerCase().includes(query) ||
+        (t.account || '').toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  })();
+
   // Group transactions by category and GL code
   const groupedData: CategoryGroup[] = (() => {
     let filtered = transactions;
@@ -1273,6 +1294,53 @@ export default function GLTransactionManagementPage() {
           onSummaryUpdate={loadSummary}
         />
       )}
+
+      {/* Ramp Transactions View */}
+      {!isLoading && viewMode === 'ramp' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Date</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Ref No.</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Payee</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Memo</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-700">Charge (USD)</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-700">Payment (USD)</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Account Type → Category</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Notes</th>
+                    <th className="px-4 py-3 text-center font-medium text-gray-700">Matched</th>
+                    <th className="px-4 py-3 text-center font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredRampTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                        No Ramp transactions found. Upload a Ramp Register file to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRampTransactions.map((transaction) => (
+                      <RampTransactionRow
+                        key={transaction.id}
+                        transaction={transaction}
+                        onUpdate={loadRampTransactions}
+                        onSummaryUpdate={loadSummary}
+                      />
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="text-sm text-gray-600">
+            Showing {filteredRampTransactions.length} of {rampTransactions.length} transactions
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1697,5 +1765,191 @@ function BankStatementsView({
           )}
         </CardContent>
       </Card>
+  );
+}
+
+// Ramp Transaction Row Component
+function RampTransactionRow({
+  transaction,
+  onUpdate,
+  onSummaryUpdate,
+}: {
+  transaction: RampTransaction;
+  onUpdate: () => void;
+  onSummaryUpdate: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedAccountType, setEditedAccountType] = useState(transaction.account_type || 'Unclassified');
+  const [editedCategory, setEditedCategory] = useState(transaction.category || 'unassigned');
+  const [editedNotes, setEditedNotes] = useState(transaction.notes || '');
+  const [editedIsMatched, setEditedIsMatched] = useState(transaction.is_matched || false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return '-';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const handleAccountTypeChange = (accountType: string) => {
+    setEditedAccountType(accountType);
+    const category = getCategoryForAccountType(accountType);
+    if (category) {
+      setEditedCategory(category);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/gl-management/ramp-transactions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: transaction.id,
+          account_type: editedAccountType,
+          category: editedCategory,
+          notes: editedNotes,
+          is_matched: editedIsMatched,
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        onUpdate();
+        onSummaryUpdate();
+      } else {
+        console.error('Failed to update Ramp transaction');
+      }
+    } catch (error) {
+      console.error('Error updating Ramp transaction:', error);
+    }
+    setIsSaving(false);
+  };
+
+  const handleCancel = () => {
+    setEditedAccountType(transaction.account_type || 'Unclassified');
+    setEditedCategory(transaction.category || 'unassigned');
+    setEditedNotes(transaction.notes || '');
+    setEditedIsMatched(transaction.is_matched || false);
+    setIsEditing(false);
+  };
+
+  const accountTypesByCategory = getAccountTypesByCategory();
+
+  return (
+    <tr className={isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+      <td className="px-4 py-2">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
+      <td className="px-4 py-2">{transaction.ref_no || '-'}</td>
+      <td className="px-4 py-2 max-w-xs truncate" title={transaction.payee || ''}>{transaction.payee || '-'}</td>
+      <td className="px-4 py-2 max-w-xs truncate" title={transaction.memo || ''}>{transaction.memo || '-'}</td>
+      <td className="px-4 py-2 text-right text-red-600">{formatCurrency(transaction.charge_usd)}</td>
+      <td className="px-4 py-2 text-right text-green-600">{formatCurrency(transaction.payment_usd)}</td>
+      
+      {/* Account Type - editable */}
+      <td className="px-4 py-2">
+        {isEditing ? (
+          <Select value={editedAccountType} onValueChange={handleAccountTypeChange}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(accountTypesByCategory).map(([category, types]) => (
+                <div key={category}>
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-50">
+                    {getDisplayName(category)}
+                  </div>
+                  {types.map(({ accountType, description }) => (
+                    <SelectItem key={accountType} value={accountType} className="pl-4">
+                      {accountType}
+                    </SelectItem>
+                  ))}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="text-xs">
+            {transaction.account_type && transaction.account_type !== 'Unclassified' ? (
+              <>
+                <span className="font-medium">{transaction.account_type}</span>
+                <span className="text-gray-400 mx-1">→</span>
+                <span className="text-gray-600">{getDisplayName(transaction.category)}</span>
+              </>
+            ) : (
+              <span className="text-gray-400 italic">Unclassified</span>
+            )}
+          </span>
+        )}
+      </td>
+      
+      {/* Notes - editable */}
+      <td className="px-4 py-2">
+        {isEditing ? (
+          <Input
+            value={editedNotes}
+            onChange={(e) => setEditedNotes(e.target.value)}
+            className="h-7 text-xs"
+            placeholder="Add notes..."
+          />
+        ) : (
+          <span className="text-xs text-gray-600">{transaction.notes || '-'}</span>
+        )}
+      </td>
+      
+      {/* Matched - editable checkbox */}
+      <td className="px-4 py-2 text-center">
+        {isEditing ? (
+          <input
+            type="checkbox"
+            checked={editedIsMatched}
+            onChange={(e) => setEditedIsMatched(e.target.checked)}
+            className="h-4 w-4"
+          />
+        ) : (
+          transaction.is_matched ? (
+            <Check className="h-4 w-4 text-green-600 mx-auto" />
+          ) : (
+            <X className="h-4 w-4 text-gray-300 mx-auto" />
+          )
+        )}
+      </td>
+      
+      {/* Actions */}
+      <td className="px-4 py-2">
+        {isEditing ? (
+          <div className="flex gap-1">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              size="sm"
+              className="h-7 text-xs"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button
+              onClick={handleCancel}
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button
+            onClick={() => setIsEditing(true)}
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+          >
+            Edit
+          </Button>
+        )}
+      </td>
+    </tr>
   );
 }
