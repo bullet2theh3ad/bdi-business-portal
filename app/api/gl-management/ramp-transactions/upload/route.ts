@@ -55,14 +55,20 @@ export async function POST(request: NextRequest) {
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // Convert to JSON, starting from row 3 (skip title row 1 and header row 2)
+    // Convert to JSON, skipping only row 1 (title), row 2 becomes headers, data starts at row 3
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-      range: 2, // Start from row 3 (0-indexed, so 2 = row 3)
+      range: 1, // Skip row 1 (title), row 2 = headers, row 3+ = data (0-indexed, so 1 = row 2)
       defval: null,
       raw: false // Get formatted values
     });
 
     console.log(`📊 [Ramp Upload] Parsed ${jsonData.length} rows from file`);
+    
+    // Debug: Log first row to see column names
+    if (jsonData.length > 0) {
+      console.log(`📋 [Ramp Upload] First row columns:`, Object.keys(jsonData[0] as any));
+      console.log(`📋 [Ramp Upload] First row data:`, jsonData[0]);
+    }
 
     // Use service role for database operations
     const supabaseService = createServerClient(
