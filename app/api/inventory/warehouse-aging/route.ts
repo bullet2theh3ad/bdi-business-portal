@@ -5,12 +5,19 @@ import { db } from '@/lib/db/drizzle';
 import { users, emgInventoryTracking, organizations, organizationMembers, productSkus, skuMappings } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
+interface SkuDetail {
+  sku: string;
+  units: number;
+  value: number;
+}
+
 interface AgingBucket {
   bucket: string;
   days: string;
   totalUnits: number;
   totalValue: number;
   skuCount: number;
+  skuDetails: SkuDetail[];
 }
 
 interface AgingData {
@@ -87,6 +94,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Warehouse Aging - User org: ${userOrganization.code} (${userOrganization.type}), isBDI: ${isBDIUser}`);
 
+    // Create service client for querying warehouse_wip_units (bypasses RLS)
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseService = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
     // Get allowed SKU codes for filtering (same logic as warehouse-summary)
     let allowedSkuCodes: string[] = [];
     
@@ -148,7 +168,7 @@ export async function GET(request: NextRequest) {
       : emgInventory.filter(item => allowedSkuCodes.includes(item.model || ''));
 
     // Calculate aging buckets for EMG
-    const emgBucketMap = new Map<string, { units: number; value: number; skus: Set<string> }>();
+    const emgBucketMap = new Map<string, { units: number; value: number; skus: Set<string>; skuData: Map<string, { units: number; value: number }> }>();
     let emgTotalValue = 0;
     let emgTotalUnits = 0;
     let emgLastUpdated = null as Date | null;
@@ -173,12 +193,18 @@ export async function GET(request: NextRequest) {
 
       // Update bucket totals
       if (!emgBucketMap.has(bucket)) {
-        emgBucketMap.set(bucket, { units: 0, value: 0, skus: new Set() });
+        emgBucketMap.set(bucket, { units: 0, value: 0, skus: new Set(), skuData: new Map() });
       }
       const bucketData = emgBucketMap.get(bucket)!;
       bucketData.units += item.qtyOnHand || 0;
       bucketData.value += itemValue;
       bucketData.skus.add(item.model);
+      
+      // Track per-SKU data
+      bucketData.skuData.set(item.model, {
+        units: item.qtyOnHand || 0,
+        value: itemValue,
+      });
 
       emgTotalUnits += item.qtyOnHand || 0;
       emgTotalValue += itemValue;
@@ -200,6 +226,11 @@ export async function GET(request: NextRequest) {
         totalUnits: emgBucketMap.get('0-30 days')?.units || 0,
         totalValue: emgBucketMap.get('0-30 days')?.value || 0,
         skuCount: emgBucketMap.get('0-30 days')?.skus.size || 0,
+        skuDetails: Array.from(emgBucketMap.get('0-30 days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
       {
         bucket: '31-60 days',
@@ -207,6 +238,11 @@ export async function GET(request: NextRequest) {
         totalUnits: emgBucketMap.get('31-60 days')?.units || 0,
         totalValue: emgBucketMap.get('31-60 days')?.value || 0,
         skuCount: emgBucketMap.get('31-60 days')?.skus.size || 0,
+        skuDetails: Array.from(emgBucketMap.get('31-60 days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
       {
         bucket: '61-90 days',
@@ -214,6 +250,11 @@ export async function GET(request: NextRequest) {
         totalUnits: emgBucketMap.get('61-90 days')?.units || 0,
         totalValue: emgBucketMap.get('61-90 days')?.value || 0,
         skuCount: emgBucketMap.get('61-90 days')?.skus.size || 0,
+        skuDetails: Array.from(emgBucketMap.get('61-90 days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
       {
         bucket: '90+ days',
@@ -221,35 +262,47 @@ export async function GET(request: NextRequest) {
         totalUnits: emgBucketMap.get('90+ days')?.units || 0,
         totalValue: emgBucketMap.get('90+ days')?.value || 0,
         skuCount: emgBucketMap.get('90+ days')?.skus.size || 0,
+        skuDetails: Array.from(emgBucketMap.get('90+ days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
     ];
 
     // ========================================
     // CATV Warehouse Aging
     // ========================================
-    // Fetch from warehouse_wip_units using Supabase client
-    const BATCH_SIZE = 10000;
+    // Fetch from warehouse_wip_units using service client with batching
+    // Supabase limits queries to 1000 rows, so we batch the requests
+    const BATCH_SIZE = 1000;
     let offset = 0;
     let allWipUnits: any[] = [];
     let hasMore = true;
 
     // Get latest import batch to filter by most recent data
-    const { data: latestImport } = await supabase
+    console.log('📦 [CATV Aging] Finding most recent WIP import...');
+    const { data: latestImport } = await supabaseService
       .from('warehouse_wip_imports')
-      .select('id, imported_at')
+      .select('id, imported_at, status')
+      .eq('status', 'completed')
       .order('imported_at', { ascending: false })
       .limit(1)
       .single();
 
+    console.log(`📦 [CATV Aging] Latest import batch: ${latestImport?.id} (${latestImport?.imported_at})`);
+    
+    console.log('📦 [CATV Aging] Fetching WIP units from latest import in batches...');
+    
     while (hasMore) {
-      const { data: wipUnits, error } = await supabase
+      const { data: wipUnits, error } = await supabaseService
         .from('warehouse_wip_units')
         .select('*')
         .range(offset, offset + BATCH_SIZE - 1)
         .order('received_date', { ascending: false });
 
       if (error) {
-        console.error('Error fetching WIP units:', error);
+        console.error('❌ [CATV Aging] Error fetching WIP units:', error);
         break;
       }
 
@@ -259,31 +312,60 @@ export async function GET(request: NextRequest) {
       }
 
       allWipUnits = allWipUnits.concat(wipUnits);
-      offset += BATCH_SIZE;
-
+      console.log(`✅ [CATV Aging] Fetched WIP batch: ${wipUnits.length} units (total so far: ${allWipUnits.length})`);
+      
       if (wipUnits.length < BATCH_SIZE) {
-        hasMore = false;
+        hasMore = false; // Last batch
+      } else {
+        offset += BATCH_SIZE;
       }
     }
 
-    // Filter by latest import batch if available
-    const filteredWipUnits = latestImport
-      ? allWipUnits.filter((unit: any) => unit.import_batch_id === latestImport.id)
-      : allWipUnits;
+    console.log(`📦 [CATV Aging] Total WIP units fetched: ${allWipUnits.length}`);
 
-    // Filter by allowed SKUs if needed
+    // Filter to WIP stage only (to match the summary card which shows WIP inventory value)
+    const wipStageOnly = allWipUnits.filter((unit: any) => unit.stage === 'WIP');
+    console.log(`📦 [CATV Aging] After WIP stage filter: ${wipStageOnly.length} units (filtered from ${allWipUnits.length})`);
+
+    // Filter by allowed SKUs if needed (for partner organizations)
     const finalWipUnits = isBDIUser
-      ? filteredWipUnits
-      : filteredWipUnits.filter((unit: any) => allowedSkuCodes.includes(unit.model_number || ''));
+      ? wipStageOnly
+      : wipStageOnly.filter((unit: any) => allowedSkuCodes.includes(unit.model_number || ''));
+
+    console.log(`📦 [CATV Aging] After SKU filter: ${finalWipUnits.length} units (isBDI: ${isBDIUser})`);
+    
+    if (finalWipUnits.length > 0) {
+      console.log(`📦 [CATV Aging] Sample units:`, {
+        first: {
+          model: finalWipUnits[0].model_number,
+          received: finalWipUnits[0].received_date,
+          import_batch: finalWipUnits[0].import_batch_id,
+        },
+        last: {
+          model: finalWipUnits[finalWipUnits.length - 1].model_number,
+          received: finalWipUnits[finalWipUnits.length - 1].received_date,
+          import_batch: finalWipUnits[finalWipUnits.length - 1].import_batch_id,
+        },
+      });
+    }
 
     // Calculate aging buckets for CATV
-    const catvBucketMap = new Map<string, { units: number; value: number; skus: Set<string> }>();
+    const catvBucketMap = new Map<string, { units: number; value: number; skus: Set<string>; skuData: Map<string, { units: number; value: number }> }>();
     let catvTotalValue = 0;
     let catvTotalUnits = 0;
     let catvLastUpdated = null as Date | null;
 
+    // Track stage breakdown for debugging
+    const stageBreakdown: Record<string, { count: number; value: number }> = {};
+    
     finalWipUnits.forEach((unit: any) => {
       if (!unit.model_number) return;
+
+      // Track stage for debugging
+      const stage = unit.stage || 'Unknown';
+      if (!stageBreakdown[stage]) {
+        stageBreakdown[stage] = { count: 0, value: 0 };
+      }
 
       // Calculate aging in days
       const receivedDate = unit.received_date ? new Date(unit.received_date) : null;
@@ -302,14 +384,26 @@ export async function GET(request: NextRequest) {
       const standardCost: number = bdiSku ? (bdiSkuCostMap.get(bdiSku) || 0) : 0;
       const unitValue = standardCost;
 
+      // Track stage value
+      stageBreakdown[stage].count += 1;
+      stageBreakdown[stage].value += unitValue;
+
       // Update bucket totals
       if (!catvBucketMap.has(bucket)) {
-        catvBucketMap.set(bucket, { units: 0, value: 0, skus: new Set() });
+        catvBucketMap.set(bucket, { units: 0, value: 0, skus: new Set(), skuData: new Map() });
       }
       const bucketData = catvBucketMap.get(bucket)!;
       bucketData.units += 1;
       bucketData.value += unitValue;
       bucketData.skus.add(unit.model_number);
+      
+      // Track per-SKU data
+      if (!bucketData.skuData.has(unit.model_number)) {
+        bucketData.skuData.set(unit.model_number, { units: 0, value: 0 });
+      }
+      const skuData = bucketData.skuData.get(unit.model_number)!;
+      skuData.units += 1;
+      skuData.value += unitValue;
 
       catvTotalUnits += 1;
       catvTotalValue += unitValue;
@@ -322,8 +416,11 @@ export async function GET(request: NextRequest) {
         }
       }
     });
+    
+    console.log('📊 [CATV Aging] Stage breakdown:', stageBreakdown);
+    console.log('📊 [CATV Aging] Total calculated: $' + catvTotalValue.toFixed(2));
 
-    // Convert CATV bucket map to array
+    // Convert CATV bucket map to array with SKU details
     const catvBuckets: AgingBucket[] = [
       {
         bucket: '0-30 days',
@@ -331,6 +428,11 @@ export async function GET(request: NextRequest) {
         totalUnits: catvBucketMap.get('0-30 days')?.units || 0,
         totalValue: catvBucketMap.get('0-30 days')?.value || 0,
         skuCount: catvBucketMap.get('0-30 days')?.skus.size || 0,
+        skuDetails: Array.from(catvBucketMap.get('0-30 days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value), // Sort by value descending
       },
       {
         bucket: '31-60 days',
@@ -338,6 +440,11 @@ export async function GET(request: NextRequest) {
         totalUnits: catvBucketMap.get('31-60 days')?.units || 0,
         totalValue: catvBucketMap.get('31-60 days')?.value || 0,
         skuCount: catvBucketMap.get('31-60 days')?.skus.size || 0,
+        skuDetails: Array.from(catvBucketMap.get('31-60 days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
       {
         bucket: '61-90 days',
@@ -345,6 +452,11 @@ export async function GET(request: NextRequest) {
         totalUnits: catvBucketMap.get('61-90 days')?.units || 0,
         totalValue: catvBucketMap.get('61-90 days')?.value || 0,
         skuCount: catvBucketMap.get('61-90 days')?.skus.size || 0,
+        skuDetails: Array.from(catvBucketMap.get('61-90 days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
       {
         bucket: '90+ days',
@@ -352,6 +464,11 @@ export async function GET(request: NextRequest) {
         totalUnits: catvBucketMap.get('90+ days')?.units || 0,
         totalValue: catvBucketMap.get('90+ days')?.value || 0,
         skuCount: catvBucketMap.get('90+ days')?.skus.size || 0,
+        skuDetails: Array.from(catvBucketMap.get('90+ days')?.skuData || new Map()).map(([sku, data]) => ({
+          sku,
+          units: data.units,
+          value: data.value,
+        })).sort((a, b) => b.value - a.value),
       },
     ];
 

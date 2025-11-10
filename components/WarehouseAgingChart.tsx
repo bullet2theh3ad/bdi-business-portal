@@ -1,9 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Label, LabelList } from 'recharts';
-import { Warehouse, TrendingUp } from 'lucide-react';
+import { Warehouse, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface SkuDetail {
+  sku: string;
+  units: number;
+  value: number;
+}
 
 interface AgingBucket {
   bucket: string;
@@ -11,6 +17,7 @@ interface AgingBucket {
   totalUnits: number;
   totalValue: number;
   skuCount: number;
+  skuDetails: SkuDetail[];
 }
 
 interface WarehouseAgingChartProps {
@@ -30,6 +37,20 @@ export default function WarehouseAgingChart({
   totalUnits,
   lastUpdated,
 }: WarehouseAgingChartProps) {
+  const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set());
+
+  const toggleBucket = (bucketName: string) => {
+    setExpandedBuckets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(bucketName)) {
+        newSet.delete(bucketName);
+      } else {
+        newSet.add(bucketName);
+      }
+      return newSet;
+    });
+  };
+
   // Color scheme by warehouse
   const colors = warehouse === 'EMG' 
     ? {
@@ -94,6 +115,29 @@ export default function WarehouseAgingChart({
           <CardTitle className={`flex items-center gap-2 ${colors.textColor}`}>
             <Warehouse className="h-5 w-5" />
             {title}
+            <button
+              onClick={() => {
+                // Expand all or collapse all
+                if (expandedBuckets.size === buckets.length) {
+                  setExpandedBuckets(new Set());
+                } else {
+                  setExpandedBuckets(new Set(buckets.map(b => b.bucket)));
+                }
+              }}
+              className="ml-2 text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
+            >
+              {expandedBuckets.size === buckets.length ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  <span className="text-xs">Collapse All</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  <span className="text-xs">Expand All</span>
+                </>
+              )}
+            </button>
           </CardTitle>
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
@@ -110,33 +154,37 @@ export default function WarehouseAgingChart({
         </div>
       </CardHeader>
       <CardContent className="pt-6">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        {/* Axis Labels - Prominent and Clear */}
+        <div className="flex items-center justify-between mb-2 px-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-md">
+              ← Inventory Value ($)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-md">
+              Aging (Days) →
+            </span>
+          </div>
+        </div>
+        
+        <ResponsiveContainer width="100%" height={350}>
+          <BarChart data={chartData} margin={{ top: 20, right: 40, left: 60, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="name"
-              tick={{ fill: '#6b7280', fontSize: 14, fontWeight: 500 }}
-              axisLine={{ stroke: '#d1d5db' }}
-            >
-              <Label
-                value="Aging (Days)"
-                position="insideBottom"
-                offset={-5}
-                style={{ fill: '#6b7280', fontSize: 14, fontWeight: 600 }}
-              />
-            </XAxis>
+              tick={{ fill: '#374151', fontSize: 14, fontWeight: 600 }}
+              axisLine={{ stroke: '#9ca3af', strokeWidth: 2 }}
+              tickLine={{ stroke: '#9ca3af' }}
+              height={60}
+            />
             <YAxis
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-              axisLine={{ stroke: '#d1d5db' }}
+              tick={{ fill: '#374151', fontSize: 13, fontWeight: 500 }}
+              axisLine={{ stroke: '#9ca3af', strokeWidth: 2 }}
+              tickLine={{ stroke: '#9ca3af' }}
+              width={80}
               tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-            >
-              <Label
-                value="Inventory Value ($)"
-                angle={-90}
-                position="insideLeft"
-                style={{ fill: '#6b7280', fontSize: 14, fontWeight: 600 }}
-              />
-            </YAxis>
+            />
             <Tooltip
               cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
               content={({ active, payload }) => {
@@ -178,19 +226,97 @@ export default function WarehouseAgingChart({
           </BarChart>
         </ResponsiveContainer>
 
-        {/* Summary Stats Below Chart */}
-        <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t">
-          {buckets.map((bucket, index) => (
-            <div key={bucket.bucket} className="text-center">
-              <div className={`text-xl font-bold mb-1`} style={{ color: colors.gradient[index] }}>
-                {formatCurrency(bucket.totalValue)}
-              </div>
-              <div className="text-xs text-muted-foreground mb-1">{bucket.days} days</div>
-              <div className="text-xs text-gray-600">
-                {formatNumber(bucket.totalUnits)} units • {bucket.skuCount} SKUs
-              </div>
-            </div>
-          ))}
+        {/* Detailed SKU Breakdown - Expandable by Bucket */}
+        <div className="mt-6 pt-4 border-t">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Aging Breakdown by Bucket</h3>
+          <div className="grid grid-cols-4 gap-3">
+            {buckets.map((bucket, index) => {
+              const isExpanded = expandedBuckets.has(bucket.bucket);
+              const hasSkus = bucket.skuDetails && bucket.skuDetails.length > 0;
+              
+              return (
+                <div 
+                  key={bucket.bucket} 
+                  className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                  style={{ borderColor: colors.gradient[index], borderWidth: 2 }}
+                >
+                  {/* Bucket Header - Clickable to expand/collapse */}
+                  <div 
+                    className={`p-3 cursor-pointer ${hasSkus ? 'hover:bg-gray-50' : ''}`}
+                    onClick={() => hasSkus && toggleBucket(bucket.bucket)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-600">{bucket.days} days</span>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: colors.gradient[index] }}
+                        ></div>
+                        {hasSkus && (
+                          isExpanded ? 
+                            <ChevronUp className="h-4 w-4 text-gray-500" /> : 
+                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-gray-600">Value:</span>
+                        <span className="text-sm font-bold" style={{ color: colors.gradient[index] }}>
+                          {formatCurrency(bucket.totalValue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-gray-600">Units:</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                          {formatNumber(bucket.totalUnits)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-gray-600">SKUs:</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                          {bucket.skuCount}
+                        </span>
+                      </div>
+                      {bucket.totalUnits > 0 && (
+                        <div className="pt-1 mt-1 border-t border-gray-200">
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-xs text-gray-500">Avg/unit:</span>
+                            <span className="text-xs font-medium text-gray-600">
+                              {formatCurrency(bucket.totalValue / bucket.totalUnits)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded SKU Details */}
+                  {isExpanded && hasSkus && (
+                    <div className="border-t px-2 py-2 bg-gray-50 max-h-64 overflow-y-auto">
+                      <div className="text-xs font-semibold text-gray-700 mb-1 px-1">SKU Details:</div>
+                      <div className="space-y-1">
+                        {bucket.skuDetails.map((sku, skuIndex) => (
+                          <div 
+                            key={skuIndex}
+                            className="flex justify-between items-center bg-white rounded px-2 py-1 text-xs hover:bg-gray-100"
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium text-gray-800">{sku.sku}</span>
+                              <span className="text-gray-500">{formatNumber(sku.units)} units</span>
+                            </div>
+                            <span className="font-semibold" style={{ color: colors.gradient[index] }}>
+                              {formatCurrency(sku.value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>

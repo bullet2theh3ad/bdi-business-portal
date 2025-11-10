@@ -164,12 +164,19 @@ interface WarehouseSummaryContentProps {
   onClose: () => void;
 }
 
+interface SkuDetail {
+  sku: string;
+  units: number;
+  value: number;
+}
+
 interface AgingBucket {
   bucket: string;
   days: string;
   totalUnits: number;
   totalValue: number;
   skuCount: number;
+  skuDetails: SkuDetail[];
 }
 
 interface AgingData {
