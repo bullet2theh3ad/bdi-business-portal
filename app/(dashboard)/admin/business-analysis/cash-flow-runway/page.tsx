@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, TrendingDown, Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, Upload, Plus, Copy, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, TrendingDown, Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, Upload, Plus, Copy, Trash2, Save, ChevronDown, ChevronUp, Package, Zap } from 'lucide-react';
 
 // Interfaces
 interface MustPayItem {
@@ -98,6 +98,28 @@ export default function CashFlowRunwayPage() {
   const [nonOpDisbursements, setNonOpDisbursements] = useState<NonOpDisbursement[]>([]);
   const [bankAccountEntries, setBankAccountEntries] = useState<BankAccountEntry[]>([]);
   const [bankBalances, setBankBalances] = useState<BankBalance[]>([]);
+  
+  // GL Labor data state
+  const [glLaborData, setGlLaborData] = useState<any[]>([]);
+  const [showGlLabor, setShowGlLabor] = useState<boolean>(false);
+  const [isLoadingGlLabor, setIsLoadingGlLabor] = useState<boolean>(false);
+  
+  // GL Revenue data state
+  const [glRevenueData, setGlRevenueData] = useState<any[]>([]);
+  const [showGlRevenue, setShowGlRevenue] = useState<boolean>(false);
+  const [isLoadingGlRevenue, setIsLoadingGlRevenue] = useState<boolean>(false);
+  
+  const [glInventoryData, setGlInventoryData] = useState<any[]>([]);
+  const [showGlInventory, setShowGlInventory] = useState<boolean>(false);
+  const [isLoadingGlInventory, setIsLoadingGlInventory] = useState<boolean>(false);
+  
+  const [glNreData, setGlNreData] = useState<any[]>([]);
+  const [showGlNre, setShowGlNre] = useState<boolean>(false);
+  const [isLoadingGlNre, setIsLoadingGlNre] = useState<boolean>(false);
+  
+  const [glOpexData, setGlOpexData] = useState<any[]>([]);
+  const [showGlOpex, setShowGlOpex] = useState<boolean>(false);
+  const [isLoadingGlOpex, setIsLoadingGlOpex] = useState<boolean>(false);
   
   // Track collapsed sections per week: "receipts-2025-10-04", "operating-2025-10-04", etc.
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
@@ -364,6 +386,14 @@ export default function CashFlowRunwayPage() {
   };
 
   const weeklyData = getWeeklyData();
+  
+  // DEBUG: Show what's available
+  console.log('\n🔍 [Page Render] Operating Receipts:', operatingReceipts.length);
+  console.log('   AR Forecast receipts:', operatingReceipts.filter(r => r.receiptType === 'ar_forecast'));
+  console.log('   All receipt types:', [...new Set(operatingReceipts.map(r => r.receiptType))]);
+  console.log('   Week starts in receipts:', [...new Set(operatingReceipts.map(r => r.weekStart))].sort());
+  console.log('   Week starts in weeklyData:', weeklyData.slice(0, 4).map(w => w.weekStart));
+  
   const peakWeek = Math.max(...weeklyData.map(w => w.total), 0);
   const totalOutflows = weeklyData.reduce((sum, w) => sum + w.operatingOutflows, 0);
   const totalFunding = weeklyData.reduce((sum, w) => sum + w.fundingTotal, 0);
@@ -422,6 +452,484 @@ export default function CashFlowRunwayPage() {
       setStartDate(allDates[0]);
       setEndDate(allDates[allDates.length - 1]);
     }
+  };
+
+  // Load GL Labor Data
+  const loadGlLaborData = async () => {
+    try {
+      setIsLoadingGlLabor(true);
+      console.log('💼 Loading GL Labor data...');
+      
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/gl-management/weekly-labor?${params.toString()}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('❌ Failed to load GL Labor data:', error);
+        alert(`Failed to load GL Labor data: ${error.error || 'Unknown error'}`);
+        return;
+      }
+      
+      const result = await response.json();
+      console.log('✅ GL Labor data loaded:', result.summary);
+      setGlLaborData(result.data || []);
+      setShowGlLabor(true);
+    } catch (error) {
+      console.error('❌ Error loading GL Labor data:', error);
+      alert('Error loading GL Labor data. Check console for details.');
+    } finally {
+      setIsLoadingGlLabor(false);
+    }
+  };
+
+  // Sync GL Labor data to Must Pay entries
+  const syncGlLaborToMustPay = async () => {
+    if (glLaborData.length === 0) {
+      alert('Please load GL Labor data first');
+      return;
+    }
+
+    if (!organizationId) {
+      alert('Organization ID not available');
+      return;
+    }
+
+    const confirmation = confirm(
+      `This will create or update ${glLaborData.length} Labor entries in Must Pay based on GL data. Continue?`
+    );
+    
+    if (!confirmation) return;
+
+    try {
+      setIsLoadingGlLabor(true);
+      let created = 0;
+      let updated = 0;
+      let failed = 0;
+
+      for (const weekData of glLaborData) {
+        // Check if a must-pay entry already exists for this week
+        const existingEntry = mustPayItems.find(
+          item => item.weekStart === weekData.weekStart && item.category === 'labor'
+        );
+
+        const laborAmount = Math.round(weekData.totalAmount);
+        const description = `Labor (GL Synced): Payroll $${Math.round(weekData.breakdown.payroll).toLocaleString()}, Taxes $${Math.round(weekData.breakdown.payrollTaxes).toLocaleString()}, Benefits $${Math.round(weekData.breakdown.benefits).toLocaleString()}, Charges $${Math.round(weekData.breakdown.payrollCharges).toLocaleString()}`;
+
+        if (existingEntry) {
+          // Update existing entry
+          try {
+            const response = await fetch('/api/cash-flow/must-pays', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: existingEntry.id,
+                weekStart: weekData.weekStart,
+                category: 'labor',
+                description,
+                amount: laborAmount,
+                sourceType: 'gl_labor',
+                sourceReference: `GL Labor sync on ${new Date().toISOString()}`,
+              }),
+            });
+
+            if (response.ok) {
+              updated++;
+              console.log(`✅ Updated labor for week ${weekData.weekStart}`);
+            } else {
+              failed++;
+              console.error(`❌ Failed to update week ${weekData.weekStart}`);
+            }
+          } catch (error) {
+            failed++;
+            console.error(`❌ Error updating week ${weekData.weekStart}:`, error);
+          }
+        } else {
+          // Create new entry
+          try {
+            const response = await fetch('/api/cash-flow/must-pays', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                weekStart: weekData.weekStart,
+                category: 'labor',
+                description,
+                amount: laborAmount,
+                organizationId,
+                sourceType: 'gl_labor',
+                sourceReference: `GL Labor sync on ${new Date().toISOString()}`,
+              }),
+            });
+
+            if (response.ok) {
+              created++;
+              console.log(`✅ Created labor for week ${weekData.weekStart}`);
+            } else {
+              failed++;
+              console.error(`❌ Failed to create week ${weekData.weekStart}`);
+            }
+          } catch (error) {
+            failed++;
+            console.error(`❌ Error creating week ${weekData.weekStart}:`, error);
+          }
+        }
+      }
+
+      // Reload must-pays to show updates
+      await loadAllData();
+
+      alert(
+        `Sync complete!\n\nCreated: ${created}\nUpdated: ${updated}\nFailed: ${failed}\n\nTotal: ${glLaborData.length}`
+      );
+    } catch (error) {
+      console.error('❌ Error syncing GL Labor to Must Pay:', error);
+      alert('Error syncing data. Check console for details.');
+    } finally {
+      setIsLoadingGlLabor(false);
+    }
+  };
+
+  // Load GL Revenue Data
+  const loadGlRevenueData = async () => {
+    try {
+      setIsLoadingGlRevenue(true);
+      console.log('💰 Loading GL Revenue data...');
+      
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/gl-management/weekly-revenue?${params.toString()}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('❌ Failed to load GL Revenue data:', error);
+        alert(`Failed to load GL Revenue data: ${error.error || 'Unknown error'}`);
+        return;
+      }
+      
+      const result = await response.json();
+      console.log('✅ GL Revenue data loaded:', result.summary);
+      setGlRevenueData(result.data || []);
+      setShowGlRevenue(true);
+    } catch (error) {
+      console.error('❌ Error loading GL Revenue data:', error);
+      alert('Error loading GL Revenue data. Check console for details.');
+    } finally {
+      setIsLoadingGlRevenue(false);
+    }
+  };
+
+  // Sync GL Revenue data to Operating Receipts
+  const syncGlRevenueToReceipts = async () => {
+    if (glRevenueData.length === 0) {
+      alert('Please load GL Revenue data first');
+      return;
+    }
+
+    if (!organizationId) {
+      alert('Organization ID not available');
+      return;
+    }
+
+    // DEBUG: Show what weeks we're trying to sync
+    console.log('\n🔍 [Sync Debug] GL Revenue weeks to sync:', glRevenueData.map(w => w.weekStart));
+    console.log('🔍 [Sync Debug] Current Operating Receipts weeks:', operatingReceipts.map(r => r.weekStart));
+    console.log('🔍 [Sync Debug] Cash Flow weeklyData weeks:', getWeeklyData().map(w => w.weekStart));
+
+    const confirmation = confirm(
+      `This will create or update ${glRevenueData.length} Revenue entries in Operating Receipts based on GL data. Continue?`
+    );
+    
+    if (!confirmation) return;
+
+    try {
+      setIsLoadingGlRevenue(true);
+      let created = 0;
+      let updated = 0;
+      let failed = 0;
+
+      for (const weekData of glRevenueData) {
+        console.log(`\n📅 [Sync] Processing week ${weekData.weekStart}...`);
+        
+        // Check if an operating receipt entry already exists for this week (AR forecast type)
+        const existingEntry = operatingReceipts.find(
+          item => item.weekStart === weekData.weekStart && item.receiptType === 'ar_forecast'
+        );
+        
+        console.log(`   ${existingEntry ? '✏️ Found existing entry' : '➕ Will create new entry'} for ${weekData.weekStart}`);
+
+        const revenueAmount = Math.round(weekData.totalAmount);
+        const description = `Revenue (GL Synced): D2C $${Math.round(weekData.breakdown.d2c).toLocaleString()}, B2B $${Math.round(weekData.breakdown.b2b).toLocaleString()}, B2B (factored) $${Math.round(weekData.breakdown.b2b_factored).toLocaleString()}`;
+
+        if (existingEntry) {
+          // Update existing entry
+          try {
+            const payload = {
+              id: existingEntry.id,
+              weekStart: weekData.weekStart,
+              receiptType: 'ar_forecast',
+              description,
+              amount: revenueAmount,
+              sourceReference: `GL Revenue sync on ${new Date().toISOString()}`,
+            };
+            console.log(`   📝 Updating with:`, payload);
+            
+            const response = await fetch('/api/cash-flow/operating-receipts', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+              updated++;
+              console.log(`   ✅ Successfully updated revenue for week ${weekData.weekStart}`);
+            } else {
+              const errorText = await response.text();
+              failed++;
+              console.error(`   ❌ Failed to update week ${weekData.weekStart}:`, response.status, errorText);
+            }
+          } catch (error) {
+            failed++;
+            console.error(`   ❌ Error updating week ${weekData.weekStart}:`, error);
+          }
+        } else {
+          // Create new entry
+          try {
+            const payload = {
+              weekStart: weekData.weekStart,
+              receiptType: 'ar_forecast',
+              description,
+              amount: revenueAmount,
+              organizationId,
+              sourceReference: `GL Revenue sync on ${new Date().toISOString()}`,
+            };
+            console.log(`   📝 Creating with:`, payload);
+            
+            const response = await fetch('/api/cash-flow/operating-receipts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+              created++;
+              console.log(`   ✅ Successfully created revenue for week ${weekData.weekStart}`);
+            } else {
+              const errorText = await response.text();
+              failed++;
+              console.error(`   ❌ Failed to create week ${weekData.weekStart}:`, response.status, errorText);
+            }
+          } catch (error) {
+            failed++;
+            console.error(`❌ Error creating week ${weekData.weekStart}:`, error);
+          }
+        }
+      }
+
+      // Reload operating receipts to show updates
+      console.log('\n🔄 [Sync] Reloading all data...');
+      await loadAllData();
+      console.log('✅ [Sync] Data reloaded. Check "Total Incoming Cash" row in Weekly Cash Flow Summary.');
+
+      alert(
+        `Sync complete!\n\nCreated: ${created}\nUpdated: ${updated}\nFailed: ${failed}\n\nTotal: ${glRevenueData.length}\n\nCheck the "Total Incoming Cash" row!`
+      );
+    } catch (error) {
+      console.error('❌ Error syncing GL Revenue to Operating Receipts:', error);
+      alert('Error syncing data. Check console for details.');
+    } finally {
+      setIsLoadingGlRevenue(false);
+    }
+  };
+
+  // Export GL Labor to CSV
+  const exportGlLaborToCSV = () => {
+    const headers = ['Week Start', 'Week End', 'Total Amount', 'Transaction Count', 'Payroll', 'Payroll Taxes', 'Benefits', 'Payroll Charges'];
+    const rows = glLaborData.map(week => [
+      week.weekStart,
+      week.weekEnd,
+      week.totalAmount.toFixed(2),
+      week.transactionCount,
+      week.breakdown.payroll.toFixed(2),
+      week.breakdown.payrollTaxes.toFixed(2),
+      week.breakdown.benefits.toFixed(2),
+      week.breakdown.payrollCharges.toFixed(2),
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `gl-labor-data-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  // Export GL Revenue to CSV
+  const exportGlRevenueToCSV = () => {
+    const headers = ['Week Start', 'Week End', 'Total Amount', 'Transaction Count', 'D2C', 'B2B', 'B2B (factored)'];
+    const rows = glRevenueData.map(week => [
+      week.weekStart,
+      week.weekEnd,
+      week.totalAmount.toFixed(2),
+      week.transactionCount,
+      week.breakdown.d2c.toFixed(2),
+      week.breakdown.b2b.toFixed(2),
+      week.breakdown.b2b_factored.toFixed(2),
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `gl-revenue-data-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  // Load GL Inventory data
+  const loadGlInventoryData = async () => {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+    try {
+      setIsLoadingGlInventory(true);
+      const response = await fetch(
+        `/api/gl-management/weekly-inventory?startDate=${startDate}&endDate=${endDate}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to load GL Inventory data');
+      }
+      const data = await response.json();
+      setGlInventoryData(data.weeklyData || []);
+      setShowGlInventory(true);
+    } catch (error) {
+      console.error('Error loading GL Inventory:', error);
+      alert('Failed to load GL Inventory data');
+    } finally {
+      setIsLoadingGlInventory(false);
+    }
+  };
+
+  // Export GL Inventory to CSV
+  const exportGlInventoryToCSV = () => {
+    const headers = ['Week Start', 'Week End', 'Total Amount', 'Transaction Count', 'Finished Goods', 'Components', 'Freight In', 'RTV', 'Other'];
+    const rows = glInventoryData.map(week => [
+      week.weekStart,
+      week.weekEnd,
+      week.totalAmount.toFixed(2),
+      week.transactionCount,
+      week.breakdown.finishedGoods.toFixed(2),
+      week.breakdown.components.toFixed(2),
+      week.breakdown.freightIn.toFixed(2),
+      week.breakdown.rtv.toFixed(2),
+      week.breakdown.other.toFixed(2),
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `gl-inventory-data-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  // Load GL NRE data
+  const loadGlNreData = async () => {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+    try {
+      setIsLoadingGlNre(true);
+      const response = await fetch(
+        `/api/gl-management/weekly-nre?startDate=${startDate}&endDate=${endDate}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to load GL NRE data');
+      }
+      const data = await response.json();
+      setGlNreData(data.weeklyData || []);
+      setShowGlNre(true);
+    } catch (error) {
+      console.error('Error loading GL NRE:', error);
+      alert('Failed to load GL NRE data');
+    } finally {
+      setIsLoadingGlNre(false);
+    }
+  };
+
+  // Export GL NRE to CSV
+  const exportGlNreToCSV = () => {
+    const headers = ['Week Start', 'Week End', 'Total Amount', 'Transaction Count', 'DevOps', 'Firmware Development', 'Certifications', 'Design', 'Other'];
+    const rows = glNreData.map(week => [
+      week.weekStart,
+      week.weekEnd,
+      week.totalAmount.toFixed(2),
+      week.transactionCount,
+      week.breakdown.devOps.toFixed(2),
+      week.breakdown.firmwareDevelopment.toFixed(2),
+      week.breakdown.certifications.toFixed(2),
+      week.breakdown.design.toFixed(2),
+      week.breakdown.other.toFixed(2),
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `gl-nre-data-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  // Load GL OpEx data
+  const loadGlOpexData = async () => {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+    try {
+      setIsLoadingGlOpex(true);
+      const response = await fetch(
+        `/api/gl-management/weekly-opex?startDate=${startDate}&endDate=${endDate}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to load GL OpEx data');
+      }
+      const data = await response.json();
+      setGlOpexData(data.weeklyData || []);
+      setShowGlOpex(true);
+    } catch (error) {
+      console.error('Error loading GL OpEx:', error);
+      alert('Failed to load GL OpEx data');
+    } finally {
+      setIsLoadingGlOpex(false);
+    }
+  };
+
+  // Export GL OpEx to CSV
+  const exportGlOpexToCSV = () => {
+    const headers = ['Week Start', 'Week End', 'Total Amount', 'Transaction Count', 'Contract Labor', 'Consulting Services', 'Travel', 'Software', 'Other'];
+    const rows = glOpexData.map(week => [
+      week.weekStart,
+      week.weekEnd,
+      week.totalAmount.toFixed(2),
+      week.transactionCount,
+      week.breakdown.contractLabor.toFixed(2),
+      week.breakdown.consultingServices.toFixed(2),
+      week.breakdown.travel.toFixed(2),
+      week.breakdown.software.toFixed(2),
+      week.breakdown.other.toFixed(2),
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `gl-opex-data-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
   };
 
   // Export to CSV
@@ -982,6 +1490,798 @@ export default function CashFlowRunwayPage() {
         </p>
       </div>
 
+      {/* GL Labor Comparison Section */}
+      <Card className="mb-6 border-l-4 border-l-purple-500">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <DollarSign className="h-5 w-5 text-purple-600" />
+              GL Labor Data Comparison
+              {glLaborData.length > 0 && (
+                <span className="text-sm font-normal text-gray-500">
+                  ({glLaborData.length} weeks loaded)
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex gap-2">
+              {showGlLabor && glLaborData.length > 0 && (
+                <Button
+                  onClick={() => setShowGlLabor(!showGlLabor)}
+                  variant="outline"
+                  size="sm"
+                >
+                  {showGlLabor ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                  {showGlLabor ? 'Hide' : 'Show'}
+                </Button>
+              )}
+              {glLaborData.length > 0 && (
+                <>
+                  <Button
+                    onClick={exportGlLaborToCSV}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Export CSV
+                  </Button>
+                  <Button
+                    onClick={syncGlLaborToMustPay}
+                    disabled={isLoadingGlLabor}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Sync to Must Pay
+                  </Button>
+                </>
+              )}
+              <Button
+                onClick={loadGlLaborData}
+                disabled={isLoadingGlLabor || !startDate || !endDate}
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {isLoadingGlLabor ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-1" />
+                    Load GL Labor
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {showGlLabor && glLaborData.length > 0 && (
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Compare your manually entered Labor costs with actual GL Labor data from QuickBooks and Bank Statements. 
+              This shows payroll, taxes, benefits, and charges categorized in GL Code Assignment.
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-purple-50">
+                    <th className="text-left py-2 px-3 font-semibold">Week</th>
+                    <th className="text-right py-2 px-3 font-semibold">GL Labor Total</th>
+                    <th className="text-right py-2 px-3 font-semibold">Payroll</th>
+                    <th className="text-right py-2 px-3 font-semibold">Payroll Taxes</th>
+                    <th className="text-right py-2 px-3 font-semibold">Benefits</th>
+                    <th className="text-right py-2 px-3 font-semibold">Charges</th>
+                    <th className="text-right py-2 px-3 font-semibold text-blue-700">Current Must Pay</th>
+                    <th className="text-right py-2 px-3 font-semibold text-red-700">Difference</th>
+                    <th className="text-right py-2 px-3 font-semibold">Transactions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {glLaborData.map((weekData: any) => {
+                    // Find matching must pay labor items for this week
+                    const mustPayLabor = mustPayItems
+                      .filter(item => item.weekStart === weekData.weekStart && item.category === 'labor')
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    
+                    const difference = weekData.totalAmount - mustPayLabor;
+                    const hasDifference = Math.abs(difference) > 1;
+                    
+                    return (
+                      <tr key={weekData.weekStart} className={`border-b ${hasDifference ? 'bg-yellow-50' : ''}`}>
+                        <td className="py-2 px-3">
+                          <div className="font-medium">{new Date(weekData.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          <div className="text-xs text-gray-500">{new Date(weekData.weekEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </td>
+                        <td className="text-right py-2 px-3 font-bold text-purple-700">
+                          ${Math.round(weekData.totalAmount).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.payroll).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.payrollTaxes).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.benefits).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.payrollCharges).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 font-semibold text-blue-700">
+                          ${Math.round(mustPayLabor).toLocaleString()}
+                        </td>
+                        <td className={`text-right py-2 px-3 font-semibold ${hasDifference ? (difference > 0 ? 'text-red-700' : 'text-green-700') : 'text-gray-400'}`}>
+                          {difference > 0 ? '+' : ''}{difference !== 0 ? `$${Math.round(difference).toLocaleString()}` : '✓'}
+                        </td>
+                        <td className="text-right py-2 px-3 text-xs text-gray-500">
+                          {weekData.transactionCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td className="py-2 px-3">TOTAL</td>
+                    <td className="text-right py-2 px-3 text-purple-700">
+                      ${Math.round(glLaborData.reduce((sum: number, w: any) => sum + w.totalAmount, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glLaborData.reduce((sum: number, w: any) => sum + w.breakdown.payroll, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glLaborData.reduce((sum: number, w: any) => sum + w.breakdown.payrollTaxes, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glLaborData.reduce((sum: number, w: any) => sum + w.breakdown.benefits, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glLaborData.reduce((sum: number, w: any) => sum + w.breakdown.payrollCharges, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-blue-700">
+                      ${Math.round(
+                        mustPayItems
+                          .filter(item => item.category === 'labor' && glLaborData.some((w: any) => w.weekStart === item.weekStart))
+                          .reduce((sum, item) => sum + item.amount, 0)
+                      ).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      {(() => {
+                        const glTotal = glLaborData.reduce((sum: number, w: any) => sum + w.totalAmount, 0);
+                        const mustPayTotal = mustPayItems
+                          .filter(item => item.category === 'labor' && glLaborData.some((w: any) => w.weekStart === item.weekStart))
+                          .reduce((sum, item) => sum + item.amount, 0);
+                        const diff = glTotal - mustPayTotal;
+                        return (
+                          <span className={diff > 0 ? 'text-red-700' : diff < 0 ? 'text-green-700' : 'text-gray-400'}>
+                            {diff > 0 ? '+' : ''}${Math.round(diff).toLocaleString()}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-xs">
+                      {glLaborData.reduce((sum: number, w: any) => sum + w.transactionCount, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+              <p className="font-semibold text-blue-900 mb-1">💡 Next Steps:</p>
+              <ul className="text-blue-800 space-y-1 ml-4">
+                <li>• <span className="text-yellow-600 font-semibold">Yellow rows</span> show weeks where GL Labor differs from your Must Pay entries</li>
+                <li>• <span className="text-red-600 font-semibold">Red difference</span> = GL Labor is higher (you may be under-budgeting)</li>
+                <li>• <span className="text-green-600 font-semibold">Green difference</span> = GL Labor is lower (you may be over-budgeting)</li>
+                <li>• Use this data to adjust your Must Pay entries or auto-populate from GL (coming soon!)</li>
+              </ul>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* GL Revenue Comparison Section */}
+      <Card className="mb-6 border-l-4 border-l-green-500">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              GL Revenue Data Comparison
+              {glRevenueData.length > 0 && (
+                <span className="text-sm font-normal text-gray-500">
+                  ({glRevenueData.length} weeks loaded)
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex gap-2">
+              {showGlRevenue && glRevenueData.length > 0 && (
+                <Button
+                  onClick={() => setShowGlRevenue(!showGlRevenue)}
+                  variant="outline"
+                  size="sm"
+                >
+                  {showGlRevenue ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                  {showGlRevenue ? 'Hide' : 'Show'}
+                </Button>
+              )}
+              {glRevenueData.length > 0 && (
+                <>
+                  <Button
+                    onClick={exportGlRevenueToCSV}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Export CSV
+                  </Button>
+                  <Button
+                    onClick={syncGlRevenueToReceipts}
+                    disabled={isLoadingGlRevenue}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Sync to Receipts
+                  </Button>
+                </>
+              )}
+              <Button
+                onClick={loadGlRevenueData}
+                disabled={isLoadingGlRevenue || !startDate || !endDate}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isLoadingGlRevenue ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-1" />
+                    Load GL Revenue
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {showGlRevenue && glRevenueData.length > 0 && (
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Compare your manually entered Revenue (Operating Receipts) with actual GL Revenue data from QuickBooks and Bank Statements. 
+              This shows D2C, B2B, and B2B (factored) revenue categorized in GL Code Assignment.
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-green-50">
+                    <th className="text-left py-2 px-3 font-semibold">Week</th>
+                    <th className="text-right py-2 px-3 font-semibold">GL Revenue Total</th>
+                    <th className="text-right py-2 px-3 font-semibold">D2C</th>
+                    <th className="text-right py-2 px-3 font-semibold">B2B</th>
+                    <th className="text-right py-2 px-3 font-semibold">B2B (factored)</th>
+                    <th className="text-right py-2 px-3 font-semibold text-blue-700">Current Receipts</th>
+                    <th className="text-right py-2 px-3 font-semibold text-red-700">Difference</th>
+                    <th className="text-right py-2 px-3 font-semibold">Transactions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {glRevenueData.map((weekData: any) => {
+                    // Find matching operating receipt items for this week
+                    const currentReceipts = operatingReceipts
+                      .filter(item => item.weekStart === weekData.weekStart)
+                      .reduce((sum, item) => sum + item.amount, 0);
+                    
+                    const difference = weekData.totalAmount - currentReceipts;
+                    const hasDifference = Math.abs(difference) > 1;
+                    
+                    return (
+                      <tr key={weekData.weekStart} className={`border-b ${hasDifference ? 'bg-yellow-50' : ''}`}>
+                        <td className="py-2 px-3">
+                          <div className="font-medium">{new Date(weekData.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          <div className="text-xs text-gray-500">{new Date(weekData.weekEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </td>
+                        <td className="text-right py-2 px-3 font-bold text-green-700">
+                          ${Math.round(weekData.totalAmount).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.d2c).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.b2b).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.b2b_factored).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 font-semibold text-blue-700">
+                          ${Math.round(currentReceipts).toLocaleString()}
+                        </td>
+                        <td className={`text-right py-2 px-3 font-semibold ${hasDifference ? (difference > 0 ? 'text-green-700' : 'text-red-700') : 'text-gray-400'}`}>
+                          {difference > 0 ? '+' : ''}{difference !== 0 ? `$${Math.round(difference).toLocaleString()}` : '✓'}
+                        </td>
+                        <td className="text-right py-2 px-3 text-xs text-gray-500">
+                          {weekData.transactionCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td className="py-2 px-3">TOTAL</td>
+                    <td className="text-right py-2 px-3 text-green-700">
+                      ${Math.round(glRevenueData.reduce((sum: number, w: any) => sum + w.totalAmount, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glRevenueData.reduce((sum: number, w: any) => sum + w.breakdown.d2c, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glRevenueData.reduce((sum: number, w: any) => sum + w.breakdown.b2b, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glRevenueData.reduce((sum: number, w: any) => sum + w.breakdown.b2b_factored, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-blue-700">
+                      ${Math.round(
+                        operatingReceipts
+                          .filter(item => glRevenueData.some((w: any) => w.weekStart === item.weekStart))
+                          .reduce((sum, item) => sum + item.amount, 0)
+                      ).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      {(() => {
+                        const glTotal = glRevenueData.reduce((sum: number, w: any) => sum + w.totalAmount, 0);
+                        const receiptsTotal = operatingReceipts
+                          .filter(item => glRevenueData.some((w: any) => w.weekStart === item.weekStart))
+                          .reduce((sum, item) => sum + item.amount, 0);
+                        const diff = glTotal - receiptsTotal;
+                        return (
+                          <span className={diff > 0 ? 'text-green-700' : diff < 0 ? 'text-red-700' : 'text-gray-400'}>
+                            {diff > 0 ? '+' : ''}${Math.round(diff).toLocaleString()}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-xs">
+                      {glRevenueData.reduce((sum: number, w: any) => sum + w.transactionCount, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+              <p className="font-semibold text-green-900 mb-1">💡 Next Steps:</p>
+              <ul className="text-green-800 space-y-1 ml-4">
+                <li>• <span className="text-yellow-600 font-semibold">Yellow rows</span> show weeks where GL Revenue differs from your Operating Receipts</li>
+                <li>• <span className="text-green-600 font-semibold">Green difference</span> = GL Revenue is higher (more income than forecasted!)</li>
+                <li>• <span className="text-red-600 font-semibold">Red difference</span> = GL Revenue is lower (less income than expected)</li>
+                <li>• Use this data to adjust your Operating Receipts forecast or sync directly from GL</li>
+              </ul>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* GL Inventory Data Comparison - Orange themed */}
+      <Card className="mb-6 border-2 border-orange-200">
+        <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-orange-900 flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              GL Inventory Data Comparison
+              {glInventoryData.length > 0 && (
+                <span className="text-sm font-normal text-gray-500">
+                  ({glInventoryData.length} weeks loaded)
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex gap-2">
+              {showGlInventory && glInventoryData.length > 0 && (
+                <Button
+                  onClick={() => setShowGlInventory(!showGlInventory)}
+                  variant="outline"
+                  size="sm"
+                >
+                  {showGlInventory ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                  {showGlInventory ? 'Hide' : 'Show'}
+                </Button>
+              )}
+              {glInventoryData.length > 0 && (
+                <Button
+                  onClick={exportGlInventoryToCSV}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export CSV
+                </Button>
+              )}
+              <Button
+                onClick={loadGlInventoryData}
+                disabled={isLoadingGlInventory || !startDate || !endDate}
+                size="sm"
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {isLoadingGlInventory ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-1" />
+                    Load GL Inventory
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {showGlInventory && glInventoryData.length > 0 && (
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              View inventory purchases categorized in GL Code Assignment by week. Breakdown includes Finished Goods, Components, Freight In, and RTV.
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-orange-50">
+                    <th className="text-left py-2 px-3 font-semibold">Week</th>
+                    <th className="text-right py-2 px-3 font-semibold">Total Inventory</th>
+                    <th className="text-right py-2 px-3 font-semibold">Finished Goods</th>
+                    <th className="text-right py-2 px-3 font-semibold">Components</th>
+                    <th className="text-right py-2 px-3 font-semibold">Freight In</th>
+                    <th className="text-right py-2 px-3 font-semibold">RTV</th>
+                    <th className="text-right py-2 px-3 font-semibold">Other</th>
+                    <th className="text-right py-2 px-3 font-semibold">Transactions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {glInventoryData.map((weekData: any) => {
+                    return (
+                      <tr key={weekData.weekStart} className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-3">
+                          <div className="font-medium">{new Date(weekData.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          <div className="text-xs text-gray-500">{new Date(weekData.weekEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </td>
+                        <td className="text-right py-2 px-3 font-bold text-orange-700">
+                          ${Math.round(weekData.totalAmount).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.finishedGoods).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.components).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.freightIn).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.rtv).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.other).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-xs text-gray-500">
+                          {weekData.transactionCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td className="py-2 px-3">TOTAL</td>
+                    <td className="text-right py-2 px-3 text-orange-700">
+                      ${Math.round(glInventoryData.reduce((sum: number, w: any) => sum + w.totalAmount, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glInventoryData.reduce((sum: number, w: any) => sum + w.breakdown.finishedGoods, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glInventoryData.reduce((sum: number, w: any) => sum + w.breakdown.components, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glInventoryData.reduce((sum: number, w: any) => sum + w.breakdown.freightIn, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glInventoryData.reduce((sum: number, w: any) => sum + w.breakdown.rtv, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glInventoryData.reduce((sum: number, w: any) => sum + w.breakdown.other, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-xs text-gray-500">
+                      {glInventoryData.reduce((sum: number, w: any) => sum + w.transactionCount, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* GL NRE Data Comparison - Blue themed */}
+      <Card className="mb-6 border-2 border-blue-200">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-blue-900 flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              GL NRE Data Comparison
+              {glNreData.length > 0 && (
+                <span className="text-sm font-normal text-gray-500">
+                  ({glNreData.length} weeks loaded)
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex gap-2">
+              {showGlNre && glNreData.length > 0 && (
+                <Button
+                  onClick={() => setShowGlNre(!showGlNre)}
+                  variant="outline"
+                  size="sm"
+                >
+                  {showGlNre ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                  {showGlNre ? 'Hide' : 'Show'}
+                </Button>
+              )}
+              {glNreData.length > 0 && (
+                <Button
+                  onClick={exportGlNreToCSV}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export CSV
+                </Button>
+              )}
+              <Button
+                onClick={loadGlNreData}
+                disabled={isLoadingGlNre || !startDate || !endDate}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isLoadingGlNre ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-1" />
+                    Load GL NRE
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {showGlNre && glNreData.length > 0 && (
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              View Non-Recurring Engineering (NRE) expenses categorized in GL Code Assignment by week. Breakdown includes DevOps, Firmware Development, Certifications, and Design.
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-blue-50">
+                    <th className="text-left py-2 px-3 font-semibold">Week</th>
+                    <th className="text-right py-2 px-3 font-semibold">Total NRE</th>
+                    <th className="text-right py-2 px-3 font-semibold">DevOps</th>
+                    <th className="text-right py-2 px-3 font-semibold">Firmware Dev</th>
+                    <th className="text-right py-2 px-3 font-semibold">Certifications</th>
+                    <th className="text-right py-2 px-3 font-semibold">Design</th>
+                    <th className="text-right py-2 px-3 font-semibold">Other</th>
+                    <th className="text-right py-2 px-3 font-semibold">Transactions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {glNreData.map((weekData: any) => {
+                    return (
+                      <tr key={weekData.weekStart} className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-3">
+                          <div className="font-medium">{new Date(weekData.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          <div className="text-xs text-gray-500">{new Date(weekData.weekEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </td>
+                        <td className="text-right py-2 px-3 font-bold text-blue-700">
+                          ${Math.round(weekData.totalAmount).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.devOps).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.firmwareDevelopment).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.certifications).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.design).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.other).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-xs text-gray-500">
+                          {weekData.transactionCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td className="py-2 px-3">TOTAL</td>
+                    <td className="text-right py-2 px-3 text-blue-700">
+                      ${Math.round(glNreData.reduce((sum: number, w: any) => sum + w.totalAmount, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glNreData.reduce((sum: number, w: any) => sum + w.breakdown.devOps, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glNreData.reduce((sum: number, w: any) => sum + w.breakdown.firmwareDevelopment, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glNreData.reduce((sum: number, w: any) => sum + w.breakdown.certifications, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glNreData.reduce((sum: number, w: any) => sum + w.breakdown.design, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glNreData.reduce((sum: number, w: any) => sum + w.breakdown.other, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-xs text-gray-500">
+                      {glNreData.reduce((sum: number, w: any) => sum + w.transactionCount, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* GL OpEx Data Comparison (Purple Theme) */}
+      <Card className="mb-6 border-purple-200">
+        <CardHeader className="bg-purple-50 border-b border-purple-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-5 w-5 text-purple-600" />
+              <div>
+                <CardTitle className="text-purple-900">GL OpEx Data Comparison</CardTitle>
+                <p className="text-xs text-purple-700 mt-1">
+                  Operating Expenses from GL Code categorizations
+                  {glOpexData.length > 0 && (
+                    <span className="ml-2 font-semibold">
+                      ({glOpexData.length} weeks loaded)
+                    </span>
+                  )}
+                </p>
+              </div>
+              {showGlOpex && glOpexData.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowGlOpex(false)}
+                  className="text-purple-700 hover:bg-purple-100"
+                >
+                  <EyeOff className="h-4 w-4 mr-1" />
+                  Hide
+                </Button>
+              )}
+              {glOpexData.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportGlOpexToCSV}
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export CSV
+                </Button>
+              )}
+            </div>
+            <Button
+              onClick={loadGlOpexData}
+              disabled={isLoadingGlOpex || !startDate || !endDate}
+              size="sm"
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isLoadingGlOpex ? (
+                <>Loading...</>
+              ) : (
+                <>Load GL OpEx</>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        {showGlOpex && glOpexData.length > 0 && (
+          <CardContent className="pt-6">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-purple-50 border-b border-purple-200">
+                  <tr>
+                    <th className="text-left py-2 px-3 text-purple-900 font-semibold">Week</th>
+                    <th className="text-right py-2 px-3 text-purple-900 font-semibold">Total OpEx</th>
+                    <th className="text-right py-2 px-3 text-gray-700">Contract Labor</th>
+                    <th className="text-right py-2 px-3 text-gray-700">Consulting</th>
+                    <th className="text-right py-2 px-3 text-gray-700">Travel</th>
+                    <th className="text-right py-2 px-3 text-gray-700">Software</th>
+                    <th className="text-right py-2 px-3 text-gray-700">Other</th>
+                    <th className="text-right py-2 px-3 text-gray-500 text-xs">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {glOpexData.map((weekData: any) => {
+                    return (
+                      <tr key={weekData.weekStart} className="border-b border-gray-100 hover:bg-purple-50">
+                        <td className="py-2 px-3">
+                          <div className="font-medium">{new Date(weekData.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          <div className="text-xs text-gray-500">{new Date(weekData.weekEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </td>
+                        <td className="text-right py-2 px-3 font-bold text-purple-700">
+                          ${Math.round(weekData.totalAmount).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.contractLabor).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.consultingServices).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.travel).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.software).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          ${Math.round(weekData.breakdown.other).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-3 text-xs text-gray-500">
+                          {weekData.transactionCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td className="py-2 px-3">TOTAL</td>
+                    <td className="text-right py-2 px-3 text-purple-700">
+                      ${Math.round(glOpexData.reduce((sum: number, w: any) => sum + w.totalAmount, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glOpexData.reduce((sum: number, w: any) => sum + w.breakdown.contractLabor, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glOpexData.reduce((sum: number, w: any) => sum + w.breakdown.consultingServices, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glOpexData.reduce((sum: number, w: any) => sum + w.breakdown.travel, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glOpexData.reduce((sum: number, w: any) => sum + w.breakdown.software, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3">
+                      ${Math.round(glOpexData.reduce((sum: number, w: any) => sum + w.breakdown.other, 0)).toLocaleString()}
+                    </td>
+                    <td className="text-right py-2 px-3 text-xs text-gray-500">
+                      {glOpexData.reduce((sum: number, w: any) => sum + w.transactionCount, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Search, Filters, and Controls */}
       <Card className="mb-6">
         <CardContent className="pt-6">
@@ -1485,10 +2785,18 @@ export default function CashFlowRunwayPage() {
                     <span className="hidden lg:inline">Total Incoming Cash</span>
                     <span className="lg:hidden">Incoming Cash</span>
                   </td>
-                  {weeklyData.map((week) => {
+                  {weeklyData.map((week, index) => {
                     const receiptsTotal = operatingReceipts
                       .filter(item => item.weekStart === week.weekStart)
                       .reduce((sum, item) => sum + item.amount, 0);
+                    
+                    // DEBUG: Log first 4 weeks
+                    if (index < 4) {
+                      console.log(`💰 [Revenue Display] Week ${week.weekStart}:`);
+                      console.log(`   All receipts for this week:`, operatingReceipts.filter(item => item.weekStart === week.weekStart));
+                      console.log(`   Calculated total: $${receiptsTotal}`);
+                    }
+                    
                     return (
                       <td key={week.weekStart} className={`text-right py-1.5 px-1 whitespace-nowrap ${receiptsTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         ${Math.round(receiptsTotal).toLocaleString()}

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, Search, ArrowUpDown, Eye, EyeOff, Download, ChevronDown, ChevronRight, Check, DollarSign } from 'lucide-react';
 
 interface NREPaymentLineItem {
   id: string;
@@ -418,6 +418,110 @@ export default function NRESummaryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Summary Cards */}
+      {(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Get all payment line items from filtered budgets
+        const allPayments = filteredBudgets.flatMap(budget =>
+          budget.paymentLineItems.map(item => ({
+            ...item,
+            budgetId: budget.id,
+            vendorName: budget.vendorName
+          }))
+        );
+
+        // Filter payments by date range if dates are set
+        const paymentsInRange = allPayments.filter(p => {
+          if (!startDate || !endDate) return true; // If no date range set, include all
+          const paymentDate = new Date(p.paymentDate);
+          const rangeStart = new Date(startDate);
+          const rangeEnd = new Date(endDate);
+          return paymentDate >= rangeStart && paymentDate <= rangeEnd;
+        });
+
+        // Paid: All paid payments (within date range)
+        const totalPaid = paymentsInRange
+          .filter(p => p.isPaid)
+          .reduce((sum, p) => sum + p.amount, 0);
+
+        // Owed: Unpaid payments that are not yet due (date >= today) (within date range)
+        const totalOwed = paymentsInRange
+          .filter(p => !p.isPaid && new Date(p.paymentDate) >= today)
+          .reduce((sum, p) => sum + p.amount, 0);
+
+        const owedPaymentCount = paymentsInRange.filter(p => !p.isPaid && new Date(p.paymentDate) >= today).length;
+
+        // Past Due: Unpaid payments with dates before today (within date range)
+        const totalPastDue = paymentsInRange
+          .filter(p => !p.isPaid && new Date(p.paymentDate) < today)
+          .reduce((sum, p) => sum + p.amount, 0);
+
+        const pastDueCount = paymentsInRange.filter(p => !p.isPaid && new Date(p.paymentDate) < today).length;
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* NRE Paid */}
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600 mb-1">NRE Paid</p>
+                    <p className="text-3xl font-bold text-green-700">
+                      ${totalPaid.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center">
+                    <Check className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* NRE Owed */}
+            <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-yellow-600 mb-1">NRE Owed</p>
+                    <p className="text-3xl font-bold text-yellow-700">
+                      ${totalOwed.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-yellow-600 mt-1">
+                      {owedPaymentCount} payment{owedPaymentCount !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* NRE Past Due */}
+            <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-600 mb-1">NRE Past Due</p>
+                    <p className="text-3xl font-bold text-red-700">
+                      ${totalPastDue.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-red-600 mt-1">
+                      {pastDueCount} overdue payment{pastDueCount !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-red-500 rounded-full flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Results Count */}
       {searchQuery && (
