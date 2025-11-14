@@ -10,6 +10,7 @@ import { LineChart as LineChartIcon, TrendingUp, Calendar, Search, Download, Arr
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import html2canvas from 'html2canvas';
+import { MultiSelectDropdown } from '@/components/MultiSelectDropdown';
 
 // Interfaces
 interface Forecast {
@@ -64,7 +65,7 @@ export default function SalesForecastAnalysisPage() {
   // UI state
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [selectedSKU, setSelectedSKU] = useState<string>('all');
+  const [selectedSKUs, setSelectedSKUs] = useState<string[]>([]); // Changed from single to array
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 100;
@@ -73,7 +74,7 @@ export default function SalesForecastAnalysisPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [startDate, endDate, selectedSKU, searchQuery]);
+  }, [startDate, endDate, selectedSKUs, searchQuery]);
   
   // Helper function to get scenarios for a specific SKU
   const getScenariosForSKU = (skuCode: string) => {
@@ -237,7 +238,9 @@ export default function SalesForecastAnalysisPage() {
     const end = new Date(endDate);
     
     if (weekDate < start || weekDate > end) return false;
-    if (selectedSKU !== 'all' && f.sku?.sku !== selectedSKU) return false;
+    
+    // Filter by selected SKUs (if any are selected)
+    if (selectedSKUs.length > 0 && !selectedSKUs.includes(f.sku?.sku || '')) return false;
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -486,7 +489,7 @@ export default function SalesForecastAnalysisPage() {
           description: sessionDescription,
           startDate,
           endDate,
-          selectedSku: selectedSKU,
+          selectedSkus: selectedSKUs, // Changed to array
           searchQuery,
           filters: {},
           selections,
@@ -534,7 +537,8 @@ export default function SalesForecastAnalysisPage() {
         // Restore filters
         setStartDate(session.startDate || '');
         setEndDate(session.endDate || '');
-        setSelectedSKU(session.selectedSku || 'all');
+        // Handle both old format (selectedSku) and new format (selectedSkus)
+        setSelectedSKUs(session.selectedSkus || (session.selectedSku && session.selectedSku !== 'all' ? [session.selectedSku] : []));
         setSearchQuery(session.searchQuery || '');
 
         // Restore scenario selections and manual ASPs
@@ -761,22 +765,19 @@ export default function SalesForecastAnalysisPage() {
               />
             </div>
 
-            {/* SKU Filter */}
+            {/* SKU Filter - Multi-Select */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
-              <Select value={selectedSKU} onValueChange={setSelectedSKU}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All SKUs</SelectItem>
-                  {(skus || []).map(sku => (
-                    <SelectItem key={sku.id} value={sku.sku}>
-                      {sku.sku} - {sku.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelectDropdown
+                label="SKU"
+                placeholder="All SKUs"
+                options={(skus || []).map(sku => ({
+                  value: sku.sku,
+                  label: `${sku.sku} - ${sku.name}`
+                }))}
+                selectedValues={selectedSKUs}
+                onChange={setSelectedSKUs}
+                maxHeight="max-h-80"
+              />
             </div>
 
             {/* Search */}
