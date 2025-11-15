@@ -71,6 +71,11 @@ export default function SalesForecastAnalysisPage() {
   const itemsPerPage = 100;
   const loading = loadingForecasts || loadingSkus || loadingScenarios;
   
+  // Detailed Parameters Table State
+  const [showDetailedTable, setShowDetailedTable] = useState<boolean>(false);
+  const [detailedTableSearch, setDetailedTableSearch] = useState<string>('');
+  const [detailedTableChannelFilter, setDetailedTableChannelFilter] = useState<string>('all');
+  
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -439,6 +444,113 @@ export default function SalesForecastAnalysisPage() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `sales-forecast-${startDate}-to-${endDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export Detailed Parameters to CSV
+  const exportDetailedParametersToCSV = () => {
+    // Get forecasts with scenarios
+    const forecastsWithScenarios = filteredForecasts
+      .map(f => ({
+        forecast: f,
+        scenario: getSelectedScenario(f.id)
+      }))
+      .filter(item => item.scenario !== null);
+      
+    if (forecastsWithScenarios.length === 0) {
+      alert('No forecasts with scenarios to export');
+      return;
+    }
+    
+    // Build comprehensive headers
+    const headers = [
+      // Basic Info
+      'Week', 'SKU', 'SKU Name', 'Quantity',
+      // Scenario Info
+      'Scenario Name', 'Channel', 'Country',
+      // Pricing
+      'ASP',
+      // Fees & Advertising
+      'FBA Fee %', 'FBA Fee $',
+      'Amazon Referral %', 'Amazon Referral $',
+      'ACOS %', 'ACOS $',
+      // Net Sales
+      'Net Sales',
+      // Frontend Costs
+      'Motorola Royalties %', 'Motorola Royalties $',
+      'RTV Freight', 'RTV Repair',
+      'DOA Credits %', 'DOA Credits $',
+      'Invoice Factoring Net',
+      'Sales Commissions %', 'Sales Commissions $',
+      // Landed Costs
+      'Import Duties %', 'Import Duties $',
+      'Ex Works Standard',
+      'Import Shipping Sea',
+      'Gryphon Software',
+      // Gross Profit
+      'Gross Profit', 'Gross Margin %',
+      // Extended Calculations
+      'Std Cost', 'Std Cost Total', 'ASP Revenue Total'
+    ];
+    
+    const rows = forecastsWithScenarios.map(({ forecast, scenario }) => {
+      const standardCost = parseFloat(forecast.sku?.standardCost || '0');
+      const extendedCost = forecast.quantity * standardCost;
+      const asp = parseFloat(scenario!.asp || '0');
+      const extendedRevenue = forecast.quantity * asp;
+      
+      return [
+        forecast.deliveryWeek,
+        forecast.sku?.sku || '',
+        forecast.sku?.name || '',
+        forecast.quantity,
+        scenario!.scenarioName || '',
+        scenario!.channel || '',
+        scenario!.countryCode || '',
+        scenario!.asp || '0',
+        scenario!.fbaFeePercent || '0',
+        scenario!.fbaFeeAmount || '0',
+        scenario!.amazonReferralFeePercent || '0',
+        scenario!.amazonReferralFeeAmount || '0',
+        scenario!.acosPercent || '0',
+        scenario!.acosAmount || '0',
+        (parseFloat(scenario!.asp || '0') - 
+         parseFloat(scenario!.fbaFeeAmount || '0') - 
+         parseFloat(scenario!.amazonReferralFeeAmount || '0') - 
+         parseFloat(scenario!.acosAmount || '0')).toFixed(2),
+        scenario!.motorolaRoyaltiesPercent || '0',
+        scenario!.motorolaRoyaltiesAmount || '0',
+        scenario!.rtvFreightAssumptions || '0',
+        scenario!.rtvRepairCosts || '0',
+        scenario!.doaCreditsPercent || '0',
+        scenario!.doaCreditsAmount || '0',
+        scenario!.invoiceFactoringNet || '0',
+        scenario!.salesCommissionsPercent || '0',
+        scenario!.salesCommissionsAmount || '0',
+        scenario!.importDutiesPercent || '0',
+        scenario!.importDutiesAmount || '0',
+        scenario!.exWorksStandard || '0',
+        scenario!.importShippingSea || '0',
+        scenario!.gryphonSoftware || '0',
+        scenario!.grossProfit || '0',
+        scenario!.grossMarginPercent || '0',
+        standardCost.toFixed(2),
+        extendedCost.toFixed(2),
+        extendedRevenue.toFixed(2)
+      ];
+    });
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `detailed-parameters-${startDate}-to-${endDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1406,6 +1518,230 @@ export default function SalesForecastAnalysisPage() {
             )}
           </div>
         </CardContent>
+      </Card>
+
+      {/* Detailed Cost Parameters Table */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                📊 Detailed Cost Parameters
+                <span className="text-sm font-normal text-gray-500">
+                  ({filteredForecasts.filter(f => getSelectedScenario(f.id) !== null).length} forecasts with scenarios)
+                </span>
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Complete breakdown of all cost parameters from selected SKU scenarios
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowDetailedTable(!showDetailedTable)} 
+                variant="outline" 
+                size="sm"
+              >
+                {showDetailedTable ? 'Hide' : 'Show'} Details
+              </Button>
+              <Button 
+                onClick={exportDetailedParametersToCSV} 
+                variant="default" 
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        
+        {showDetailedTable && (
+          <CardContent>
+            {/* Filters */}
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search by SKU, scenario name, or week..."
+                  value={detailedTableSearch}
+                  onChange={(e) => setDetailedTableSearch(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <Select value={detailedTableChannelFilter} onValueChange={setDetailedTableChannelFilter}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Filter by Channel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Channels</SelectItem>
+                  {Array.from(new Set(
+                    filteredForecasts
+                      .map(f => getSelectedScenario(f.id))
+                      .filter(s => s !== null)
+                      .map(s => s!.channel)
+                  )).map(channel => (
+                    <SelectItem key={channel} value={channel}>{channel}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="overflow-x-auto border rounded-lg">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    {/* Basic Info */}
+                    <th className="px-3 py-2 text-left font-semibold border-r">Week</th>
+                    <th className="px-3 py-2 text-left font-semibold border-r">SKU</th>
+                    <th className="px-3 py-2 text-left font-semibold border-r">SKU Name</th>
+                    <th className="px-3 py-2 text-right font-semibold border-r">Qty</th>
+                    {/* Scenario Info */}
+                    <th className="px-3 py-2 text-left font-semibold bg-blue-50 border-r">Scenario</th>
+                    <th className="px-3 py-2 text-left font-semibold bg-blue-50 border-r">Channel</th>
+                    <th className="px-3 py-2 text-left font-semibold bg-blue-50 border-r">Country</th>
+                    {/* Pricing */}
+                    <th className="px-3 py-2 text-right font-semibold bg-green-50 border-r">ASP</th>
+                    {/* Fees & Advertising */}
+                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">FBA Fee %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">FBA Fee $</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">Amz Ref %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">Amz Ref $</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">ACOS %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">ACOS $</th>
+                    {/* Net Sales */}
+                    <th className="px-3 py-2 text-right font-semibold bg-emerald-50 border-r">Net Sales</th>
+                    {/* Frontend Costs */}
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Moto Roy %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Moto Roy $</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">RTV Freight</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">RTV Repair</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">DOA %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">DOA $</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Factoring</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Sales Comm %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Sales Comm $</th>
+                    {/* Landed Costs */}
+                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Import Duty %</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Import Duty $</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Ex Works</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Import Ship</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Gryphon SW</th>
+                    {/* Gross Profit */}
+                    <th className="px-3 py-2 text-right font-semibold bg-indigo-100">GP $</th>
+                    <th className="px-3 py-2 text-right font-semibold bg-indigo-100">GP %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {(() => {
+                    const forecastsWithScenarios = filteredForecasts
+                      .map(f => ({
+                        forecast: f,
+                        scenario: getSelectedScenario(f.id)
+                      }))
+                      .filter(item => item.scenario !== null)
+                      .filter(item => {
+                        const search = detailedTableSearch.toLowerCase();
+                        const matchesSearch = !search || 
+                          item.forecast.sku?.sku?.toLowerCase().includes(search) ||
+                          item.forecast.sku?.name?.toLowerCase().includes(search) ||
+                          item.scenario!.scenarioName?.toLowerCase().includes(search) ||
+                          item.forecast.deliveryWeek.toLowerCase().includes(search);
+                        
+                        const matchesChannel = detailedTableChannelFilter === 'all' || 
+                          item.scenario!.channel === detailedTableChannelFilter;
+                        
+                        return matchesSearch && matchesChannel;
+                      });
+
+                    if (forecastsWithScenarios.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={31} className="px-4 py-8 text-center text-gray-500">
+                            No forecasts with scenarios match your filters
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return forecastsWithScenarios.map(({ forecast, scenario }) => {
+                      const asp = parseFloat(scenario!.asp || '0');
+                      const fbaFeeAmt = parseFloat(scenario!.fbaFeeAmount || '0');
+                      const amzRefAmt = parseFloat(scenario!.amazonReferralFeeAmount || '0');
+                      const acosAmt = parseFloat(scenario!.acosAmount || '0');
+                      const netSales = asp - fbaFeeAmt - amzRefAmt - acosAmt;
+
+                      return (
+                        <tr key={forecast.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 border-r">{forecast.deliveryWeek}</td>
+                          <td className="px-3 py-2 font-mono border-r">{forecast.sku?.sku}</td>
+                          <td className="px-3 py-2 border-r truncate max-w-[150px]" title={forecast.sku?.name}>
+                            {forecast.sku?.name}
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold border-r">{forecast.quantity.toLocaleString()}</td>
+                          <td className="px-3 py-2 bg-blue-50 border-r truncate max-w-[120px]" title={scenario!.scenarioName}>
+                            {scenario!.scenarioName}
+                          </td>
+                          <td className="px-3 py-2 bg-blue-50 border-r">{scenario!.channel}</td>
+                          <td className="px-3 py-2 bg-blue-50 border-r">{scenario!.countryCode}</td>
+                          <td className="px-3 py-2 text-right bg-green-50 border-r">${asp.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">{scenario!.fbaFeePercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">${parseFloat(scenario!.fbaFeeAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">{scenario!.amazonReferralFeePercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">${parseFloat(scenario!.amazonReferralFeeAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">{scenario!.acosPercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">${parseFloat(scenario!.acosAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-semibold bg-emerald-50 border-r">${netSales.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">{scenario!.motorolaRoyaltiesPercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.motorolaRoyaltiesAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.rtvFreightAssumptions || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.rtvRepairCosts || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">{scenario!.doaCreditsPercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.doaCreditsAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.invoiceFactoringNet || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">{scenario!.salesCommissionsPercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.salesCommissionsAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-purple-50 border-r">{scenario!.importDutiesPercent || '0'}%</td>
+                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.importDutiesAmount || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.exWorksStandard || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.importShippingSea || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.gryphonSoftware || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-bold bg-indigo-100 text-green-700">${parseFloat(scenario!.grossProfit || '0').toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-bold bg-indigo-100 text-green-700">{parseFloat(scenario!.grossMarginPercent || '0').toFixed(2)}%</td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 text-sm text-gray-600">
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-50 border"></div>
+                  <span>Scenario Info</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-50 border"></div>
+                  <span>Fees & Advertising</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-50 border"></div>
+                  <span>Frontend Costs</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-purple-50 border"></div>
+                  <span>Landed Costs</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-indigo-100 border"></div>
+                  <span>Gross Profit</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* Worksheet Modal */}
