@@ -1650,48 +1650,48 @@ export default function SalesForecastAnalysisPage() {
             </div>
 
             <div className="overflow-x-auto border rounded-lg">
-              <table className="w-full text-xs">
+              <table className="w-full text-[10px]">
                 <thead className="bg-gray-100 sticky top-0">
                   <tr>
                     {/* Basic Info */}
-                    <th className="px-3 py-2 text-left font-semibold border-r">Week</th>
-                    <th className="px-3 py-2 text-left font-semibold border-r">SKU</th>
-                    <th className="px-3 py-2 text-left font-semibold border-r">SKU Name</th>
-                    <th className="px-3 py-2 text-right font-semibold border-r">Qty</th>
+                    <th className="px-2 py-1.5 text-left font-semibold border-r text-[9px]">Week</th>
+                    <th className="px-2 py-1.5 text-left font-semibold border-r text-[9px]">SKU</th>
+                    <th className="px-2 py-1.5 text-left font-semibold border-r text-[9px]">SKU Name</th>
+                    <th className="px-2 py-1.5 text-right font-semibold border-r text-[9px]">Qty</th>
                     {/* Scenario Info */}
-                    <th className="px-3 py-2 text-left font-semibold bg-blue-50 border-r">Scenario</th>
-                    <th className="px-3 py-2 text-left font-semibold bg-blue-50 border-r">Channel</th>
-                    <th className="px-3 py-2 text-left font-semibold bg-blue-50 border-r">Country</th>
+                    <th className="px-2 py-1.5 text-left font-semibold bg-blue-50 border-r text-[9px]">Scenario</th>
+                    <th className="px-2 py-1.5 text-left font-semibold bg-blue-50 border-r text-[9px]">Channel</th>
+                    <th className="px-2 py-1.5 text-left font-semibold bg-blue-50 border-r text-[9px]">Country</th>
                     {/* Pricing */}
-                    <th className="px-3 py-2 text-right font-semibold bg-green-50 border-r">ASP</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-green-50 border-r text-[9px]">ASP</th>
                     {/* Fees & Advertising */}
-                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">FBA Fee %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">FBA Fee $</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">Amz Ref %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">Amz Ref $</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">ACOS %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-yellow-50 border-r">ACOS $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-yellow-50 border-r text-[9px]">FBA %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-yellow-50 border-r text-[9px]">FBA $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-yellow-50 border-r text-[9px]">Ref %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-yellow-50 border-r text-[9px]">Ref $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-yellow-50 border-r text-[9px]">ACOS %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-yellow-50 border-r text-[9px]">ACOS $</th>
                     {/* Net Sales */}
-                    <th className="px-3 py-2 text-right font-semibold bg-emerald-50 border-r">Net Sales</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-emerald-50 border-r text-[9px]">Net Sales</th>
                     {/* Frontend Costs */}
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Moto Roy %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Moto Roy $</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">RTV Freight</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">RTV Repair</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">DOA %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">DOA $</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Factoring</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Sales Comm %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-orange-50 border-r">Sales Comm $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">Roy %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">Roy $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">RTV Frt</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">RTV Rep</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">DOA %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">DOA $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">Factor</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">Comm %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-orange-50 border-r text-[9px]">Comm $</th>
                     {/* Landed Costs */}
-                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Import Duty %</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Import Duty $</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Ex Works</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Import Ship</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-purple-50 border-r">Gryphon SW</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-purple-50 border-r text-[9px]">Duty %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-purple-50 border-r text-[9px]">Duty $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-purple-50 border-r text-[9px]">Ex Works</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-purple-50 border-r text-[9px]">Ship</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-purple-50 border-r text-[9px]">Gryphon</th>
                     {/* Gross Profit */}
-                    <th className="px-3 py-2 text-right font-semibold bg-indigo-100">GP $</th>
-                    <th className="px-3 py-2 text-right font-semibold bg-indigo-100">GP %</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-indigo-100 text-[9px]">GP $</th>
+                    <th className="px-2 py-1.5 text-right font-semibold bg-indigo-100 text-[9px]">GP %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1728,7 +1728,7 @@ export default function SalesForecastAnalysisPage() {
                     if (forecastsWithScenarios.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={31} className="px-4 py-8 text-center text-gray-500">
+                          <td colSpan={31} className="px-4 py-6 text-center text-gray-500 text-xs">
                             No forecasts with scenarios match your filters
                           </td>
                         </tr>
@@ -1744,41 +1744,41 @@ export default function SalesForecastAnalysisPage() {
 
                       return (
                         <tr key={forecast.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 border-r">{forecast.deliveryWeek}</td>
-                          <td className="px-3 py-2 font-mono border-r">{forecast.sku?.sku}</td>
-                          <td className="px-3 py-2 border-r truncate max-w-[150px]" title={forecast.sku?.name}>
+                          <td className="px-2 py-1 border-r whitespace-nowrap">{forecast.deliveryWeek}</td>
+                          <td className="px-2 py-1 font-mono border-r whitespace-nowrap">{forecast.sku?.sku}</td>
+                          <td className="px-2 py-1 border-r truncate max-w-[120px]" title={forecast.sku?.name}>
                             {forecast.sku?.name}
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold border-r">{forecast.quantity.toLocaleString()}</td>
-                          <td className="px-3 py-2 bg-blue-50 border-r truncate max-w-[120px]" title={scenario!.scenarioName}>
+                          <td className="px-2 py-1 text-right font-semibold border-r">{forecast.quantity.toLocaleString()}</td>
+                          <td className="px-2 py-1 bg-blue-50 border-r truncate max-w-[100px]" title={scenario!.scenarioName}>
                             {scenario!.scenarioName}
                           </td>
-                          <td className="px-3 py-2 bg-blue-50 border-r">{scenario!.channel}</td>
-                          <td className="px-3 py-2 bg-blue-50 border-r">{scenario!.countryCode}</td>
-                          <td className="px-3 py-2 text-right bg-green-50 border-r">${asp.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">{scenario!.fbaFeePercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">${parseFloat(scenario!.fbaFeeAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">{scenario!.amazonReferralFeePercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">${parseFloat(scenario!.amazonReferralFeeAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">{scenario!.acosPercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-yellow-50 border-r">${parseFloat(scenario!.acosAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right font-semibold bg-emerald-50 border-r">${netSales.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">{scenario!.motorolaRoyaltiesPercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.motorolaRoyaltiesAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.rtvFreightAssumptions || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.rtvRepairCosts || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">{scenario!.doaCreditsPercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.doaCreditsAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.invoiceFactoringNet || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">{scenario!.salesCommissionsPercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-orange-50 border-r">${parseFloat(scenario!.salesCommissionsAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-purple-50 border-r">{scenario!.importDutiesPercent || '0'}%</td>
-                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.importDutiesAmount || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.exWorksStandard || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.importShippingSea || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right bg-purple-50 border-r">${parseFloat(scenario!.gryphonSoftware || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right font-bold bg-indigo-100 text-green-700">${parseFloat(scenario!.grossProfit || '0').toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right font-bold bg-indigo-100 text-green-700">{parseFloat(scenario!.grossMarginPercent || '0').toFixed(2)}%</td>
+                          <td className="px-2 py-1 bg-blue-50 border-r whitespace-nowrap">{scenario!.channel}</td>
+                          <td className="px-2 py-1 bg-blue-50 border-r">{scenario!.countryCode}</td>
+                          <td className="px-2 py-1 text-right bg-green-50 border-r">${asp.toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-yellow-50 border-r">{scenario!.fbaFeePercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-yellow-50 border-r">${parseFloat(scenario!.fbaFeeAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-yellow-50 border-r">{scenario!.amazonReferralFeePercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-yellow-50 border-r">${parseFloat(scenario!.amazonReferralFeeAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-yellow-50 border-r">{scenario!.acosPercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-yellow-50 border-r">${parseFloat(scenario!.acosAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right font-semibold bg-emerald-50 border-r">${netSales.toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">{scenario!.motorolaRoyaltiesPercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">${parseFloat(scenario!.motorolaRoyaltiesAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">${parseFloat(scenario!.rtvFreightAssumptions || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">${parseFloat(scenario!.rtvRepairCosts || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">{scenario!.doaCreditsPercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">${parseFloat(scenario!.doaCreditsAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">${parseFloat(scenario!.invoiceFactoringNet || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">{scenario!.salesCommissionsPercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-orange-50 border-r">${parseFloat(scenario!.salesCommissionsAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-purple-50 border-r">{scenario!.importDutiesPercent || '0'}%</td>
+                          <td className="px-2 py-1 text-right bg-purple-50 border-r">${parseFloat(scenario!.importDutiesAmount || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-purple-50 border-r">${parseFloat(scenario!.exWorksStandard || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-purple-50 border-r">${parseFloat(scenario!.importShippingSea || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right bg-purple-50 border-r">${parseFloat(scenario!.gryphonSoftware || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right font-bold bg-indigo-100 text-green-700">${parseFloat(scenario!.grossProfit || '0').toFixed(2)}</td>
+                          <td className="px-2 py-1 text-right font-bold bg-indigo-100 text-green-700">{parseFloat(scenario!.grossMarginPercent || '0').toFixed(2)}%</td>
                         </tr>
                       );
                     });
@@ -1787,26 +1787,26 @@ export default function SalesForecastAnalysisPage() {
               </table>
             </div>
 
-            <div className="mt-4 text-sm text-gray-600">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-50 border"></div>
+            <div className="mt-3 text-xs text-gray-600">
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-blue-50 border"></div>
                   <span>Scenario Info</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-50 border"></div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-yellow-50 border"></div>
                   <span>Fees & Advertising</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-orange-50 border"></div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-orange-50 border"></div>
                   <span>Frontend Costs</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-purple-50 border"></div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-purple-50 border"></div>
                   <span>Landed Costs</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-indigo-100 border"></div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-indigo-100 border"></div>
                   <span>Gross Profit</span>
                 </div>
               </div>
