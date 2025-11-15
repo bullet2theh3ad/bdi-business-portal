@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { SemanticBDIIcon } from '@/components/BDIIcon';
+import useSWR from 'swr';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ShipmentStop {
@@ -46,6 +47,19 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+interface JJOLMRecord {
+  id: string;
+  jjolmNumber: string;
+  customerReferenceNumber?: string;
+  mode?: string;
+  origin?: string;
+  destination?: string;
+  status?: string;
+  lastUpdated?: string;
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
   const [reference, setReference] = useState('');
   const [containerNumber, setContainerNumber] = useState('');
@@ -54,6 +68,14 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [shipmentData, setShipmentData] = useState<ShipmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch JJOLM numbers from database
+  const { data: jjolmData, isLoading: isLoadingJJOLM } = useSWR<{ success: boolean; data: JJOLMRecord[]; count: number }>(
+    open ? '/api/cpfr/jjolm-reports' : null,
+    fetcher
+  );
+
+  const jjolmRecords = jjolmData?.data || [];
 
   const handleSearch = async () => {
     if (!reference && !containerNumber) {
@@ -169,6 +191,48 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
         <div className="space-y-6 p-4">
           {/* Search Form */}
           <div className="bg-white border rounded-lg p-6 shadow-sm">
+            {/* JJOLM Dropdown Selector */}
+            <div className="mb-4">
+              <Label htmlFor="jjolmSelect">Select from Your Shipments</Label>
+              <select
+                id="jjolmSelect"
+                className="w-full mt-1 p-2 border rounded-md text-sm"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setReference(e.target.value);
+                    setError(null);
+                    setShipmentData(null);
+                  }
+                }}
+                disabled={isLoading || isLoadingJJOLM}
+              >
+                <option value="">
+                  {isLoadingJJOLM 
+                    ? 'Loading JJOLM numbers...' 
+                    : jjolmRecords.length > 0 
+                      ? `Select JJOLM (${jjolmRecords.length} available)` 
+                      : 'No JJOLM numbers found'}
+                </option>
+                {jjolmRecords.map((record) => (
+                  <option key={record.id} value={record.jjolmNumber}>
+                    {record.jjolmNumber}
+                    {record.customerReferenceNumber ? ` - ${record.customerReferenceNumber}` : ''}
+                    {record.status ? ` (${record.status})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or enter manually</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <Label htmlFor="reference">Reference Number (JJOLM)</Label>
