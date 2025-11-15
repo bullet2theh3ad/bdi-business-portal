@@ -525,7 +525,8 @@ export async function PUT(request: NextRequest) {
           status: body.salesSignal === 'submitted' ? 'submitted' : 'draft', // 🔧 FIX: Update status based on sales signal
           sales_signal: body.salesSignal,
           factory_signal: body.factorySignal,
-          shipping_signal: body.shippingSignal,
+          transit_signal: body.transitSignal,
+          warehouse_signal: body.warehouseSignal,
           notes: body.notes,
           updated_at: new Date().toISOString()
         })

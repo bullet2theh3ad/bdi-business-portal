@@ -1731,7 +1731,8 @@ export default function SalesForecastsPage() {
                               notes: forecast.notes || '',
                               salesSignal: forecast.salesSignal || (forecast as any).sales_signal || 'unknown',
                               factorySignal: forecast.factorySignal || (forecast as any).factory_signal || 'unknown',
-                              shippingSignal: forecast.shippingSignal || (forecast as any).shipping_signal || 'unknown'
+                              transitSignal: (forecast as any).transitSignal || (forecast as any).transit_signal || 'unknown',
+                              warehouseSignal: (forecast as any).warehouseSignal || (forecast as any).warehouse_signal || 'unknown'
                             });
                             setShowEditModal(true);
                           }}
@@ -3487,7 +3488,8 @@ export default function SalesForecastsPage() {
                     shippingPreference: editForecastData.shippingPreference,
                     salesSignal: editForecastData.salesSignal,
                     factorySignal: editForecastData.factorySignal,
-                    shippingSignal: editForecastData.shippingSignal,
+                    transitSignal: editForecastData.transitSignal,
+                    warehouseSignal: editForecastData.warehouseSignal,
                     notes: editForecastData.notes
                   })
                 });
@@ -3589,7 +3591,7 @@ export default function SalesForecastsPage() {
               {/* CPFR Signals */}
               <div className="space-y-4">
                 <Label className="text-lg font-medium text-gray-900">CPFR Signals</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <Label htmlFor="editSalesSignal">Sales Signal</Label>
                     <select
@@ -3624,28 +3626,46 @@ export default function SalesForecastsPage() {
                       <option value="pending">Pending</option>
                       <option value="reviewing">Reviewing</option>
                       <option value="confirmed">Confirmed</option>
-                      <option value="in_production">In Production</option>
-                      <option value="ready">Ready</option>
-                      <option value="shipped">Shipped</option>
+                      <option value="rejected">Rejected</option>
                     </select>
                   </div>
                   
                   <div>
-                    <Label htmlFor="editShippingSignal">Shipping Signal</Label>
+                    <Label htmlFor="editTransitSignal">Transit Signal</Label>
                     <select
-                      id="editShippingSignal"
-                      value={editForecastData.shippingSignal || 'unknown'}
+                      id="editTransitSignal"
+                      value={editForecastData.transitSignal || 'unknown'}
                       onChange={(e) => setEditForecastData({
                         ...editForecastData,
-                        shippingSignal: e.target.value
+                        transitSignal: e.target.value
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="unknown">Unknown</option>
                       <option value="pending">Pending</option>
-                      <option value="scheduled">Scheduled</option>
-                      <option value="in_transit">In Transit</option>
-                      <option value="delivered">Delivered</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="editWarehouseSignal">Warehouse Signal</Label>
+                    <select
+                      id="editWarehouseSignal"
+                      value={editForecastData.warehouseSignal || 'unknown'}
+                      onChange={(e) => setEditForecastData({
+                        ...editForecastData,
+                        warehouseSignal: e.target.value
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="unknown">Unknown</option>
+                      <option value="pending">Pending</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Completed</option>
+                      <option value="rejected">Rejected</option>
                     </select>
                   </div>
                 </div>
