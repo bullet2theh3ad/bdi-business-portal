@@ -75,6 +75,9 @@ export default function SalesForecastAnalysisPage() {
   const [showDetailedTable, setShowDetailedTable] = useState<boolean>(false);
   const [detailedTableSearch, setDetailedTableSearch] = useState<string>('');
   const [detailedTableChannelFilter, setDetailedTableChannelFilter] = useState<string>('all');
+  const [detailedTableCountryFilter, setDetailedTableCountryFilter] = useState<string>('all');
+  const [detailedTableSKUFilter, setDetailedTableSKUFilter] = useState<string>('all');
+  const [detailedTableWeekFilter, setDetailedTableWeekFilter] = useState<string>('all');
   
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -1559,8 +1562,9 @@ export default function SalesForecastAnalysisPage() {
         {showDetailedTable && (
           <CardContent>
             {/* Filters */}
-            <div className="flex gap-4 mb-4">
-              <div className="flex-1">
+            <div className="space-y-3 mb-4">
+              {/* Search Box */}
+              <div className="w-full">
                 <Input
                   type="text"
                   placeholder="Search by SKU, scenario name, or week..."
@@ -1569,22 +1573,80 @@ export default function SalesForecastAnalysisPage() {
                   className="w-full"
                 />
               </div>
-              <Select value={detailedTableChannelFilter} onValueChange={setDetailedTableChannelFilter}>
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Filter by Channel" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Channels</SelectItem>
-                  {Array.from(new Set(
-                    filteredForecasts
-                      .map(f => getSelectedScenario(f.id))
-                      .filter(s => s !== null)
-                      .map(s => s!.channel)
-                  )).map(channel => (
-                    <SelectItem key={channel} value={channel}>{channel}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              
+              {/* Filter Dropdowns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Channel Filter */}
+                <Select value={detailedTableChannelFilter} onValueChange={setDetailedTableChannelFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Channels" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Channels</SelectItem>
+                    {Array.from(new Set(
+                      filteredForecasts
+                        .map(f => getSelectedScenario(f.id))
+                        .filter(s => s !== null)
+                        .map(s => s!.channel)
+                    )).sort().map(channel => (
+                      <SelectItem key={channel} value={channel}>{channel}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Country Filter */}
+                <Select value={detailedTableCountryFilter} onValueChange={setDetailedTableCountryFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Countries" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Countries</SelectItem>
+                    {Array.from(new Set(
+                      filteredForecasts
+                        .map(f => getSelectedScenario(f.id))
+                        .filter(s => s !== null)
+                        .map(s => s!.countryCode)
+                    )).sort().map(country => (
+                      <SelectItem key={country} value={country}>{country}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* SKU Filter */}
+                <Select value={detailedTableSKUFilter} onValueChange={setDetailedTableSKUFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All SKUs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All SKUs</SelectItem>
+                    {Array.from(new Set(
+                      filteredForecasts
+                        .filter(f => getSelectedScenario(f.id) !== null)
+                        .map(f => f.sku?.sku)
+                        .filter(Boolean)
+                    )).sort().map(sku => (
+                      <SelectItem key={sku} value={sku!}>{sku}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Week Filter */}
+                <Select value={detailedTableWeekFilter} onValueChange={setDetailedTableWeekFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Weeks" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Weeks</SelectItem>
+                    {Array.from(new Set(
+                      filteredForecasts
+                        .filter(f => getSelectedScenario(f.id) !== null)
+                        .map(f => f.deliveryWeek)
+                    )).sort().map(week => (
+                      <SelectItem key={week} value={week}>{week}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="overflow-x-auto border rounded-lg">
@@ -1651,7 +1713,16 @@ export default function SalesForecastAnalysisPage() {
                         const matchesChannel = detailedTableChannelFilter === 'all' || 
                           item.scenario!.channel === detailedTableChannelFilter;
                         
-                        return matchesSearch && matchesChannel;
+                        const matchesCountry = detailedTableCountryFilter === 'all' || 
+                          item.scenario!.countryCode === detailedTableCountryFilter;
+                        
+                        const matchesSKU = detailedTableSKUFilter === 'all' || 
+                          item.forecast.sku?.sku === detailedTableSKUFilter;
+                        
+                        const matchesWeek = detailedTableWeekFilter === 'all' || 
+                          item.forecast.deliveryWeek === detailedTableWeekFilter;
+                        
+                        return matchesSearch && matchesChannel && matchesCountry && matchesSKU && matchesWeek;
                       });
 
                     if (forecastsWithScenarios.length === 0) {
