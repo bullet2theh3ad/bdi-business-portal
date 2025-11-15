@@ -1139,10 +1139,6 @@ export default function SalesForecastAnalysisPage() {
                 <Download className="w-4 h-4 mr-2" />
                 Load Session
               </Button>
-              <Button onClick={() => setShowWorksheetModal(true)} variant="default" size="sm" className="bg-green-600 hover:bg-green-700">
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Worksheet
-              </Button>
               <Button onClick={exportChartAsPNG} variant="outline" size="sm">
                 <ImageIcon className="w-4 h-4 mr-2" />
                 Export PNG
