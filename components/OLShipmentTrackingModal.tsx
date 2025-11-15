@@ -124,15 +124,18 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
         if (transportData.containers && transportData.containers.length > 0) {
           setShipmentData({
             ...transportData.containers[0],
-            shipmentStatus: transportData.shipmentStatus,
-            reference: transportData.reference,
+            shipmentStatus: transportData.shipmentStatus || 'Unknown',
+            reference: transportData.reference || reference,
             shipmentDetailsURL: transportData.shipmentDetailsURL,
           });
-        } else {
+        } else if (transportData.shipmentStatus || transportData.reference) {
+          // Has some data but no containers
           setShipmentData(transportData);
+        } else {
+          throw new Error(`No shipment found for reference: ${reference || containerNumber}`);
         }
       } else {
-        throw new Error('No shipment data found');
+        throw new Error(`No shipment found for reference: ${reference || containerNumber}. Please verify the JJOLM number is correct and exists in OL-USA's system.`);
       }
     } catch (err: any) {
       console.error('Shipment tracking error:', err);
@@ -158,7 +161,10 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) {
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
     const statusLower = status.toLowerCase();
     if (statusLower.includes('delivered') || statusLower.includes('completed')) {
       return 'bg-green-100 text-green-800 border-green-200';
@@ -361,12 +367,12 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
                     <Badge className={`${getStatusColor(shipmentData.shipmentStatus)} mt-1`}>
-                      {shipmentData.shipmentStatus}
+                      {shipmentData.shipmentStatus || 'Unknown'}
                     </Badge>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Reference</p>
-                    <p className="font-medium text-gray-900">{shipmentData.reference || 'N/A'}</p>
+                    <p className="font-medium text-gray-900">{shipmentData.reference || reference || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Unit ID</p>

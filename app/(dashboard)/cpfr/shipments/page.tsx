@@ -203,6 +203,7 @@ export default function ShipmentsPage() {
   const [methodFilter, setMethodFilter] = useState('all');
   const [skuFilter, setSkuFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
+  const [dateSort, setDateSort] = useState<'ascending' | 'descending'>('ascending');
   
   // Status change modal state
   const [statusChangeModal, setStatusChangeModal] = useState<{
@@ -1162,7 +1163,7 @@ export default function ShipmentsPage() {
     return completedMilestones;
   };
 
-  // Filter shipments
+  // Filter and sort shipments
   const filteredShipments = shipmentForecasts.filter(forecast => {
     const sku = skus?.find(s => s.id === forecast.skuId);
     const matchesSearch = forecast.sku?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1197,6 +1198,16 @@ export default function ShipmentsPage() {
     const matchesOrg = orgFilter === 'all' || forecast.sku?.mfg === orgFilter;
     
     return matchesSearch && matchesStatus && matchesMethod && matchesSku && matchesOrg;
+  }).sort((a, b) => {
+    // Sort by delivery week
+    const weekA = a.deliveryWeek || '';
+    const weekB = b.deliveryWeek || '';
+    
+    if (dateSort === 'ascending') {
+      return weekA.localeCompare(weekB);
+    } else {
+      return weekB.localeCompare(weekA);
+    }
   });
 
   return (
@@ -1382,6 +1393,18 @@ export default function ShipmentsPage() {
                   </option>
                 ));
               })()}
+            </select>
+          </div>
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="date-sort" className="text-xs font-medium text-gray-700">Sort by Date</Label>
+            <select
+              id="date-sort"
+              value={dateSort}
+              onChange={(e) => setDateSort(e.target.value as 'ascending' | 'descending')}
+              className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ascending">📅 Oldest First</option>
+              <option value="descending">📅 Newest First</option>
             </select>
           </div>
         </div>
