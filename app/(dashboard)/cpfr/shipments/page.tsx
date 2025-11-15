@@ -2741,7 +2741,7 @@ export default function ShipmentsPage() {
 
       {/* Status Change Modal */}
       <Dialog open={statusChangeModal.isOpen} onOpenChange={(open) => setStatusChangeModal(prev => ({ ...prev, isOpen: open }))}>
-        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[900px] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <SemanticBDIIcon 

@@ -3321,7 +3321,7 @@ export default function SalesForecastsPage() {
       {/* Email Action Items Modal */}
       {showEmailModal && timelineResults && analysisForecast && (
         <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[1000px] max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center text-xl">
                 <SemanticBDIIcon semantic="email" size={24} className="mr-3 text-blue-600" />
@@ -3465,7 +3465,7 @@ export default function SalesForecastsPage() {
       {/* Edit Forecast Modal */}
       {showEditModal && selectedForecast && (
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="w-[95vw] sm:w-[90vw] lg:w-[800px] h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[1100px] max-w-6xl h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <SemanticBDIIcon semantic="settings" size={20} className="mr-2" />
