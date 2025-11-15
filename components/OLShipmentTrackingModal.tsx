@@ -50,7 +50,7 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
   const [reference, setReference] = useState('');
   const [containerNumber, setContainerNumber] = useState('');
   const [queryType, setQueryType] = useState<'shipmentDetailsV2' | 'fullTransportDetails'>('fullTransportDetails');
-  const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox');
+  const [environment, setEnvironment] = useState<'sandbox' | 'production'>('production'); // Default to production
   const [isLoading, setIsLoading] = useState(false);
   const [shipmentData, setShipmentData] = useState<ShipmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -171,20 +171,20 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <Label htmlFor="reference">Reference Number</Label>
+                <Label htmlFor="reference">Reference Number (JJOLM)</Label>
                 <Input
                   id="reference"
-                  placeholder="Enter shipment reference"
+                  placeholder="e.g., JJOLM255281"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                   disabled={isLoading}
                 />
               </div>
               <div>
-                <Label htmlFor="containerNumber">Container Number</Label>
+                <Label htmlFor="containerNumber">Container Number (Optional)</Label>
                 <Input
                   id="containerNumber"
-                  placeholder="Enter container number"
+                  placeholder="Optional - leave blank if unknown"
                   value={containerNumber}
                   onChange={(e) => setContainerNumber(e.target.value)}
                   disabled={isLoading}
@@ -192,48 +192,48 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <Label htmlFor="queryType">Query Type</Label>
-                <select
-                  id="queryType"
-                  className="w-full mt-1 p-2 border rounded-md text-sm"
-                  value={queryType}
-                  onChange={(e) => setQueryType(e.target.value as any)}
-                  disabled={isLoading}
-                >
-                  <option value="fullTransportDetails">Full Transport Details (Reference only - recommended)</option>
-                  <option value="shipmentDetailsV2">Shipment Details V2 (Requires container number)</option>
-                </select>
-              </div>
+            {/* Environment and Query Type selectors hidden - defaults to production and fullTransportDetails */}
+            {false && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label htmlFor="queryType">Query Type</Label>
+                  <select
+                    id="queryType"
+                    className="w-full mt-1 p-2 border rounded-md text-sm"
+                    value={queryType}
+                    onChange={(e) => setQueryType(e.target.value as any)}
+                    disabled={isLoading}
+                  >
+                    <option value="fullTransportDetails">Full Transport Details (Reference only - recommended)</option>
+                    <option value="shipmentDetailsV2">Shipment Details V2 (Requires container number)</option>
+                  </select>
+                </div>
 
-              <div>
-                <Label htmlFor="environment">Environment</Label>
-                <select
-                  id="environment"
-                  className="w-full mt-1 p-2 border rounded-md"
-                  value={environment}
-                  onChange={(e) => setEnvironment(e.target.value as any)}
-                  disabled={isLoading}
-                >
-                  <option value="sandbox">🧪 Sandbox (Testing)</option>
-                  <option value="production">🚀 Production</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Query Type Info */}
-            {queryType === 'shipmentDetailsV2' && !containerNumber && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                <div className="flex items-start">
-                  <span className="text-blue-600 mr-2">ℹ️</span>
-                  <p className="text-blue-800">
-                    <strong>Shipment Details V2:</strong> Requires both Reference Number and Container Number. 
-                    Switch to <strong>"Full Transport Details"</strong> if you only have a JJOLM/Reference number.
-                  </p>
+                <div>
+                  <Label htmlFor="environment">Environment</Label>
+                  <select
+                    id="environment"
+                    className="w-full mt-1 p-2 border rounded-md"
+                    value={environment}
+                    onChange={(e) => setEnvironment(e.target.value as any)}
+                    disabled={isLoading}
+                  >
+                    <option value="sandbox">🧪 Sandbox (Testing)</option>
+                    <option value="production">🚀 Production</option>
+                  </select>
                 </div>
               </div>
             )}
+
+            {/* Simple info message */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4">
+              <div className="flex items-start">
+                <span className="text-blue-600 mr-2">ℹ️</span>
+                <p className="text-blue-800">
+                  Enter your <strong>JJOLM reference number</strong> to track your shipment. Container number is optional.
+                </p>
+              </div>
+            </div>
 
             <div className="flex space-x-3">
               <Button
@@ -279,15 +279,17 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
           {/* Results Display */}
           {shipmentData && (
             <div className="space-y-4">
-              {/* Environment Badge */}
-              <div className="flex items-center justify-between bg-gray-50 border rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">Active Environment:</span>
-                  <Badge className={environment === 'sandbox' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-green-100 text-green-800 border-green-200'}>
-                    {environment === 'sandbox' ? '🧪 Sandbox (Testing)' : '🚀 Production'}
-                  </Badge>
+              {/* Environment Badge - Hidden for production-only UI */}
+              {false && (
+                <div className="flex items-center justify-between bg-gray-50 border rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">Active Environment:</span>
+                    <Badge className={environment === 'sandbox' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-green-100 text-green-800 border-green-200'}>
+                      {environment === 'sandbox' ? '🧪 Sandbox (Testing)' : '🚀 Production'}
+                    </Badge>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Shipment Summary */}
               <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">

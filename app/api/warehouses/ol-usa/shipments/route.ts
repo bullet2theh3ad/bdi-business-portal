@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
       query = `
         query ShipmentDetailsV2 {
           shipmentDetailsV2(
-            ${reference ? `reference: "${reference}"` : ''}
-            ${containerNumber ? `containerNumber: "${containerNumber}"` : ''}
+            reference: "${reference || ''}"
+            containerNumber: "${containerNumber || ''}"
             verbose: ${verbose}
           ) {
             shipmentStatus
@@ -128,8 +128,8 @@ export async function POST(request: NextRequest) {
       query = `
         query ShipmentDetails {
           shipmentDetails(
-            ${reference ? `reference: "${reference}"` : ''}
-            ${containerNumber ? `containerNumber: "${containerNumber}"` : ''}
+            reference: "${reference || ''}"
+            containerNumber: "${containerNumber || ''}"
           ) {
             shipmentStatus
             reference

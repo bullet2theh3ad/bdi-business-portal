@@ -1,0 +1,22 @@
+{
+  "sheets": [
+    {
+      "name": "DEFINITIONS",
+      "rows": 45,
+      "cols": 3,
+      "headers": [
+        "x",
+        "OPERATING CASH INFLOWS"
+      ],
+      "has_dates": true,
+      "formula_count": 0,
+      "references": [],
+      "hardcoded_dates": false
+    },
+    {
+      "name": "CURRENT FORECAST START DATE",
+      "rows": 5,
+      "cols": 3,
+      "headers": [
+        "Forecast Start Date",
+        
