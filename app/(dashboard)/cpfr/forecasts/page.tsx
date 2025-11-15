@@ -1420,6 +1420,129 @@ export default function SalesForecastsPage() {
           </CardHeader>
           <CardContent>
             {(() => {
+              // Risk detection: Determine if forecast can meet delivery week
+  // Check if forecast is fully completed (all signals confirmed)
+  const isFullyCompleted = (forecast: SalesForecast): boolean => {
+    const transitSignal = (forecast as any).transitSignal || 'unknown';
+    const warehouseSignal = (forecast as any).warehouseSignal || 'unknown';
+    
+    return (
+      forecast.salesSignal === 'confirmed' &&
+      forecast.factorySignal === 'confirmed' &&
+      (transitSignal === 'confirmed' || warehouseSignal === 'confirmed' || warehouseSignal === 'completed')
+    );
+  };
+
+  const isAtRisk = (forecast: SalesForecast): boolean => {
+    try {
+      // Parse delivery week (e.g., "2025-W47")
+      const [year, week] = forecast.deliveryWeek.split('-W');
+      const deliveryYear = parseInt(year);
+      const deliveryWeekNum = parseInt(week);
+                  
+                  // Calculate delivery date from week number
+                  const jan1 = new Date(deliveryYear, 0, 1);
+                  const daysToAdd = (deliveryWeekNum - 1) * 7;
+                  const deliveryDate = new Date(jan1.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+                  
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0); // Normalize to start of day
+                  const daysUntilDelivery = Math.ceil((deliveryDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+                  
+                  // Check all signals
+                  const factoryConfirmed = forecast.factorySignal === 'confirmed';
+                  const factoryPending = !factoryConfirmed;
+                  
+                  const transitSignal = (forecast as any).transitSignal || 'unknown';
+                  const warehouseSignal = (forecast as any).warehouseSignal || 'unknown';
+                  
+                  // If warehouse is confirmed/completed, it's already delivered - NOT at risk!
+                  if (warehouseSignal === 'confirmed' || warehouseSignal === 'completed') {
+                    return false;
+                  }
+                  
+                  // If transit is confirmed (delivered) - NOT at risk!
+                  if (transitSignal === 'confirmed') {
+                    return false;
+                  }
+                  
+                  // If already past delivery date and NOT delivered, definitely at risk
+                  if (daysUntilDelivery < 0) return true;
+                  
+                  const inTransit = transitSignal === 'submitted';
+                  // Check if delivered (either transit or warehouse confirmed)
+                  const transitConfirmed = transitSignal === 'confirmed';
+                  const warehouseConfirmed = warehouseSignal === 'confirmed';
+                  const isDelivered = transitConfirmed || warehouseConfirmed;
+                  
+                  // Use ACTUAL milestone dates if available (more accurate than estimates!)
+                  const customExwDate = (forecast as any).customExwDate;
+                  const estimatedTransitStart = (forecast as any).estimatedTransitStart;
+                  const estimatedWarehouseArrival = (forecast as any).estimatedWarehouseArrival;
+                  const confirmedDeliveryDate = (forecast as any).confirmedDeliveryDate;
+                  
+                  // If we have actual warehouse arrival date, check if it will be after delivery week
+                  if (estimatedWarehouseArrival) {
+                    const arrivalDate = new Date(estimatedWarehouseArrival);
+                    arrivalDate.setHours(0, 0, 0, 0);
+                    if (arrivalDate > deliveryDate) {
+                      console.log(`🚨 Risk: Estimated arrival ${arrivalDate.toLocaleDateString()} is after delivery week ${forecast.deliveryWeek}`);
+                      return true;
+                    }
+                  }
+                  
+                  // If we have confirmed delivery date, check if it will be after delivery week
+                  if (confirmedDeliveryDate) {
+                    const finalDate = new Date(confirmedDeliveryDate);
+                    finalDate.setHours(0, 0, 0, 0);
+                    if (finalDate > deliveryDate) {
+                      console.log(`🚨 Risk: Confirmed delivery ${finalDate.toLocaleDateString()} is after delivery week ${forecast.deliveryWeek}`);
+                      return true;
+                    }
+                  }
+                  
+                  // Estimate shipping time based on shipping preference
+                  let estimatedShippingDays = 21; // default sea shipping
+                  const shippingPref = forecast.shippingPreference || '';
+                  if (shippingPref.includes('AIR')) {
+                    if (shippingPref.includes('7')) estimatedShippingDays = 7;
+                    else if (shippingPref.includes('14')) estimatedShippingDays = 14;
+                    else estimatedShippingDays = 10; // default air
+                  } else if (shippingPref.includes('SEA')) {
+                    if (shippingPref.includes('45')) estimatedShippingDays = 45;
+                    else if (shippingPref.includes('28')) estimatedShippingDays = 28;
+                    else estimatedShippingDays = 21; // default sea
+                  }
+                  
+                  // Risk scenarios:
+                  // 1. Factory not confirmed and less than (lead time + shipping time) days left
+                  if (factoryPending) {
+                    const minimumLeadTime = 30; // Assume 30 days minimum factory lead time
+                    const totalTimeNeeded = minimumLeadTime + estimatedShippingDays + 5; // +5 buffer
+                    if (daysUntilDelivery < totalTimeNeeded) return true;
+                  }
+                  
+                  // 2. Factory confirmed but not in transit and less than (shipping time + buffer) days left
+                  if (factoryConfirmed && !inTransit) {
+                    const totalTimeNeeded = estimatedShippingDays + 7; // +7 days buffer for factory to ship
+                    if (daysUntilDelivery < totalTimeNeeded) return true;
+                  }
+                  
+                  // 3. In transit but not enough time based on shipping method
+                  if (inTransit && !isDelivered) {
+                    if (daysUntilDelivery < estimatedShippingDays) return true;
+                  }
+                  
+                  // 4. Less than 14 days and still not delivered
+                  if (daysUntilDelivery < 14 && !isDelivered) return true;
+                  
+                  return false;
+                } catch (error) {
+                  console.error('Risk assessment error:', error);
+                  return false;
+                }
+              };
+              
               // Apply filters and sorting
               const filtered = forecastsArray.filter(forecast => {
                 // Search filter
@@ -1492,8 +1615,20 @@ export default function SalesForecastsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filtered.map((forecast) => (
-                  <div key={forecast.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                {filtered.map((forecast) => {
+                  const atRisk = isAtRisk(forecast);
+                  const completed = isFullyCompleted(forecast);
+                  return (
+                  <div 
+                    key={forecast.id} 
+                    className={`border rounded-lg p-3 sm:p-4 transition-colors ${
+                      completed
+                        ? 'bg-green-50 border-green-200 hover:bg-green-100'
+                        : atRisk 
+                        ? 'bg-red-50 border-red-200 hover:bg-red-100' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
                     <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
                       <div className="flex-1">
                         {/* Header with SKU name and code */}
@@ -1522,10 +1657,17 @@ export default function SalesForecastsPage() {
                               </span>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <span className="text-gray-600 hidden sm:inline">Shipping</span>
-                              <span className="text-gray-600 sm:hidden">Sh</span>
-                              <span className={getSignalColor(forecast.shippingSignal || 'unknown')}>
-                                {getSignalIcon(forecast.shippingSignal || 'unknown')}
+                              <span className="text-gray-600 hidden sm:inline">Transit</span>
+                              <span className="text-gray-600 sm:hidden">T</span>
+                              <span className={getSignalColor((forecast as any).transitSignal || 'unknown')}>
+                                {getSignalIcon((forecast as any).transitSignal || 'unknown')}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-gray-600 hidden sm:inline">Warehouse</span>
+                              <span className="text-gray-600 sm:hidden">W</span>
+                              <span className={getSignalColor((forecast as any).warehouseSignal || 'unknown')}>
+                                {getSignalIcon((forecast as any).warehouseSignal || 'unknown')}
                               </span>
                             </div>
                           </div>
@@ -1628,7 +1770,8 @@ export default function SalesForecastsPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             );
             })()}
