@@ -96,6 +96,12 @@ export default function SalesForecastsPage() {
   const [confidenceLevel, setConfidenceLevel] = useState<'part_of_po' | 'pre_po' | 'planning'>('planning');
   const [forecastQuantity, setForecastQuantity] = useState<number>(0);
   
+  // List view filters
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [skuFilter, setSkuFilter] = useState<string>('all');
+  const [manufacturerFilter, setManufacturerFilter] = useState<string>('all');
+  const [dateSort, setDateSort] = useState<'ascending' | 'descending'>('ascending');
+  
   // Holiday calendar functionality
   const holidayCalendar = useHolidayCalendar();
   
@@ -1327,43 +1333,141 @@ export default function SalesForecastsPage() {
         /* List View */
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center">
-                <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
-                All Forecasts
-              </CardTitle>
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <SemanticBDIIcon semantic="forecasts" size={20} className="mr-2" />
+                  All Forecasts
+                </CardTitle>
+                
+                {/* Download CPFR Data Button - Organization-specific */}
+                <Button
+                  onClick={downloadCPFRData}
+                  disabled={!forecastsArray.length}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center"
+                >
+                  <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+                  Download CPFR Data
+                </Button>
+              </div>
               
-              {/* Download CPFR Data Button - Organization-specific */}
-              <Button
-                onClick={downloadCPFRData}
-                disabled={!forecastsArray.length}
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
-                Download CPFR Data
-              </Button>
+              {/* Search and Filters */}
+              {forecastsArray.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Search Box */}
+                  <div className="flex flex-col space-y-1">
+                    <Label htmlFor="forecast-search" className="text-xs font-medium text-gray-700">Search</Label>
+                    <Input
+                      id="forecast-search"
+                      type="text"
+                      placeholder="Search SKU, name, notes..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  
+                  {/* SKU Filter */}
+                  <div className="flex flex-col space-y-1">
+                    <Label htmlFor="sku-filter" className="text-xs font-medium text-gray-700">SKU</Label>
+                    <select
+                      id="sku-filter"
+                      value={skuFilter}
+                      onChange={(e) => setSkuFilter(e.target.value)}
+                      className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All SKUs</option>
+                      {Array.from(new Set(forecastsArray.map(f => f.sku.sku))).sort().map(sku => (
+                        <option key={sku} value={sku}>{sku}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Manufacturer Filter */}
+                  <div className="flex flex-col space-y-1">
+                    <Label htmlFor="manufacturer-filter" className="text-xs font-medium text-gray-700">Manufacturer</Label>
+                    <select
+                      id="manufacturer-filter"
+                      value={manufacturerFilter}
+                      onChange={(e) => setManufacturerFilter(e.target.value)}
+                      className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Manufacturers</option>
+                      {Array.from(new Set(forecastsArray.map(f => f.sku.mfg).filter(Boolean) as string[])).sort().map(mfr => (
+                        <option key={mfr} value={mfr}>{mfr}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Date Sort */}
+                  <div className="flex flex-col space-y-1">
+                    <Label htmlFor="date-sort" className="text-xs font-medium text-gray-700">Sort by Date</Label>
+                    <select
+                      id="date-sort"
+                      value={dateSort}
+                      onChange={(e) => setDateSort(e.target.value as 'ascending' | 'descending')}
+                      className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ascending">📅 Oldest First</option>
+                      <option value="descending">📅 Newest First</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            {forecastsArray.length === 0 ? (
+            {(() => {
+              // Apply filters and sorting
+              const filtered = forecastsArray.filter(forecast => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                  forecast.sku.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  forecast.sku.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (forecast.notes && forecast.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+                
+                // SKU filter
+                const matchesSku = skuFilter === 'all' || forecast.sku.sku === skuFilter;
+                
+                // Manufacturer filter (use mfg field from SKU, e.g., MTN, CBN - same as Shipments)
+                const matchesManufacturer = manufacturerFilter === 'all' || forecast.sku?.mfg === manufacturerFilter;
+                
+                return matchesSearch && matchesSku && matchesManufacturer;
+              }).sort((a, b) => {
+                // Sort by delivery week
+                const weekA = a.deliveryWeek || '';
+                const weekB = b.deliveryWeek || '';
+                
+                if (dateSort === 'ascending') {
+                  return weekA.localeCompare(weekB);
+                } else {
+                  return weekB.localeCompare(weekA);
+                }
+              });
+              
+              return filtered.length === 0 ? (
               <div className="text-center py-12">
                 <SemanticBDIIcon semantic="forecasts" size={48} className="mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">
-                  <DynamicTranslation userLanguage={userLocale} context="cpfr">
-                    {canCreateForecasts ? 'No Forecasts Yet' : 'No Forecasts Available'}
-                  </DynamicTranslation>
+                  {forecastsArray.length === 0 ? (
+                    <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                      {canCreateForecasts ? 'No Forecasts Yet' : 'No Forecasts Available'}
+                    </DynamicTranslation>
+                  ) : 'No Matching Forecasts'}
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  <DynamicTranslation userLanguage={userLocale} context="cpfr">
-                    {canCreateForecasts 
-                      ? 'Create your first demand forecast to start CPFR planning'
-                      : 'Waiting for BDI to create forecasts for your organization'
-                    }
-                  </DynamicTranslation>
+                  {forecastsArray.length === 0 ? (
+                    <DynamicTranslation userLanguage={userLocale} context="cpfr">
+                      {canCreateForecasts 
+                        ? 'Create your first demand forecast to start CPFR planning'
+                        : 'Waiting for BDI to create forecasts for your organization'
+                      }
+                    </DynamicTranslation>
+                  ) : 'Try adjusting your search or filters'}
                 </p>
-                {canCreateForecasts && (
+                {canCreateForecasts && forecastsArray.length === 0 && (
                   <Button onClick={() => setShowCreateModal(true)}>
                     <SemanticBDIIcon semantic="plus" size={16} className="mr-2" />
                     Create First Forecast
@@ -1371,16 +1475,24 @@ export default function SalesForecastsPage() {
                 )}
                 <Button 
                   variant="outline"
-                  onClick={() => mutateForecasts()}
+                  onClick={() => {
+                    if (forecastsArray.length > 0) {
+                      setSearchTerm('');
+                      setSkuFilter('all');
+                      setManufacturerFilter('all');
+                    } else {
+                      mutateForecasts();
+                    }
+                  }}
                   className="ml-2"
                 >
                   <SemanticBDIIcon semantic="sync" size={16} className="mr-2" />
-                  {tc('refreshButton', 'Refresh')}
+                  {forecastsArray.length === 0 ? tc('refreshButton', 'Refresh') : 'Clear Filters'}
                 </Button>
               </div>
             ) : (
               <div className="space-y-4">
-                {forecastsArray.map((forecast) => (
+                {filtered.map((forecast) => (
                   <div key={forecast.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
                       <div className="flex-1">
@@ -1518,7 +1630,8 @@ export default function SalesForecastsPage() {
                   </div>
                 ))}
               </div>
-            )}
+            );
+            })()}
           </CardContent>
         </Card>
       )}

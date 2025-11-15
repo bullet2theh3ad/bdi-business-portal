@@ -204,6 +204,98 @@ export default function ShipmentsPage() {
   const [skuFilter, setSkuFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
   const [dateSort, setDateSort] = useState<'ascending' | 'descending'>('ascending');
+
+  // Scenario Analysis Modal State
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisForecast, setAnalysisForecast] = useState<SalesForecast | null>(null);
+  const [analysisData, setAnalysisData] = useState({
+    shippingMethod: '',
+    customShippingDays: '',
+    leadTime: 'auto',
+    customLeadTimeDays: '',
+    safetyBuffer: '5',
+    customBufferDays: ''
+  });
+  const [timelineResults, setTimelineResults] = useState<any>(null);
+  const [showTimeline, setShowTimeline] = useState(false);
+
+  // Calculate realistic timeline for analysis
+  const calculateRealisticTimeline = () => {
+    if (!analysisForecast || !analysisData.shippingMethod) return;
+
+    // Parse delivery week to get target delivery date
+    const deliveryWeek = analysisForecast.deliveryWeek; // e.g., "2025-W43"
+    const [year, week] = deliveryWeek.split('-W');
+    const deliveryDate = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+    
+    // Get shipping days
+    const getShippingDays = () => {
+      if (analysisData.shippingMethod === 'custom') {
+        return parseInt(analysisData.customShippingDays) || 0;
+      }
+      const shippingDays: Record<string, number> = {
+        'SEA_ASIA_US_WEST': 21,
+        'SEA_STANDARD_WEST_COAST': 45,
+        'AIR_14_DAYS': 14,
+        'AIR_7_DAYS': 7,
+        'SEA_STANDARD': 28
+      };
+      return shippingDays[analysisData.shippingMethod] || 21;
+    };
+
+    // Get lead time days
+    const getLeadTimeDays = () => {
+      if (analysisData.leadTime === 'custom') {
+        return parseInt(analysisData.customLeadTimeDays) || 30;
+      }
+      if (analysisData.leadTime === 'auto') {
+        return 30;
+      }
+      return parseInt(analysisData.leadTime) || 30;
+    };
+
+    // Get safety buffer days
+    const getBufferDays = () => {
+      if (analysisData.safetyBuffer === 'custom') {
+        return parseInt(analysisData.customBufferDays) || 5;
+      }
+      return parseInt(analysisData.safetyBuffer) || 5;
+    };
+
+    const shippingDays = getShippingDays();
+    const leadTimeDays = getLeadTimeDays();
+    const bufferDays = getBufferDays();
+
+    // Work backwards from delivery date
+    const warehouseArrival = new Date(deliveryDate.getTime() - bufferDays * 24 * 60 * 60 * 1000);
+    const shippingStart = new Date(warehouseArrival.getTime() - shippingDays * 24 * 60 * 60 * 1000);
+    const productionStart = new Date(shippingStart.getTime() - leadTimeDays * 24 * 60 * 60 * 1000);
+    const factorySignalDate = new Date(productionStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Calculate risk assessment
+    const totalDaysRequired = leadTimeDays + shippingDays + bufferDays + 7;
+    const daysUntilDelivery = Math.ceil((deliveryDate.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000));
+    const riskLevel = daysUntilDelivery < totalDaysRequired ? 'HIGH' : 
+                     daysUntilDelivery < totalDaysRequired + 14 ? 'MEDIUM' : 'LOW';
+
+    const timeline = {
+      deliveryDate,
+      warehouseArrival,
+      shippingStart,
+      productionStart,
+      factorySignalDate,
+      shippingDays,
+      leadTimeDays,
+      bufferDays,
+      totalDaysRequired,
+      daysUntilDelivery,
+      riskLevel,
+      isRealistic: daysUntilDelivery >= totalDaysRequired
+    };
+
+    setTimelineResults(timeline);
+    setShowTimeline(true);
+  };
   
   // Status change modal state
   const [statusChangeModal, setStatusChangeModal] = useState<{
@@ -1493,14 +1585,36 @@ export default function ShipmentsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-center sm:justify-end">
+                      <div className="flex items-center gap-2 justify-center sm:justify-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            setAnalysisForecast(forecast);
+                            setAnalysisData({
+                              shippingMethod: '',
+                              customShippingDays: '',
+                              leadTime: 'auto',
+                              customLeadTimeDays: '',
+                              safetyBuffer: '5',
+                              customBufferDays: ''
+                            });
+                            setTimelineResults(null);
+                            setShowTimeline(false);
+                            setShowAnalysisModal(true);
+                          }}
+                          className="bg-purple-50 hover:bg-purple-100 border-purple-200"
+                        >
+                          <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
+                          Analysis
+                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => setSelectedShipment(forecast)}
                           className="w-full sm:w-auto"
                         >
-                          <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
+                          <SemanticBDIIcon semantic="edit" size={14} className="mr-1" />
                           {(() => {
                             const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === forecast.id);
                             const localShipment = createdShipments.get(forecast.id);
@@ -3187,6 +3301,453 @@ export default function ShipmentsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Scenario Analysis Modal - From Shipments */}
+      {showAnalysisModal && analysisForecast && (
+        <Dialog open={showAnalysisModal} onOpenChange={setShowAnalysisModal}>
+          <DialogContent className="w-[100vw] h-[100vh] sm:w-[98vw] sm:h-[95vh] p-0" style={{ maxWidth: 'none' }}>
+            <DialogHeader className="p-4 sm:p-6 border-b">
+              <DialogTitle className="flex items-center text-xl sm:text-2xl">
+                <SemanticBDIIcon semantic="analytics" size={24} className="mr-3 text-purple-600" />
+                CPFR Scenario Analysis - {analysisForecast.sku?.sku}
+              </DialogTitle>
+              <p className="text-gray-600 mt-2">
+                Analyze real-world timeline impact vs optimistic sales forecasts
+              </p>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
+              {/* Current Forecast Overview */}
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <h3 className="font-semibold text-yellow-900 mb-3">⚠️ Sales Forecast (Current)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">SKU:</span>
+                    <p className="font-mono font-medium">{analysisForecast.sku?.sku}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Quantity:</span>
+                    <p className="font-medium">{analysisForecast.quantity.toLocaleString()} units</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Delivery Week:</span>
+                    <p className="font-medium">{analysisForecast.deliveryWeek}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Current Shipping:</span>
+                    <p className="font-medium text-yellow-700">
+                      {analysisForecast.shippingPreference || 'Not specified'}
+                    </p>
+                  </div>
+                </div>
+                {analysisForecast.shippingPreference?.includes('ZERO_LAG') && (
+                  <div className="mt-3 p-3 bg-yellow-100 rounded border border-yellow-300">
+                    <p className="text-yellow-800 text-sm font-medium">
+                      ⚠️ Warning: Zero Lag shipping is unrealistic for CPFR planning
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Scenario Analysis Controls */}
+              <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-3 text-lg">🔬 Real-World Scenario Analysis</h3>
+                <p className="text-blue-700 text-sm sm:text-base mb-4 sm:mb-6">
+                  Analyze the impact of realistic shipping methods and lead times on your CPFR timeline
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                  <div>
+                    <Label htmlFor="analysisShippingMethod">Realistic Shipping Method *</Label>
+                    <select
+                      id="analysisShippingMethod"
+                      value={analysisData.shippingMethod}
+                      onChange={(e) => setAnalysisData({
+                        ...analysisData,
+                        shippingMethod: e.target.value,
+                        customShippingDays: e.target.value === 'custom' ? analysisData.customShippingDays : ''
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="">Select Realistic Method</option>
+                      <option value="SEA_ASIA_US_WEST">Sea Asia to US West (21 days)</option>
+                      <option value="SEA_STANDARD_WEST_COAST">Sea Standard West Coast (45 days)</option>
+                      <option value="AIR_14_DAYS">Air Express (14 days)</option>
+                      <option value="AIR_7_DAYS">Air Priority (7 days)</option>
+                      <option value="SEA_STANDARD">Sea Standard (28 days)</option>
+                      <option value="custom">Custom Transit Time...</option>
+                    </select>
+                    {analysisData.shippingMethod === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="customShippingDays">Custom Transit Days</Label>
+                        <Input
+                          id="customShippingDays"
+                          type="number"
+                          value={analysisData.customShippingDays}
+                          onChange={(e) => setAnalysisData({
+                            ...analysisData,
+                            customShippingDays: e.target.value
+                          })}
+                          placeholder="Enter days"
+                          min="1"
+                          max="90"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="analysisLeadTime">Factory Lead Time</Label>
+                    <select
+                      id="analysisLeadTime"
+                      value={analysisData.leadTime}
+                      onChange={(e) => setAnalysisData({
+                        ...analysisData,
+                        leadTime: e.target.value,
+                        customLeadTimeDays: e.target.value === 'custom' ? analysisData.customLeadTimeDays : ''
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="auto">Use SKU Default</option>
+                      <option value="30">30 days (Standard)</option>
+                      <option value="45">45 days (Extended)</option>
+                      <option value="60">60 days (Long Lead)</option>
+                      <option value="custom">Custom Lead Time...</option>
+                    </select>
+                    {analysisData.leadTime === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="customLeadTimeDays">Custom Lead Time (Days)</Label>
+                        <Input
+                          id="customLeadTimeDays"
+                          type="number"
+                          value={analysisData.customLeadTimeDays}
+                          onChange={(e) => setAnalysisData({
+                            ...analysisData,
+                            customLeadTimeDays: e.target.value
+                          })}
+                          placeholder="Enter days"
+                          min="1"
+                          max="180"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="analysisBuffer">Safety Buffer</Label>
+                    <select
+                      id="analysisBuffer"
+                      value={analysisData.safetyBuffer}
+                      onChange={(e) => setAnalysisData({
+                        ...analysisData,
+                        safetyBuffer: e.target.value,
+                        customBufferDays: e.target.value === 'custom' ? analysisData.customBufferDays : ''
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                    >
+                      <option value="5">5 days (Standard)</option>
+                      <option value="7">7 days (Conservative)</option>
+                      <option value="10">10 days (High Risk)</option>
+                      <option value="14">14 days (Very Safe)</option>
+                      <option value="custom">Custom Buffer...</option>
+                    </select>
+                    {analysisData.safetyBuffer === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="customBufferDays">Custom Buffer (Days)</Label>
+                        <Input
+                          id="customBufferDays"
+                          type="number"
+                          value={analysisData.customBufferDays}
+                          onChange={(e) => setAnalysisData({
+                            ...analysisData,
+                            customBufferDays: e.target.value
+                          })}
+                          placeholder="Enter days"
+                          min="1"
+                          max="30"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <Button 
+                    type="button"
+                    onClick={calculateRealisticTimeline}
+                    disabled={!analysisData.shippingMethod}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400"
+                  >
+                    <SemanticBDIIcon semantic="analytics" size={16} className="mr-2" />
+                    Calculate Real Timeline
+                  </Button>
+                </div>
+              </div>
+
+              {/* Work-Backwards Timeline Results */}
+              <div className="bg-green-50 p-4 sm:p-6 rounded-lg border border-green-200">
+                <h3 className="font-semibold text-green-900 mb-3 text-lg">📊 Work-Backwards Timeline Analysis</h3>
+                
+                {!showTimeline ? (
+                  <>
+                    <p className="text-green-700 text-sm sm:text-base">
+                      Click "Calculate Real Timeline" to see the work-backwards analysis from your sales delivery date.
+                    </p>
+                    <div className="mt-3 text-xs sm:text-sm text-green-600">
+                      Shows: Factory signal timing, Production start, Shipping timeline, Risk assessment
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-white rounded border border-green-300">
+                      <div className="text-center text-gray-500">
+                        <SemanticBDIIcon semantic="analytics" size={48} className="mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Timeline calculation results will appear here</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Risk Assessment Header */}
+                    <div className={`p-3 rounded-lg border ${
+                      timelineResults?.riskLevel === 'HIGH' ? 'bg-red-100 border-red-300' :
+                      timelineResults?.riskLevel === 'MEDIUM' ? 'bg-yellow-100 border-yellow-300' :
+                      'bg-green-100 border-green-300'
+                    }`}>
+                      <div className="flex items-center justify-between flex-wrap">
+                        <div className="flex items-center">
+                          <span className="text-lg mr-2">
+                            {timelineResults?.riskLevel === 'HIGH' ? '🚨' :
+                             timelineResults?.riskLevel === 'MEDIUM' ? '⚠️' : '✅'}
+                          </span>
+                          <span className={`font-semibold ${
+                            timelineResults?.riskLevel === 'HIGH' ? 'text-red-800' :
+                            timelineResults?.riskLevel === 'MEDIUM' ? 'text-yellow-800' :
+                            'text-green-800'
+                          }`}>
+                            Risk Level: {timelineResults?.riskLevel}
+                          </span>
+                        </div>
+                        <div className="text-sm mt-1 sm:mt-0">
+                          <span className="font-medium">
+                            {timelineResults?.daysUntilDelivery} days until delivery
+                          </span>
+                          <span className="text-gray-600 ml-2">
+                            ({timelineResults?.totalDaysRequired} days required)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline Summary */}
+                    <div className="bg-white p-4 rounded-lg border border-green-300">
+                      <h4 className="font-semibold text-gray-800 mb-4 text-center">
+                        🎯 Work-Backwards Timeline (From Sales Delivery Date)
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        {/* Sales Delivery Date */}
+                        <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            🎯
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                              <div>
+                                <h5 className="font-semibold text-blue-800">Sales Delivery Date (Target)</h5>
+                                <p className="text-sm text-blue-600">Stake in the ground - customer commitment</p>
+                              </div>
+                              <div className="text-right mt-1 sm:mt-0">
+                                <div className="font-mono text-lg font-bold text-blue-800">
+                                  {timelineResults?.deliveryDate?.toLocaleDateString()}
+                                </div>
+                                <div className="text-xs text-blue-600">Week {analysisForecast?.deliveryWeek}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-center">
+                          <div className="text-gray-400 text-2xl">↑</div>
+                        </div>
+
+                        {/* Warehouse Arrival */}
+                        <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            🏪
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                              <div>
+                                <h5 className="font-semibold text-green-800">Warehouse Arrival</h5>
+                                <p className="text-sm text-green-600">
+                                  Buffer: {timelineResults?.bufferDays} days before delivery
+                                </p>
+                              </div>
+                              <div className="text-right mt-1 sm:mt-0">
+                                <div className="font-mono text-lg font-bold text-green-800">
+                                  {timelineResults?.warehouseArrival?.toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-center">
+                          <div className="text-gray-400 text-2xl">↑</div>
+                        </div>
+
+                        {/* Shipping Start */}
+                        <div className="flex items-start space-x-3 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            🚢
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                              <div>
+                                <h5 className="font-semibold text-purple-800">Shipping Start</h5>
+                                <p className="text-sm text-purple-600">
+                                  Transit: {timelineResults?.shippingDays} days
+                                </p>
+                              </div>
+                              <div className="text-right mt-1 sm:mt-0">
+                                <div className="font-mono text-lg font-bold text-purple-800">
+                                  {timelineResults?.shippingStart?.toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-center">
+                          <div className="text-gray-400 text-2xl">↑</div>
+                        </div>
+
+                        {/* Production Start */}
+                        <div className="flex items-start space-x-3 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                          <div className="flex-shrink-0 w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            🏭
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                              <div>
+                                <h5 className="font-semibold text-orange-800">Production Start</h5>
+                                <p className="text-sm text-orange-600">
+                                  Lead Time: {timelineResults?.leadTimeDays} days
+                                </p>
+                              </div>
+                              <div className="text-right mt-1 sm:mt-0">
+                                <div className="font-mono text-lg font-bold text-orange-800">
+                                  {timelineResults?.productionStart?.toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-center">
+                          <div className="text-gray-400 text-2xl">↑</div>
+                        </div>
+
+                        {/* Factory Signal */}
+                        <div className={`flex items-start space-x-3 p-3 rounded-lg border-l-4 ${
+                          timelineResults?.factorySignalDate < new Date() 
+                            ? 'bg-red-50 border-red-500' 
+                            : 'bg-yellow-50 border-yellow-500'
+                        }`}>
+                          <div className={`flex-shrink-0 w-8 h-8 text-white rounded-full flex items-center justify-center text-sm font-bold ${
+                            timelineResults?.factorySignalDate < new Date() 
+                              ? 'bg-red-500' 
+                              : 'bg-yellow-500'
+                          }`}>
+                            📡
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                              <div>
+                                <h5 className={`font-semibold ${
+                                  timelineResults?.factorySignalDate < new Date() 
+                                    ? 'text-red-800' 
+                                    : 'text-yellow-800'
+                                }`}>
+                                  Factory Signal Required
+                                </h5>
+                                <p className={`text-sm ${
+                                  timelineResults?.factorySignalDate < new Date() 
+                                    ? 'text-red-600' 
+                                    : 'text-yellow-600'
+                                }`}>
+                                  {timelineResults?.factorySignalDate < new Date() 
+                                    ? '🚨 OVERDUE - Signal should have been sent!' 
+                                    : 'Signal factory to start production planning'}
+                                </p>
+                              </div>
+                              <div className="text-right mt-1 sm:mt-0">
+                                <div className={`font-mono text-lg font-bold ${
+                                  timelineResults?.factorySignalDate < new Date() 
+                                    ? 'text-red-800' 
+                                    : 'text-yellow-800'
+                                }`}>
+                                  {timelineResults?.factorySignalDate?.toLocaleDateString()}
+                                </div>
+                                {timelineResults?.factorySignalDate < new Date() && (
+                                  <div className="text-xs text-red-600 font-medium">PAST DUE</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Summary Box */}
+                      <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+                        <h5 className="font-semibold text-gray-800 mb-2">📋 CPFR Analysis Summary</h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-600">Total Timeline:</span>
+                            <span className="font-medium ml-2">{timelineResults?.totalDaysRequired} days</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Days Available:</span>
+                            <span className="font-medium ml-2">{timelineResults?.daysUntilDelivery} days</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Feasibility:</span>
+                            <span className={`font-medium ml-2 ${
+                              timelineResults?.isRealistic ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {timelineResults?.isRealistic ? 'ACHIEVABLE' : 'AT RISK'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Action Required:</span>
+                            <span className="font-medium ml-2 text-purple-600">
+                              {timelineResults?.factorySignalDate < new Date() ? 'IMMEDIATE SIGNAL' : 'SCHEDULE SIGNAL'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="border-t p-4 sm:p-6 flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowAnalysisModal(false)}
+              >
+                Close Analysis
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
