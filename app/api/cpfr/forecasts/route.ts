@@ -553,7 +553,8 @@ export async function PUT(request: NextRequest) {
         const shipmentUpdateData: any = {
           sales_signal: body.salesSignal,
           factory_signal: body.factorySignal,
-          shipping_signal: body.shippingSignal,
+          transit_signal: body.transitSignal,
+          warehouse_signal: body.warehouseSignal,
           updated_at: new Date().toISOString()
         };
         
