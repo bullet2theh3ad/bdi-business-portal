@@ -10,6 +10,7 @@ export const QUICKBOOKS_WHITELIST = [
   'sjin@boundlessdevices.com',
   'hmitchem@boundlessdevices.com',  // Heather Mitchell
   'hmitcehm@boundlessdevices.com',  // Alternative spelling in case of typo
+  'dhenry@boundlessdevices.com',    // David Henry
 ];
 
 export function canAccessQuickBooks(userEmail: string | null | undefined): boolean {
@@ -27,6 +28,7 @@ export const BUSINESS_ANALYSIS_WHITELIST = [
   'jeskelson@boundlessdevices.com',
   'amartinez@boundlessdevices.com',
   'kdrennan@boundlessdevices.com',
+  'dhenry@boundlessdevices.com',    // David Henry
 ];
 
 export function canAccessBusinessAnalysis(userEmail: string | null | undefined): boolean {
