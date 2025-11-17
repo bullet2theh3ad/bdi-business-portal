@@ -1637,11 +1637,27 @@ export default function SalesForecastsPage() {
                       <div className="flex-1">
                         {/* Header with SKU name and code */}
                         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3 mb-3">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center flex-wrap gap-2">
                             <h3 className="font-semibold text-sm sm:text-base">{forecast.sku.name}</h3>
                             <Badge variant="outline" className="font-mono text-xs">
                               {forecast.sku.sku}
                             </Badge>
+                            <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                              {forecast.quantity.toLocaleString()} units
+                            </Badge>
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
+                              {forecast.deliveryWeek}
+                            </Badge>
+                            {forecast.shippingPreference && (
+                              <Badge className="bg-teal-100 text-teal-800 border-teal-200 text-xs">
+                                {forecast.shippingPreference === 'INDIRECT' ? '📦' : 
+                                 forecast.shippingPreference === 'ZERO_LAG_SAME_DAY' || forecast.shippingPreference === 'ZERO_LAG_NEXT_DAY' || forecast.shippingPreference === 'ZERO_LAG_CUSTOM' ? '⚡' :
+                                 forecast.shippingPreference.startsWith('AIR_') ? '✈️' : 
+                                 forecast.shippingPreference.startsWith('SEA_') ? '🚢' : 
+                                 forecast.shippingPreference.startsWith('TRUCK_') || forecast.shippingPreference === 'RAIL' ? '🚛' : '🚚'}
+                                {forecast.shippingPreference}
+                              </Badge>
+                            )}
                           </div>
                           
                           {/* CPFR Signals - Mobile: Below title, Desktop: Same line */}
