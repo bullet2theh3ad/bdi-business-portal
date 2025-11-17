@@ -780,6 +780,10 @@ export default function SalesForecastsPage() {
     if (selectedSku && selectedShipping) {
       const leadTime = getEffectiveLeadTime();
       const shippingDays: { [key: string]: number } = {
+        'INDIRECT': 0,
+        'ZERO_LAG_SAME_DAY': 0,
+        'ZERO_LAG_NEXT_DAY': 1,
+        'ZERO_LAG_CUSTOM': 0,
         'AIR_7_DAYS': 7,
         'AIR_14_DAYS': 14,
         'AIR_NLD': 14,
@@ -2094,6 +2098,10 @@ export default function SalesForecastsPage() {
                         <p className="font-bold text-xl text-purple-600 mb-2">
                           {(() => {
                             const shippingTimes: { [key: string]: string } = {
+                              'INDIRECT': 'EXW = Delivery Week',
+                              'ZERO_LAG_SAME_DAY': 'Same day',
+                              'ZERO_LAG_NEXT_DAY': '1 day',
+                              'ZERO_LAG_CUSTOM': 'Custom',
                               'AIR_7_DAYS': '7 days',
                               'AIR_14_DAYS': '14 days',
                               'AIR_NLD': '14 days',
@@ -2320,14 +2328,14 @@ export default function SalesForecastsPage() {
             let isTooEarly = false;
             let weekHasTooEarlyDays = false;
             
-            // ZERO LAG EXCEPTION: Bypass all date restrictions for immediate shipping
-            const isZeroLag = selectedShipping?.startsWith('ZERO_LAG_');
+            // ZERO LAG & INDIRECT EXCEPTION: Bypass all date restrictions for immediate shipping and indirect shipments
+            const isZeroLag = selectedShipping?.startsWith('ZERO_LAG_') || selectedShipping === 'INDIRECT';
             
             if (selectedSku && selectedShipping && !isZeroLag) {
                               const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
-                                // Zero Lag Options (immediate shipping)
-                                'ZERO_LAG_SAME_DAY': 0, 'ZERO_LAG_NEXT_DAY': 1, 'ZERO_LAG_CUSTOM': 0,
+                                // Indirect & Zero Lag Options
+                                'INDIRECT': 0, 'ZERO_LAG_SAME_DAY': 0, 'ZERO_LAG_NEXT_DAY': 1, 'ZERO_LAG_CUSTOM': 0,
                                 // Standard Options
                                 'AIR_7_DAYS': 7, 'AIR_14_DAYS': 14, 'AIR_NLD': 14, 'AIR_AUT': 14,
                                 'SEA_ASIA_US_WEST': 45, 'SEA_ASIA_US_EAST': 52, 'SEA_WEST_EXPEDITED': 35,
@@ -2360,12 +2368,12 @@ export default function SalesForecastsPage() {
                                 type="button"
                                 onClick={() => {
                                   if (isCurrentMonth) {
-                                    // If this week has any "Too Early" days, find the next valid week (UNLESS Zero Lag)
-                                    if (weekHasTooEarlyDays && selectedSku && selectedShipping && !selectedShipping.startsWith('ZERO_LAG_')) {
+                                    // If this week has any "Too Early" days, find the next valid week (UNLESS Zero Lag or Indirect)
+                                    if (weekHasTooEarlyDays && selectedSku && selectedShipping && !selectedShipping.startsWith('ZERO_LAG_') && selectedShipping !== 'INDIRECT') {
                                       const leadTime = getEffectiveLeadTime();
                                       const shippingDays: { [key: string]: number } = {
-                                        // Zero Lag Options (immediate shipping)
-                                        'ZERO_LAG_SAME_DAY': 0, 'ZERO_LAG_NEXT_DAY': 1, 'ZERO_LAG_CUSTOM': 0,
+                                        // Indirect & Zero Lag Options
+                                        'INDIRECT': 0, 'ZERO_LAG_SAME_DAY': 0, 'ZERO_LAG_NEXT_DAY': 1, 'ZERO_LAG_CUSTOM': 0,
                                         // Standard Options
                                         'AIR_7_DAYS': 7, 'AIR_14_DAYS': 14, 'AIR_NLD': 14, 'AIR_AUT': 14,
                                         'SEA_ASIA_US_WEST': 45, 'SEA_ASIA_US_EAST': 52, 'SEA_WEST_EXPEDITED': 35,
@@ -2530,7 +2538,8 @@ export default function SalesForecastsPage() {
                           <p className="font-bold text-xl text-purple-600 my-1">
                             {(() => {
                               const shippingDays: { [key: string]: number } = {
-                                // Zero Lag Options (immediate shipping)
+                                // Indirect & Zero Lag Options
+                                'INDIRECT': 0,
                                 'ZERO_LAG_SAME_DAY': 0,
                                 'ZERO_LAG_NEXT_DAY': 1,
                                 'ZERO_LAG_CUSTOM': 0,
@@ -2561,6 +2570,10 @@ export default function SalesForecastsPage() {
                             {(() => {
                               const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
+                                'INDIRECT': 0,
+                                'ZERO_LAG_SAME_DAY': 0,
+                                'ZERO_LAG_NEXT_DAY': 1,
+                                'ZERO_LAG_CUSTOM': 0,
                                 'AIR_7_DAYS': 7,
                                 'AIR_14_DAYS': 14,
                                 'AIR_NLD': 14,
@@ -2591,6 +2604,10 @@ export default function SalesForecastsPage() {
                               const orderDate = new Date();
                               const leadTime = getEffectiveLeadTime();
                               const shippingDays: { [key: string]: number } = {
+                                'INDIRECT': 0,
+                                'ZERO_LAG_SAME_DAY': 0,
+                                'ZERO_LAG_NEXT_DAY': 1,
+                                'ZERO_LAG_CUSTOM': 0,
                                 'AIR_7_DAYS': 7, // Fixed timing
                                 'AIR_14_DAYS': 14,
                                 'AIR_NLD': 14,
@@ -2892,6 +2909,9 @@ export default function SalesForecastsPage() {
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     >
                       <option value="">Select Shipping Mode</option>
+                      <optgroup label="📦 Indirect Shipment">
+                        <option value="INDIRECT">Indirect - EXW = Delivery Week (customer arranges pickup)</option>
+                      </optgroup>
                       <optgroup label="⚡ Immediate/Express (Zero Lag)">
                         <option value="ZERO_LAG_SAME_DAY">Zero Lag - Same Day (cross docking, special shipments)</option>
                         <option value="ZERO_LAG_NEXT_DAY">Zero Lag - Next Day (express fulfillment)</option>
@@ -3575,14 +3595,33 @@ export default function SalesForecastsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
                     required
                   >
-                    <option value="">Select Method</option>
-                    <option value="ZERO_LAG_CUSTOM">Zero Lag Custom</option>
-                    <option value="SEA_ASIA_US_WEST">Sea Asia to US West</option>
-                    <option value="AIR_14_DAYS">Air 14 Days</option>
-                    <option value="ZERO_LAG_SAME_DAY">Zero Lag Same Day</option>
-                    <option value="Sea Freight">Sea Freight</option>
-                    <option value="Air Freight">Air Freight</option>
-                    <option value="Ground">Ground</option>
+                    <option value="">Select Shipping Mode</option>
+                    <optgroup label="📦 Indirect Shipment">
+                      <option value="INDIRECT">Indirect - EXW = Delivery Week (customer arranges pickup)</option>
+                    </optgroup>
+                    <optgroup label="⚡ Immediate/Express (Zero Lag)">
+                      <option value="ZERO_LAG_SAME_DAY">Zero Lag - Same Day (cross docking, special shipments)</option>
+                      <option value="ZERO_LAG_NEXT_DAY">Zero Lag - Next Day (express fulfillment)</option>
+                      <option value="ZERO_LAG_CUSTOM">Zero Lag - Custom Date (any lead time 1+ days)</option>
+                    </optgroup>
+                    <optgroup label="✈️ Air Freight (Fast, Higher Cost)">
+                      <option value="AIR_7_DAYS">Air Express - 7 days door-to-door (urgent orders)</option>
+                      <option value="AIR_14_DAYS">Air Standard - 14 days door-to-door (standard air)</option>
+                      <option value="AIR_NLD">Air to Netherlands (NLD) - 14 days door-to-door</option>
+                      <option value="AIR_AUT">Air to Austria (AUT) - 14 days door-to-door</option>
+                    </optgroup>
+                    <optgroup label="🚢 Ocean Freight (Bulk, Cost Efficient)">
+                      <option value="SEA_ASIA_US_WEST">Sea Asia→US West - 45 days door-to-door (bulk)</option>
+                      <option value="SEA_ASIA_US_EAST">Sea Asia→US East - 52 days door-to-door (bulk)</option>
+                      <option value="SEA_WEST_EXPEDITED">Sea West Expedited - 35 days door-to-door (faster bulk)</option>
+                      <option value="SEA_ASIA_NLD">Sea Asia→Netherlands (NLD) - 45 days door-to-door</option>
+                      <option value="SEA_ASIA_AUT">Sea Asia→Austria (AUT) - 45 days door-to-door</option>
+                    </optgroup>
+                    <optgroup label="🚛 Ground Transport">
+                      <option value="TRUCK_EXPRESS">Truck Express - 1-2 weeks (regional)</option>
+                      <option value="TRUCK_STANDARD">Truck Standard - 2-4 weeks (domestic)</option>
+                      <option value="RAIL">Rail Freight - 3-5 weeks (cost efficient)</option>
+                    </optgroup>
                   </select>
                 </div>
                 
