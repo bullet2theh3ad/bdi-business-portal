@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,7 +65,10 @@ interface SalesForecast {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function SalesForecastsPage() {
+function SalesForecastsContent() {
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+  
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   const { data: skus } = useSWR<ProductSku[]>('/api/admin/skus', fetcher);
   
@@ -81,7 +86,7 @@ export default function SalesForecastsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSku, setSelectedSku] = useState<ProductSku | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>(highlightId ? 'list' : 'calendar');
   const [calendarView, setCalendarView] = useState<'months' | 'weeks' | 'days'>('months');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
@@ -101,6 +106,22 @@ export default function SalesForecastsPage() {
   const [skuFilter, setSkuFilter] = useState<string>('all');
   const [manufacturerFilter, setManufacturerFilter] = useState<string>('all');
   const [dateSort, setDateSort] = useState<'ascending' | 'descending'>('ascending');
+  
+  // Handle highlight: scroll to forecast when highlighted
+  useEffect(() => {
+    if (highlightId && forecasts && viewMode === 'list') {
+      setTimeout(() => {
+        const element = document.getElementById(`forecast-${highlightId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+          }, 3000);
+        }
+      }, 500);
+    }
+  }, [highlightId, forecasts, viewMode]);
   
   // Holiday calendar functionality
   const holidayCalendar = useHolidayCalendar();
@@ -1624,7 +1645,8 @@ export default function SalesForecastsPage() {
                   const completed = isFullyCompleted(forecast);
                   return (
                   <div 
-                    key={forecast.id} 
+                    key={forecast.id}
+                    id={`forecast-${forecast.id}`}
                     className={`border rounded-lg p-3 sm:p-4 transition-colors ${
                       completed
                         ? 'bg-green-50 border-green-200 hover:bg-green-100'
@@ -1728,6 +1750,16 @@ export default function SalesForecastsPage() {
                       
                       {/* Action Buttons - Mobile: Below content, Desktop: Right side */}
                       <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                        <Link href={`/cpfr/shipments?highlight=${forecast.id}`}>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full sm:w-auto bg-cyan-50 hover:bg-cyan-100 border-cyan-200"
+                          >
+                            <SemanticBDIIcon semantic="warehouse" size={14} className="mr-1" />
+                            View Shipment
+                          </Button>
+                        </Link>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -4245,6 +4277,14 @@ export default function SalesForecastsPage() {
         </Dialog>
       )}
     </div>
+  );
+}
+
+export default function SalesForecastsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SalesForecastsContent />
+    </Suspense>
   );
 }
 

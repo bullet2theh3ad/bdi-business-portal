@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +67,10 @@ interface SalesForecast {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function ShipmentsPage() {
+function ShipmentsContent() {
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+  
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   
   // 🌍 Translation hooks
@@ -88,6 +93,22 @@ export default function ShipmentsPage() {
   // Ensure actualShipments is an array before using
   const actualShipmentsArray = Array.isArray(actualShipments) ? actualShipments : [];
   const { data: jjolmData, mutate: mutateJjolm } = useSWR('/api/cpfr/jjolm-reports', fetcher);
+  
+  // Handle highlight: scroll to shipment when highlighted
+  useEffect(() => {
+    if (highlightId && forecasts) {
+      setTimeout(() => {
+        const element = document.getElementById(`shipment-${highlightId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-cyan-500', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-cyan-500', 'ring-offset-2');
+          }, 3000);
+        }
+      }, 500);
+    }
+  }, [highlightId, forecasts]);
 
   // JJOLM Upload Functions
   const handleJjolmFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1662,7 +1683,8 @@ export default function ShipmentsPage() {
                 
                 return (
                   <div 
-                    key={forecast.id} 
+                    key={forecast.id}
+                    id={`shipment-${forecast.id}`}
                     className={`border rounded-lg p-3 sm:p-4 lg:p-6 transition-colors ${
                       completed
                         ? 'bg-green-50 border-green-200 hover:bg-green-100'
@@ -1705,7 +1727,17 @@ export default function ShipmentsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 justify-center sm:justify-end">
+                      <div className="flex items-center gap-2 justify-center sm:justify-end flex-wrap">
+                        <Link href={`/cpfr/forecasts?highlight=${forecast.id}`}>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+                          >
+                            <SemanticBDIIcon semantic="forecast" size={14} className="mr-1" />
+                            View Forecast
+                          </Button>
+                        </Link>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -3885,5 +3917,13 @@ export default function ShipmentsPage() {
         </Dialog>
       )}
     </div>
+  );
+}
+
+export default function ShipmentsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ShipmentsContent />
+    </Suspense>
   );
 }
