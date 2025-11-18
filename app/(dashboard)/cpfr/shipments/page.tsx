@@ -1703,22 +1703,6 @@ export default function ShipmentsPage() {
                             </Badge>
                           </div>
                         </div>
-                        
-                        {/* Timeline Progress Bar */}
-                        <div className="mb-4">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-sm text-gray-600">Shipment Progress:</span>
-                            <span className="text-sm font-medium">
-                              {progress}/4 milestones completed
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${(progress / 4) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
                       </div>
                       
                       <div className="flex items-center gap-2 justify-center sm:justify-end">
@@ -1757,6 +1741,22 @@ export default function ShipmentsPage() {
                             return (existingShipment || localShipment) ? tc('edit', 'Edit') : tc('create', 'Create');
                           })()}
                         </Button>
+                      </div>
+                    </div>
+
+                    {/* Timeline Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm text-gray-600">Shipment Progress:</span>
+                        <span className="text-sm font-medium">
+                          {progress}/4 milestones completed
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${(progress / 4) * 100}%` }}
+                        ></div>
                       </div>
                     </div>
 
