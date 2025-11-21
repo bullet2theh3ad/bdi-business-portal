@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,7 @@ interface ShipmentData {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preloadedJJOLM?: string; // Optional JJOLM number to auto-load
 }
 
 interface JJOLMRecord {
@@ -60,7 +61,7 @@ interface JJOLMRecord {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
+export default function OLShipmentTrackingModal({ open, onOpenChange, preloadedJJOLM }: Props) {
   const [reference, setReference] = useState('');
   const [containerNumber, setContainerNumber] = useState('');
   const [queryType, setQueryType] = useState<'shipmentDetailsV2' | 'fullTransportDetails'>('fullTransportDetails');
@@ -76,6 +77,17 @@ export default function OLShipmentTrackingModal({ open, onOpenChange }: Props) {
   );
 
   const jjolmRecords = jjolmData?.data || [];
+
+  // Auto-populate and search when modal opens with a preloaded JJOLM
+  useEffect(() => {
+    if (open && preloadedJJOLM) {
+      setReference(preloadedJJOLM);
+      // Delay the search slightly to allow the reference to be set
+      setTimeout(() => {
+        handleSearch();
+      }, 300);
+    }
+  }, [open, preloadedJJOLM]);
 
   const handleSearch = async () => {
     if (!reference && !containerNumber) {

@@ -16,6 +16,7 @@ import { User, ProductSku, Warehouse } from '@/lib/db/schema';
 import { useSimpleTranslations, getUserLocale } from '@/lib/i18n/simple-translator';
 import { DynamicTranslation } from '@/components/DynamicTranslation';
 import { ShipmentCautionIndicator } from '@/components/ui/shipment-caution-indicator';
+import OLShipmentTrackingModal from '@/components/OLShipmentTrackingModal';
 
 interface UserWithOrganization extends User {
   organization?: {
@@ -368,6 +369,10 @@ function ShipmentsContent() {
   const [jjolmUploadResult, setJjolmUploadResult] = useState<any>(null);
   const [selectedJjolmForTimeline, setSelectedJjolmForTimeline] = useState<string | null>(null);
   const [showJjolmTimeline, setShowJjolmTimeline] = useState(false);
+  
+  // OL Shipment Tracking Modal State
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingJJOLM, setTrackingJJOLM] = useState<string | null>(null);
   
   // Timeline data for selected JJOLM
   const { data: timelineData, isLoading: timelineLoading } = useSWR(
@@ -1738,6 +1743,32 @@ function ShipmentsContent() {
                             View Forecast
                           </Button>
                         </Link>
+                        
+                        {/* Track Shipment Button - only show if JJOLM exists */}
+                        {(() => {
+                          const existingShipment = actualShipmentsArray.find((shipment: any) => shipment.forecast_id === forecast.id);
+                          const localShipment = createdShipments.get(forecast.id);
+                          const jjolmNumber = existingShipment?.shipper_reference || localShipment?.shipperReference;
+                          
+                          if (jjolmNumber) {
+                            return (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setTrackingJJOLM(jjolmNumber);
+                                  setShowTrackingModal(true);
+                                }}
+                                className="bg-cyan-50 hover:bg-cyan-100 border-cyan-200"
+                              >
+                                <SemanticBDIIcon semantic="shipping" size={14} className="mr-1" />
+                                Track Shipment
+                              </Button>
+                            );
+                          }
+                          return null;
+                        })()}
+                        
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -3916,6 +3947,13 @@ function ShipmentsContent() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* OL Shipment Tracking Modal */}
+      <OLShipmentTrackingModal
+        open={showTrackingModal}
+        onOpenChange={setShowTrackingModal}
+        preloadedJJOLM={trackingJJOLM || undefined}
+      />
     </div>
   );
 }
