@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/drizzle';
 import { users, jjolmTracking, jjolmHistory } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, like, sql } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
 
 export async function GET(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all JJOLM records for dropdown
+    // Get only valid JJOLM records for dropdown (must start with "JJOLM")
     const jjolmRecords = await db
       .select({
         id: jjolmTracking.id,
@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
         updateCount: jjolmTracking.updateCount,
       })
       .from(jjolmTracking)
+      .where(sql`${jjolmTracking.jjolmNumber} LIKE 'JJOLM%'`)
       .orderBy(jjolmTracking.lastUpdated);
+
+    console.log(`📋 Fetched ${jjolmRecords.length} valid JJOLM records (filtered for JJOLM% pattern)`);
 
     return NextResponse.json({
       success: true,
