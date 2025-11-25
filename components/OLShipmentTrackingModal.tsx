@@ -78,16 +78,26 @@ export default function OLShipmentTrackingModal({ open, onOpenChange, preloadedJ
 
   const jjolmRecords = jjolmData?.data || [];
 
-  // Auto-populate and search when modal opens with a preloaded JJOLM
+  // Auto-populate when modal opens with a preloaded JJOLM
+  // and trigger search after state is set
   useEffect(() => {
     if (open && preloadedJJOLM) {
       setReference(preloadedJJOLM);
-      // Delay the search slightly to allow the reference to be set
-      setTimeout(() => {
-        handleSearch();
-      }, 300);
+      setError(null); // Clear any previous errors
+      setShipmentData(null); // Clear previous data
     }
   }, [open, preloadedJJOLM]);
+
+  // Auto-search when reference is populated from preloadedJJOLM
+  useEffect(() => {
+    if (open && preloadedJJOLM && reference === preloadedJJOLM) {
+      // Reference has been set, now trigger search
+      const timer = setTimeout(() => {
+        handleSearch();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [reference, open, preloadedJJOLM]);
 
   const handleSearch = async () => {
     if (!reference && !containerNumber) {
