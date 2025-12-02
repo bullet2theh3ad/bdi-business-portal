@@ -527,6 +527,157 @@ export default function SKUsPage() {
     setGeneratedSku(generateSku());
   };
 
+  // Export SKUs to CSV
+  const exportToCSV = () => {
+    if (!filteredSkus || filteredSkus.length === 0) {
+      alert('No SKUs to export');
+      return;
+    }
+
+    // Define CSV headers matching the database schema
+    const headers = [
+      'SKU',
+      'Name',
+      'SKU Code (3-digit)',
+      'Category',
+      'Subcategory',
+      'Description',
+      'Model',
+      'Version',
+      'Dimensions',
+      'Weight (g)',
+      'Color',
+      'Manufacturer',
+      'MOQ',
+      'Lead Time (days)',
+      'Standard Cost (USD)',
+      'HTS Code',
+      'Amazon ASIN',
+      'Amazon Seller SKU',
+      'UPC',
+      'EAN',
+      'Walmart SKU',
+      'eBay SKU',
+      'Other Mappings',
+      'Box Length (cm)',
+      'Box Width (cm)',
+      'Box Height (cm)',
+      'Box Weight (kg)',
+      'Carton Length (cm)',
+      'Carton Width (cm)',
+      'Carton Height (cm)',
+      'Carton Weight (kg)',
+      'Boxes Per Carton',
+      'Pallet Length (cm)',
+      'Pallet Width (cm)',
+      'Pallet Height (cm)',
+      'Pallet Weight (kg)',
+      'Pallet Material Type',
+      'Pallet Notes',
+      'MP Start Date',
+      'Is Active',
+      'Is Discontinued',
+      'Replacement SKU',
+      'Tags',
+      'Created At',
+      'Updated At'
+    ];
+
+    // Convert SKUs to CSV rows
+    const rows = filteredSkus.map(sku => {
+      // Extract mappings by channel
+      const mappings = (sku as any).mappings || [];
+      const getMapping = (channel: string) => {
+        const mapping = mappings.find((m: any) => m.channel === channel);
+        return mapping ? mapping.externalIdentifier : '';
+      };
+      
+      // Get all other mappings (not in standard channels)
+      const standardChannels = ['amazon_asin', 'amazon_seller_sku', 'upc', 'ean', 'walmart', 'ebay'];
+      const otherMappings = mappings
+        .filter((m: any) => !standardChannels.includes(m.channel))
+        .map((m: any) => `${m.channel}: ${m.externalIdentifier}`)
+        .join('; ');
+
+      return [
+        sku.sku || '',
+        sku.name || '',
+        sku.skuCode3Digit || '',
+        sku.category || '',
+        sku.subcategory || '',
+        sku.description || '',
+        sku.model || '',
+        sku.version || '',
+        sku.dimensions || '',
+        sku.weight || '',
+        sku.color || '',
+        sku.mfg || '',
+        sku.moq || '',
+        sku.leadTimeDays || '',
+        sku.standardCost || '',
+        sku.htsCode || '',
+        getMapping('amazon_asin'),
+        getMapping('amazon_seller_sku'),
+        getMapping('upc'),
+        getMapping('ean'),
+        getMapping('walmart'),
+        getMapping('ebay'),
+        otherMappings,
+        sku.boxLengthCm || '',
+        sku.boxWidthCm || '',
+        sku.boxHeightCm || '',
+        sku.boxWeightKg || '',
+        sku.cartonLengthCm || '',
+        sku.cartonWidthCm || '',
+        sku.cartonHeightCm || '',
+        sku.cartonWeightKg || '',
+        sku.boxesPerCarton || '',
+        sku.palletLengthCm || '',
+        sku.palletWidthCm || '',
+        sku.palletHeightCm || '',
+        sku.palletWeightKg || '',
+        sku.palletMaterialType || '',
+        sku.palletNotes || '',
+        sku.mpStartDate ? new Date(sku.mpStartDate).toISOString().split('T')[0] : '',
+        sku.isActive ? 'Yes' : 'No',
+        sku.isDiscontinued ? 'Yes' : 'No',
+        sku.replacementSku || '',
+        Array.isArray(sku.tags) ? sku.tags.join('; ') : '',
+        sku.createdAt ? new Date(sku.createdAt).toISOString() : '',
+        sku.updatedAt ? new Date(sku.updatedAt).toISOString() : ''
+      ];
+    });
+
+    // Escape CSV values (handle commas, quotes, newlines)
+    const escapeCSV = (value: any) => {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
+    // Build CSV content
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...rows.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SKU_Export_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="flex-1 p-3 sm:p-4 lg:p-8">
       {/* Header */}
@@ -543,10 +694,21 @@ export default function SKUsPage() {
               </p>
             </div>
           </div>
-          <Button className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
-            <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
-            {tc('addSKU', 'Add SKU')}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto" 
+              onClick={exportToCSV}
+              disabled={!filteredSkus || filteredSkus.length === 0}
+            >
+              <SemanticBDIIcon semantic="download" size={16} className="mr-2" />
+              {tc('exportCSV', 'Export CSV')}
+            </Button>
+            <Button className="bg-bdi-green-1 hover:bg-bdi-green-2 w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
+              <SemanticBDIIcon semantic="plus" size={16} className="mr-2 brightness-0 invert" />
+              {tc('addSKU', 'Add SKU')}
+            </Button>
+          </div>
         </div>
       </div>
 

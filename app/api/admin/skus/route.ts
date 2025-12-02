@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
         replacementSku: productSkus.replacementSku,
         tags: productSkus.tags,
         specifications: productSkus.specifications,
+        skuCode3Digit: productSkus.skuCode3Digit,
         
         // New dimensional fields (metric)
         boxLengthCm: productSkus.boxLengthCm,
@@ -160,9 +161,32 @@ export async function GET(request: NextRequest) {
       .where(conditions.length > 0 ? and(...conditions.filter(Boolean)) : undefined)
       .orderBy(productSkus.createdAt);
 
+    // Fetch mappings for all SKUs
+    const allMappings = await db
+      .select({
+        internalSkuId: skuMappings.internalSkuId,
+        externalIdentifier: skuMappings.externalIdentifier,
+        channel: skuMappings.channel,
+        notes: skuMappings.notes,
+      })
+      .from(skuMappings);
 
+    // Group mappings by SKU ID
+    const mappingsBySku = allMappings.reduce((acc, mapping) => {
+      if (!acc[mapping.internalSkuId]) {
+        acc[mapping.internalSkuId] = [];
+      }
+      acc[mapping.internalSkuId].push(mapping);
+      return acc;
+    }, {} as Record<string, typeof allMappings>);
 
-    return NextResponse.json(skusList);
+    // Add mappings to each SKU
+    const skusWithMappings = skusList.map(sku => ({
+      ...sku,
+      mappings: mappingsBySku[sku.id] || []
+    }));
+
+    return NextResponse.json(skusWithMappings);
 
   } catch (error) {
     console.error('Error fetching SKUs:', error);
