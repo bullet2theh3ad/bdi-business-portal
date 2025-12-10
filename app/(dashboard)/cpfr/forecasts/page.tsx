@@ -770,6 +770,33 @@ function SalesForecastsContent() {
     setIsLoading(false);
   };
 
+  const handleDeleteForecast = async (forecastId: string, forecastSku: string) => {
+    if (!confirm(`Are you sure you want to delete forecast for ${forecastSku}?\n\nThis will permanently remove the forecast and any related records. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/cpfr/forecasts', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          forecastId: forecastId
+        }),
+      });
+
+      if (response.ok) {
+        mutateForecasts(); // Refresh the forecast list
+        alert('Forecast deleted successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete forecast: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting forecast:', error);
+      alert('Failed to delete forecast. Please try again.');
+    }
+  };
+
   // Get planning weeks - extends 6 weeks beyond earliest possible delivery
   const getPlanningWeeks = () => {
     const weeks = [];
@@ -1820,6 +1847,19 @@ function SalesForecastsContent() {
                           <SemanticBDIIcon semantic="analytics" size={14} className="mr-1" />
                           Analysis
                         </Button>
+                        
+                        {/* Delete Button - Only for BDI users with permission */}
+                        {canCreateForecasts && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full sm:w-auto text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => handleDeleteForecast(forecast.id, forecast.sku.sku)}
+                          >
+                            <SemanticBDIIcon semantic="delete" size={14} className="mr-1" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
