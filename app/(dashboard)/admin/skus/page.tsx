@@ -416,12 +416,13 @@ export default function SKUsPage() {
     const colors: { [key: string]: string } = {
       'B': 'bg-blue-100 border-blue-300 text-blue-800', // Bridge
       'G': 'bg-green-100 border-green-300 text-green-800', // Gateway
-      'Q': 'bg-purple-100 border-purple-300 text-purple-800', // Router/Wifi
+      'Q': 'bg-purple-100 border-purple-300 text-purple-800', // Routers - Mesh
       'F': 'bg-orange-100 border-orange-300 text-orange-800', // FWA
       'P': 'bg-pink-100 border-pink-300 text-pink-800', // HotSpot
       'X': 'bg-indigo-100 border-indigo-300 text-indigo-800', // PON
       'A': 'bg-yellow-100 border-yellow-300 text-yellow-800', // Accessories
-      'R': 'bg-red-100 border-red-300 text-red-800', // Red Cap
+      'R': 'bg-red-100 border-red-300 text-red-800', // Router - no Mesh
+      'S': 'bg-cyan-100 border-cyan-300 text-cyan-800', // Switch
       'M': 'bg-teal-100 border-teal-300 text-teal-800', // Modem
       'C': 'bg-gray-100 border-gray-300 text-gray-800', // Cable/Accessory
     };
@@ -438,12 +439,13 @@ export default function SKUsPage() {
     productTypes: [
       { code: 'B', name: 'Bridge' },
       { code: 'G', name: 'Gateway' },
-      { code: 'Q', name: 'Router/Wifi' },
+      { code: 'Q', name: 'Routers - Mesh' },
       { code: 'F', name: 'FWA' },
       { code: 'P', name: 'HotSpot' },
       { code: 'X', name: 'PON' },
       { code: 'A', name: 'Accessories' },
-      { code: 'R', name: 'Red Cap' },
+      { code: 'R', name: 'Router - no Mesh' },
+      { code: 'S', name: 'Switch' },
     ],
     variants: [
       { code: 'T', name: 'Telephony' },
