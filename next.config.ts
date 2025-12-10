@@ -5,9 +5,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: {
-    ppr: true,
-    nodeMiddleware: true,
-    clientSegmentCache: true
+    // Removed canary-only features for stable Next.js
+    // ppr: true, // Only available in canary
+    // nodeMiddleware: true, // Only available in canary
   },
   images: {
     domains: ['bdibusinessportal.com'],
