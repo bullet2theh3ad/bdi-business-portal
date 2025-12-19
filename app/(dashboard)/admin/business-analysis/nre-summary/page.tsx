@@ -585,22 +585,30 @@ export default function NRESummaryPage() {
                 
                 const daysFromStart = Math.ceil((today.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
                 const currentDatePosition = (daysFromStart / totalDays) * 100;
+                // Clamp to keep the marker inside the visible range even if today is outside
+                const clampedCurrentDatePosition = Math.min(100, Math.max(0, currentDatePosition));
                 const isCurrentDateInRange = today >= rangeStart && today <= rangeEnd;
 
                 // Transform payment line items to bubbles with positions
-                const bubbles = budget.paymentLineItems.map((item) => {
-                  const itemDate = new Date(item.paymentDate);
-                  itemDate.setHours(0, 0, 0, 0);
-                  const daysFromRangeStart = Math.ceil(
-                    (itemDate.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)
-                  );
-                  const position = (daysFromRangeStart / totalDays) * 100;
+                const bubbles = budget.paymentLineItems
+                  .filter((item) => {
+                    const itemDate = new Date(item.paymentDate);
+                    itemDate.setHours(0, 0, 0, 0);
+                    return itemDate >= rangeStart && itemDate <= rangeEnd;
+                  })
+                  .map((item) => {
+                    const itemDate = new Date(item.paymentDate);
+                    itemDate.setHours(0, 0, 0, 0);
+                    const daysFromRangeStart = Math.ceil(
+                      (itemDate.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)
+                    );
+                    const position = (daysFromRangeStart / totalDays) * 100;
 
-                  return {
-                    ...item,
-                    position: Math.max(5, Math.min(95, position)),
-                  };
-                });
+                    return {
+                      ...item,
+                      position: Math.max(5, Math.min(95, position)),
+                    };
+                  });
 
                 return (
                   <div key={budget.id} className="relative flex items-center">
@@ -632,10 +640,10 @@ export default function NRESummaryPage() {
                         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-300 -translate-y-1/2"></div>
                         
                         {/* Current date line (if enabled and in range) */}
-                        {showCurrentDateLine && isCurrentDateInRange && (
+                        {showCurrentDateLine && (
                           <div
                             className="absolute top-0 bottom-0 z-10"
-                            style={{ left: `${currentDatePosition}%` }}
+                            style={{ left: `${clampedCurrentDatePosition}%` }}
                           >
                             {/* Vertical dashed line */}
                             <div className="absolute top-0 bottom-0 border-l-2 border-dashed border-blue-500 opacity-60" />
@@ -643,7 +651,7 @@ export default function NRESummaryPage() {
                             {/* "Today" label at top (only show on first budget row) */}
                             {budget.id === filteredBudgets[0].id && (
                               <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap shadow-md">
-                                Today
+                                Today{!isCurrentDateInRange ? ' (out of range)' : ''}
                               </div>
                             )}
                           </div>
