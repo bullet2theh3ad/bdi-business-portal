@@ -510,17 +510,20 @@ export class FinancialEventsParser {
    * Calculate total advertising spend from Product Ads events
    */
   static calculateTotalAdSpend(events: FinancialEventGroup[]): number {
-    let total = 0;
+    let net = 0;
     
     events.forEach(group => {
       group.ProductAdsPaymentEventList?.forEach(event => {
         if (event.transactionValue?.CurrencyAmount) {
-          total += Math.abs(event.transactionValue.CurrencyAmount);
+          // Amazon returns debits as negatives and credits as positives.
+          // Use the signed amount so credits reduce spend, then return the
+          // absolute value so callers get a positive cost figure.
+          net += event.transactionValue.CurrencyAmount;
         }
       });
     });
     
-    return total;
+    return Math.abs(net);
   }
 
   /**
@@ -535,7 +538,9 @@ export class FinancialEventsParser {
       group.ProductAdsPaymentEventList?.forEach(event => {
         if (event.transactionType && event.transactionValue?.CurrencyAmount) {
           const transactionType = event.transactionType;
-          adBreakdown[transactionType] = (adBreakdown[transactionType] || 0) + Math.abs(event.transactionValue.CurrencyAmount);
+          // Keep signed amounts so credits reduce totals instead of
+          // inflating spend when grouped by type.
+          adBreakdown[transactionType] = (adBreakdown[transactionType] || 0) + event.transactionValue.CurrencyAmount;
         }
       });
     });

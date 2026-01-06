@@ -18,7 +18,7 @@ interface DateRange {
   endDate: string;
 }
 
-async function findMissingDateRanges(): Promise<DateRange[]> {
+async function findMissingDateRanges(forceReprocess = false): Promise<DateRange[]> {
   // Get the earliest and latest dates from line items
   const dateRange = await db
     .select({
@@ -61,12 +61,12 @@ async function findMissingDateRanges(): Promise<DateRange[]> {
     const startStr = currentStart.toISOString().split('T')[0];
     const endStr = currentEnd.toISOString().split('T')[0];
     
-    // Check if we already have a summary for this exact range
+    // If forceReprocess is true, include all ranges. Otherwise only return missing ranges.
     const hasSummary = existingSummaries.some(
       s => s.startDate === startStr && s.endDate === endStr
     );
     
-    if (!hasSummary) {
+    if (forceReprocess || !hasSummary) {
       chunks.push({
         startDate: startStr,
         endDate: endStr,
@@ -145,9 +145,10 @@ async function backfillChunk(startDate: string, endDate: string) {
 export async function POST(request: NextRequest) {
   try {
     console.log('[Backfill] Starting ad spend backfill...');
+    const forceReprocess = request.nextUrl.searchParams.get('force') === 'true';
     
     // Find missing date ranges
-    const missingRanges = await findMissingDateRanges();
+    const missingRanges = await findMissingDateRanges(forceReprocess);
     
     if (missingRanges.length === 0) {
       return NextResponse.json({
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    console.log(`[Backfill] Found ${missingRanges.length} date ranges to backfill`);
+    console.log(`[Backfill] Found ${missingRanges.length} date ranges to backfill${forceReprocess ? ' (force mode)' : ''}`);
     
     const results = [];
     let successCount = 0;
