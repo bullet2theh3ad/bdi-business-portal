@@ -165,8 +165,8 @@ export async function POST(request: NextRequest) {
     let successCount = 0;
     let failCount = 0;
     
-    // Process first 5 chunks only (to avoid timeout)
-    const chunksToProcess = missingRanges.slice(0, 5);
+    // When forcing, process all ranges; otherwise limit to first 5 to avoid timeout
+    const chunksToProcess = forceReprocess ? missingRanges : missingRanges.slice(0, 5);
     
     for (const range of chunksToProcess) {
       try {
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    const remaining = missingRanges.length - chunksToProcess.length;
+    const remaining = forceReprocess ? 0 : missingRanges.length - chunksToProcess.length;
     
     return NextResponse.json({
       success: true,
