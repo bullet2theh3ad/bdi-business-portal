@@ -72,6 +72,7 @@
     "server-only": "^0.0.1",
     "sharp": "^0.34.4",
     "stripe": "^18.1.0",
+    "supports-color": "7.2.0",
     "swr": "^2.3.3",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "4.1.7",

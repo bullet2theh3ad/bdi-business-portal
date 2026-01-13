@@ -12,9 +12,9 @@ import { ActionState } from '@/lib/auth/middleware';
 
 export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect');
-  const priceId = searchParams.get('priceId');
-  const token = searchParams.get('token') || searchParams.get('invitation'); // Support both formats
+  const redirect = searchParams?.get('redirect') ?? null;
+  const priceId = searchParams?.get('priceId') ?? null;
+  const token = searchParams?.get('token') || searchParams?.get('invitation') || null; // Support both formats
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     mode === 'signin' ? signIn : signUp,
     { error: '' }

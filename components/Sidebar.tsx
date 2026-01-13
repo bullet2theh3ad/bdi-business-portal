@@ -407,7 +407,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
   const { data: user } = useSWR<UserType>('/api/user', fetcher);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   

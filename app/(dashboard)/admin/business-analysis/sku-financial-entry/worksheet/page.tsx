@@ -120,7 +120,7 @@ const COUNTRIES = [
 function SKUWorksheetPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const scenarioId = searchParams.get('id'); // For editing existing scenarios
+  const scenarioId = searchParams?.get('id') ?? null; // For editing existing scenarios
   
   const [worksheetData, setWorksheetData] = useState<SKUWorksheetData>({
     skuName: '',

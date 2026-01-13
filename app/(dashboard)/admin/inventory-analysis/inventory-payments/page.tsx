@@ -38,6 +38,13 @@ interface PaymentDocument {
   uploadedAt: string;
 }
 
+interface OrganizationOption {
+  id: string;
+  code: string;
+  name: string;
+  label: string;
+}
+
 export default function InventoryPaymentsPage() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
   const [currentPlan, setCurrentPlan] = useState<PaymentPlan | null>(null);
@@ -45,6 +52,7 @@ export default function InventoryPaymentsPage() {
   const [showTimeline, setShowTimeline] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
   
   // File upload state
   const [uploadedFiles, setUploadedFiles] = useState<PaymentDocument[]>([]);
@@ -61,6 +69,9 @@ export default function InventoryPaymentsPage() {
   // Search and sort state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
+  const [vendorFilter, setVendorFilter] = useState<string>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // Current date line toggle (persisted in localStorage)
   const [showCurrentDateLine, setShowCurrentDateLine] = useState<boolean>(() => {
@@ -86,11 +97,47 @@ export default function InventoryPaymentsPage() {
     }
   }, [paymentPlans, startDate, endDate]);
 
+  // Vendor list: organization code + name (NRE-style). Fallback to plan names if org list empty.
+  const uniqueVendors: OrganizationOption[] = organizations.length > 0
+    ? organizations
+    : Array.from(new Set(paymentPlans.map(plan => plan.name).filter(Boolean))).map((v, idx) => ({
+        id: String(idx),
+        code: v,
+        name: v,
+        label: v,
+      }));
+  const uniqueProjects = Array.from(new Set(
+    paymentPlans.flatMap(plan => plan.lineItems.map(item => item.project)).filter(Boolean)
+  )).sort();
+  const paymentStatusOptions = ['PAID', 'PARTIAL', 'NOT_PAID', 'OVERDUE'];
+
   // Load payment plans from database on mount
   useEffect(() => {
     loadPaymentPlans();
     loadSkus();
+    loadOrganizations();
   }, []);
+
+  // Load organizations for vendor dropdown (match NRE-style list)
+  const loadOrganizations = async () => {
+    try {
+      const response = await fetch('/api/admin/organizations');
+      if (response.ok) {
+        const data = await response.json();
+        const opts = (data || []).map((org: any) => ({
+          id: org.id,
+          code: org.code || '',
+          name: org.name || '',
+          label: org.code && org.name ? `${org.code} - ${org.name}` : org.name || org.code || '',
+        })) as OrganizationOption[];
+        // Sort by code then name for stable dropdown
+        opts.sort((a, b) => a.label.localeCompare(b.label));
+        setOrganizations(opts);
+      }
+    } catch (error) {
+      console.error('Failed to load organizations:', error);
+    }
+  };
 
   // Load SKUs from database
   const loadSkus = async () => {
@@ -270,6 +317,21 @@ export default function InventoryPaymentsPage() {
       const end = new Date(endDate);
       return paymentDate >= start && paymentDate <= end;
     });
+  };
+
+  const getPlanPaymentStatus = (items: PaymentLineItem[]) => {
+    if (items.length === 0) return 'NOT_PAID';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const totalAmount = items.reduce((sum, p) => sum + parseFloat(p.amount.toString() || '0'), 0);
+    const paidAmount = items.filter(p => p.isPaid).reduce((sum, p) => sum + parseFloat(p.amount.toString() || '0'), 0);
+    const hasOverdue = items.some(p => !p.isPaid && new Date(p.date) < today);
+
+    if (hasOverdue) return 'OVERDUE';
+    if (paidAmount === 0) return 'NOT_PAID';
+    if (paidAmount < totalAmount) return 'PARTIAL';
+    return 'PAID';
   };
 
   // CSV Export function
@@ -555,14 +617,16 @@ export default function InventoryPaymentsPage() {
 
   // Calculate total for a plan
   const getPlanTotal = (plan: PaymentPlan) => {
-    return plan.lineItems.reduce((sum, item) => sum + parseFloat(item.amount.toString() || '0'), 0);
+    const items = filterPaymentsByDateRange(plan.lineItems);
+    return items.reduce((sum, item) => sum + parseFloat(item.amount.toString() || '0'), 0);
   };
 
   // Calculate paid/unpaid totals
   const getPlanPaidUnpaid = (plan: PaymentPlan) => {
     let paid = 0;
     let unpaid = 0;
-    plan.lineItems.forEach(item => {
+    const items = filterPaymentsByDateRange(plan.lineItems);
+    items.forEach(item => {
       const amount = parseFloat(item.amount.toString() || '0');
       if (item.isPaid) {
         paid += amount;
@@ -573,9 +637,26 @@ export default function InventoryPaymentsPage() {
     return { paid, unpaid };
   };
 
+  const matchesVendor = (plan: PaymentPlan, vendorCode: string) => {
+    if (vendorCode === 'all') return true;
+    const org = organizations.find(org => org.code === vendorCode);
+    const targetCode = (org?.code || vendorCode || '').toLowerCase();
+    const targetName = (org?.name || '').toLowerCase();
+    const planName = (plan.name || '').toLowerCase();
+
+    // Match by code or name inside the plan name
+    if (targetCode && planName.includes(targetCode)) return true;
+    if (targetName && planName.includes(targetName)) return true;
+
+    // Match by line item project code
+    return plan.lineItems.some(item => (item.project || '').toLowerCase() === targetCode);
+  };
+
   // Filter and sort payment plans
   const getFilteredAndSortedPlans = () => {
     let filtered = [...paymentPlans];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     // Apply fuzzy search filter (case-insensitive)
     if (searchQuery.trim()) {
@@ -592,16 +673,49 @@ export default function InventoryPaymentsPage() {
         return searchableText.includes(query);
       });
     }
+
+    // Vendor filter (organization code/name match)
+    if (vendorFilter !== 'all') {
+      filtered = filtered.filter(plan => matchesVendor(plan, vendorFilter));
+    }
+
+    // Project filter (line item project/SKU)
+    if (projectFilter !== 'all') {
+      filtered = filtered.filter(plan =>
+        plan.lineItems.some(item => item.project === projectFilter)
+      );
+    }
+
+    // Date range filter – remove plans without line items in range when range is set
+    filtered = filtered.filter(plan => {
+      const itemsInRange = filterPaymentsByDateRange(plan.lineItems);
+      if (startDate && endDate) {
+        return itemsInRange.length > 0;
+      }
+      return true;
+    });
+
+    // Payment status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(plan => {
+        const itemsInRange = filterPaymentsByDateRange(plan.lineItems);
+        const status = getPlanPaymentStatus(itemsInRange);
+        return status === statusFilter;
+      });
+    }
     
     // Sort by earliest payment date in the plan
     filtered.sort((a, b) => {
       // Get the earliest date from each plan's line items
-      const aEarliestDate = a.lineItems.length > 0 
-        ? a.lineItems.map(item => new Date(item.date)).sort((d1, d2) => d1.getTime() - d2.getTime())[0]
+      const aItems = filterPaymentsByDateRange(a.lineItems);
+      const bItems = filterPaymentsByDateRange(b.lineItems);
+
+      const aEarliestDate = aItems.length > 0 
+        ? aItems.map(item => new Date(item.date)).sort((d1, d2) => d1.getTime() - d2.getTime())[0]
         : new Date(a.createdAt || 0);
       
-      const bEarliestDate = b.lineItems.length > 0 
-        ? b.lineItems.map(item => new Date(item.date)).sort((d1, d2) => d1.getTime() - d2.getTime())[0]
+      const bEarliestDate = bItems.length > 0 
+        ? bItems.map(item => new Date(item.date)).sort((d1, d2) => d1.getTime() - d2.getTime())[0]
         : new Date(b.createdAt || 0);
       
       // Sort based on selected order
@@ -656,6 +770,8 @@ export default function InventoryPaymentsPage() {
     return { positions, minDate, maxDate, dayRange };
   };
 
+  const filteredPlans = getFilteredAndSortedPlans();
+
 
   // Show loading state
   if (isLoading) {
@@ -693,36 +809,105 @@ export default function InventoryPaymentsPage() {
           </div>
         </div>
 
-        {/* Date Range Filter */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                <span className="text-sm sm:text-base font-semibold text-gray-700">Date Range:</span>
+        {/* Filters & Controls */}
+        <Card className="mb-2">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl">Filters & Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Search className="inline w-4 h-4 mr-1" />
+                  Search
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Plan number, vendor, project..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                />
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="start-date" className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">From:</Label>
-                  <Input
-                    id="start-date"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full sm:w-40 text-sm"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="end-date" className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">To:</Label>
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full sm:w-40 text-sm"
-                  />
-                </div>
+
+              {/* Vendor Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
+                <Select value={vendorFilter} onValueChange={setVendorFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Vendors" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Vendors</SelectItem>
+                    {uniqueVendors.map(vendor => (
+                      <SelectItem key={vendor.id} value={vendor.code || vendor.label}>
+                        {vendor.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Project Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Projects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {uniqueProjects.map(project => (
+                      <SelectItem key={project} value={project}>{project}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {paymentStatusOptions.map(status => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+              {/* Start Date */}
+              <div>
+                <Label htmlFor="start-date" className="text-sm font-medium text-gray-700">Start Date</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* End Date */}
+              <div>
+                <Label htmlFor="end-date" className="text-sm font-medium text-gray-700">End Date</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Quick Range Buttons */}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -737,7 +922,7 @@ export default function InventoryPaymentsPage() {
                     setStartDate(start.toISOString().split('T')[0]);
                     setEndDate(end.toISOString().split('T')[0]);
                   }}
-                  className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 font-semibold flex-1 sm:flex-none text-xs sm:text-sm"
+                  className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 font-semibold flex-1 text-xs sm:text-sm"
                 >
                   13-Week
                 </Button>
@@ -754,9 +939,49 @@ export default function InventoryPaymentsPage() {
                       setEndDate(allDates[allDates.length - 1]);
                     }
                   }}
-                  className="flex-1 sm:flex-none text-xs sm:text-sm"
+                  className="flex-1 text-xs sm:text-sm"
                 >
                   Reset to All
+                </Button>
+              </div>
+
+              {/* Controls */}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button onClick={exportToCSV} variant="outline" className="flex-1 sm:flex-none">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button
+                  variant={showTimeline ? "outline" : "default"}
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setShowTimeline(!showTimeline)}
+                >
+                  {showTimeline ? (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Hide Timeline
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-4 w-4 mr-2" />
+                      Show Timeline
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant={showCurrentDateLine ? "default" : "outline"}
+                  className="flex-1 sm:flex-none"
+                  onClick={toggleCurrentDateLine}
+                >
+                  {showCurrentDateLine ? 'Hide Current Date' : 'Show Current Date'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                >
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  {sortOrder === 'desc' ? 'Sort: Newest First' : 'Sort: Oldest First'}
                 </Button>
               </div>
             </div>
@@ -765,9 +990,9 @@ export default function InventoryPaymentsPage() {
       </div>
 
       {/* Summary Stats Cards */}
-      {paymentPlans.length > 0 && (() => {
+      {filteredPlans.length > 0 && (() => {
         // Filter payments by date range
-        const allPayments = paymentPlans.flatMap(plan => plan.lineItems);
+        const allPayments = filteredPlans.flatMap(plan => plan.lineItems);
         const filteredPayments = filterPaymentsByDateRange(allPayments);
         
         const today = new Date();
@@ -855,7 +1080,7 @@ export default function InventoryPaymentsPage() {
       })()}
 
       {/* Timeline Visualization */}
-      {paymentPlans.length > 0 && (
+      {showTimeline && filteredPlans.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -884,7 +1109,7 @@ export default function InventoryPaymentsPage() {
             <div className="space-y-4">
               {(() => {
                 // Calculate GLOBAL date range from FILTERED payments
-                const allPayments = paymentPlans.flatMap(plan => 
+                const allPayments = filteredPlans.flatMap(plan => 
                   plan.lineItems.filter(item => item.date)
                 );
                 
@@ -899,7 +1124,7 @@ export default function InventoryPaymentsPage() {
                 const globalDateRange = globalMaxDate.getTime() - globalMinDate.getTime();
 
                 // Calculate global max amount for consistent bubble sizing
-                const globalMaxAmount = Math.max(...allPayments.map(p => Math.abs(p.amount)));
+                const globalMaxAmount = Math.max(...filteredPayments.map(p => Math.abs(p.amount)));
 
                 // Calculate current date position
                 const currentDate = new Date();
@@ -909,7 +1134,7 @@ export default function InventoryPaymentsPage() {
 
                 return (
                   <>
-                    {paymentPlans.map((plan) => {
+                    {filteredPlans.map((plan) => {
                       // Filter plan items by date range
                       const sortedItems = [...plan.lineItems]
                         .filter(item => item.date)
@@ -1118,22 +1343,28 @@ export default function InventoryPaymentsPage() {
                   </tr>
                 </thead>
               <tbody>
-                {getFilteredAndSortedPlans().length === 0 ? (
+                {filteredPlans.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12 text-gray-500">
                       <Search className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                      <p>No payment plans match your search</p>
+                      <p>No payment plans match your filters</p>
                       <button 
-                        onClick={() => setSearchQuery('')}
+                        onClick={() => {
+                          setSearchQuery('');
+                          setVendorFilter('all');
+                          setProjectFilter('all');
+                          setStatusFilter('all');
+                        }}
                         className="text-blue-600 hover:underline text-sm mt-2"
                       >
-                        Clear search
+                        Clear filters
                       </button>
                     </td>
                   </tr>
                 ) : (
-                  getFilteredAndSortedPlans().map((plan) => {
+                  filteredPlans.map((plan) => {
                     const isExpanded = expandedPlans.has(plan.planNumber);
+                    const itemsInRange = filterPaymentsByDateRange(plan.lineItems);
                     const total = getPlanTotal(plan);
                     const { paid, unpaid } = getPlanPaidUnpaid(plan);
 
@@ -1147,7 +1378,7 @@ export default function InventoryPaymentsPage() {
                         <td className="p-2 sm:p-3 text-right font-semibold text-xs sm:text-sm whitespace-nowrap">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                         <td className="p-2 sm:p-3 text-right text-green-600 font-semibold hidden sm:table-cell whitespace-nowrap">${paid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                         <td className="p-2 sm:p-3 text-right text-yellow-600 font-semibold hidden sm:table-cell whitespace-nowrap">${unpaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                        <td className="p-2 sm:p-3 text-center hidden md:table-cell">{plan.lineItems.length}</td>
+                        <td className="p-2 sm:p-3 text-center hidden md:table-cell">{itemsInRange.length}</td>
                         <td className="p-2 sm:p-3 text-center">
                           <div className="flex gap-1 sm:gap-2 justify-center">
                             <Button onClick={() => editPlan(plan)} variant="outline" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
@@ -1186,23 +1417,29 @@ export default function InventoryPaymentsPage() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {plan.lineItems.map((item) => (
-                                      <tr key={item.id} className="border-b">
-                                        <td className="p-1 sm:p-2">
-                                          <div className="max-w-[100px] sm:max-w-none truncate">{item.description || '—'}</div>
-                                        </td>
-                                        <td className="p-1 sm:p-2 text-right font-medium whitespace-nowrap">${parseFloat(item.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                                        <td className="p-1 sm:p-2 whitespace-nowrap">{new Date(item.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</td>
-                                        <td className="p-1 sm:p-2 hidden sm:table-cell">{item.reference || '—'}</td>
-                                        <td className="p-1 sm:p-2 text-center">
-                                          {item.isPaid ? (
-                                            <span className="bg-green-100 text-green-700 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-xs">Paid</span>
-                                          ) : (
-                                            <span className="bg-yellow-100 text-yellow-700 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-xs">Unpaid</span>
-                                          )}
-                                        </td>
+                                    {itemsInRange.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={5} className="p-2 text-center text-gray-500">No payments in selected filters</td>
                                       </tr>
-                                    ))}
+                                    ) : (
+                                      itemsInRange.map((item) => (
+                                        <tr key={item.id} className="border-b">
+                                          <td className="p-1 sm:p-2">
+                                            <div className="max-w-[100px] sm:max-w-none truncate">{item.description || '—'}</div>
+                                          </td>
+                                          <td className="p-1 sm:p-2 text-right font-medium whitespace-nowrap">${parseFloat(item.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                          <td className="p-1 sm:p-2 whitespace-nowrap">{new Date(item.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</td>
+                                          <td className="p-1 sm:p-2 hidden sm:table-cell">{item.reference || '—'}</td>
+                                          <td className="p-1 sm:p-2 text-center">
+                                            {item.isPaid ? (
+                                              <span className="bg-green-100 text-green-700 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-xs">Paid</span>
+                                            ) : (
+                                              <span className="bg-yellow-100 text-yellow-700 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-xs">Unpaid</span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
                                   </tbody>
                                 </table>
                               </div>

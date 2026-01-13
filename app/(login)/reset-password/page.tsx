@@ -9,7 +9,7 @@ import Link from 'next/link';
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const token = searchParams?.get('token') ?? null;
 
   const [resetState, resetAction, isResetPending] = useActionState<ActionState, FormData>(resetPassword, { error: '' });
   const [verificationState, setVerificationState] = useState<{

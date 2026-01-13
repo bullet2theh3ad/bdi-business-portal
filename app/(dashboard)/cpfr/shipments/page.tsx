@@ -70,7 +70,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function ShipmentsContent() {
   const searchParams = useSearchParams();
-  const highlightId = searchParams.get('highlight');
+  const highlightId = searchParams?.get('highlight') ?? null;
   
   const { data: user } = useSWR<UserWithOrganization>('/api/user', fetcher);
   
