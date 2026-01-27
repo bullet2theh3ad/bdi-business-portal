@@ -98,7 +98,7 @@ export default function NREBudgetPage() {
   const [editingBudget, setEditingBudget] = useState<NREBudget | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
-  const [analyticsGroupBy, setAnalyticsGroupBy] = useState<'project' | 'sku' | 'category'>('project');
+  const [analyticsGroupBy, setAnalyticsGroupBy] = useState<'project' | 'sku' | 'category' | 'vendor'>('project');
   
   // Filter states
   const [filterVendor, setFilterVendor] = useState<string>('all');
@@ -1891,6 +1891,13 @@ export default function NREBudgetPage() {
               >
                 Category
               </Button>
+              <Button
+                variant={analyticsGroupBy === 'vendor' ? 'default' : 'outline'}
+                onClick={() => setAnalyticsGroupBy('vendor')}
+                className={analyticsGroupBy === 'vendor' ? 'bg-purple-600' : ''}
+              >
+                Vendor
+              </Button>
             </div>
           </div>
 
@@ -2088,9 +2095,128 @@ export default function NREBudgetPage() {
                 </div>
               );
             })()}
+
+            {/* Group by Vendor */}
+            {analyticsGroupBy === 'vendor' && (() => {
+              const vendorTotals = new Map<string, { total: number; count: number; budgets: NREBudget[] }>();
+              nreBudgets?.forEach(budget => {
+                const vendorKey = budget.vendorName || 'Unknown Vendor';
+                const existing = vendorTotals.get(vendorKey) || { total: 0, count: 0, budgets: [] };
+                vendorTotals.set(vendorKey, {
+                  total: existing.total + budget.totalAmount,
+                  count: existing.count + 1,
+                  budgets: [...existing.budgets, budget]
+                });
+              });
+
+              const sortedVendors = Array.from(vendorTotals.entries()).sort((a, b) => b[1].total - a[1].total);
+              const grandTotal = Array.from(vendorTotals.values()).reduce((sum, v) => sum + v.total, 0);
+
+              return (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-lg">
+                    <h3 className="text-xl font-bold mb-2">Total NRE Spend by Vendor</h3>
+                    <p className="text-3xl font-bold">${grandTotal.toLocaleString()}</p>
+                    <p className="text-purple-100 text-sm mt-1">{sortedVendors.length} Vendors • {nreBudgets?.length || 0} Total Budgets</p>
+                  </div>
+
+                  {sortedVendors.map(([vendor, data]) => (
+                    <Card key={vendor} className="border-2 hover:shadow-lg transition-shadow">
+                      <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">{vendor}</CardTitle>
+                            <CardDescription>{data.count} Budget{data.count !== 1 ? 's' : ''}</CardDescription>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-purple-600">
+                              ${data.total.toLocaleString()}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {((data.total / grandTotal) * 100).toFixed(1)}% of total
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-4">
+                        <div className="space-y-2">
+                          {data.budgets.map(budget => (
+                            <div key={budget.id} className="grid grid-cols-3 items-center text-sm border-b pb-2">
+                              <span className="font-mono text-xs">{budget.nreReferenceNumber}</span>
+                              <span className="text-gray-600 text-center">{budget.projectName || 'No Project'}</span>
+                              <span className="font-semibold text-green-600 text-right">${budget.totalAmount.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <Button 
+              onClick={() => {
+                if (!nreBudgets) return;
+
+                // CSV Header - One row per category (line item)
+                const headers = ['NRE Number', 'Vendor', 'Project', 'Line Item #', 'Description', 'Amount', 'Payment Status', 'Category'];
+                const rows = [headers];
+
+                // Add data rows - one row per line item (category)
+                nreBudgets.forEach((budget) => {
+                  // Calculate overall payment status for the budget
+                  const payments = budget.paymentLineItems || [];
+                  const totalPaid = payments.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0);
+                  const totalAmount = budget.totalAmount;
+                  let overallStatus = 'Not Paid';
+                  if (totalPaid >= totalAmount) {
+                    overallStatus = 'Paid';
+                  } else if (totalPaid > 0) {
+                    overallStatus = 'Partially Paid';
+                  }
+
+                  // One row per line item (each has its own category)
+                  budget.lineItems.forEach((item) => {
+                    const cat = item.category === 'CUSTOM' && item.customCategory ? item.customCategory : item.category;
+                    const categoryLabel = NRE_CATEGORIES.find(c => c.value === cat)?.label || cat;
+
+                    rows.push([
+                      budget.nreReferenceNumber,
+                      budget.vendorName,
+                      budget.projectName || '',
+                      item.lineItemNumber.toString(),
+                      item.description || '',
+                      item.totalAmount.toFixed(2),
+                      overallStatus,
+                      categoryLabel
+                    ]);
+                  });
+                });
+
+                // Convert to CSV string
+                const csvContent = rows.map(row => 
+                  row.map(cell => `"${cell}"`).join(',')
+                ).join('\n');
+
+                // Download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `NRE_Analytics_Export_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
             <Button variant="outline" onClick={() => setShowAnalyticsModal(false)}>
               Close
             </Button>
