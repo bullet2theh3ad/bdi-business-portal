@@ -2161,18 +2161,22 @@ export default function NREBudgetPage() {
               onClick={() => {
                 if (!nreBudgets) return;
 
-                // CSV Header - One row per payment, with category info
-                const headers = ['NRE Number', 'Vendor', 'Project', 'Payment #', 'Payment Date', 'Amount', 'Status', 'Category'];
+                // CSV Header - One row per payment, with category and description info
+                const headers = ['NRE Number', 'Vendor', 'Project', 'Description', 'Payment #', 'Payment Date', 'Amount', 'Status', 'Category'];
                 const rows = [headers];
 
                 // Add data rows - one row per payment entry
                 nreBudgets.forEach((budget) => {
-                  // Get categories from line items
+                  // Get categories and descriptions from line items
                   const categories = budget.lineItems.map(item => {
                     const cat = item.category === 'CUSTOM' && item.customCategory ? item.customCategory : item.category;
                     return NRE_CATEGORIES.find(c => c.value === cat)?.label || cat;
                   });
                   const categoryStr = [...new Set(categories)].join('; ');
+                  
+                  // Get descriptions from line items
+                  const descriptions = budget.lineItems.map(item => item.description).filter(Boolean);
+                  const descriptionStr = descriptions.join('; ');
 
                   if (budget.paymentLineItems && budget.paymentLineItems.length > 0) {
                     // One row per payment
@@ -2181,6 +2185,7 @@ export default function NREBudgetPage() {
                         budget.nreReferenceNumber,
                         budget.vendorName,
                         budget.projectName || '',
+                        descriptionStr,
                         payment.paymentNumber.toString(),
                         payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : '',
                         payment.amount.toFixed(2),
@@ -2194,6 +2199,7 @@ export default function NREBudgetPage() {
                       budget.nreReferenceNumber,
                       budget.vendorName,
                       budget.projectName || '',
+                      descriptionStr,
                       '',
                       '',
                       budget.totalAmount.toFixed(2),
