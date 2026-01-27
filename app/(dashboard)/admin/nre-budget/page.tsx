@@ -2161,52 +2161,39 @@ export default function NREBudgetPage() {
               onClick={() => {
                 if (!nreBudgets) return;
 
-                // CSV Header - One row per payment, with category and description info
-                const headers = ['NRE Number', 'Vendor', 'Project', 'Description', 'Payment #', 'Payment Date', 'Amount', 'Status', 'Category'];
+                // CSV Header - One row per LINE ITEM for pivoting by Category
+                const headers = ['NRE Number', 'Vendor', 'Project', 'Line Item #', 'Description', 'Amount', 'Payment Status', 'Category'];
                 const rows = [headers];
 
-                // Add data rows - one row per payment entry
+                // Add data rows - one row per line item
                 nreBudgets.forEach((budget) => {
-                  // Get categories and descriptions from line items
-                  const categories = budget.lineItems.map(item => {
-                    const cat = item.category === 'CUSTOM' && item.customCategory ? item.customCategory : item.category;
-                    return NRE_CATEGORIES.find(c => c.value === cat)?.label || cat;
-                  });
-                  const categoryStr = [...new Set(categories)].join('; ');
-                  
-                  // Get descriptions from line items
-                  const descriptions = budget.lineItems.map(item => item.description).filter(Boolean);
-                  const descriptionStr = descriptions.join('; ');
+                  // Calculate overall payment status for the budget
+                  const payments = budget.paymentLineItems || [];
+                  const totalPaid = payments.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0);
+                  const totalBudget = budget.totalAmount;
+                  let overallStatus = 'Not Paid';
+                  if (totalPaid >= totalBudget) {
+                    overallStatus = 'Paid';
+                  } else if (totalPaid > 0) {
+                    overallStatus = 'Partially Paid';
+                  }
 
-                  if (budget.paymentLineItems && budget.paymentLineItems.length > 0) {
-                    // One row per payment
-                    budget.paymentLineItems.forEach((payment) => {
-                      rows.push([
-                        budget.nreReferenceNumber,
-                        budget.vendorName,
-                        budget.projectName || '',
-                        descriptionStr,
-                        payment.paymentNumber.toString(),
-                        payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : '',
-                        payment.amount.toFixed(2),
-                        getPaymentStatus(payment),
-                        categoryStr
-                      ]);
-                    });
-                  } else {
-                    // Budget without payment schedule - include as single row
+                  // One row per line item (each has its own category)
+                  budget.lineItems.forEach((item) => {
+                    const cat = item.category === 'CUSTOM' && item.customCategory ? item.customCategory : item.category;
+                    const categoryLabel = NRE_CATEGORIES.find(c => c.value === cat)?.label || cat;
+
                     rows.push([
                       budget.nreReferenceNumber,
                       budget.vendorName,
                       budget.projectName || '',
-                      descriptionStr,
-                      '',
-                      '',
-                      budget.totalAmount.toFixed(2),
-                      'No Payment Schedule',
-                      categoryStr
+                      item.lineItemNumber.toString(),
+                      item.description || '',
+                      item.totalAmount.toFixed(2),
+                      overallStatus,
+                      categoryLabel
                     ]);
-                  }
+                  });
                 });
 
                 // Convert to CSV string
