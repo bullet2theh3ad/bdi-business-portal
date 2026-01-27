@@ -2161,39 +2161,46 @@ export default function NREBudgetPage() {
               onClick={() => {
                 if (!nreBudgets) return;
 
-                // CSV Header - One row per category (line item)
-                const headers = ['NRE Number', 'Vendor', 'Project', 'Line Item #', 'Description', 'Amount', 'Payment Status', 'Category'];
+                // CSV Header - One row per payment, with category info
+                const headers = ['NRE Number', 'Vendor', 'Project', 'Payment #', 'Payment Date', 'Amount', 'Status', 'Category'];
                 const rows = [headers];
 
-                // Add data rows - one row per line item (category)
+                // Add data rows - one row per payment entry
                 nreBudgets.forEach((budget) => {
-                  // Calculate overall payment status for the budget
-                  const payments = budget.paymentLineItems || [];
-                  const totalPaid = payments.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0);
-                  const totalAmount = budget.totalAmount;
-                  let overallStatus = 'Not Paid';
-                  if (totalPaid >= totalAmount) {
-                    overallStatus = 'Paid';
-                  } else if (totalPaid > 0) {
-                    overallStatus = 'Partially Paid';
-                  }
-
-                  // One row per line item (each has its own category)
-                  budget.lineItems.forEach((item) => {
+                  // Get categories from line items
+                  const categories = budget.lineItems.map(item => {
                     const cat = item.category === 'CUSTOM' && item.customCategory ? item.customCategory : item.category;
-                    const categoryLabel = NRE_CATEGORIES.find(c => c.value === cat)?.label || cat;
+                    return NRE_CATEGORIES.find(c => c.value === cat)?.label || cat;
+                  });
+                  const categoryStr = [...new Set(categories)].join('; ');
 
+                  if (budget.paymentLineItems && budget.paymentLineItems.length > 0) {
+                    // One row per payment
+                    budget.paymentLineItems.forEach((payment) => {
+                      rows.push([
+                        budget.nreReferenceNumber,
+                        budget.vendorName,
+                        budget.projectName || '',
+                        payment.paymentNumber.toString(),
+                        payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : '',
+                        payment.amount.toFixed(2),
+                        getPaymentStatus(payment),
+                        categoryStr
+                      ]);
+                    });
+                  } else {
+                    // Budget without payment schedule - include as single row
                     rows.push([
                       budget.nreReferenceNumber,
                       budget.vendorName,
                       budget.projectName || '',
-                      item.lineItemNumber.toString(),
-                      item.description || '',
-                      item.totalAmount.toFixed(2),
-                      overallStatus,
-                      categoryLabel
+                      '',
+                      '',
+                      budget.totalAmount.toFixed(2),
+                      'No Payment Schedule',
+                      categoryStr
                     ]);
-                  });
+                  }
                 });
 
                 // Convert to CSV string
