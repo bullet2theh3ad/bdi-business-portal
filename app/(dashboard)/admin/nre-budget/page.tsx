@@ -2162,7 +2162,7 @@ export default function NREBudgetPage() {
                 if (!nreBudgets) return;
 
                 // CSV Header - One row per LINE ITEM for pivoting by Category
-                const headers = ['NRE Number', 'Vendor', 'Project', 'Line Item #', 'Description', 'Amount', 'Payment Status', 'Category'];
+                const headers = ['NRE Number', 'Vendor', 'Project', 'Line Item #', 'Description', 'Amount', 'Payment Date', 'Payment Status', 'Category'];
                 const rows = [headers];
 
                 // Add data rows - one row per line item
@@ -2178,6 +2178,12 @@ export default function NREBudgetPage() {
                     overallStatus = 'Partially Paid';
                   }
 
+                  // Get the first payment date for this NRE budget (applies to all line items)
+                  const firstPayment = payments.find(p => p.paymentDate);
+                  const paymentDate = firstPayment?.paymentDate 
+                    ? new Date(firstPayment.paymentDate).toLocaleDateString() 
+                    : '';
+
                   // One row per line item (each has its own category)
                   budget.lineItems.forEach((item) => {
                     const cat = item.category === 'CUSTOM' && item.customCategory ? item.customCategory : item.category;
@@ -2190,6 +2196,7 @@ export default function NREBudgetPage() {
                       item.lineItemNumber.toString(),
                       item.description || '',
                       item.totalAmount.toFixed(2),
+                      paymentDate,
                       overallStatus,
                       categoryLabel
                     ]);
